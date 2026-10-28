@@ -16,6 +16,12 @@ jobs:
     runs-on: [self-hosted, macOS, rmlunity-android]
     timeout-minutes: 120
     steps:
+      - name: Prepare diagnostic logs
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/rmlunity-logs"
+          printf 'RmlUnity Android run started: %s\n' "$(date -u +%FT%TZ)" > "$RUNNER_TEMP/rmlunity-logs/preflight.log"
+
       - name: Check out trusted main
         uses: actions/checkout@v4
         with:
@@ -26,8 +32,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p logs
-          exec > >(tee -a logs/preflight.log) 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/rmlunity-logs/preflight.log") 2>&1
+          trap 'status=$?; echo "Preflight failed at line $LINENO (exit $status)"' ERR
           test "$GITHUB_REF" = refs/heads/main
           test "$GITHUB_REPOSITORY" = fujisheng/RmlUnity
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
@@ -49,13 +55,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/Android logs
+          mkdir -p build/Android
           "$RMLUNITY_EDITOR_ROOT/Unity.app/Contents/MacOS/Unity" \
             -batchmode -nographics -quit \
             -projectPath "$GITHUB_WORKSPACE" \
             -buildTarget Android \
             -executeMethod RmlUnity.Editor.AndroidBuild.Build \
-            -logFile "$GITHUB_WORKSPACE/logs/unity-android.log"
+            -logFile "$RUNNER_TEMP/rmlunity-logs/unity-android.log"
           test -s build/Android/RmlUnity-MVP.apk
 
       - name: Verify APK structure and debug signature
@@ -63,14 +69,14 @@ jobs:
         run: |
           set -euo pipefail
           APK=build/Android/RmlUnity-MVP.apk
-          unzip -t "$APK" | tee logs/zip-check.log
-          unzip -Z -1 "$APK" > logs/apk-contents.txt
-          grep -Fx 'lib/arm64-v8a/libRmlUnityBridge.so' logs/apk-contents.txt
-          grep -Fx 'lib/arm64-v8a/libil2cpp.so' logs/apk-contents.txt
-          stat -f 'APK bytes: %z' "$APK" | tee logs/apk-size.txt
+          unzip -t "$APK" | tee "$RUNNER_TEMP/rmlunity-logs/zip-check.log"
+          unzip -Z -1 "$APK" > "$RUNNER_TEMP/rmlunity-logs/apk-contents.txt"
+          grep -Fx 'lib/arm64-v8a/libRmlUnityBridge.so' "$RUNNER_TEMP/rmlunity-logs/apk-contents.txt"
+          grep -Fx 'lib/arm64-v8a/libil2cpp.so' "$RUNNER_TEMP/rmlunity-logs/apk-contents.txt"
+          stat -f 'APK bytes: %z' "$APK" | tee "$RUNNER_TEMP/rmlunity-logs/apk-size.txt"
           APKSIGNER=$(find "$RMLUNITY_EDITOR_ROOT/PlaybackEngines/AndroidPlayer/SDK/build-tools" -maxdepth 2 -type f -name apksigner | sort | tail -1)
           test -n "$APKSIGNER"
-          JAVA_HOME="$RMLUNITY_EDITOR_ROOT/PlaybackEngines/AndroidPlayer/OpenJDK" "$APKSIGNER" verify --verbose "$APK" | tee logs/signature-check.log
+          JAVA_HOME="$RMLUNITY_EDITOR_ROOT/PlaybackEngines/AndroidPlayer/OpenJDK" "$APKSIGNER" verify --verbose "$APK" | tee "$RUNNER_TEMP/rmlunity-logs/signature-check.log"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -85,6 +91,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RmlUnity-Android-Logs
-          path: logs/
-          if-no-files-found: warn
+          path: ${{ runner.temp }}/rmlunity-logs/
+          if-no-files-found: error
           retention-days: 7
