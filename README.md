@@ -1,6 +1,6 @@
 # RmlUnity — Native Web-style UI for Unity (MVP)
 
-> **Status: source prototype. NOT yet compiled against RmlUi 6.3 or tested in Unity.** No performance advantage is claimed.
+> **Status: Unity source prototype. RmlUi 6.3 ARM64 C++ compilation succeeded on GitHub Actions; Unity Editor and APK compilation are NOT yet validated.** No performance advantage is claimed.
 
 The goal is to let AI-authored RML/RCSS interfaces render using Unity's native graphics commands without creating a uGUI GameObject for every element and without embedding Chromium/WebView.
 
@@ -36,6 +36,18 @@ var host = FindObjectOfType<RmlUnity.RmlUnityHost>();
 host.Clicked += id => Debug.Log("Clicked: " + id);
 host.SetText("status", "Updated by game C# code");
 ```
+
+## Unity Personal: free cloud Android APK route
+
+Use Unity's **Build Automation free tier** with the private GitHub repository, not the legacy GitHub-hosted GameCI activation flow.
+
+- [Quick Android setup for Unity Personal](docs/PERSONAL_ANDROID_BUILD.md)
+- [Android ARM64 native publisher](.github/workflows/android-native.yml): compiles and commits `libRmlUnityBridge.so` to `main`.
+- [Unity Cloud pre-export hook](Assets/Editor/RmlUnityCloudBuild.cs): prepares the demo scene and Android/IL2CPP settings.
+
+Connect `fujisheng/RmlUnity` in Unity Dashboard → DevOps → Build Automation and enter the exact pre-export method `RmlUnityCloudBuild.PreExport`. No Unity Pro serial number is required for Unity's own Build Automation free tier (subject to service allowance).
+
+**No APK has been produced yet.** You must first connect your Unity Cloud project and run a build; expect further Unity-side debugging.
 
 ## Android CI
 
