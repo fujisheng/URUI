@@ -1,0 +1,121 @@
+name: Android APK (RmlUnity MVP)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/android-apk.yml
+      - Native/**
+      - Assets/RmlUnity/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rmlunity-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-arm64:
+    name: Compile RmlUi for Android arm64-v8a
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager --install "ndk;26.3.11579264"
+
+      - name: Configure RmlUi + FreeType
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK="${ANDROID_HOME}/ndk/26.3.11579264"
+          cmake -S Native -B Native/build/android-arm64 -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="${NDK}/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-26 \
+            -DANDROID_STL=c++_static \
+            -DCMAKE_MAKE_PROGRAM=ninja
+
+      - name: Build libRmlUnityBridge.so
+        run: cmake --build Native/build/android-arm64 --config Release --parallel 2
+
+      - name: Verify native binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SO=Native/build/android-arm64/libRmlUnityBridge.so
+          test -s "$SO"
+          file "$SO"
+          file "$SO" | grep -E 'ELF 64-bit.*ARM aarch64|ELF 64-bit.*ARM64'
+          mkdir -p Native/build/artifact
+          cp "$SO" Native/build/artifact/libRmlUnityBridge.so
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rmlunity-android-arm64-native
+          path: Native/build/artifact/libRmlUnityBridge.so
+          if-no-files-found: error
+          retention-days: 7
+
+  unity-apk:
+    name: Build installable Unity APK
+    needs: native-arm64
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rmlunity-android-arm64-native
+          path: Assets/Plugins/Android/libs/arm64-v8a
+
+      - name: Check Unity activation secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${UNITY_LICENSE}" && -z "${UNITY_SERIAL}" ]]; then
+            echo "::error::Unity activation is not configured. Set UNITY_LICENSE (supported .ulf) or UNITY_SERIAL plus UNITY_EMAIL and UNITY_PASSWORD in repository Actions secrets. Unity Personal manual activation is not supported by Unity."
+            exit 1
+          fi
+          if [[ -z "${UNITY_EMAIL}" || -z "${UNITY_PASSWORD}" ]]; then
+            echo "::error::Set UNITY_EMAIL and UNITY_PASSWORD in GitHub Actions secrets (do not put these in the repo)."
+            exit 1
+          fi
+
+      - name: Build Android APK with Unity 2022.3.62f1
+        uses: game-ci/unity-builder@v4
+        with:
+          unityVersion: 2022.3.62f1
+          targetPlatform: Android
+          androidExportType: androidPackage
+          buildMethod: RmlUnity.Editor.AndroidBuild.Build
+          buildsPath: build
+          buildName: RmlUnity-MVP
+          versioning: None
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s build/Android/RmlUnity-MVP.apk
+          ls -lh build/Android/RmlUnity-MVP.apk
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RmlUnity-MVP-Android-APK
+          path: build/Android/RmlUnity-MVP.apk
+          if-no-files-found: error
+          retention-days: 14
