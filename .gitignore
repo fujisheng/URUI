@@ -1,0 +1,12 @@
+Library/
+Temp/
+Obj/
+Logs/
+UserSettings/
+Build/
+Builds/
+Native/build/
+Assets/Plugins/x86_64/*.dll
+Assets/Plugins/*.so
+Assets/Plugins/*.dylib
+.DS_Store
