@@ -119,7 +119,7 @@ namespace RmlUnity {
     var cmd=commands[c];
     if(cmd.geometry==0)continue;
     if(!meshes.TryGetValue(cmd.geometry,out var entry)){
-     if(!RmlNative.rui_get_geometry_info(cmd.geometry,out int nv,out int ni))continue;
+     if(RmlNative.rui_get_geometry_info(cmd.geometry,out int nv,out int ni)==0)continue;
      if(nv==0||ni==0)continue;
      var vs=new VertexNative[nv];var ids=new int[ni];
      if(RmlNative.rui_copy_geometry(cmd.geometry,vs,nv,ids,ni)==0)continue;
@@ -152,7 +152,7 @@ namespace RmlUnity {
   Texture2D LoadTexture(ulong id){
    if(id==0)return white;
    if(textures.TryGetValue(id,out var old))return old;
-   if(!RmlNative.rui_get_texture_info(id,out int w,out int h,out int length))return white;
+   if(RmlNative.rui_get_texture_info(id,out int w,out int h,out int length)==0)return white;
    if(w<=0||h<=0||length!=w*h*4)return white;
    var rgba=new byte[length];
    if(RmlNative.rui_copy_texture(id,rgba,length)==0)return white;
@@ -161,7 +161,7 @@ namespace RmlUnity {
    textures[id]=texture;return texture;
   }
   void OnDestroy(){
-   if(targetCamera&&buffer)targetCamera.RemoveCommandBuffer(CameraEvent.AfterEverything,buffer);
+   if(targetCamera&&buffer!=null)targetCamera.RemoveCommandBuffer(CameraEvent.AfterEverything,buffer);
    if(buffer!=null){buffer.Release();buffer=null;}
    foreach(var item in meshes.Values)if(item.mesh)Destroy(item.mesh);
    meshes.Clear();
