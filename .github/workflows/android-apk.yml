@@ -29,8 +29,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
+      # GitHub-hosted Ubuntu already includes Android SDK command-line tools.
+      # Do not use setup-android@v3 here: it tries to install retired SDK package 'tools'.
       - name: Install Android NDK
         run: sdkmanager --install "ndk;26.3.11579264"
 
