@@ -41,7 +41,12 @@ namespace RmlUnity {
    try {
     if(RmlNative.rui_create(lastWidth,lastHeight,ResolveFontPath())==0)throw new Exception(RmlNative.LastError());
     active=true;
-    if(RmlNative.rui_load_document(document.text)==0)throw new Exception(RmlNative.LastError());
+    var fontFile=Path.GetFileNameWithoutExtension(ResolveFontPath()).ToLowerInvariant();
+    var family=fontFile.Contains("roboto")?"Roboto":
+      fontFile.Contains("noto")?"Noto Sans":
+      fontFile.Contains("dejavu")?"DejaVu Sans":"Arial";
+    var rml=document.text.Replace("__RMLUNITY_FONT__",family);
+    if(RmlNative.rui_load_document(rml)==0)throw new Exception(RmlNative.LastError());
    }catch(DllNotFoundException ex){Debug.LogError("Build Native/RmlUnityBridge first: "+ex.Message);enabled=false;}
    catch(Exception ex){Debug.LogError("RmlUnity: "+ex);enabled=false;}
   }
