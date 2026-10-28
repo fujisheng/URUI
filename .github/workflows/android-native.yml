@@ -86,7 +86,21 @@ jobs:
             echo 'Native binary unchanged.'
           else
             git commit -m 'build(android): publish ARM64 RmlUi native binary [skip ci]'
-            git push origin HEAD:main
+            # Source updates may land while the native library is compiling.
+            # Rebase only our generated binary commit; never force-push main.
+            for attempt in 1 2 3; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                echo 'Published ARM64 native binary to main.'
+                break
+              fi
+              if [[ "$attempt" -eq 3 ]]; then
+                echo '::error::Failed to publish after 3 fast-forward-safe retries.'
+                exit 1
+              fi
+              sleep 2
+            done
           fi
 
       - uses: actions/upload-artifact@v4
