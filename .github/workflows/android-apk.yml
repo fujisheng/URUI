@@ -32,7 +32,14 @@ jobs:
       # GitHub-hosted Ubuntu already includes Android SDK command-line tools.
       # Do not use setup-android@v3 here: it tries to install retired SDK package 'tools'.
       - name: Install Android NDK
-        run: sdkmanager --install "ndk;26.3.11579264"
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER" || { echo "::error::sdkmanager not found: $SDKMANAGER"; find "$ANDROID_HOME/cmdline-tools" -maxdepth 3 -name sdkmanager; exit 1; }
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "ndk;26.3.11579264"
 
       - name: Configure RmlUi + FreeType
         shell: bash
