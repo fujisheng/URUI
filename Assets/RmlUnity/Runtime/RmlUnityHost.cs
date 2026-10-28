@@ -112,9 +112,10 @@ namespace RmlUnity {
     var tex=LoadTexture(cmd.texture);
     // This prototype handles rectangular clip via command state but does not yet
     // apply a GPU scissor. Overflow clipping must be implemented before release.
-    material.SetTexture("_MainTex",tex?tex:white);
+    var properties=new MaterialPropertyBlock();
+    properties.SetTexture("_MainTex",tex?tex:white);
     var m=Matrix4x4.Translate(new Vector3(cmd.tx,cmd.ty,0));
-    buffer.DrawMesh(entry.mesh,m,material);
+    buffer.DrawMesh(entry.mesh,m,material,0,0,properties);
    }
    // Avoid leaking meshes invalidated by RmlUi.
    var stale=new List<ulong>();foreach(var pair in meshes)if(!used.Contains(pair.Key)&&RmlNative.rui_geometry_exists(pair.Key)==0)stale.Add(pair.Key);
