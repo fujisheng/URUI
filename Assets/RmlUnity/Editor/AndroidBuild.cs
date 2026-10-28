@@ -34,7 +34,10 @@ namespace RmlUnity.Editor
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
             PlayerSettings.Android.useCustomKeystore = false; // MVP: debug-signed APK only.
             EditorUserBuildSettings.buildAppBundle = false;
-            EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android);
+            // GameCI passes -buildTarget Android when launching Unity. Switching
+            // target in batch mode is unsupported and would fail this build.
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
+                throw new InvalidOperationException("Unity was not started with -buildTarget Android.");
 
             var output = Path.GetFullPath(outputRelative);
             Directory.CreateDirectory(Path.GetDirectoryName(output));
