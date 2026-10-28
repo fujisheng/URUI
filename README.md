@@ -37,6 +37,14 @@ host.Clicked += id => Debug.Log("Clicked: " + id);
 host.SetText("status", "Updated by game C# code");
 ```
 
+## Android CI
+
+[Android APK workflow](.github/workflows/android-apk.yml) | [手机操作与许可证配置](docs/ANDROID_CI.md)
+
+- **原生 RmlUi Android arm64-v8a：已通过远端编译。** [验证运行 #40625090580](https://github.com/fujisheng/RmlUnity/actions/runs/40625090580) 中包含 `rmlunity-android-arm64-native` artifact。
+- **Unity APK：尚未构建成功。** 当前远端运行停止在 `Check Unity activation secrets`，因为仓库未设置 Unity 许可证与账号 Secrets。
+- 将 `UNITY_EMAIL`、`UNITY_PASSWORD` 及有效的 `UNITY_SERIAL`（或受支持的 `UNITY_LICENSE`）设置为 GitHub Actions Secrets 后，再从 Actions 手动执行工作流。不要在 Issue、代码或聊天中分享密钥。
+
 ## Validation
 
 See [docs/VALIDATION.md](docs/VALIDATION.md) for the required build, graphics, correctness and profiling checklist.
