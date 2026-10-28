@@ -1,4 +1,4 @@
-name: Android APK (RmlUnity MVP)
+name: Legacy GameCI APK (requires Unity Pro/CI activation)
 
 # Trigger manually once Unity activation secrets have been added.
 # Avoid spending paid private-repository runner minutes on every source commit.
