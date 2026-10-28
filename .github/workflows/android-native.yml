@@ -1,0 +1,97 @@
+name: Publish Android ARM64 Native Plugin
+
+# This workflow does not run the Unity Editor and does not need Unity Pro.
+# It produces the native plugin that Unity Build Automation can package
+# with a Unity Personal project.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Native/**'
+      - '.github/workflows/android-native.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rmlunity-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-native-android:
+    name: Compile & publish libRmlUnityBridge.so
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "ndk;26.3.11579264"
+
+      - name: Configure native plugin (Android ARM64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK="$ANDROID_HOME/ndk/26.3.11579264"
+          cmake -S Native -B Native/build/android-arm64 -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-26 \
+            -DANDROID_STL=c++_static \
+            -DCMAKE_MAKE_PROGRAM=ninja
+
+      - name: Compile RmlUi + FreeType C++ bridge
+        run: cmake --build Native/build/android-arm64 --config Release --parallel 2
+
+      - name: Check ABI and copy into Unity project
+        shell: bash
+        run: |
+          set -euo pipefail
+          SO=Native/build/android-arm64/libRmlUnityBridge.so
+          DEST=Assets/Plugins/Android/libs/arm64-v8a/libRmlUnityBridge.so
+          test -s "$SO"
+          file "$SO"
+          file "$SO" | grep -E 'ELF 64-bit.*ARM aarch64|ELF 64-bit.*ARM64'
+          "$ANDROID_HOME/ndk/26.3.11579264/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-debug "$SO"
+          mkdir -p "$(dirname "$DEST")"
+          cp "$SO" "$DEST"
+          test -s "$DEST"
+          test -s "$DEST.meta"
+
+      - name: Publish native plugin to GitHub repository
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f Assets/Plugins/Android/libs/arm64-v8a/libRmlUnityBridge.so
+          if git diff --cached --quiet; then
+            echo 'Native binary unchanged.'
+          else
+            git commit -m 'build(android): publish ARM64 RmlUi native binary [skip ci]'
+            git push origin HEAD:main
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rmlunity-arm64-native-plugin
+          path: Assets/Plugins/Android/libs/arm64-v8a/libRmlUnityBridge.so
+          if-no-files-found: error
+          retention-days: 14
