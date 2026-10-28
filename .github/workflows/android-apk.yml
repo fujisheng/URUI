@@ -1,13 +1,9 @@
 name: Android APK (RmlUnity MVP)
 
+# Trigger manually once Unity activation secrets have been added.
+# Avoid spending paid private-repository runner minutes on every source commit.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/android-apk.yml
-      - Native/**
-      - Assets/RmlUnity/**
 
 permissions:
   contents: read
