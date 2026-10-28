@@ -1,5 +1,8 @@
 # Android APK CI
 
+> **Unity Personal users:** Please use [PERSONAL_ANDROID_BUILD.md](PERSONAL_ANDROID_BUILD.md) instead. It uses the official Unity Build Automation free tier and the [Android native plugin workflow](../.github/workflows/android-native.yml). The GameCI APK workflow below requires a supported CI activation method and is not the recommended route for Unity Personal.
+
+
 Workflow: [Android APK (RmlUnity MVP)](../.github/workflows/android-apk.yml)
 
 **Status:** This repository is still a prototype. The workflow compiles a Linux-hosted Android ARM64 C++ plugin, then invokes Unity 2022.3.62f1 to build a debug-signed Android APK. An actual successful build must be confirmed in GitHub Actions; committing a workflow does not demonstrate that an APK was produced.
