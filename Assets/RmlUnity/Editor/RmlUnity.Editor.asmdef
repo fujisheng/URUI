@@ -1,0 +1,1 @@
+{"name":"RmlUnity.Editor","rootNamespace":"RmlUnity","references":["RmlUnity.Runtime"],"includePlatforms":["Editor"],"excludePlatforms":[],"allowUnsafeCode":false,"overrideReferences":false,"precompiledReferences":[],"autoReferenced":true}
