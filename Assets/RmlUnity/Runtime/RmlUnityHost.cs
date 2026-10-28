@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -21,6 +22,7 @@ namespace RmlUnity {
   bool active;
   int gold=1200;
   int lastWidth,lastHeight;
+  bool touchDown;
   CommandNative[] commands=Array.Empty<CommandNative>();
   byte[] eventBuffer=new byte[4096];
   Texture2D white;
@@ -44,7 +46,11 @@ namespace RmlUnity {
    catch(Exception ex){Debug.LogError("RmlUnity: "+ex);enabled=false;}
   }
   static string ResolveFont(){
-   #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+   #if UNITY_ANDROID && !UNITY_EDITOR
+   foreach(var path in new [] {"/system/fonts/Roboto-Regular.ttf", "/system/fonts/NotoSans-Regular.ttf", "/system/fonts/DroidSans.ttf"})
+    if(File.Exists(path)) return path;
+   return "/system/fonts/Roboto-Regular.ttf";
+   #elif UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
    return "C:/Windows/Fonts/arial.ttf";
    #elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
    return "/System/Library/Fonts/Supplemental/Arial.ttf";
@@ -58,6 +64,21 @@ namespace RmlUnity {
    if(lastWidth!=Screen.width||lastHeight!=Screen.height){
     lastWidth=Screen.width;lastHeight=Screen.height;RmlNative.rui_resize(lastWidth,lastHeight);
    }
+   #if UNITY_ANDROID && !UNITY_EDITOR
+   if(Input.touchCount>0){
+    var touch=Input.GetTouch(0);
+    RmlNative.rui_mouse_move((int)touch.position.x,Screen.height-1-(int)touch.position.y);
+    if(touch.phase==TouchPhase.Began&&!touchDown){
+     touchDown=true;RmlNative.rui_mouse_button(0,1);
+    }
+    if(touch.phase==TouchPhase.Ended||touch.phase==TouchPhase.Canceled){
+     if(touchDown)RmlNative.rui_mouse_button(0,0);
+     touchDown=false;
+    }
+   }else if(touchDown){
+    RmlNative.rui_mouse_button(0,0);touchDown=false;
+   }
+   #else
    var mouse=Input.mousePosition;
    RmlNative.rui_mouse_move((int)mouse.x,Screen.height-1-(int)mouse.y);
    for(int b=0;b<3;b++){
@@ -65,6 +86,7 @@ namespace RmlUnity {
     if(Input.GetMouseButtonUp(b))RmlNative.rui_mouse_button(b,0);
    }
    if(Mathf.Abs(Input.mouseScrollDelta.y)>0.001f)RmlNative.rui_mouse_wheel(-Input.mouseScrollDelta.y);
+   #endif
    RmlNative.rui_update();
    DrainEvents();
    DrawFrame();
@@ -110,10 +132,11 @@ namespace RmlUnity {
     }
     entry.lastFrame=Time.frameCount;used.Add(cmd.geometry);
     var tex=LoadTexture(cmd.texture);
-    // This prototype handles rectangular clip via command state but does not yet
-    // apply a GPU scissor. Overflow clipping must be implemented before release.
     var properties=new MaterialPropertyBlock();
     properties.SetTexture("_MainTex",tex?tex:white);
+    properties.SetFloat("_RmlClipEnabled",cmd.clip_enabled);
+    properties.SetVector("_RmlClipRect",new Vector4(cmd.clip_x,cmd.clip_y,cmd.clip_x+cmd.clip_w,cmd.clip_y+cmd.clip_h));
+    properties.SetVector("_RmlTranslation",new Vector4(cmd.tx,cmd.ty,0,0));
     var m=Matrix4x4.Translate(new Vector3(cmd.tx,cmd.ty,0));
     buffer.DrawMesh(entry.mesh,m,material,0,0,properties);
    }
@@ -128,7 +151,7 @@ namespace RmlUnity {
    if(w<=0||h<=0||length!=w*h*4)return white;
    var rgba=new byte[length];
    if(RmlNative.rui_copy_texture(id,rgba,length)==0)return white;
-   var texture=new Texture2D(w,h,TextureFormat.RGBA32,false,true){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+   var texture=new Texture2D(w,h,TextureFormat.RGBA32,false,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
    texture.LoadRawTextureData(rgba);texture.Apply(false,true);
    textures[id]=texture;return texture;
   }
