@@ -1,12 +1,12 @@
 #pragma once
-#include "rmlunity.h"
+#include "urui.h"
 #include <chrono>
 #include <RmlUi/Core/Element.h>
-namespace rui_lookup {
+namespace urui_lookup {
 extern thread_local bool inline_enabled;
 extern thread_local int profile_mode;
 extern thread_local bool style_scope;
-extern thread_local RuiLookupProfile profile;
+extern thread_local UruiLookupProfile profile;
 struct StyleScope {bool active,old=false;StyleScope():active(profile_mode!=0){if(active){old=style_scope;style_scope=true;}}~StyleScope(){if(active)style_scope=old;}};
 struct Scope {
  int mode;bool style;std::chrono::steady_clock::time_point start;

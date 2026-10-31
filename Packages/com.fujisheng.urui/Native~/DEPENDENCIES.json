@@ -1,0 +1,15 @@
+{
+  "rmlui": {
+    "version": "6.3",
+    "source": "https://github.com/mikke89/RmlUi",
+    "path": "ThirdParty/RmlUi",
+    "license": "ThirdParty/RmlUi/LICENSE.txt"
+  },
+  "freetype": {
+    "version": "2.13.3",
+    "source": "https://freetype.org/",
+    "path": "ThirdParty/freetype",
+    "license": "ThirdParty/freetype/docs/FTL.TXT"
+  },
+  "build": "Vendored source; offline CMake build"
+}

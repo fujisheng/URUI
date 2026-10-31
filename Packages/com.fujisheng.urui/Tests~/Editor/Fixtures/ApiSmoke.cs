@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 using UnityEngine;
 using URUI;
 
+namespace URUI.Tests
+{
 public sealed class ApiSmoke : MonoBehaviour
 {
-    const string Markup = "<rml><head><style>body{font-family:__RMLUNITY_FONT__;font-size:20px;color:white;margin:0;}#panel{position:absolute;left:0;top:0;width:200px;height:100px;background-color:red;}#action{position:absolute;left:0;top:110px;width:150px;height:80px;background-color:blue;}</style></head><body><div id='root'><div id='panel'><span id='label'>Hello</span></div><div id='action'>Click</div><img id='image' src='tile.png' style='position:absolute;left:250px;top:0;width:40px;height:40px;'/></div></body></rml>";
-    [DllImport("RmlUnityBridge")] static extern void rui_mouse_move(int x, int y);
-    [DllImport("RmlUnityBridge")] static extern void rui_mouse_button(int button, int down);
+    const string Markup = "<rml><head><style>body{font-family:__URUI_FONT__;font-size:20px;color:white;margin:0;}#panel{position:absolute;left:0;top:0;width:200px;height:100px;background-color:red;}#action{position:absolute;left:0;top:110px;width:150px;height:80px;background-color:blue;}</style></head><body><div id='root'><div id='panel'><span id='label'>Hello</span></div><div id='action'>Click</div><img id='image' src='tile.png' style='position:absolute;left:250px;top:0;width:40px;height:40px;'/></div></body></rml>";
+    [DllImport("URUIBridge")] static extern void urui_mouse_move(int x, int y);
+    [DllImport("URUIBridge")] static extern void urui_mouse_button(int button, int down);
     Document document;
     Element panel, label, action;
     Texture2D image;
@@ -34,7 +36,7 @@ public sealed class ApiSmoke : MonoBehaviour
     {
         if (type == LogType.Error || type == LogType.Exception) { failed = true; error = message; }
     }
-    void Click() { rui_mouse_move(30, 130); rui_mouse_button(0, 1); rui_mouse_button(0, 0); }
+    void Click() { urui_mouse_move(30, 130); urui_mouse_button(0, 1); urui_mouse_button(0, 0); }
     void CheckInvalidLoadAndDisableCallback()
     {
         var check = new GameObject("Lifecycle edge test").AddComponent<Document>();
@@ -181,4 +183,5 @@ public sealed class ApiSmoke : MonoBehaviour
     }
 }
 
+}
 #endif

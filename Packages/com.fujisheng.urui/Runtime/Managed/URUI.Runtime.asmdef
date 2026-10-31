@@ -1,7 +1,0 @@
-{
-  "name": "URUI.Runtime",
-  "rootNamespace": "URUI",
-  "references": ["RmlUnity.Runtime"],
-  "allowUnsafeCode": false,
-  "autoReferenced": true
-}

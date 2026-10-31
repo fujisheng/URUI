@@ -2,9 +2,10 @@
 #include "prepared_batch.h"
 #include <cmath>
 #include <algorithm>
-namespace rui_frame {
-static_assert(sizeof(void*)==8&&sizeof(RuiNativeFramePacket)==128&&offsetof(RuiNativeFramePacket,draws)==72&&offsetof(RuiNativeFramePacket,count)==96,"final frame ABI");
-static_assert(sizeof(RuiNativeMeshView)==32&&offsetof(RuiNativeMeshView,vertex_count)==16,"mesh view ABI");
+namespace urui_frame {
+static_assert(sizeof(void*)==4||sizeof(void*)==8,"supported pointer width");
+static_assert(sizeof(UruiNativeFramePacket)==(sizeof(void*)==8?128:120)&&offsetof(UruiNativeFramePacket,draws)==72&&offsetof(UruiNativeFramePacket,count)==72+3*sizeof(void*),"final frame ABI");
+static_assert(sizeof(UruiNativeMeshView)==16+2*sizeof(void*)&&offsetof(UruiNativeMeshView,vertex_count)==2*sizeof(void*),"mesh view ABI");
 struct Value {float data[8]{};};
 // Match Unity's PUBLIC managed Matrix4x4 operator: four rounded products,
 // left-associated rounded additions. The separate native NEON helper is not
@@ -30,24 +31,24 @@ inline int Prepare(const float* m,float tx,float ty,float* out,Value& value,uint
  return affine?1:2;
 }
 struct Frame {
- uint64_t id=0;RuiFrameStamp stamp{};uint32_t affine=0,fallback=0,draw_count=0,capacity=0;
- std::unique_ptr<Value[]> values;std::unique_ptr<std::array<float,16>[]> worlds;std::unique_ptr<RuiPreparedDraw[]> draws;
- std::shared_ptr<const rui_prepared::Plan> geometry;
+ uint64_t id=0;UruiFrameStamp stamp{};uint32_t affine=0,fallback=0,draw_count=0,capacity=0;
+ std::unique_ptr<Value[]> values;std::unique_ptr<std::array<float,16>[]> worlds;std::unique_ptr<UruiPreparedDraw[]> draws;
+ std::shared_ptr<const urui_prepared::Plan> geometry;
  size_t Bytes()const{return size_t(capacity)*152;}
- void Ensure(uint32_t count){if(count<=capacity)return;uint32_t n=std::min(65536u,std::max(count,std::max(16u,capacity*2)));auto v=std::make_unique<Value[]>(n);auto w=std::make_unique<std::array<float,16>[]>(n);auto d=std::make_unique<RuiPreparedDraw[]>(n);values=std::move(v);worlds=std::move(w);draws=std::move(d);capacity=n;}
+ void Ensure(uint32_t count){if(count<=capacity)return;uint32_t n=std::min(65536u,std::max(count,std::max(16u,capacity*2)));auto v=std::make_unique<Value[]>(n);auto w=std::make_unique<std::array<float,16>[]>(n);auto d=std::make_unique<UruiPreparedDraw[]>(n);values=std::move(v);worlds=std::move(w);draws=std::move(d);capacity=n;}
 };
 class Session {
  struct Lease {uint64_t token=0;std::shared_ptr<const Frame> frame;};
  std::thread::id owner=std::this_thread::get_id();bool closing=false;
  std::array<Lease,4> leases{};std::vector<std::shared_ptr<Frame>> storage;std::shared_ptr<const Frame> current;std::vector<uint8_t> mask;
- rui_prepared::Session geometry;size_t maxFrameBytes;const uint32_t arithmetic;
- static bool Same(const RuiFrameStamp&a,const RuiFrameStamp&b){return a.epoch==b.epoch&&a.commands==b.commands&&a.resources==b.resources&&a.count==b.count;}
- void Publish(Lease& lease,const std::shared_ptr<const Frame>& f,RuiNativeFramePacket& out,uint32_t built,uint32_t reused,uint64_t builtBytes){
-  const uint64_t token=rui_prepared::Token();lease.token=token;lease.frame=f;current=f;
+ urui_prepared::Session geometry;size_t maxFrameBytes;const uint32_t arithmetic;
+ static bool Same(const UruiFrameStamp&a,const UruiFrameStamp&b){return a.epoch==b.epoch&&a.commands==b.commands&&a.resources==b.resources&&a.count==b.count;}
+ void Publish(Lease& lease,const std::shared_ptr<const Frame>& f,UruiNativeFramePacket& out,uint32_t built,uint32_t reused,uint64_t builtBytes){
+  const uint64_t token=urui_prepared::Token();lease.token=token;lease.frame=f;current=f;
   out={id,token,f->stamp.epoch,f->stamp.commands,f->stamp.resources,f->geometry->id,f->id,uint64_t(Retained()),builtBytes,f->draws.get(),reinterpret_cast<const float*>(f->values.get()),reinterpret_cast<const float*>(f->worlds.get()),f->stamp.count,f->draw_count,built,reused,f->affine,f->fallback,1,1u|(arithmetic<<8)};
  }
 public:
- const uint64_t id=rui_prepared::Token();
+ const uint64_t id=urui_prepared::Token();
  explicit Session(size_t frameBudget=48u*1024*1024,uint32_t mode=1):maxFrameBytes(frameBudget),arithmetic(mode){}
  bool Thread()const{return owner==std::this_thread::get_id();}
  size_t StorageCount()const{return storage.size();}
@@ -57,7 +58,7 @@ public:
  int Close(){if(!Thread())return -3;closing=true;current.reset();return Pending()?-5:1;}
  std::shared_ptr<const Frame> Get(uint64_t token)const{if(!Thread()||!token)return {};for(const auto& l:leases)if(l.token==token)return l.frame;return {};}
  int Release(uint64_t token){if(!Thread())return -3;for(auto& l:leases)if(token&&l.token==token){l.frame.reset();l.token=0;return 1;}return -2;}
- template<class Resolve,class ValidTexture>int Acquire(const RuiFrameStamp& stamp,const std::vector<RuiCommand>& commands,const std::vector<std::array<float,16>>& matrices,Resolve resolve,ValidTexture texture,RuiNativeFramePacket& out){
+ template<class Resolve,class ValidTexture>int Acquire(const UruiFrameStamp& stamp,const std::vector<UruiCommand>& commands,const std::vector<std::array<float,16>>& matrices,Resolve resolve,ValidTexture texture,UruiNativeFramePacket& out){
   out={};if(!Thread())return -3;if(closing)return -5;
   if(stamp.flags!=1||stamp.epoch==0||stamp.count>65536||commands.size()!=stamp.count||matrices.size()!=stamp.count)return -1;
   Lease* free=nullptr;for(auto& l:leases)if(!l.token){free=&l;break;}if(!free)return -5;
@@ -76,10 +77,10 @@ public:
    const auto& c=commands[n];if(c.geometry&&!resolve(c.geometry).vertices)return -2;if(c.texture&&!texture(c.texture))return -2;
    int kind=Prepare(matrices[n].data(),c.tx,c.ty,next->worlds[n].data(),next->values[n],arithmetic);if(kind<0)return -1;mask[n]=kind==1;if(kind==1)next->affine++;else next->fallback++;
   }
-  RuiPreparedPacket p{};int status=geometry.Acquire(stamp,commands,mask.data(),int(stamp.count),resolve,p);if(status!=1)return status;
+  UruiPreparedPacket p{};int status=geometry.Acquire(stamp,commands,mask.data(),int(stamp.count),resolve,p);if(status!=1)return status;
   auto plan=geometry.Get(p.lease);geometry.Release(p.lease);if(!plan||plan->batches.size()>stamp.count)return -8;
   for(size_t n=0;n<plan->batches.size();n++)next->draws[n]=plan->batches[n]->draw;
-  next->geometry=plan;next->draw_count=uint32_t(plan->batches.size());next->stamp=stamp;next->id=rui_prepared::Token();
+  next->geometry=plan;next->draw_count=uint32_t(plan->batches.size());next->stamp=stamp;next->id=urui_prepared::Token();
   Publish(*free,next,out,p.built_batches,p.reused_batches,p.built_bytes);return 1;
  }
 };

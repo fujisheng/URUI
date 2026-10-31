@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using RmlUnity;
+using URUI.Internal;
 using UnityEngine;
 
 namespace URUI
@@ -20,7 +20,7 @@ namespace URUI
         [SerializeField] string fontPath = "";
 
         readonly Dictionary<string, Element> elements = new Dictionary<string, Element>(StringComparer.Ordinal);
-        RmlUnityHost host;
+        RenderHost host;
         TextAsset ownedMarkup;
         string requestedMarkup;
         int ownerThread;
@@ -46,7 +46,7 @@ namespace URUI
             set { CheckConfiguration(); images = value == null ? Array.Empty<ImageAsset>() : (ImageAsset[])value.Clone(); }
         }
 
-        /// <summary>下次加载使用的字体文件绝对路径；为空时使用兼容渲染器的平台默认字体。</summary>
+        /// <summary>下次加载使用的字体文件绝对路径；为空时使用平台默认字体。</summary>
         public string FontPath
         {
             get { CheckThread(); return fontPath; }
@@ -115,7 +115,7 @@ namespace URUI
             if (markup.IndexOf('\0') >= 0) throw new ArgumentException("RML 不能包含 NUL。", nameof(markup));
             if (!isActiveAndEnabled) throw new InvalidOperationException("请先启用 URUI Document。");
             if (changingContent) throw new InvalidOperationException("不能在文档生命周期回调中重入加载或卸载。");
-            if (RmlUnityHost.ActiveHost && RmlUnityHost.ActiveHost != host)
+            if (RenderHost.ActiveHost && RenderHost.ActiveHost != host)
                 throw new InvalidOperationException("URUI 当前仅支持一个活动文档，请先卸载已有文档。");
             ValidateImages();
             if (!string.IsNullOrEmpty(fontPath) && (fontPath.IndexOf('\0') >= 0 || !File.Exists(fontPath)))
@@ -127,7 +127,7 @@ namespace URUI
                 // Unloaded subscribers may disable/destroy this component or
                 // claim the singleton for another document.
                 if (!this || !isActiveAndEnabled) throw new InvalidOperationException("URUI 加载已取消：组件在 Unloaded 中被禁用或销毁。");
-                if (RmlUnityHost.ActiveHost) throw new InvalidOperationException("URUI 加载已取消：另一个文档已占用 context。");
+                if (RenderHost.ActiveHost) throw new InvalidOperationException("URUI 加载已取消：另一个文档已占用 context。");
                 loadRequested = true;
                 source = requestedSource;
                 requestedMarkup = markup;
@@ -135,12 +135,12 @@ namespace URUI
                 var renderer = new GameObject("URUI Renderer");
                 renderer.transform.SetParent(transform, false);
                 renderer.hideFlags = HideFlags.HideAndDontSave;
-                host = renderer.AddComponent<RmlUnityHost>();
+                host = renderer.AddComponent<RenderHost>();
                 host.document = ownedMarkup;
                 host.overrideFontPath = fontPath;
-                host.imageAssets = new RmlImageAsset[images.Length];
+                host.imageAssets = new ImageBinding[images.Length];
                 for (var i = 0; i < images.Length; i++)
-                    host.imageAssets[i] = new RmlImageAsset { source = images[i].Source, texture = images[i].Texture };
+                    host.imageAssets[i] = new ImageBinding { source = images[i].Source, texture = images[i].Texture };
                 host.InitializeForDocument();
                 if (!host.Ready) throw new InvalidOperationException("URUI 文档加载失败，详情见 Unity Console。");
                 host.Clicked += DispatchClick;
@@ -232,7 +232,7 @@ namespace URUI
         }
 
         internal bool IsCurrent(uint version) => IsLoaded && generation == version;
-        internal RmlUnityHost Host => host;
+        internal RenderHost Host => host;
         internal void Forget(Element element)
         {
             if (elements.TryGetValue(element.Id, out var existing) && ReferenceEquals(existing, element)) elements.Remove(element.Id);

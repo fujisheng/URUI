@@ -6,11 +6,13 @@ using UnityEngine;
 using URUI;
 using URUI.Samples;
 
+namespace URUI.Tests
+{
 public sealed class UsabilitySmoke : MonoBehaviour
 {
-    [DllImport("RmlUnityBridge")] static extern void rui_mouse_move(int x, int y);
-    [DllImport("RmlUnityBridge")] static extern void rui_mouse_button(int button, int down);
-    [DllImport("RmlUnityBridge")] static extern int rui_get_element_box(string id, [Out] float[] values);
+    [DllImport("URUIBridge")] static extern void urui_mouse_move(int x, int y);
+    [DllImport("URUIBridge")] static extern void urui_mouse_button(int button, int down);
+    [DllImport("URUIBridge")] static extern int urui_get_element_box(string id, [Out] float[] values);
     public Document generatedDocument;
     public TextAsset generatedSource;
     HelloUrui sample;
@@ -27,11 +29,11 @@ public sealed class UsabilitySmoke : MonoBehaviour
     static void Click()
     {
         var box = new float[6];
-        Need(rui_get_element_box("action", box) == 1 && box[2] > 0 && box[3] > 0, "sample button has layout bounds");
+        Need(urui_get_element_box("action", box) == 1 && box[2] > 0 && box[3] > 0, "sample button has layout bounds");
         Need(Mathf.Abs(box[2] - 220) < .1f && Mathf.Abs(box[3] - 50) < .1f, "sample button uses documented block size " + string.Join(",", box));
         var x = (int)(box[0] + box[2] * .5f); var y = (int)(box[1] + box[3] * .5f);
         Debug.Log("URUI_SAMPLE_BUTTON_BOX " + string.Join(",", box));
-        rui_mouse_move(x, y); rui_mouse_button(0, 1); rui_mouse_button(0, 0);
+        urui_mouse_move(x, y); urui_mouse_button(0, 1); urui_mouse_button(0, 0);
     }
     void Update()
     {
@@ -64,7 +66,7 @@ public sealed class UsabilitySmoke : MonoBehaviour
                 {
                     target.targetTexture = rt; target.Render(); RenderTexture.active = rt;
                     pixels.ReadPixels(new Rect(0, 0, 640, 480), 0, 0); pixels.Apply();
-                    var box = new float[6]; Need(rui_get_element_box("panel", box) == 1, "sample panel bounds");
+                    var box = new float[6]; Need(urui_get_element_box("panel", box) == 1, "sample panel bounds");
                     var color = pixels.GetPixel((int)box[0] + 5, 479 - (int)box[1] - 5);
                     Need(color.g > .35f && color.b < .4f, "sample click changed green background " + color);
                     File.WriteAllBytes("Evidence/hello-urui.png", pixels.EncodeToPNG());
@@ -99,4 +101,5 @@ public sealed class UsabilitySmoke : MonoBehaviour
     }
 }
 
+}
 #endif

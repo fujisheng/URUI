@@ -1,19 +1,19 @@
 using System;
 using System.Collections.Generic;
-using RmlUnity;
+using URUI.Internal;
 using UnityEngine;
 
 namespace URUI
 {
     /// <summary>
     /// 由 Document.Q 返回的元素。重载、删除或替换后失效；请重新查询。
-    /// 不要混用兼容 Host 修改 id 或创建重复 id，普通更新的底层 ABI 仍按 id 寻址。
+    /// RML id 必须保持唯一；更新属性时按查询 ID 寻址，不支持就地修改 id。
     /// </summary>
     public sealed class Element : IDisposable
     {
         readonly Document document;
         readonly uint generation;
-        readonly RmlElementReference reference;
+        readonly ElementReference reference;
         readonly List<ClickSubscription> subscriptions = new List<ClickSubscription>();
         bool disposed;
 
@@ -37,7 +37,7 @@ namespace URUI
             }
         }
 
-        internal Element(Document document, string id, uint generation, RmlElementReference reference)
+        internal Element(Document document, string id, uint generation, ElementReference reference)
         {
             this.document = document;
             this.generation = generation;

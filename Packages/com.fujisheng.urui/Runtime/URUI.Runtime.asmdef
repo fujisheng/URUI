@@ -1,0 +1,11 @@
+{
+  "name": "URUI.Runtime",
+  "rootNamespace": "URUI",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true
+}

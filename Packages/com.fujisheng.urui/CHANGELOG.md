@@ -1,14 +1,10 @@
 # Changelog
 
-## Unreleased — managed API candidate
+## Unreleased
 
-- Add `URUI.Document`, `Element`, `ElementStyle`, image mappings and disposable click callbacks in `URUI.Runtime`.
-- Define reload, stale-element, threading, singleton and resource ownership behavior without exposing native pointers.
-- Add Hello URUI, a Document-based Editor menu, Chinese usage/API/lifecycle/event documentation, and a style reference grounded in FUI/UnityCli.
-- Retain the published preview tag, legacy source API/assembly/serialized GUIDs, native ABI and default rendering paths.
-
-## 0.1.0-preview.1 — 2026-10-31
-
-- Publish the validated UPM baseline under URUI / UnityRmlUi and `com.fujisheng.urui`.
-- Update package paths, menus, installation and migration documentation.
-- Verify macOS ARM64 Built-in/Metal Editor import and functional smoke; reuse prior native/IL2CPP baseline evidence.
+- Provide `URUI.Document`, `Element`, `ElementStyle`, `ImageAsset` and `ClickEvent` in `URUI.Runtime`.
+- Support RML loading, ID queries, text and structure updates, RCSS styles, 2D transforms, image mappings and disposable click subscriptions.
+- Define main-thread access, one active document, element invalidation and resource ownership.
+- Keep rendering and native interop in `URUI.Internal`, with the URUIBridge native library and `urui_*` exports.
+- Include Hello URUI, the minimal scene menu, API guides, the support matrix and the roadmap for AI-assisted Unity UI development.
+- Bundle native plugins for Android ARM64/x86_64, Windows x86_64, macOS ARM64/x86_64, iOS device ARM64 and WebGL wasm32; distinguish compilation/link checks from Unity runtime validation.

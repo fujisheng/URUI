@@ -8,6 +8,8 @@ using UnityEngine.SceneManagement;
 using URUI;
 using URUI.Editor;
 
+namespace URUI.Tests.Editor
+{
 public static class UsabilityValidation
 {
     public static void Run()
@@ -34,4 +36,5 @@ public static class UsabilityValidation
     }
 }
 
+}
 #endif

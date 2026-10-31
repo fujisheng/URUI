@@ -1,13 +1,22 @@
-# 代码风格与组织
+# 代码约定
 
-参考用户实际仓库的共同习惯，应用于新托管接口、示例和本次触及的公共边界：四空格、Allman 花括号、PascalCase 公共成员、camelCase 字段、小文件职责、中文 XML 接口注释。没有对底层渲染器或第三方做全库格式化。
+URUI 的业务接口保持简洁：RML/RCSS 表达界面，C# 通过 `Document`、`Element` 和显式方法驱动状态。
 
-证据（实际读取的文件与固定树引用）：
+## C#
 
-- [FUI BindableProperty.cs](https://github.com/fujisheng/FUI/blob/23391f715535bbfada132944d1a94da51403fa06/Packages/com.fujisheng.fui/Runtime/Core/Bindable/BindableProperty.cs)：公共属性/方法、字段、事件、Dispose 和中文文档。
-- [FUI IElement.cs](https://github.com/fujisheng/FUI/blob/23391f715535bbfada132944d1a94da51403fa06/Packages/com.fujisheng.fui/Runtime/Core/Element/IElement.cs)：窄接口和只读属性。
-- [UnityCli UnityCliToolBase.cs](https://github.com/fujisheng/UnityCli/blob/e782e97b0d0f3353a92d362e18b4a986989cccdb/Editor/Core/UnityCliToolBase.cs)：缩进、命名空间、校验、清晰错误。
+- 使用四空格缩进与 Allman 花括号。
+- 类型、公开成员使用 PascalCase，字段和局部变量使用 camelCase。
+- 公共接口保持窄职责，使用 XML 注释说明参数、所有权、线程和失效条件。
+- 修改样式使用明确的 `Set` 方法；没有真实读取能力时不提供误导性的 getter。
+- 点击注册保留返回的订阅，在 `OnDisable` 中释放；文档重载后重新查询和绑定。
+- 每个文件围绕单一职责组织，业务代码仅依赖 `URUI.Runtime` 的公开接口。
 
-FUI 与 UnityCli 细节并非完全统一，本次选取共同模式，不声称存在统一团队规范，也未修改这些参考仓库。
+## RML/RCSS
 
-`Runtime/Managed/` 的 URUI.Runtime 是新用户外观；原 RmlUnity.Runtime 和 RmlUnity namespace 是兼容实现边界。未来维护优先从新外观进入，不把 native 指针、令牌、借用内存或实验开关扩展到普通业务接口。保留原脚本 GUID、shader 标识、原生文件名和许可证。
+- 为业务需要访问的元素设置清晰、唯一且稳定的 ID。
+- 将布局规则写在样式中，显式设置需要的 `display` 与定位方式。
+- `SetText` 用于普通文字，`SetInnerMarkup` 仅用于有意修改结构。
+- 用能表达业务含义的 ID 和样式组织界面，让文本及其差异便于人和 AI 阅读。
+- 自定义字体填写真实 family，图片路径与 `ImageAsset.Source` 保持一致。
+
+原生指针、渲染资源、桥接令牌和实验实现由内部代码管理。扩展公开 API 时先明确生命周期与失败行为，避免让业务承担内部资源管理。

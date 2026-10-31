@@ -1,0 +1,101 @@
+{
+  "plugins": [
+    {
+      "platform": "macos-arm64",
+      "package_path": "Packages/com.fujisheng.urui/Runtime/Plugins/macOS/libURUIBridge.dylib",
+      "bytes": 3027104,
+      "sha256": "1050c5e1d97b027cd89c4730f8429580f762f49f046977cc9e676b780b8ee1bc",
+      "urui_exports": 87,
+      "importer_cpu": "ARM64",
+      "compiled": true,
+      "runtime_validation": "Unity 6000.3.22f1 Editor / macOS ARM64 / Built-in Metal"
+    },
+    {
+      "platform": "macos-x86_64",
+      "package_path": "Packages/com.fujisheng.urui/Runtime/Plugins/macOS/x86_64/libURUIBridge.dylib",
+      "bytes": 3261272,
+      "sha256": "1d18caa29ce66ad464c1b478e0f777dee19e2e09e1e415aa9eabe69fe592aeef",
+      "urui_exports": 87,
+      "importer_cpu": "x86_64",
+      "compiled": true,
+      "runtime_validation": null
+    },
+    {
+      "platform": "android-arm64",
+      "package_path": "Packages/com.fujisheng.urui/Runtime/Plugins/Android/arm64-v8a/libURUIBridge.so",
+      "bytes": 4838232,
+      "sha256": "c2765af5600bf3e8f6225f3a53c9e5c1b8a36a032ef75d7f177dc50a6572cd20",
+      "urui_exports": 87,
+      "importer_cpu": "ARM64",
+      "compiled": true,
+      "runtime_validation": null,
+      "minimum_android_api": 23,
+      "load_segment_alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "platform": "android-x86_64",
+      "package_path": "Packages/com.fujisheng.urui/Runtime/Plugins/Android/x86_64/libURUIBridge.so",
+      "bytes": 4730560,
+      "sha256": "f772277e1472b1ec410f78d89f08927b73042bd29546cd7cbc3f43b26fde4268",
+      "urui_exports": 87,
+      "importer_cpu": "x86_64",
+      "compiled": true,
+      "runtime_validation": null,
+      "minimum_android_api": 23,
+      "load_segment_alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "platform": "windows-x86_64",
+      "package_path": "Packages/com.fujisheng.urui/Runtime/Plugins/Windows/x86_64/URUIBridge.dll",
+      "bytes": 2913792,
+      "sha256": "750f2d6d63510cc63cc05e8587e16bf6f996781f73aa4bd3110f874a25fd74a7",
+      "urui_exports": 87,
+      "importer_cpu": "x86_64",
+      "compiled": true,
+      "runtime_validation": null
+    },
+    {
+      "platform": "ios-arm64",
+      "package_path": "Packages/com.fujisheng.urui/Runtime/Plugins/iOS/arm64/libURUIBridge.a",
+      "bytes": 6412408,
+      "sha256": "6e3f07a7978061529240882d186741191bc6d0fec24017a89f7025391ebf5c94",
+      "urui_exports": 87,
+      "importer_cpu": "ARM64",
+      "compiled": true,
+      "runtime_validation": null,
+      "minimum_ios": "13.0",
+      "device_only": true
+    },
+    {
+      "platform": "webgl",
+      "package_path": "Packages/com.fujisheng.urui/Runtime/Plugins/WebGL/libURUIBridge.a",
+      "bytes": 7259072,
+      "sha256": "22f1b949fb43eeaf435b1a78b9478bdafcafd2bb3e4c61830266b29490d54cdf",
+      "urui_exports": 87,
+      "importer_cpu": "AnyCPU",
+      "compiled": true,
+      "runtime_validation": null,
+      "emscripten": "Unity 3.1.39-git",
+      "pointer_width": 32,
+      "exception_model": "Emscripten JS exceptions (-fexceptions)",
+      "link_probe_flags": [
+        "--no-entry",
+        "-fexceptions",
+        "-sDISABLE_EXCEPTION_CATCHING=0",
+        "-sERROR_ON_UNDEFINED_SYMBOLS=1"
+      ]
+    }
+  ],
+  "nativeLibrary": "URUIBridge",
+  "cAbiPrefix": "urui_",
+  "staticImport": "__Internal for iOS/WebGL",
+  "runtimeValidationScope": "Editor on macOS ARM64 only"
+}

@@ -8,7 +8,7 @@ namespace URUI.Samples
     public sealed class HelloUrui : MonoBehaviour
     {
         const string Markup = @"<rml><head><style>
-body { display:block; font-family:__RMLUNITY_FONT__; color:white; font-size:24px; margin:24px; }
+body { display:block; font-family:__URUI_FONT__; color:white; font-size:24px; margin:24px; }
 div { display:block; }
 #panel { width:360px; height:180px; padding:20px; background-color:#204080; }
 #action { width:220px; height:50px; margin-top:24px; background-color:#4070b0; }

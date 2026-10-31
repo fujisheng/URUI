@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
-project(RmlUnityBridge LANGUAGES C CXX)
+project(URUIBridge LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Build a self-contained plugin: static RmlUi + static FreeType inside a single .so.
-# The included Mac plugin is ABI 2. The inherited Android ABI-1 importer is disabled.
+# Build a self-contained plugin with static RmlUi and static FreeType.
+# The packaged macOS bridge exposes ABI 2.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Static third-party dependencies" FORCE)
 set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
 set(RMLUI_TESTS OFF CACHE BOOL "" FORCE)
@@ -26,26 +26,58 @@ endif()
 add_subdirectory(ThirdParty/RmlUi rmlui)
 set(rmlui_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/RmlUi")
 
-add_library(RmlUnityBridge SHARED bridge.cpp)
-target_link_libraries(RmlUnityBridge PRIVATE RmlUi::RmlUi)
-target_compile_definitions(RmlUnityBridge PRIVATE RMLUNITY_EXPORTS)
-if(MSVC)
-  target_compile_options(RmlUnityBridge PRIVATE /W4 /utf-8)
+if(EMSCRIPTEN OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  add_library(URUIBridge STATIC bridge.cpp)
+  set_target_properties(URUIBridge PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bridge")
 else()
-  target_compile_options(RmlUnityBridge PRIVATE -Wall -Wextra -Wno-unused-parameter)
+  add_library(URUIBridge SHARED bridge.cpp)
 endif()
-set_target_properties(RmlUnityBridge PROPERTIES OUTPUT_NAME RmlUnityBridge)
-option(RMLUNITY_STYLE_PROBE "Instrument original string property path (diagnostic only)" OFF)
-if(RMLUNITY_STYLE_PROBE)
+target_link_libraries(URUIBridge PRIVATE RmlUi::RmlUi)
+target_compile_definitions(URUIBridge PRIVATE URUI_EXPORTS)
+if(MSVC)
+  target_compile_options(URUIBridge PRIVATE /W4 /utf-8)
+else()
+  target_compile_options(URUIBridge PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+set_target_properties(URUIBridge PROPERTIES OUTPUT_NAME URUIBridge)
+if(WIN32)
+  set_target_properties(URUIBridge PROPERTIES PREFIX "")
+endif()
+if(EMSCRIPTEN)
+  # Preserve allocation-failure handling in the bridge and its dependencies.
+  target_compile_options(URUIBridge PRIVATE -fexceptions)
+  target_compile_options(rmlui_core PRIVATE -fexceptions)
+  target_compile_options(rmlui_debugger PRIVATE -fexceptions)
+endif()
+option(URUI_STYLE_PROBE "Instrument original string property path (diagnostic only)" OFF)
+if(URUI_STYLE_PROBE)
  include("${CMAKE_CURRENT_SOURCE_DIR}/instrument_style.cmake")
 endif()
-option(RMLUNITY_LOOKUP_QUEUE "Optional lookup diagnostics/queue experiment" OFF)
-if(RMLUNITY_LOOKUP_QUEUE)
+
+if(EMSCRIPTEN OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(urui_plugin_archive "${CMAKE_CURRENT_BINARY_DIR}/libURUIBridge.a")
+  add_custom_command(OUTPUT "${urui_plugin_archive}"
+    COMMAND "${CMAKE_COMMAND}"
+      "-DURUI_ARCHIVE=${urui_plugin_archive}"
+      "-DURUI_AR=${CMAKE_AR}"
+      "-DURUI_APPLE=${APPLE}"
+      "-DURUI_BRIDGE=$<TARGET_FILE:URUIBridge>"
+      "-DURUI_CORE=$<TARGET_FILE:rmlui_core>"
+      "-DURUI_DEBUGGER=$<TARGET_FILE:rmlui_debugger>"
+      "-DURUI_FREETYPE=$<TARGET_FILE:freetype>"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/bundle-static.cmake"
+    DEPENDS URUIBridge rmlui_core rmlui_debugger freetype
+      "${CMAKE_CURRENT_SOURCE_DIR}/bundle-static.cmake"
+    VERBATIM)
+  add_custom_target(URUIBridgePlugin ALL DEPENDS "${urui_plugin_archive}")
+endif()
+option(URUI_LOOKUP_QUEUE "Optional lookup diagnostics/queue experiment" OFF)
+if(URUI_LOOKUP_QUEUE)
  include("${CMAKE_CURRENT_SOURCE_DIR}/lookup_queue.cmake")
 endif()
 
-option(RMLUNITY_BUILD_TESTS "Build standalone native contract tests" OFF)
-if(RMLUNITY_BUILD_TESTS)
+option(URUI_BUILD_TESTS "Build standalone native contract tests" OFF)
+if(URUI_BUILD_TESTS)
  enable_testing()
  foreach(test core_frame prepared_batch prepared_delta native_frame)
   add_executable(${test}_tests tests/${test}_tests.cpp)

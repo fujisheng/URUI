@@ -6,12 +6,14 @@ using UnityEditor.Compilation;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
+namespace URUI.Tests.Editor
+{
 public static class ApiValidation
 {
     public static void Run()
     {
         System.IO.Directory.CreateDirectory("Evidence");
-        ManagedApiAvailability.Check();
+        PublicApiContract.Check();
         var runtime = CompilationPipeline.GetAssemblies().Single(value => value.name == "URUI.Runtime");
         if (runtime.assemblyReferences.Any(value => value.name == "Unity.ugui")) throw new Exception("uGUI leaked into URUI runtime");
         PackageImport.Check();
@@ -24,4 +26,5 @@ public static class ApiValidation
     }
 }
 
+}
 #endif

@@ -1,5 +1,5 @@
 #pragma once
-#include "rmlunity.h"
+#include "urui.h"
 #include <vector>
 #include <array>
 #include <memory>
@@ -9,18 +9,18 @@
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
-namespace rui_prepared {
-static_assert(sizeof(RuiPreparedDeltaInfo)==48,"incremental info ABI");
-static_assert(sizeof(RuiPreparedVertex)==32&&offsetof(RuiPreparedVertex,r)==12&&offsetof(RuiPreparedVertex,u)==16&&offsetof(RuiPreparedVertex,slot)==24,"vertex ABI");
-static_assert(sizeof(RuiPreparedDraw)==56&&sizeof(RuiPreparedPacket)==88,"packet ABI");
+namespace urui_prepared {
+static_assert(sizeof(UruiPreparedDeltaInfo)==48,"incremental info ABI");
+static_assert(sizeof(UruiPreparedVertex)==32&&offsetof(UruiPreparedVertex,r)==12&&offsetof(UruiPreparedVertex,u)==16&&offsetof(UruiPreparedVertex,slot)==24,"vertex ABI");
+static_assert(sizeof(UruiPreparedDraw)==56&&sizeof(UruiPreparedPacket)==88,"packet ABI");
 inline uint64_t Token(){static std::atomic<uint64_t> next{0};auto v=next.load();while(v!=UINT64_MAX){if(next.compare_exchange_weak(v,v+1))return v+1;}throw std::overflow_error("prepared identity exhausted");}
-struct View {const RuiVertex* vertices=nullptr;size_t nv=0;const int* indices=nullptr;size_t ni=0;};
+struct View {const UruiVertex* vertices=nullptr;size_t nv=0;const int* indices=nullptr;size_t ni=0;};
 struct Budget {size_t used=0,limit=64u*1024*1024;};
 struct Segment {uint32_t vertices,indices;};
 struct Range {uint32_t offset,count;};
 struct Batch {
  uint64_t delta_base=0;std::vector<Segment> segments;std::vector<Range> vertex_ranges,index_ranges;
- RuiPreparedDraw draw{};uint64_t epoch=0;std::vector<uint64_t> geometry;std::vector<RuiPreparedVertex> vertices;std::vector<uint32_t> indices;
+ UruiPreparedDraw draw{};uint64_t epoch=0;std::vector<uint64_t> geometry;std::vector<UruiPreparedVertex> vertices;std::vector<uint32_t> indices;
  std::shared_ptr<Budget> budget;size_t bytes=0;
  ~Batch(){if(budget)budget->used-=bytes;}
 };
@@ -28,8 +28,8 @@ struct Plan {uint64_t id=0,epoch=0,resources=0;std::vector<std::shared_ptr<Batch
 class Session {
  struct Lease {uint64_t token=0;std::shared_ptr<const Plan> plan;};
  std::thread::id owner=std::this_thread::get_id();std::array<Lease,4> leases{};std::shared_ptr<Budget> budget=std::make_shared<Budget>();std::shared_ptr<Plan> current;bool closing=false,delta_enabled=false;
- static bool State(const RuiPreparedDraw& a,const RuiCommand& b){return a.texture==b.texture&&a.clip_enabled==b.clip_enabled&&a.clip_x==b.clip_x&&a.clip_y==b.clip_y&&a.clip_w==b.clip_w&&a.clip_h==b.clip_h;}
- static bool Same(const Batch& b,uint64_t epoch,const std::vector<RuiCommand>& c,size_t first,size_t end,bool affine){if(b.epoch!=epoch||b.draw.slot!=first||b.draw.count!=end-first||b.draw.kind!=(affine?0u:1u)||!State(b.draw,c[first]))return false;for(size_t i=first;i<end;i++)if(b.geometry[i-first]!=c[i].geometry)return false;return true;}
+ static bool State(const UruiPreparedDraw& a,const UruiCommand& b){return a.texture==b.texture&&a.clip_enabled==b.clip_enabled&&a.clip_x==b.clip_x&&a.clip_y==b.clip_y&&a.clip_w==b.clip_w&&a.clip_h==b.clip_h;}
+ static bool Same(const Batch& b,uint64_t epoch,const std::vector<UruiCommand>& c,size_t first,size_t end,bool affine){if(b.epoch!=epoch||b.draw.slot!=first||b.draw.count!=end-first||b.draw.kind!=(affine?0u:1u)||!State(b.draw,c[first]))return false;for(size_t i=first;i<end;i++)if(b.geometry[i-first]!=c[i].geometry)return false;return true;}
  static void AddRange(std::vector<Range>& ranges,uint32_t offset,uint32_t count){if(!ranges.empty()&&ranges.back().offset+ranges.back().count==offset)ranges.back().count+=count;else ranges.push_back({offset,count});}
  void Delta(Batch& b,const Batch* old){
   if(!delta_enabled||!old||b.epoch!=old->epoch||b.draw.slot!=old->draw.slot||b.draw.count!=old->draw.count||b.draw.kind!=old->draw.kind||b.draw.texture!=old->draw.texture||b.draw.clip_enabled!=old->draw.clip_enabled||b.draw.clip_x!=old->draw.clip_x||b.draw.clip_y!=old->draw.clip_y||b.draw.clip_w!=old->draw.clip_w||b.draw.clip_h!=old->draw.clip_h||b.segments.size()!=old->segments.size())return;
@@ -43,7 +43,7 @@ public:
  const uint64_t id=Token();
  explicit Session(size_t maxBytes=64u*1024*1024){budget->limit=maxBytes;}
  int EnableDelta(int value){if(!Thread())return -3;if(closing||Pending())return -5;if(value!=0&&value!=1)return -1;if(delta_enabled!=(value!=0)){current.reset();delta_enabled=value!=0;}return 1;}
- int CopyDelta(uint64_t lease,uint64_t id,uint64_t base,RuiPreparedVertex* vertices,int vc,uint32_t* indices,int ic,RuiPreparedDeltaInfo& info)const{
+ int CopyDelta(uint64_t lease,uint64_t id,uint64_t base,UruiPreparedVertex* vertices,int vc,uint32_t* indices,int ic,UruiPreparedDeltaInfo& info)const{
   info={};if(!Thread())return -3;auto plan=Get(lease);if(!plan)return -2;
   for(const auto& b:plan->batches)if(b->draw.batch==id){
    if(vc<0||ic<0||size_t(vc)<b->vertices.size()||size_t(ic)<b->indices.size()||!vertices||!indices)return -1;
@@ -62,7 +62,7 @@ public:
  std::shared_ptr<const Plan> Get(uint64_t lease)const{if(!Thread())return {};for(const auto& l:leases)if(l.token==lease&&lease)return l.plan;return {};}
  int Release(uint64_t lease){if(!Thread())return -3;for(auto& l:leases)if(l.token==lease&&lease){l.plan.reset();l.token=0;return 1;}return -2;}
  size_t Retained()const{return budget->used;}
- template<class Resolve> int Acquire(const RuiFrameStamp& s,const std::vector<RuiCommand>& c,const uint8_t* mask,int count,Resolve resolve,RuiPreparedPacket& out){
+ template<class Resolve> int Acquire(const UruiFrameStamp& s,const std::vector<UruiCommand>& c,const uint8_t* mask,int count,Resolve resolve,UruiPreparedPacket& out){
   out={};if(!Thread())return -3;if(closing)return -5;
   if(s.flags!=1||s.epoch==0||count<0||count>65536||size_t(count)!=c.size()||s.count!=uint32_t(count)||(count&&!mask))return -1;
   Lease* free=nullptr;for(auto& l:leases)if(!l.token){free=&l;break;}if(!free)return -5;
@@ -83,7 +83,7 @@ public:
   // globally unique handle; a new document epoch always invalidates the plan.
   std::vector<std::shared_ptr<Batch>> next;next.reserve(current?current->batches.size():size_t(count));size_t total=0;uint32_t built=0,reused=0,vcopy=0,icopy=0;uint64_t builtBytes=0;
   for(size_t begin=0;begin<c.size();){if(!c[begin].geometry){begin++;continue;}bool affine=mask[begin]!=0;size_t end=begin+1;
-   RuiPreparedDraw d{};d.texture=c[begin].texture;d.slot=uint32_t(begin);d.kind=affine?0:1;d.clip_enabled=c[begin].clip_enabled;d.clip_x=c[begin].clip_x;d.clip_y=c[begin].clip_y;d.clip_w=c[begin].clip_w;d.clip_h=c[begin].clip_h;
+   UruiPreparedDraw d{};d.texture=c[begin].texture;d.slot=uint32_t(begin);d.kind=affine?0:1;d.clip_enabled=c[begin].clip_enabled;d.clip_x=c[begin].clip_x;d.clip_y=c[begin].clip_y;d.clip_w=c[begin].clip_w;d.clip_h=c[begin].clip_h;
    while(affine&&end<c.size()&&c[end].geometry&&mask[end]&&State(d,c[end]))end++;
    d.count=uint32_t(end-begin);std::shared_ptr<Batch> b;
    if(current&&next.size()<current->batches.size()){auto old=current->batches[next.size()];if(Same(*old,s.epoch,c,begin,end,affine))b=old;}

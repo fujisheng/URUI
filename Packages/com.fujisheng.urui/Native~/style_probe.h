@@ -1,13 +1,13 @@
 #pragma once
 // Diagnostic-only hooks. Never cache an Element pointer; active exists only
-// during the synchronous rui_set_style call on the calling thread.
-#include "rmlunity.h"
+// during the synchronous urui_set_style call on the calling thread.
+#include "urui.h"
 #include <RmlUi/Core/Transform.h>
 #include <chrono>
-namespace rui_style_probe {
-extern thread_local RuiStyleProbe total;
+namespace urui_style_probe {
+extern thread_local UruiStyleProbe total;
 extern thread_local int mode;
-extern thread_local RuiStyleProbe* active;
+extern thread_local UruiStyleProbe* active;
 struct Scope {
  uint64_t* out;std::chrono::steady_clock::time_point start;
  explicit Scope(uint64_t* p):out(p){if(out)start=std::chrono::steady_clock::now();}

@@ -1,52 +1,52 @@
 # URUI · UnityRmlUi
 
-URUI 是 Unity 的 RmlUi 托管接入层，使用 RML/RCSS 描述界面，原生 RmlUi 处理布局与渲染数据，Unity 提交绘制。
+**为 AI 辅助开发而设计的 Unity UI：用 RML/RCSS 描述界面，用 C# 驱动交互。**
 
-当前预览：**0.1.0-preview.1**。基于已验收的 RmlUnity UPM 版本改名，默认渲染路径不变。本分支包含未发布的托管 API 候选，固定预览 tag 不包含它，且不会被覆盖。
+URUI 将 [RmlUi](https://github.com/mikke89/RmlUi) 接入 Unity。RmlUi 负责文档解析与布局，Unity 负责绘制和输入，业务代码通过 `URUI.Document` 查询与更新元素。
 
-## 安装
+## 为什么做 URUI
 
-Unity Package Manager → Add package from git URL：
+传统 uGUI 界面的信息分散在场景层级、Prefab、Inspector 配置和对象引用中。AI 需要还原这些对象之间的关系，才能判断一段修改会影响哪里；布局问题也往往需要在编辑器中反复定位。
+
+AI 更熟悉 Web 风格的文本结构与样式。URUI 将界面层级、布局和外观写成可直接阅读的 RML/RCSS，让人和 AI 都能在文本中理解界面、讨论修改并检查差异。C# 保留游戏状态和业务逻辑，使用明确的 ID 查询、样式更新与点击回调连接界面。
+
+- **易于理解**：结构和样式可集中阅读，减少对场景与 Inspector 隐含配置的依赖。
+- **易于修改和审查**：界面变更体现为文本差异，便于 AI 提出局部修改，也便于开发者检查。
+- **接入 Unity 业务**：`Document`、`Element` 与可释放订阅提供简洁的托管接口，无需业务代码管理原生句柄。
+
+RML/RCSS 使用 RmlUi 的规则。URUI 不提供完整浏览器环境，也不承诺 HTML、CSS 或 JavaScript 的完整兼容；它不依赖 AI 服务，AI 辅助开发是使用方式。
+
+## 安装与开始
+
+在 Unity Package Manager 中选择 **Add package from git URL**：
 
 ```text
-https://github.com/fujisheng/URUI.git?path=/Packages/com.fujisheng.urui#v0.1.0-preview.1
+https://github.com/fujisheng/URUI.git?path=/Packages/com.fujisheng.urui#main
 ```
 
-仓库目前为私有，Git 安装需要你的 GitHub 访问权限；本机 Git 未认证时可将完整 `Packages/com.fujisheng.urui` 目录复制到项目 `Packages/`，或从磁盘选择其中的 `package.json`。不要同时安装旧包和新包。
+Git 安装需要仓库访问权限。也可从磁盘选择 `Packages/com.fujisheng.urui/package.json`，或将完整包目录复制到项目 `Packages/`。
 
-## 开始使用
-
-固定预览可使用 `Tools > URUI > Create Minimal UI Scene` 或 Hello Rml。当前候选改用 `URUI.Document` 与 Hello URUI，参见[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)。运行前确认存在标记为 MainCamera 的相机，启用旧 Input Manager（或 Both），并使用可读的字体文件。兼容 API 仍为 `RmlUnity.RmlUnityHost`，旧程序集、GUID、shader 标识与 native ABI 保留，详见[命名迁移](docs/URUI_MIGRATION.md)。
-
-## 验证范围
-
-Unity **6000.3.22f1**、**macOS ARM64**、**Built-in / Metal**。底层基线曾通过干净 local/embedded 导入、Hello 编译、Editor 与 ARM64 IL2CPP 功能 smoke；包内源码离线重建的 dylib 与原发布库逐字节相同。改名后的 Editor 验证单独记录，不等同于重新做过 Player 或性能验收。
-
-仅包含 Mac ARM64 原生库。Windows、Android、Linux、URP/HDRP 尚未验证。一次仅支持一个原生 context。NativeFrame 与其他实验路径需要显式开启；此预览不含未证明通用收益的研究候选，也不宣称生产就绪或 CI 通过。
-
-## 包结构与文档
-
-- `Runtime/`：URUI 托管外观、兼容实现、shader、已验收 Mac 原生库。
-- `Editor/`：菜单与 shader 资源校验。
-- `Samples~/`：可选样例；`Tests~/`：独立测试源码与保留历史数据，不自动运行三消。
-- `Native~/`：完整框架源码与固定版本 RmlUi 6.3 / FreeType 2.13.3、许可证、离线构建入口。
-- [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [基线验收](Packages/com.fujisheng.urui/Documentation~/VALIDATION.md) · [原生来源](Packages/com.fujisheng.urui/Documentation~/SOURCE_AUDIT.md) · [迁移](docs/URUI_MIGRATION.md)
-
-`~` 目录由 Unity 忽略资产导入，可直接用文件编辑器查看。第三方版权与许可证保留在包中。旧工程可从 `a29a15ebf55b1b26fcfb47bf73fc6105b1d0b563` 的独立 checkout 恢复；旧研究当前暂停保存。
-
-## 当前候选：Document API
-
-候选分支 `urui/managed-api-docs` 使用 namespace `URUI` 和程序集 `URUI.Runtime`。固定预览 v0.1.0-preview.1 不含以下接口：
+导入 **Hello URUI** 样例，将 `HelloUrui` 添加到空 GameObject 后进入 Play Mode；或使用 **Tools > URUI > Create Minimal UI Scene** 创建最小文档场景。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)包含完整的 RML 和业务脚本。
 
 ```csharp
 document.LoadMarkup(rml);
 var panel = document.Q("panel");
 panel.SetText("Hello URUI");
 panel.Style.SetWidth(320);
-var click = panel.RegisterClickCallback(evt => Debug.Log(evt.Target.Id));
-// OnDisable: click.Dispose();
+var subscription = panel.RegisterClickCallback(evt => Debug.Log(evt.Target.Id));
+// 组件禁用时释放订阅：subscription.Dispose();
 ```
 
-[安装与快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md) · [API](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md) · [资源/生命周期](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md) · [限制](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md) · [风格依据](Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md) · [变更记录](Packages/com.fujisheng.urui/CHANGELOG.md)
+## 当前支持
 
-候选通过独立分支审查，不会自动替换发布 tag，也不会在本任务连续发布第二个预览。
+当前验证目标是 **Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal**。包内同时提供 Android、Windows、macOS ARM64/x86_64、iOS 设备 ARM64、WebGL 的已编译原生插件；其他目标完成编译/链接检查，尚未完成 Unity 运行验证。一次支持一个活动文档，所有操作在 Unity 主线程完成。场景需要 `MainCamera`，输入使用 **Input Manager (Old)** 或 **Both**，图片需要开启 **Read/Write**，字体需要可读取的字体文件。
+
+目前提供 RML 文档加载、按 ID 查询、文本和结构更新、RCSS 样式、二维位移/缩放、图片映射和点击订阅。其他平台、URP/HDRP、完整键盘/IME/表单交互尚未进入已验证支持范围。详见[支持矩阵与限制](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)和[路线图](Packages/com.fujisheng.urui/Documentation~/ROADMAP_ZH.md)。
+
+## 文档
+
+- [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)
+- [C# API](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [点击事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md) · [生命周期与资源](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md)
+- [架构](docs/ARCHITECTURE_ZH.md) · [开发与原生构建](docs/DEVELOPMENT_ZH.md) · [代码约定](Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)
+
+包包含 RmlUi 6.3 与 FreeType 2.13.3 源码。项目许可见 [LICENSE.md](Packages/com.fujisheng.urui/LICENSE.md)，第三方版权与许可见 [Third Party Notices](Packages/com.fujisheng.urui/Third%20Party%20Notices.md)。

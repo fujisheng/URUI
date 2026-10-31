@@ -2,7 +2,7 @@
   "name": "com.fujisheng.urui",
   "version": "0.1.0-preview.1",
   "displayName": "URUI",
-  "description": "UnityRmlUi: managed Unity UI with native RmlUi layout and rendering. Preview validated on macOS ARM64, Built-in/Metal.",
+  "description": "Text-based RML/RCSS UI for AI-assisted Unity development, powered by RmlUi with a managed C# API.",
   "unity": "6000.3",
   "unityRelease": "22f1",
   "author": {
