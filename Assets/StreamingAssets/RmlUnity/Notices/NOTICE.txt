@@ -1,0 +1,12 @@
+RmlUnity native plugin third-party notices
+
+RmlUi 6.3: MIT License. Full notice: RmlUi-MIT.txt.
+RmlUi containers (robin_hood and itlib): MIT. Full notices: RmlUi-Containers-MIT.txt.
+FreeType 2.13.3: distributed under the FreeType License (FTL).
+Portions of this software are copyright © 2024 The FreeType Project
+(www.freetype.org). All rights reserved. Full terms: FreeType-FTL.txt.
+Roboto: Copyright 2011 Google Inc. All Rights Reserved.
+Licensed under Apache License 2.0; see ../LICENSE-Roboto.txt.
+
+These notices accompany the statically linked RmlUnityBridge native library
+and should remain in distributions containing that library.

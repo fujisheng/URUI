@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Build a self-contained plugin: static RmlUi + static FreeType inside a single .so.
-# No Android binary is committed; CI cross-compiles using the Android NDK.
+# The included Mac plugin is ABI 2. The inherited Android ABI-1 importer is disabled.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Static third-party dependencies" FORCE)
 set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
 set(RMLUI_TESTS OFF CACHE BOOL "" FORCE)
@@ -43,3 +43,11 @@ else()
   target_compile_options(RmlUnityBridge PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 set_target_properties(RmlUnityBridge PROPERTIES OUTPUT_NAME RmlUnityBridge)
+option(RMLUNITY_STYLE_PROBE "Instrument original string property path (diagnostic only)" OFF)
+if(RMLUNITY_STYLE_PROBE)
+ include("${CMAKE_CURRENT_SOURCE_DIR}/instrument_style.cmake")
+endif()
+option(RMLUNITY_LOOKUP_QUEUE "Optional lookup diagnostics/queue experiment" OFF)
+if(RMLUNITY_LOOKUP_QUEUE)
+ include("${CMAKE_CURRENT_SOURCE_DIR}/lookup_queue.cmake")
+endif()

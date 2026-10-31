@@ -24,7 +24,7 @@ Shader "RmlUnity/Premultiplied"
     o.pos=UnityObjectToClipPos(v.vertex);
     o.uv=v.uv;
     o.color=v.color;
-    o.pixel=v.vertex.xy+_RmlTranslation.xy;
+    o.pixel=mul(unity_ObjectToWorld,v.vertex).xy;
     return o;
    }
    fixed4 frag(v2f i):SV_Target

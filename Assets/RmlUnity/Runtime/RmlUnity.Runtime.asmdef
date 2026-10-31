@@ -1,1 +1,13 @@
-{"name":"RmlUnity.Runtime","rootNamespace":"RmlUnity","references":[],"includePlatforms":[],"excludePlatforms":[],"allowUnsafeCode":false,"overrideReferences":false,"precompiledReferences":[],"autoReferenced":true}
+{
+  "name": "RmlUnity.Runtime",
+  "rootNamespace": "RmlUnity",
+  "references": [
+    "Unity.ugui"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true
+}

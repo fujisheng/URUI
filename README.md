@@ -1,64 +1,53 @@
-# RmlUnity — Native Web-style UI for Unity (MVP)
+# RmlUnity
 
-> **Status: Unity source prototype. RmlUi 6.3 ARM64 C++ compilation succeeded on GitHub Actions; Unity Editor and APK compilation are NOT yet validated.** No performance advantage is claimed.
+RML/RCSS game UI for Unity. RmlUi 6.3 handles DOM, style, layout and geometry in C++; C# exposes managed APIs and owns Unity resources and rendering submission.
 
-The goal is to let AI-authored RML/RCSS interfaces render using Unity's native graphics commands without creating a uGUI GameObject for every element and without embedding Chromium/WebView.
+The verified baseline is **Unity 6000.3.22f1, macOS ARM64, Built-in/Metal, IL2CPP Release**. This update includes a matching ABI-2 Mac plugin and RML/uGUI Match3 samples. Other platforms require rebuilding and separate validation. The inherited Android ABI-1 binary is disabled in its importer; legacy Android workflows are preserved and were not run for this update.
 
-## Architecture
+## Open and run
 
-```
-RML/RCSS (TextAsset)
-  -> RmlUi 6.3 C++ (parse, CSS, layout, events, FreeType)
-  -> RenderInterface (geometry handles, font textures, ordered draw commands)
-  -> C ABI / PInvoke
-  -> Unity Mesh + CommandBuffer (Built-in Render Pipeline)
-```
+1. Open the repository root with Unity **6000.3.22f1**, Built-in and legacy Input Manager (or Both).
+2. Open `Assets/RmlUnity/Demo/Match3RmlAtlas.unity` or `Match3UGUIAtlas.unity`, select a 720×1280 Game view, and Play.
+3. Build a Mac ARM64 IL2CPP Player with **Tools → RmlUnity → Build Mac ARM64**. Existing output directories are preserved; move the previous output before rebuilding.
+4. The minimal example is `RmlUnityDemo.unity`; **Tools → RmlUnity → Create MVP Demo Scene** recreates it.
 
-## Scope
+The RML sample retains C# rendering by default and uses typed transforms with reusable node references. The portable package manifest specifies `com.unity.ugui` 2.0.0. Roboto and its license are included.
 
-- Implemented in source: C++ bridge, generated texture copying, geometry caching, C# P/Invoke, Mouse hover/click/wheel, Unity event callback, dynamic text, demo UI and editor menu.
-- **Not implemented:** true GPU scissor/overflow clipping, advanced transforms, external image textures, complex filters/blur, standalone UXML/HTML compiler, Tailwind/React import, Unicode shaping/IME, virtual lists, benchmark suite, URP/HDRP support.
-- **Limitations:** single context, single camera, main-thread native calls, no platform binaries included, demo CSS is RmlUi-specific RCSS.
-
-## Build and run (Windows x64)
-
-1. Install Unity **2022.3 LTS**, CMake, Visual Studio with C++ Desktop toolchain, and FreeType development headers/libs.
-2. Open PowerShell, enter `Native/` and run `./build-windows.ps1`. CMake fetches RmlUi tag `6.3`. If dependencies are not found, set `CMAKE_PREFIX_PATH` or `CMAKE_TOOLCHAIN_FILE`.
-3. Ensure `Assets/Plugins/x86_64/RmlUnityBridge.dll` exists (and that any dynamically linked FreeType dependency is also accessible).
-4. Open the repo root using Unity Hub. Use Built-in Render Pipeline and legacy Input Manager (or Both).
-5. Select **Tools → RmlUnity → Create MVP Demo Scene**, then Play.
-6. Click `CLAIM +50 GOLD` and check the counter. For hover/click accuracy, first test a 1280×800 Game view.
-
-## C# API example
+## Managed API
 
 ```csharp
-var host = FindObjectOfType<RmlUnity.RmlUnityHost>();
-host.Clicked += id => Debug.Log("Clicked: " + id);
-host.SetText("status", "Updated by game C# code");
+host.Clicked += id => Debug.Log(id);
+host.SetText("score", score.ToString());
+host.SetStyle("panel", "display", "block");
+
+// Acquire after Ready and hold across updates.
+RmlElementReference icon = host.AcquireElementReference("icon");
+if (icon != null && icon.IsValid)
+    icon.SetTranslateScale2D(x, y, scaleX, scaleY);
+// Dispose on owner shutdown; reacquire after node/document replacement.
+icon?.Dispose();
 ```
 
-## Unity Personal: free cloud Android APK route
+References bind to their original native context/thread and node identity. A new element with the same ID does not inherit an old reference. Business APIs remain managed; internal pointer/NativeArray views use bounded synchronous leases.
 
-Use Unity's **Build Automation free tier** with the private GitHub repository, not the legacy GitHub-hosted GameCI activation flow.
+## Renderer choices
 
-- [Quick Android setup for Unity Personal](docs/PERSONAL_ANDROID_BUILD.md)
-- [Android ARM64 native publisher](.github/workflows/android-native.yml): compiles and commits `libRmlUnityBridge.so` to `main`.
-- [Unity Cloud pre-export hook](Assets/Editor/RmlUnityCloudBuild.cs): prepares the demo scene and Android/IL2CPP settings.
+Existing C# rendering remains the default. Ordered C# batching, C++ NativeBatch, NativeDelta, NativeCore and NativeFrame remain explicit options. **NativeFrame is opt-in**: verified Match3 main-thread CPU improved, while static total-frame P99 regressed. It is not a universal winner.
 
-Connect `fujisheng/RmlUnity` in Unity Dashboard → DevOps → Build Automation and enter the exact pre-export method `RmlUnityCloudBuild.PreExport`. No Unity Pro serial number is required for Unity's own Build Automation free tier (subject to service allowance).
+See [setup and lifetime contracts](docs/NATIVE_RENDERERS.md) for the required configuration. Setting a boolean does not make an unsupported shader, camera, SRP or platform eligible. NativeFrame fallback is allowed only after command/resource safety is established; its uncertain cleanup blocks recording.
 
-**No APK has been produced yet.** You must first connect your Unity Cloud project and run a build; expect further Unity-side debugging.
+The whole-world paint cache is excluded from this release. Its static benefit and dynamic limitations remain in the [mechanism ledger](docs/MECHANISM_LEDGER.md); local source and experiment products are preserved. Conditional mechanisms can be combined, but unverified combinations are not enabled here.
 
-## Android CI
+## Native build
 
-[Android APK workflow](.github/workflows/android-apk.yml) | [手机操作与许可证配置](docs/ANDROID_CI.md)
+The included Mac library is rebuilt from this native source. With CMake and a C++17 toolchain:
 
-- **原生 RmlUi Android arm64-v8a：已通过远端编译。** [验证运行 #40625090580](https://github.com/fujisheng/RmlUnity/actions/runs/40625090580) 中包含 `rmlunity-android-arm64-native` artifact。
-- **Unity APK：尚未构建成功。** 当前远端运行停止在 `Check Unity activation secrets`，因为仓库未设置 Unity 许可证与账号 Secrets。
-- 将 `UNITY_EMAIL`、`UNITY_PASSWORD` 及有效的 `UNITY_SERIAL`（或受支持的 `UNITY_LICENSE`）设置为 GitHub Actions Secrets 后，再从 Actions 手动执行工作流。不要在 Issue、代码或聊天中分享密钥。
+```sh
+./Native/build-unix.sh -DCMAKE_OSX_ARCHITECTURES=arm64
+```
 
-## Validation
+CMake pins RmlUi `6.3` and FreeType `VER-2-13-3`. Offline builds can pass `-DFETCHCONTENT_FULLY_DISCONNECTED=ON`, `-DFETCHCONTENT_SOURCE_DIR_RMLUI=/your/RmlUi-6.3` and `-DFETCHCONTENT_SOURCE_DIR_FREETYPE=/your/freetype-VER-2-13-3`. Windows/Linux scripts are source support, not validated by these Mac results. Do not mix the new C# assembly with the inherited Android library.
 
-See [docs/VALIDATION.md](docs/VALIDATION.md) for the required build, graphics, correctness and profiling checklist.
+Third-party terms and binary attribution are included in [StreamingAssets notices](Assets/StreamingAssets/RmlUnity/Notices/NOTICE.txt).
 
-This repo deliberately pins an external dependency; it does **not** include or vendor RmlUi, native DLLs, fonts or benchmark results. The first milestone is end-to-end execution, followed by correctness and performance optimization.
+See [validation](docs/VALIDATION.md) and [architecture](docs/ARCHITECTURE.md). Current scope is one context on its creation thread, Built-in rendering, RmlUi-specific markup and supported shader operations. General HTML compatibility, URP/HDRP, IME/shaping and arbitrary filters/masks are not provided.

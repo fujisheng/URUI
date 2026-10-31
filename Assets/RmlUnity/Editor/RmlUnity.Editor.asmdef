@@ -1,1 +1,16 @@
-{"name":"RmlUnity.Editor","rootNamespace":"RmlUnity","references":["RmlUnity.Runtime"],"includePlatforms":["Editor"],"excludePlatforms":[],"allowUnsafeCode":false,"overrideReferences":false,"precompiledReferences":[],"autoReferenced":true}
+{
+  "name": "RmlUnity.Editor",
+  "rootNamespace": "RmlUnity",
+  "references": [
+    "RmlUnity.Runtime",
+    "Unity.ugui"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true
+}
