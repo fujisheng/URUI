@@ -3,7 +3,9 @@ using UnityEngine;
 
 namespace URUI.Samples
 {
-    /// <summary>添加到空 GameObject，进入 Play Mode 即可体验托管文档与点击接口。</summary>
+    /// <summary>
+    /// 添加到空 GameObject，进入 Play Mode 即可体验托管文档与点击接口。
+    /// </summary>
     [RequireComponent(typeof(Document))]
     public sealed class HelloUrui : MonoBehaviour
     {
@@ -13,7 +15,6 @@ div { display:block; }
 #panel { width:360px; height:180px; padding:20px; background-color:#204080; }
 #action { width:220px; height:50px; margin-top:24px; background-color:#4070b0; }
 </style></head><body><div id='panel'><div id='label'>Hello URUI</div><div id='action'>Click to count</div></div></body></rml>";
-
         Document document;
         Camera ownedCamera;
         IDisposable clickSubscription;
@@ -23,11 +24,13 @@ div { display:block; }
         {
             if (!Camera.main)
             {
+                // 仅记录由样例创建的相机，销毁时不接管场景已有相机的所有权。
                 ownedCamera = new GameObject("URUI Sample Camera").AddComponent<Camera>();
                 ownedCamera.tag = "MainCamera";
                 ownedCamera.clearFlags = CameraClearFlags.SolidColor;
                 ownedCamera.backgroundColor = Color.black;
             }
+
             document = GetComponent<Document>();
             document.Loaded += OnLoaded;
             document.LoadMarkup(Markup);
@@ -35,7 +38,7 @@ div { display:block; }
 
         void OnLoaded(Document loadedDocument)
         {
-            // Reload replaces the tree: always query and bind after Loaded.
+            // 重载会替换节点树；每次 Loaded 都重新查询，并释放上一轮订阅。
             clickSubscription?.Dispose();
             loadedDocument.Q("label").SetText("Hello URUI · " + count);
             clickSubscription = loadedDocument.Q("action").RegisterClickCallback(OnClicked);
@@ -61,7 +64,10 @@ div { display:block; }
 
         void OnDestroy()
         {
-            if (ownedCamera) Destroy(ownedCamera.gameObject);
+            if (ownedCamera)
+            {
+                Destroy(ownedCamera.gameObject);
+            }
         }
     }
 }

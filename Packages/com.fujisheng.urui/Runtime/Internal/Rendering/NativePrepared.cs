@@ -1,84 +1,462 @@
-using System;using System.Runtime.InteropServices;using UnityEngine;using UnityEngine.Rendering;
-namespace URUI.Internal {
- // Copy-only additive ABI. No pointer is retained across the synchronous C call.
- // CPU lease ownership is separate from Unity Mesh/GraphicsFence ownership.
- internal sealed partial class NativePrepared:IDisposable {
-  const string Dll=NativeLibrary.Name;
-  [StructLayout(LayoutKind.Sequential)] internal struct Vertex {internal float x,y,z;internal byte r,g,b,a;internal float u,v,slot,pad;}
-  [StructLayout(LayoutKind.Sequential)] internal struct Draw {internal ulong batch,texture;internal uint slot,count,vertices,indices,kind;internal int enabled,x,y,w,h;}
-  [StructLayout(LayoutKind.Sequential)] internal struct Packet {internal ulong lease,session,epoch,plan,resources,retained,builtBytes;internal uint draws,commands,built,reused,verticesCopied,indicesCopied,stride,version;}
-  [StructLayout(LayoutKind.Sequential)] internal struct DeltaInfo {internal ulong baseBatch,fullBytes,possibleBytes,copiedBytes;internal uint mode,vertexRanges,indexRanges,reserved;}
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_delta_api_version();
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_delta_enable(ulong session,int enabled);
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_copy_incremental(ulong session,ulong lease,ulong batch,ulong baseBatch,[Out]Vertex[] vertices,int vc,[Out]uint[] indices,int ic,out DeltaInfo info);
-  [DllImport(Dll,EntryPoint="urui_prepared_copy_incremental",CallingConvention=CallingConvention.Cdecl)] static extern int CopyRaw(ulong session,ulong lease,ulong batch,ulong baseBatch,IntPtr vertices,int vc,IntPtr indices,int ic,out DeltaInfo info);
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-  [ThreadStatic] internal static int PinsForProbe;internal static Action AfterVertexPinForProbe;
+using System;
+using System.Runtime.InteropServices;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace URUI.Internal
+{
+    // Copy-only additive ABI. No pointer is retained across the synchronous C call.
+    // CPU lease ownership is separate from Unity Mesh/GraphicsFence ownership.
+    internal sealed partial class NativePrepared : IDisposable
+    {
+        const string Dll = NativeLibrary.Name;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Vertex
+        {
+            internal float x;
+            internal float y;
+            internal float z;
+            internal byte r;
+            internal byte g;
+            internal byte b;
+            internal byte a;
+            internal float u;
+            internal float v;
+            internal float slot;
+            internal float pad;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Draw
+        {
+            internal ulong batch;
+            internal ulong texture;
+            internal uint slot;
+            internal uint count;
+            internal uint vertices;
+            internal uint indices;
+            internal uint kind;
+            internal int enabled;
+            internal int x;
+            internal int y;
+            internal int w;
+            internal int h;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Packet
+        {
+            internal ulong lease;
+            internal ulong session;
+            internal ulong epoch;
+            internal ulong plan;
+            internal ulong resources;
+            internal ulong retained;
+            internal ulong builtBytes;
+            internal uint draws;
+            internal uint commands;
+            internal uint built;
+            internal uint reused;
+            internal uint verticesCopied;
+            internal uint indicesCopied;
+            internal uint stride;
+            internal uint version;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct DeltaInfo
+        {
+            internal ulong baseBatch;
+            internal ulong fullBytes;
+            internal ulong possibleBytes;
+            internal ulong copiedBytes;
+            internal uint mode;
+            internal uint vertexRanges;
+            internal uint indexRanges;
+            internal uint reserved;
+        }
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_delta_api_version();
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_delta_enable(ulong session, int enabled);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_copy_incremental(
+            ulong session,
+            ulong lease,
+            ulong batch,
+            ulong baseBatch,
+            [Out] Vertex[] vertices,
+            int vc,
+            [Out] uint[] indices,
+            int ic,
+            out DeltaInfo info);
+
+        [DllImport(Dll, EntryPoint = "urui_prepared_copy_incremental", CallingConvention = CallingConvention.Cdecl)]
+        static extern int CopyRaw(
+            ulong session,
+            ulong lease,
+            ulong batch,
+            ulong baseBatch,
+            IntPtr vertices,
+            int vc,
+            IntPtr indices,
+            int ic,
+            out DeltaInfo info);
+
+        int CopyPinned(Packet p, Draw d, ulong baseBatch, Vertex[] v, uint[] ix, out DeltaInfo info)
+        {
+            // 两次固定操作可能分别失败；finally 按实际分配状态释放，避免异常路径长期固定数组。
+            GCHandle vp = default;
+            GCHandle ip = default;
+            try
+            {
+                vp = GCHandle.Alloc(v, GCHandleType.Pinned);
+#if URUI_DEBUG
+                pinsForProbe++;
+                afterVertexPinForProbe?.Invoke();
 #endif
-  int CopyPinned(Packet p,Draw d,ulong baseBatch,Vertex[] v,uint[] ix,out DeltaInfo info){
-   GCHandle vp=default,ip=default;
-   try{vp=GCHandle.Alloc(v,GCHandleType.Pinned);
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    PinsForProbe++;AfterVertexPinForProbe?.Invoke();
+                ip = GCHandle.Alloc(ix, GCHandleType.Pinned);
+#if URUI_DEBUG
+                pinsForProbe++;
 #endif
-    ip=GCHandle.Alloc(ix,GCHandleType.Pinned);
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    PinsForProbe++;
+                return CopyRaw(session, p.lease, d.batch, baseBatch, vp.AddrOfPinnedObject(), v.Length, ip.AddrOfPinnedObject(), ix.Length, out info);
+            }
+            finally
+            {
+                if (ip.IsAllocated)
+                {
+                    ip.Free();
+#if URUI_DEBUG
+                    pinsForProbe--;
 #endif
-    return CopyRaw(session,p.lease,d.batch,baseBatch,vp.AddrOfPinnedObject(),v.Length,ip.AddrOfPinnedObject(),ix.Length,out info);
-   }finally{if(ip.IsAllocated){ip.Free();
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    PinsForProbe--;
+                }
+
+                if (vp.IsAllocated)
+                {
+                    vp.Free();
+#if URUI_DEBUG
+                    pinsForProbe--;
 #endif
-   }if(vp.IsAllocated){vp.Free();
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    PinsForProbe--;
+                }
+            }
+        }
+
+        readonly bool incremental;
+
+        // Private bounded CPU bases; never Unity/GPU buffers.
+        readonly bool pinnedPayload;
+
+        // Private bounded CPU bases; never Unity/GPU buffers.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_api_version();
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern ulong urui_prepared_create();
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_destroy(ulong session);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_acquire(ulong session, ref UruiFrameStampNative expected, [In] byte[] mask, int count, out Packet packet);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_copy_draws(ulong session, ulong lease, [Out] Draw[] draws, int capacity);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_copy_batch(ulong session, ulong lease, ulong batch, [Out] Vertex[] vertices, int vc, [Out] uint[] indices, int ic);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern int urui_prepared_release(ulong session, ulong lease);
+
+        internal static bool Available
+        {
+            get
+            {
+                try
+                {
+                    return urui_prepared_api_version() == 1;
+                }
+                catch (EntryPointNotFoundException)
+                {
+                    return false;
+                }
+                catch (DllNotFoundException)
+                {
+                    return false;
+                }
+            }
+        }
+
+        static readonly VertexAttributeDescriptor[] layout = {
+            new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
+            new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4),
+            new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2),
+            new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 2)
+        };
+        readonly int thread = System.Threading.Thread.CurrentThread.ManagedThreadId;
+        ulong session;
+        ulong activeLease;
+        bool active;
+        byte[] mask = Array.Empty<byte>();
+        internal Draw[] draws = Array.Empty<Draw>();
+        Vertex[] vertices = Array.Empty<Vertex>();
+        uint[] indices = Array.Empty<uint>();
+
+        internal NativePrepared(bool incremental = false, bool pinnedPayload = false)
+        {
+            if (Marshal.SizeOf<Vertex>() != 32
+                || Marshal.SizeOf<Draw>() != 56
+                || Marshal.SizeOf<Packet>() != 88
+                || Marshal.OffsetOf<Vertex>(nameof(Vertex.r)).ToInt32() != 12
+                || Marshal.OffsetOf<Vertex>(nameof(Vertex.u)).ToInt32() != 16
+                || Marshal.OffsetOf<Vertex>(nameof(Vertex.slot)).ToInt32() != 24)
+            {
+                throw new InvalidOperationException("Native prepared ABI layout");
+            }
+
+            session = urui_prepared_create();
+            if (session == 0)
+            {
+                throw new InvalidOperationException("Native prepared session unavailable");
+            }
+
+            try
+            {
+                this.pinnedPayload = (incremental || pinnedPayload) && urui_prepared_delta_api_version() == 1;
+                this.incremental = incremental && this.pinnedPayload;
+                if (this.incremental && urui_prepared_delta_enable(session, 1) != 1)
+                {
+                    throw new InvalidOperationException("Native incremental session");
+                }
+
+                if (this.incremental)
+                {
+                    cpuPayloads = new PayloadCache();
+                }
+            }
+            catch (EntryPointNotFoundException)
+            {
+                this.incremental = false;
+                this.pinnedPayload = false;
+            }
+            catch
+            {
+                urui_prepared_destroy(session);
+                session = 0;
+                throw;
+            }
+        }
+
+        void Check()
+        {
+            if (session == 0 || thread != System.Threading.Thread.CurrentThread.ManagedThreadId)
+            {
+                throw new InvalidOperationException("Native prepared owner thread/disposed");
+            }
+        }
+
+        internal Packet Acquire(ParameterFrame frame)
+        {
+            Check();
+            if (active)
+            {
+                throw new InvalidOperationException("Native prepared reentrant lease");
+            }
+
+            if (mask.Length < frame.count)
+            {
+                mask = new byte[frame.count];
+            }
+
+            for (int i = 0; i < frame.count; i++)
+            {
+                mask[i] = frame.keys[i].affine ? (byte)1 : (byte)0;
+            }
+
+            int result = urui_prepared_acquire(session, ref frame.stamp, mask, frame.count, out var p);
+            if (result != 1)
+            {
+                throw new InvalidOperationException("Native prepared acquire " + result);
+            }
+
+            active = true;
+            activeLease = p.lease;
+#if URUI_DEBUG
+            RetainedBytes = (long)p.retained;
 #endif
-   }}
-  }
-  internal DeltaInfo LastCopy{get;private set;}readonly bool incremental,pinnedPayload; // Private bounded CPU bases; never Unity/GPU buffers.
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_api_version();
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern ulong urui_prepared_create();
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_destroy(ulong session);
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_acquire(ulong session,ref UruiFrameStampNative expected,[In]byte[] mask,int count,out Packet packet);
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_copy_draws(ulong session,ulong lease,[Out]Draw[] draws,int capacity);
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_copy_batch(ulong session,ulong lease,ulong batch,[Out]Vertex[] vertices,int vc,[Out]uint[] indices,int ic);
-  [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)] static extern int urui_prepared_release(ulong session,ulong lease);
-  internal static bool Available {get{try{return urui_prepared_api_version()==1;}catch(EntryPointNotFoundException){return false;}catch(DllNotFoundException){return false;}}}
-  static readonly VertexAttributeDescriptor[] Layout={new VertexAttributeDescriptor(VertexAttribute.Position,VertexAttributeFormat.Float32,3),new VertexAttributeDescriptor(VertexAttribute.Color,VertexAttributeFormat.UNorm8,4),new VertexAttributeDescriptor(VertexAttribute.TexCoord0,VertexAttributeFormat.Float32,2),new VertexAttributeDescriptor(VertexAttribute.TexCoord1,VertexAttributeFormat.Float32,2)};
-  readonly int thread=System.Threading.Thread.CurrentThread.ManagedThreadId;ulong session,activeLease;bool active;
-  byte[] mask=Array.Empty<byte>();internal Draw[] draws=Array.Empty<Draw>();Vertex[] vertices=Array.Empty<Vertex>();uint[] indices=Array.Empty<uint>();
-  internal long RetainedBytes{get;private set;}
-  internal long StagingBytes=>(long)vertices.Length*32+(long)indices.Length*4+(long)draws.Length*56+mask.Length+(cpuPayloads?.Bytes??0);
-  internal NativePrepared(bool incremental=false,bool pinnedPayload=false){if(Marshal.SizeOf<Vertex>()!=32||Marshal.SizeOf<Draw>()!=56||Marshal.SizeOf<Packet>()!=88||Marshal.OffsetOf<Vertex>(nameof(Vertex.r)).ToInt32()!=12||Marshal.OffsetOf<Vertex>(nameof(Vertex.u)).ToInt32()!=16||Marshal.OffsetOf<Vertex>(nameof(Vertex.slot)).ToInt32()!=24)throw new InvalidOperationException("Native prepared ABI layout");session=urui_prepared_create();if(session==0)throw new InvalidOperationException("Native prepared session unavailable");try{this.pinnedPayload=(incremental||pinnedPayload)&&urui_prepared_delta_api_version()==1;this.incremental=incremental&&this.pinnedPayload;if(this.incremental&&urui_prepared_delta_enable(session,1)!=1)throw new InvalidOperationException("Native incremental session");if(this.incremental)cpuPayloads=new PayloadCache();}catch(EntryPointNotFoundException){this.incremental=false;this.pinnedPayload=false;}catch{urui_prepared_destroy(session);session=0;throw;}}
-  void Check(){if(session==0||thread!=System.Threading.Thread.CurrentThread.ManagedThreadId)throw new InvalidOperationException("Native prepared owner thread/disposed");}
-  internal Packet Acquire(ParameterFrame frame){Check();if(active)throw new InvalidOperationException("Native prepared reentrant lease");if(mask.Length<frame.count)mask=new byte[frame.count];for(int i=0;i<frame.count;i++)mask[i]=frame.keys[i].affine?(byte)1:(byte)0;
-   int result=urui_prepared_acquire(session,ref frame.stamp,mask,frame.count,out var p);if(result!=1)throw new InvalidOperationException("Native prepared acquire "+result);active=true;activeLease=p.lease;RetainedBytes=(long)p.retained;
-   try{if(p.session!=session||p.epoch!=frame.stamp.epoch||p.commands!=frame.count||p.draws>65536||p.stride!=32||p.version!=1)throw new InvalidOperationException("Native prepared packet contract");if(draws.Length<p.draws)draws=new Draw[p.draws];if(urui_prepared_copy_draws(session,p.lease,draws,draws.Length)!=(int)p.draws)throw new InvalidOperationException("Native prepared descriptors");return p;}catch{Release(p);throw;}}
-  internal Mesh Upload(Packet p,Draw d){Check();if(!active||p.session!=session||p.lease!=activeLease||d.vertices==0||d.vertices>1048576||d.indices==0||d.indices>3145728)throw new InvalidOperationException("Native prepared upload contract");
-   if(incremental)return UploadIncremental(p,d);
-   if(vertices.Length<d.vertices)vertices=new Vertex[d.vertices];if(indices.Length<d.indices)indices=new uint[d.indices];if(pinnedPayload){if(CopyPinned(p,d,0,vertices,indices,out var direct)!=1)throw new InvalidOperationException("Native pinned full copy");LastCopy=direct;}else{if(urui_prepared_copy_batch(session,p.lease,d.batch,vertices,vertices.Length,indices,indices.Length)!=1)throw new InvalidOperationException("Native prepared payload copy");LastCopy=new DeltaInfo{fullBytes=(ulong)d.vertices*32+(ulong)d.indices*4,copiedBytes=(ulong)d.vertices*32+(ulong)d.indices*4,possibleBytes=(ulong)d.vertices*32+(ulong)d.indices*4};}return UploadMesh(vertices,(int)d.vertices,indices,(int)d.indices);}
-  internal static Mesh UploadMesh(Vertex[] v,int vc,uint[] ix,int ic){var mesh=new Mesh{name="URUI native prepared immutable batch",indexFormat=IndexFormat.UInt32};try{mesh.SetVertexBufferParams(vc,Layout);if(mesh.GetVertexBufferStride(0)!=32||mesh.GetVertexAttributeOffset(VertexAttribute.Color)!=12||mesh.GetVertexAttributeOffset(VertexAttribute.TexCoord0)!=16||mesh.GetVertexAttributeOffset(VertexAttribute.TexCoord1)!=24)throw new InvalidOperationException("Unity packed vertex layout");mesh.SetVertexBufferData(v,0,0,vc,0,MeshUpdateFlags.DontRecalculateBounds);mesh.SetIndexBufferParams(ic,IndexFormat.UInt32);mesh.SetIndexBufferData(ix,0,0,ic,MeshUpdateFlags.DontRecalculateBounds);mesh.subMeshCount=1;mesh.SetSubMesh(0,new SubMeshDescriptor(0,ic,MeshTopology.Triangles){firstVertex=0,vertexCount=vc},MeshUpdateFlags.DontRecalculateBounds);mesh.bounds=new Bounds(Vector3.zero,new Vector3(1e9f,1e9f,1e6f));return mesh;}catch{UnityEngine.Object.Destroy(mesh);throw;}}
-  internal void Release(Packet p){Check();if(!active||p.session!=session||p.lease!=activeLease)throw new InvalidOperationException("Native prepared unbalanced lease");int result=urui_prepared_release(session,p.lease);active=false;activeLease=0;if((long)vertices.Length*32+(long)indices.Length*4>4L*1024*1024){vertices=Array.Empty<Vertex>();indices=Array.Empty<uint>();}if(result!=1)throw new InvalidOperationException("Native prepared release "+result);}
-  public void Dispose(){Check();if(active)throw new InvalidOperationException("Native prepared active lease dispose");int result=urui_prepared_destroy(session);if(result!=1)throw new InvalidOperationException("Native prepared close "+result);session=0;RetainedBytes=0;cpuPayloads?.Clear();vertices=Array.Empty<Vertex>();indices=Array.Empty<uint>();draws=Array.Empty<Draw>();mask=Array.Empty<byte>();}
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-  internal static void DeltaContract(){
-   void Need(bool value,string m){if(!value)throw new Exception("NATIVE_DELTA_CONTRACT "+m);}
-   Need(Marshal.SizeOf<DeltaInfo>()==48,"info ABI48");var bounded=new PayloadCache(512,2);var one=bounded.Get(0,3,3);one.batch=92;bounded.Get(1,3,3);bounded.Get(1,3,3);bounded.Get(2,3,3);Need(bounded.Evictions==1&&bounded.Bytes==216,"LRU bounded eviction");Need(!ReferenceEquals(bounded.Get(0,3,3),one),"evicted base cannot alias");Need(bounded.Get(9,int.MaxValue,3)==null&&bounded.Bytes<=512,"oversize fallback bounded");bounded.Clear();Need(bounded.Bytes==0,"clear releases arrays");Need(NativeMethods.urui_create(256,256,null)==1,"create");NativePrepared owner=null,oracle=null;Mesh a=null,b=null,c=null;Color32 oldColor=default;
-   try{NativeMethods.urui_render_plan_enable(1);Need(NativeMethods.urui_load_document("<rml><head><style>body{margin:0;}div{position:absolute;width:80px;height:80px;background-color:#f02070a0;}</style></head><body><div id='delta-a'/><div id='delta-b' style='left:12px;'/></body></rml>")==1,"load");NativeMethods.urui_update();NativeMethods.urui_render();var f=new ParameterFrame();Need(f.Capture(),"capture");owner=new NativePrepared(true);oracle=new NativePrepared(false,true);var p=owner.Acquire(f);var stale=p;Draw staleDraw=owner.draws[0];try{bool pinFailed=false;AfterVertexPinForProbe=()=>throw new InvalidOperationException("injected second-pin allocation boundary");try{owner.Upload(p,owner.draws[0]);}catch(InvalidOperationException){pinFailed=true;}finally{AfterVertexPinForProbe=null;}Need(pinFailed&&PinsForProbe==0,"partial pin failure cleanup");a=owner.Upload(p,owner.draws[0]);Need(PinsForProbe==0,"synchronous pins released");oldColor=a.colors32[0];Need(owner.LastCopy.mode==0,"first full");}finally{owner.Release(p);}Need(NativeMethods.urui_set_style("delta-a","background-color","#80f020c0")==1,"mutate");NativeMethods.urui_update();NativeMethods.urui_render();Need(f.Capture(),"changed capture");p=owner.Acquire(f);try{bool staleRejected=false,memberRejected=false;try{var wrong=owner.Upload(stale,staleDraw);UnityEngine.Object.DestroyImmediate(wrong);}catch(InvalidOperationException){staleRejected=true;}try{var wrong=owner.Upload(p,staleDraw);UnityEngine.Object.DestroyImmediate(wrong);}catch(InvalidOperationException){memberRejected=true;}Debug.Log("NATIVE_DELTA_REVIEW_CHECK stale="+staleRejected+" member="+memberRejected);Need(staleRejected&&memberRejected,"stale packet and absent member must reject before cache reuse");bool releaseRejected=false;try{owner.Release(stale);}catch(InvalidOperationException){releaseRejected=true;}Need(releaseRejected,"stale release preserves active lease");b=owner.Upload(p,owner.draws[0]);Need(owner.LastCopy.mode==1&&owner.LastCopy.copiedBytes<owner.LastCopy.fullBytes,"expected strict base delta copy");}finally{owner.Release(p);}var fresh=oracle.Acquire(f);try{c=oracle.Upload(fresh,oracle.draws[0]);}finally{oracle.Release(fresh);}Need(b.vertexCount==c.vertexCount,"length");for(int i=0;i<b.vertexCount;i++)Need(b.vertices[i]==c.vertices[i]&&b.uv[i]==c.uv[i]&&b.colors32[i].Equals(c.colors32[i])&&b.uv2[i]==c.uv2[i],"fresh oracle attributes");Need(a.colors32[0].Equals(oldColor),"old Mesh unchanged");for(int i=0;i<b.triangles.Length;i++)Need(b.triangles[i]==c.triangles[i],"fresh oracle indices");Debug.Log("NATIVE_DELTA_CPU_CACHE_ORACLE_PASS copied="+owner.LastCopy.copiedBytes+" full="+owner.LastCopy.fullBytes);
-   }finally{owner?.Dispose();oracle?.Dispose();NativeMethods.urui_destroy();if(a)UnityEngine.Object.DestroyImmediate(a);if(b)UnityEngine.Object.DestroyImmediate(b);if(c)UnityEngine.Object.DestroyImmediate(c);}
-  }
-  internal static void Contract(){
-   void Need(bool v,string m){if(!v)throw new Exception("NATIVE_PREPARED_CONTRACT "+m);}
-   Need(Available,"API1");Need(NativeMethods.urui_create(256,256,null)==1,"create");NativePrepared owner=null;Mesh a=null,b=null;
-   try{Need(NativeMethods.urui_render_plan_enable(1)==1,"enable");Need(NativeMethods.urui_load_document("<rml><head><style>body{margin:0;}div{position:absolute;width:80px;height:80px;background-color:#ff008080;}</style></head><body><div/><div style='left:12px;'/></body></rml>")==1,"load");NativeMethods.urui_update();NativeMethods.urui_render();var f=new ParameterFrame();Need(f.Capture()&&f.count==2,"frame");owner=new NativePrepared();var p=owner.Acquire(f);
-    try{Need(p.draws==1&&p.built==1,"native grouping hit");var d=owner.draws[0];a=owner.Upload(p,d);Need(a.vertexCount==(int)d.vertices&&a.GetVertexBufferStride(0)==32,"actual upload");var av=a.vertices;var ac=a.colors32;var at=a.triangles;var au=a.uv;int offset=0,index=0;
-     for(int n=0;n<f.count;n++){Need(NativeMethods.urui_get_geometry_info(f.keys[n].geometry,out int vc,out int ic)==1,"source info");var original=new VertexNative[vc];var ids=new int[ic];Need(NativeMethods.urui_copy_geometry(f.keys[n].geometry,original,vc,ids,ic)==1,"oracle copy");for(int j=0;j<vc;j++){var q=original[j];Need(av[offset+j]==new Vector3(q.x,q.y,0)&&au[offset+j]==new Vector2(q.u,q.v)&&ac[offset+j].r==q.r&&ac[offset+j].a==q.a,"packed source oracle");Need(a.uv2[offset+j].x==n,"instance slot");}for(int j=0;j<ic;j++)Need(at[index+j]==offset+ids[j],"ordered index");offset+=vc;index+=ic;}
-     // Public Mesh API owns a CPU copy before the same staging arrays are reused.
-     owner.vertices[0].x+=91;owner.vertices[0].a=1;owner.indices[0]=owner.indices[1];b=UploadMesh(owner.vertices,(int)d.vertices,owner.indices,(int)d.indices);owner.vertices[0].x=-902;owner.indices[0]=0;Need(a.vertices[0]==av[0]&&a.colors32[0].a==ac[0].a&&a.triangles[0]==at[0],"first upload independent");Need(b.vertices[0].x==av[0].x+91&&b.colors32[0].a==1,"second upload independent");
-    }finally{owner.Release(p);}var warm=owner.Acquire(f);Need(warm.builtBytes==0&&warm.reused==warm.draws,"native reuse");owner.Release(warm);Need(NativeMethods.urui_remove_element("absent")==0,"missing safe");NativeMethods.urui_unload_document();NativeMethods.urui_destroy();owner.Dispose();owner=null;Debug.Log("NATIVE_PREPARED_CPU_COPY_ABI_ORACLE_PASS packed32 draw56 packet88");
-   }finally{if(owner!=null)owner.Dispose();NativeMethods.urui_destroy();if(a)UnityEngine.Object.DestroyImmediate(a);if(b)UnityEngine.Object.DestroyImmediate(b);}
-  }
+            try
+            {
+                if (p.session != session
+                    || p.epoch != frame.stamp.epoch
+                    || p.commands != frame.count
+                    || p.draws > 65536
+                    || p.stride != 32
+                    || p.version != 1)
+                {
+                    throw new InvalidOperationException("Native prepared packet contract");
+                }
+
+                if (draws.Length < p.draws)
+                {
+                    draws = new Draw[p.draws];
+                }
+
+                if (urui_prepared_copy_draws(session, p.lease, draws, draws.Length) != (int)p.draws)
+                {
+                    throw new InvalidOperationException("Native prepared descriptors");
+                }
+
+                return p;
+            }
+            catch
+            {
+                Release(p);
+                throw;
+            }
+        }
+
+        internal Mesh Upload(Packet p, Draw d)
+        {
+            Check();
+            if (!active
+                || p.session != session
+                || p.lease != activeLease
+                || d.vertices == 0
+                || d.vertices > 1048576
+                || d.indices == 0
+                || d.indices > 3145728)
+            {
+                throw new InvalidOperationException("Native prepared upload contract");
+            }
+
+            if (incremental)
+            {
+                return UploadIncremental(p, d);
+            }
+
+            if (vertices.Length < d.vertices)
+            {
+                vertices = new Vertex[d.vertices];
+            }
+
+            if (indices.Length < d.indices)
+            {
+                indices = new uint[d.indices];
+            }
+
+            if (pinnedPayload)
+            {
+                if (CopyPinned(p, d, 0, vertices, indices, out var direct) != 1)
+                {
+                    throw new InvalidOperationException("Native pinned full copy");
+                }
+#if URUI_DEBUG
+                LastCopy = direct;
 #endif
- }
+            }
+            else
+            {
+                if (urui_prepared_copy_batch(session, p.lease, d.batch, vertices, vertices.Length, indices, indices.Length) != 1)
+                {
+                    throw new InvalidOperationException("Native prepared payload copy");
+                }
+#if URUI_DEBUG
+                LastCopy = new DeltaInfo
+                {
+                    fullBytes = (ulong)d.vertices * 32 + (ulong)d.indices * 4,
+                    copiedBytes = (ulong)d.vertices * 32 + (ulong)d.indices * 4,
+                    possibleBytes = (ulong)d.vertices * 32 + (ulong)d.indices * 4
+                };
+#endif
+            }
+
+            return UploadMesh(vertices, (int)d.vertices, indices, (int)d.indices);
+        }
+
+        internal static Mesh UploadMesh(Vertex[] v, int vc, uint[] ix, int ic)
+        {
+            var mesh = new Mesh
+            {
+                name = "URUI native prepared immutable batch",
+                indexFormat = IndexFormat.UInt32
+            };
+            try
+            {
+                mesh.SetVertexBufferParams(vc, layout);
+                if (mesh.GetVertexBufferStride(0) != 32
+                    || mesh.GetVertexAttributeOffset(VertexAttribute.Color) != 12
+                    || mesh.GetVertexAttributeOffset(VertexAttribute.TexCoord0) != 16
+                    || mesh.GetVertexAttributeOffset(VertexAttribute.TexCoord1) != 24)
+                {
+                    throw new InvalidOperationException("Unity packed vertex layout");
+                }
+
+                mesh.SetVertexBufferData(v, 0, 0, vc, 0, MeshUpdateFlags.DontRecalculateBounds);
+                mesh.SetIndexBufferParams(ic, IndexFormat.UInt32);
+                mesh.SetIndexBufferData(ix, 0, 0, ic, MeshUpdateFlags.DontRecalculateBounds);
+                mesh.subMeshCount = 1;
+                mesh.SetSubMesh(0, new SubMeshDescriptor(0, ic, MeshTopology.Triangles) { firstVertex = 0, vertexCount = vc }, MeshUpdateFlags.DontRecalculateBounds);
+                mesh.bounds = new Bounds(Vector3.zero, new Vector3(1e9f, 1e9f, 1e6f));
+                return mesh;
+            }
+            catch
+            {
+                UnityEngine.Object.Destroy(mesh);
+                throw;
+            }
+        }
+
+        internal void Release(Packet p)
+        {
+            Check();
+            if (!active || p.session != session || p.lease != activeLease)
+            {
+                throw new InvalidOperationException("Native prepared unbalanced lease");
+            }
+
+            int result = urui_prepared_release(session, p.lease);
+            active = false;
+            activeLease = 0;
+            if ((long)vertices.Length * 32 + (long)indices.Length * 4 > 4L * 1024 * 1024)
+            {
+                vertices = Array.Empty<Vertex>();
+                indices = Array.Empty<uint>();
+            }
+
+            if (result != 1)
+            {
+                throw new InvalidOperationException("Native prepared release " + result);
+            }
+        }
+
+        // 活跃租约仍可能被同步复制使用，必须先 Release，不能直接销毁其原生会话。
+        public void Dispose()
+        {
+            Check();
+            if (active)
+            {
+                throw new InvalidOperationException("Native prepared active lease dispose");
+            }
+
+            int result = urui_prepared_destroy(session);
+            if (result != 1)
+            {
+                throw new InvalidOperationException("Native prepared close " + result);
+            }
+
+            session = 0;
+#if URUI_DEBUG
+            RetainedBytes = 0;
+#endif
+            cpuPayloads?.Clear();
+            vertices = Array.Empty<Vertex>();
+            indices = Array.Empty<uint>();
+            draws = Array.Empty<Draw>();
+            mask = Array.Empty<byte>();
+        }
+    }
 }

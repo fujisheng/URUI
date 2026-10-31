@@ -29,10 +29,14 @@ URUI 将可读的界面文档和 Unity 业务代码连接起来。RML 描述结�
 ## 目录
 
 - `Packages/com.fujisheng.urui/Runtime/`：托管接口、内部实现、shader 与原生插件。
+- `Runtime/Debug/`：仅在显式定义 `URUI_DEBUG` 时参与编译的诊断、自测和故障注入；默认关闭。
 - `Editor/`：编辑器集成。
 - `Documentation~/`：产品和 API 文档、第三方许可证副本。
 - `Samples~/`：显式导入的使用样例。
 - `Tests~/`：显式导入的测试与验证工具。
 - `Native~/`：桥接源码、原生测试和固定版本第三方源码。
+- `Native~/Debug/`：由同名原生构建选项控制的诊断实现；发布插件不包含诊断导出。
 
 带 `~` 的目录不参与 Unity 默认资产导入。原生构建和功能检查见[开发指南](DEVELOPMENT_ZH.md)，产品使用边界见[支持矩阵](../Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
+
+调试宏不控制线程、元素身份、资源所有权、借用窗口或 GPU 完成状态的检查。这些检查保证正式运行的正确性，始终保留。Editor 菜单、资产导入与 shader 构建校验也不依赖调试宏。

@@ -3,6 +3,7 @@ project(URUIBridge LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+option(URUI_DEBUG "Compile native diagnostic probes, profiling and selftests" OFF)
 
 # Build a self-contained plugin with static RmlUi and static FreeType.
 # The packaged macOS bridge exposes ABI 2.
@@ -32,7 +33,8 @@ if(EMSCRIPTEN OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
 else()
   add_library(URUIBridge SHARED bridge.cpp)
 endif()
-target_link_libraries(URUIBridge PRIVATE RmlUi::RmlUi)
+# The upstream debugger is not part of a production Unity plugin.
+target_link_libraries(URUIBridge PRIVATE RmlUi::Core)
 target_compile_definitions(URUIBridge PRIVATE URUI_EXPORTS)
 if(MSVC)
   target_compile_options(URUIBridge PRIVATE /W4 /utf-8)
@@ -47,11 +49,13 @@ if(EMSCRIPTEN)
   # Preserve allocation-failure handling in the bridge and its dependencies.
   target_compile_options(URUIBridge PRIVATE -fexceptions)
   target_compile_options(rmlui_core PRIVATE -fexceptions)
-  target_compile_options(rmlui_debugger PRIVATE -fexceptions)
 endif()
-option(URUI_STYLE_PROBE "Instrument original string property path (diagnostic only)" OFF)
-if(URUI_STYLE_PROBE)
- include("${CMAKE_CURRENT_SOURCE_DIR}/instrument_style.cmake")
+if(URUI_DEBUG)
+  target_sources(URUIBridge PRIVATE Debug/diagnostics.cpp)
+  target_compile_definitions(URUIBridge PRIVATE URUI_DEBUG=1)
+  target_compile_definitions(rmlui_core PRIVATE URUI_DEBUG=1)
+  include("${CMAKE_CURRENT_SOURCE_DIR}/Debug/instrument_style.cmake")
+  include("${CMAKE_CURRENT_SOURCE_DIR}/Debug/lookup_queue.cmake")
 endif()
 
 if(EMSCRIPTEN OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
@@ -63,26 +67,24 @@ if(EMSCRIPTEN OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
       "-DURUI_APPLE=${APPLE}"
       "-DURUI_BRIDGE=$<TARGET_FILE:URUIBridge>"
       "-DURUI_CORE=$<TARGET_FILE:rmlui_core>"
-      "-DURUI_DEBUGGER=$<TARGET_FILE:rmlui_debugger>"
       "-DURUI_FREETYPE=$<TARGET_FILE:freetype>"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/bundle-static.cmake"
-    DEPENDS URUIBridge rmlui_core rmlui_debugger freetype
+    DEPENDS URUIBridge rmlui_core freetype
       "${CMAKE_CURRENT_SOURCE_DIR}/bundle-static.cmake"
     VERBATIM)
   add_custom_target(URUIBridgePlugin ALL DEPENDS "${urui_plugin_archive}")
-endif()
-option(URUI_LOOKUP_QUEUE "Optional lookup diagnostics/queue experiment" OFF)
-if(URUI_LOOKUP_QUEUE)
- include("${CMAKE_CURRENT_SOURCE_DIR}/lookup_queue.cmake")
 endif()
 
 option(URUI_BUILD_TESTS "Build standalone native contract tests" OFF)
 if(URUI_BUILD_TESTS)
  enable_testing()
- foreach(test core_frame prepared_batch prepared_delta native_frame)
+ foreach(test core_frame prepared_batch prepared_delta native_frame debug_gate)
   add_executable(${test}_tests tests/${test}_tests.cpp)
   target_include_directories(${test}_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
   target_compile_options(${test}_tests PRIVATE -UNDEBUG)
+  if(URUI_DEBUG)
+    target_compile_definitions(${test}_tests PRIVATE URUI_DEBUG=1)
+  endif()
   add_test(NAME ${test} COMMAND ${test}_tests)
  endforeach()
 endif()

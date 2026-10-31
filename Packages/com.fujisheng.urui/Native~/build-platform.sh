@@ -12,7 +12,7 @@ if [[ -f "$build/CMakeCache.txt" ]] && { [[ ! -f "$marker" ]] || [[ "$(cat "$mar
   exit 2
 fi
 urui_cmake=${URUI_CMAKE:-cmake}
-args=(-S "$root" -B "$build" -DCMAKE_BUILD_TYPE=Release -DURUI_BUILD_TESTS=OFF)
+args=(-S "$root" -B "$build" -DCMAKE_BUILD_TYPE=Release -DURUI_BUILD_TESTS=OFF -DURUI_DEBUG="${URUI_DEBUG:-OFF}")
 
 case "$platform" in
   macos-arm64|macos-x86_64)
@@ -79,7 +79,9 @@ esac
 
 "$urui_cmake" "${args[@]}"
 printf '%s\n' "$platform" > "$marker"
-"$urui_cmake" --build "$build" --config Release --parallel 2
+target=URUIBridge
+if [[ "$platform" == webgl || "$platform" == ios-arm64 ]]; then target=URUIBridgePlugin; fi
+"$urui_cmake" --build "$build" --target "$target" --config Release --parallel 2
 test -f "$plugin"
 "${URUI_PYTHON:-python3}" "$root/check-plugin.py" "$platform" "$plugin"
 echo "Built $platform plugin: $plugin"

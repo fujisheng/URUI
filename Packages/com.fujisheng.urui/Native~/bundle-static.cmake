@@ -1,5 +1,5 @@
 # Package the bridge and its static dependencies as one Unity plugin archive.
-set(urui_inputs "${URUI_BRIDGE}" "${URUI_CORE}" "${URUI_DEBUGGER}" "${URUI_FREETYPE}")
+set(urui_inputs "${URUI_BRIDGE}" "${URUI_CORE}" "${URUI_FREETYPE}")
 if(URUI_APPLE)
   find_program(urui_libtool libtool REQUIRED)
   execute_process(COMMAND "${urui_libtool}" -static -o "${URUI_ARCHIVE}" ${urui_inputs}

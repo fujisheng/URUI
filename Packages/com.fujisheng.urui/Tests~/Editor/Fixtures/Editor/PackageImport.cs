@@ -8,11 +8,24 @@ using UnityEngine;
 
 namespace URUI.Tests.Editor
 {
+    /// <summary>
+    /// 检查包解析、程序集依赖、shader 资源和各平台插件导入设置。
+    /// </summary>
     public static class PackageImport
     {
         const string Package = "Packages/com.fujisheng.urui";
-        static void Need(bool condition, string reason) { if (!condition) throw new Exception(reason); }
 
+        static void Need(bool condition, string reason)
+        {
+            if (!condition)
+            {
+                throw new Exception(reason);
+            }
+        }
+
+        /// <summary>
+        /// 读取实际导入结果并写入报告；不将导入配置检查视为对应平台的运行验证。
+        /// </summary>
         public static void Check()
         {
             var info = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(Package + "/package.json");
@@ -20,14 +33,16 @@ namespace URUI.Tests.Editor
             var assemblies = CompilationPipeline.GetAssemblies();
             var runtime = assemblies.Single(value => value.name == "URUI.Runtime");
             Need(!runtime.assemblyReferences.Any(value => value.name == "Unity.ugui"), "runtime dependency closure");
-            var definitions = Directory.GetFiles(info.resolvedPath, "*.asmdef", SearchOption.AllDirectories)
-                .Where(path => !path.Split(Path.DirectorySeparatorChar).Any(part => part.EndsWith("~"))).ToArray();
+            var definitions = Directory.GetFiles(info.resolvedPath, "*.asmdef", SearchOption.AllDirectories).Where(path => !path.Split(Path.DirectorySeparatorChar).Any(part => part.EndsWith("~"))).ToArray();
             Need(definitions.Length == 2, "single runtime and editor assembly definitions");
             var shader = Resources.Load<Shader>("URUI/Premultiplied");
             Need(shader && shader.name == "URUI/Premultiplied", "shader identity");
             Need(AssetDatabase.LoadAssetAtPath<Shader>(Package + "/Runtime/Resources/URUI/ParameterTable.shader"), "parameter shader asset");
             var plugin = (PluginImporter)AssetImporter.GetAtPath(Package + "/Runtime/Plugins/macOS/libURUIBridge.dylib");
-            Need(plugin != null && !plugin.GetCompatibleWithAnyPlatform() && plugin.GetCompatibleWithEditor() && plugin.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX), "Mac ARM64 importer");
+            Need(plugin != null
+                && !plugin.GetCompatibleWithAnyPlatform()
+                && plugin.GetCompatibleWithEditor()
+                && plugin.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX), "Mac ARM64 importer");
             Need(plugin.GetEditorData("CPU") == "ARM64" && plugin.GetEditorData("OS") == "OSX", "Editor architecture");
             CheckPlugin("macOS/x86_64/libURUIBridge.dylib", BuildTarget.StandaloneOSX, "x86_64");
             CheckPlugin("Android/arm64-v8a/libURUIBridge.so", BuildTarget.Android, "ARM64");
