@@ -1,7 +1,7 @@
 using System;using UnityEngine;
 namespace RmlUnity {
  public sealed class RmlParameterShaderCapability:ScriptableObject {
-  public const string SourcePath="Packages/com.fujisheng.rmlunity/Runtime/Resources/RmlUnity/RmlParameterTable.shader",SourceHash="3217a73e8ecd726a4d549982c96f04d933fe01666815c97023fe00332f08981b";
+  public const string SourcePath="Packages/com.fujisheng.urui/Runtime/Resources/RmlUnity/RmlParameterTable.shader",SourceHash="3217a73e8ecd726a4d549982c96f04d933fe01666815c97023fe00332f08981b";
   [SerializeField] Shader parameter,legacy;[SerializeField] string audit;[SerializeField] int revision;
   public Shader Parameter=>parameter;
   public bool Supports(Material m,RmlShaderPropertyContract old){if(revision!=1||audit!=SourceHash||!parameter||!legacy||!m||m.shader!=legacy||!old||!old.Supports(m))return false;

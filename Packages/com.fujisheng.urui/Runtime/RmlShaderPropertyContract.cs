@@ -3,7 +3,7 @@ namespace RmlUnity {
  // Explicit opt-in, bound to the audited framework asset, never a shader-name guess.
  // V1: pass 0/all variants read MainTex+ClipEnabled+ClipRect, not RmlTranslation.
  public sealed class RmlShaderPropertyContract:ScriptableObject {
-  public const string BuiltinPath="Packages/com.fujisheng.rmlunity/Runtime/Resources/RmlUnity/RmlUnityPremultiplied.shader";
+  public const string BuiltinPath="Packages/com.fujisheng.urui/Runtime/Resources/RmlUnity/RmlUnityPremultiplied.shader";
   public const string BuiltinHash="4513fd27e88ad5bbf9c34371e39049e3efea2e12215d806f2f3907237be2230a";
   [SerializeField] Shader verifiedShader;
   [SerializeField] string verifiedSourceHash;

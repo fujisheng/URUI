@@ -16,8 +16,8 @@ namespace RmlUnity.Editor {
   }
   public void OnProcessScene(Scene scene,BuildReport report){foreach(var root in scene.GetRootGameObjects())foreach(var host in root.GetComponentsInChildren<RmlUnityHost>(true)){Validate(host.propertyContract);if(host.parameterCapability&&!host.parameterCapability.AuditEditor())throw new BuildFailedException("Parameter shader capability requires re-audit");}}
   public static RmlShaderPropertyContract Prepare(){
-   System.IO.Directory.CreateDirectory("Assets/RmlUnityGenerated");AssetDatabase.Refresh();
-   const string path="Assets/RmlUnityGenerated/BuiltinShaderPropertyContract.asset";
+   System.IO.Directory.CreateDirectory("Assets/URUIGenerated");AssetDatabase.Refresh();
+   const string path="Assets/URUIGenerated/BuiltinShaderPropertyContract.asset";
    var contract=AssetDatabase.LoadAssetAtPath<RmlShaderPropertyContract>(path);
    if(!contract){contract=UnityEngine.ScriptableObject.CreateInstance<RmlShaderPropertyContract>();contract.BindBuiltinForEditor(AssetDatabase.LoadAssetAtPath<UnityEngine.Shader>(RmlShaderPropertyContract.BuiltinPath));AssetDatabase.CreateAsset(contract,path);AssetDatabase.SaveAssets();}
    Validate(contract);return contract;

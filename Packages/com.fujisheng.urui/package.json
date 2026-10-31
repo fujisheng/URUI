@@ -1,8 +1,8 @@
 {
-  "name": "com.fujisheng.rmlunity",
-  "version": "0.1.0",
-  "displayName": "RmlUnity",
-  "description": "Managed Unity API with a native RmlUi renderer. Validated on macOS ARM64, Built-in/Metal.",
+  "name": "com.fujisheng.urui",
+  "version": "0.1.0-preview.1",
+  "displayName": "URUI",
+  "description": "UnityRmlUi: managed Unity UI with native RmlUi layout and rendering. Preview validated on macOS ARM64, Built-in/Metal.",
   "unity": "6000.3",
   "unityRelease": "22f1",
   "author": {
