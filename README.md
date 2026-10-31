@@ -2,7 +2,7 @@
 
 URUI 是 Unity 的 RmlUi 托管接入层，使用 RML/RCSS 描述界面，原生 RmlUi 处理布局与渲染数据，Unity 提交绘制。
 
-当前预览：**0.1.0-preview.1**。基于已验收的 RmlUnity UPM 版本改名，默认渲染路径不变。新的易用托管 API 会在后续独立候选分支整理，不会覆盖此预览 tag。
+当前预览：**0.1.0-preview.1**。基于已验收的 RmlUnity UPM 版本改名，默认渲染路径不变。本分支包含未发布的托管 API 候选，固定预览 tag 不包含它，且不会被覆盖。
 
 ## 安装
 
@@ -16,7 +16,7 @@ https://github.com/fujisheng/URUI.git?path=/Packages/com.fujisheng.urui#v0.1.0-p
 
 ## 开始使用
 
-使用 `Tools > URUI > Create Minimal UI Scene`，或从 Package Manager 导入 Hello Rml 样例。运行前确认存在标记为 MainCamera 的相机，启用旧 Input Manager（或 Both），并使用可读的字体文件。兼容 API 仍为 `RmlUnity.RmlUnityHost`，旧程序集、GUID、shader 标识与 native ABI 保留，详见[命名迁移](docs/URUI_MIGRATION.md)。
+固定预览可使用 `Tools > URUI > Create Minimal UI Scene` 或 Hello Rml。当前候选改用 `URUI.Document` 与 Hello URUI，参见[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)。运行前确认存在标记为 MainCamera 的相机，启用旧 Input Manager（或 Both），并使用可读的字体文件。兼容 API 仍为 `RmlUnity.RmlUnityHost`，旧程序集、GUID、shader 标识与 native ABI 保留，详见[命名迁移](docs/URUI_MIGRATION.md)。
 
 ## 验证范围
 
@@ -26,10 +26,27 @@ Unity **6000.3.22f1**、**macOS ARM64**、**Built-in / Metal**。底层基线曾
 
 ## 包结构与文档
 
-- `Runtime/`：兼容托管 API、shader、已验收 Mac 原生库。
+- `Runtime/`：URUI 托管外观、兼容实现、shader、已验收 Mac 原生库。
 - `Editor/`：菜单与 shader 资源校验。
 - `Samples~/`：可选样例；`Tests~/`：独立测试源码与保留历史数据，不自动运行三消。
 - `Native~/`：完整框架源码与固定版本 RmlUi 6.3 / FreeType 2.13.3、许可证、离线构建入口。
 - [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [基线验收](Packages/com.fujisheng.urui/Documentation~/VALIDATION.md) · [原生来源](Packages/com.fujisheng.urui/Documentation~/SOURCE_AUDIT.md) · [迁移](docs/URUI_MIGRATION.md)
 
 `~` 目录由 Unity 忽略资产导入，可直接用文件编辑器查看。第三方版权与许可证保留在包中。旧工程可从 `a29a15ebf55b1b26fcfb47bf73fc6105b1d0b563` 的独立 checkout 恢复；旧研究当前暂停保存。
+
+## 当前候选：Document API
+
+候选分支 `urui/managed-api-docs` 使用 namespace `URUI` 和程序集 `URUI.Runtime`。固定预览 v0.1.0-preview.1 不含以下接口：
+
+```csharp
+document.LoadMarkup(rml);
+var panel = document.Q("panel");
+panel.SetText("Hello URUI");
+panel.Style.SetWidth(320);
+var click = panel.RegisterClickCallback(evt => Debug.Log(evt.Target.Id));
+// OnDisable: click.Dispose();
+```
+
+[安装与快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md) · [API](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md) · [资源/生命周期](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md) · [限制](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md) · [风格依据](Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md) · [变更记录](Packages/com.fujisheng.urui/CHANGELOG.md)
+
+候选通过独立分支审查，不会自动替换发布 tag，也不会在本任务连续发布第二个预览。

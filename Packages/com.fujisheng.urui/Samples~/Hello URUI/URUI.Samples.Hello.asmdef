@@ -1,0 +1,7 @@
+{
+  "name": "URUI.Samples.Hello",
+  "rootNamespace": "URUI.Samples",
+  "references": [
+    "URUI.Runtime"
+  ]
+}

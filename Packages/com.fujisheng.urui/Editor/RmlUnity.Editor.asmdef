@@ -2,7 +2,8 @@
   "name": "RmlUnity.Editor",
   "rootNamespace": "RmlUnity",
   "references": [
-    "RmlUnity.Runtime"
+    "RmlUnity.Runtime",
+    "URUI.Runtime"
   ],
   "includePlatforms": [
     "Editor"

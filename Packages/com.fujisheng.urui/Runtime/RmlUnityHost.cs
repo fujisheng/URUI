@@ -21,7 +21,13 @@ namespace RmlUnity {
    ax1<bx0||bx1<ax0||ay1<by0||by1<ay0;
  }
  [DisallowMultipleComponent]
+ [AddComponentMenu("URUI/Compatibility/Legacy Host")]
  public sealed partial class RmlUnityHost : MonoBehaviour {
+  // Compatibility renderer. URUI.Document owns startup/teardown through this
+  // internal bridge; serialized fields and the public legacy API stay intact.
+  internal static RmlUnityHost ActiveHost {get;private set;}
+  bool startupAttempted,resourcesReleased;
+  internal void InitializeForDocument(){Start();}
   static readonly ProfilerMarker PropertyApiMarker=new ProfilerMarker("Rml.PropertyAPI");
   static readonly ProfilerMarker HostMarker=new ProfilerMarker("Rml.Host"),InputMarker=new ProfilerMarker("Rml.Input"),UpdateMarker=new ProfilerMarker("Rml.NativeUpdate"),RenderMarker=new ProfilerMarker("Rml.NativeRender"),EventMarker=new ProfilerMarker("Rml.Events"),ReadMarker=new ProfilerMarker("Rml.ReadCommands"),LoopMarker=new ProfilerMarker("Rml.CommandLoop"),GeometryMarker=new ProfilerMarker("Rml.CreateGeometry"),FlushMarker=new ProfilerMarker("Rml.FlushGroup"),PropertiesMarker=new ProfilerMarker("Rml.Properties"),SubmitMarker=new ProfilerMarker("Rml.Submit"),DrawMarker=new ProfilerMarker("Rml.DrawFrame"),SetupMarker=new ProfilerMarker("Rml.UnitySetup"),CleanupMarker=new ProfilerMarker("Rml.Cleanup");
   public bool demoClickActions=false; // Existing default retained; pure input benchmarks disable demo mutations.
@@ -133,6 +139,7 @@ namespace RmlUnity {
   void ClearBatches(){foreach(var b in batches.Values)if(b.mesh)Destroy(b.mesh);batches.Clear();batchGroup.Clear();previousBatchKeys.Clear();currentBatchKeys.Clear();staleBatchKeys.Clear();}
 
   void Start(){
+   if(startupAttempted||resourcesReleased)return;startupAttempted=true;
    if(!document){Debug.LogError("RmlUnity: assign RML TextAsset.");enabled=false;return;}
    if(!shader)shader=Resources.Load<Shader>("RmlUnity/RmlUnityPremultiplied");
    if(!shader)shader=Shader.Find("RmlUnity/Premultiplied");
@@ -148,7 +155,7 @@ namespace RmlUnity {
    try {
     if(RmlNative.rui_bridge_abi_version()!=2)throw new Exception("RmlUnityBridge ABI version 2 is required");
     if(RmlNative.rui_create(UiWidth,UiHeight,ResolveFontPath())==0)throw new Exception(RmlNative.LastError());
-    active=true;referenceThread=System.Threading.Thread.CurrentThread.ManagedThreadId;
+    active=true;ActiveHost=this;referenceThread=System.Threading.Thread.CurrentThread.ManagedThreadId;
     if(useInlineLookupQueue&&!SetInlineLookupQueue(true))throw new Exception("This native build has no inline lookup queue support");
     foreach(var asset in imageAssets??Array.Empty<RmlImageAsset>()){
      if(string.IsNullOrEmpty(asset.source)||!asset.texture)throw new Exception("Rml image asset needs a source and texture");
@@ -178,6 +185,7 @@ namespace RmlUnity {
    if(buffer!=null){buffer.Release();buffer=null;}
    if(material){Destroy(material);material=null;}
    if(active){RmlNative.rui_destroy();active=false;}
+   if(ReferenceEquals(ActiveHost,this))ActiveHost=null;
    enabled=false;
   }
   static string ResolveFont(){
@@ -237,7 +245,7 @@ namespace RmlUnity {
    if(measureBridge)UpdateMilliseconds=Millis(Now()-timer);
   }
   void DrainEvents(){
-   while(true){
+   while(active){
     int n=RmlNative.rui_pop_event(eventBuffer,eventBuffer.Length);
     if(n==0)break;
     if(n<0){
@@ -562,7 +570,10 @@ namespace RmlUnity {
    }
    foreach(var id in retiredTextureIds){if(textures[id])Destroy(textures[id]);textures.Remove(id);}
   }
-  void OnDestroy(){
+  void OnDestroy(){ReleaseForDocument();}
+  internal void ReleaseForDocument(){
+   if(resourcesReleased)return;resourcesReleased=true;
+   enabled=false;
    StopParameterHost();
    InvalidateRecording(true);if(active&&nativeRetention)ConfigureNativeRetention(false);
    ClearFrameScratch();
@@ -575,6 +586,7 @@ namespace RmlUnity {
    textures.Clear();
    if(material)Destroy(material);
    if(active){RmlNative.rui_destroy();active=false;}
+   if(ReferenceEquals(ActiveHost,this))ActiveHost=null;
   }
  }
 }

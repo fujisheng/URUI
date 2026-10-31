@@ -1,3 +1,7 @@
+# 安装指南：版本与入口
+
+固定预览 `v0.1.0-preview.1` 使用兼容 Host / Hello Rml。当前候选使用 `URUI.Document` / Hello URUI，安装和新接口请读 [QUICK_START_ZH.md](QUICK_START_ZH.md)。以下是兼容 Host 的使用与离线源码说明，不能与新 Document 同时创建 context。
+
 # 安装与源码位置
 
 把整个 `com.fujisheng.urui` 文件夹放进你的 Unity 工程的 `Packages/` 目录；也可在 Package Manager 中选择 Add package from disk，打开 package.json。不要同时保留旧 Assets/RmlUnity 安装，避免同名程序集和 GUID 冲突。

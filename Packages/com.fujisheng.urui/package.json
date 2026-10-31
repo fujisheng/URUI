@@ -13,9 +13,9 @@
   },
   "samples": [
     {
-      "displayName": "Hello Rml",
-      "description": "Minimal managed API example without uGUI or benchmark dependencies.",
-      "path": "Samples~/Hello Rml"
+      "displayName": "Hello URUI",
+      "description": "Managed Document, query, style updates and disposable click subscriptions.",
+      "path": "Samples~/Hello URUI"
     }
   ]
 }
