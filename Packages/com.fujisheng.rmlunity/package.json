@@ -1,0 +1,21 @@
+{
+  "name": "com.fujisheng.rmlunity",
+  "version": "0.1.0",
+  "displayName": "RmlUnity",
+  "description": "Managed Unity API with a native RmlUi renderer. Validated on macOS ARM64, Built-in/Metal.",
+  "unity": "6000.3",
+  "unityRelease": "22f1",
+  "author": {
+    "name": "fujisheng"
+  },
+  "dependencies": {
+    "com.unity.modules.jsonserialize": "1.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "Hello Rml",
+      "description": "Minimal managed API example without uGUI or benchmark dependencies.",
+      "path": "Samples~/Hello Rml"
+    }
+  ]
+}

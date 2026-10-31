@@ -1,0 +1,6 @@
+{
+  "name": "RmlUnity.Samples.Hello",
+  "references": [
+    "RmlUnity.Runtime"
+  ]
+}

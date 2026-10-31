@@ -1,0 +1,11 @@
+{
+  "name": "RmlUnity.Runtime",
+  "rootNamespace": "RmlUnity",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true
+}

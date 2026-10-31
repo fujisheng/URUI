@@ -1,0 +1,40 @@
+{
+  "sourceCommit": "a29a15ebf55b1b26fcfb47bf73fc6105b1d0b563",
+  "package": "com.fujisheng.rmlunity",
+  "version": "0.1.0",
+  "platform": "Unity 6000.3.22f1 / macOS ARM64 / Built-in Metal",
+  "localAndEmbeddedImports": true,
+  "sampleAssemblyCompiled": true,
+  "editorSmoke": {
+    "passed": true,
+    "frames": 24,
+    "legacyDraws": 2,
+    "managedApi": true,
+    "typedReference": true,
+    "nativeFrame": true,
+    "greenPixel": true,
+    "teardown": true,
+    "error": ""
+  },
+  "il2cppPlayerSmoke": {
+    "passed": true,
+    "frames": 24,
+    "legacyDraws": 2,
+    "managedApi": true,
+    "typedReference": true,
+    "nativeFrame": true,
+    "greenPixel": true,
+    "teardown": true,
+    "error": ""
+  },
+  "editorMenuPreservesUserFiles": true,
+  "nativeRebuildByteIdentical": true,
+  "nativeSha256": "0c9df11f988f807de559f6407a7c6f4e59414b6fd749a8b8bb0dd88792761a8a",
+  "nativeCAbiExportCount": 87,
+  "nativeContractSuites": 4,
+  "actualAbiOwnerContexts": 1000,
+  "actualAbiForeignQueries": 14804,
+  "performanceRun": false,
+  "ci": "intentionally skipped via [skip ci]",
+  "rawLocalEvidence": "retained in the private task workspace, not shipped as logs/caches"
+}

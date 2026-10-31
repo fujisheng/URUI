@@ -1,12 +1,9 @@
-Library/
-Temp/
-Obj/
-Logs/
-UserSettings/
-Build/
-Builds/
-Native/build/
-Assets/Plugins/x86_64/*.dll
-Assets/Plugins/*.so
-Assets/Plugins/*.dylib
+# This repository distributes a UPM package, not a full sample project.
+/Library/
+/Temp/
+/Logs/
+/obj/
+/Builds/
 .DS_Store
+**/__pycache__/
+**/Native~/build-macos/
