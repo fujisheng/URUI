@@ -205,7 +205,7 @@ extern "C"
             pass |= 1;
         urui_touch_event(0, 11, 25, 25);
         urui_touch_event(2, 11, 25, 25);
-        if (!clicks.empty() && clicks.back() == "act-a")
+        if (!clicks.empty() && ClickId(clicks.back()) == "act-a")
             pass |= 2;
         clicks.clear();
         urui_touch_event(0, 12, 25, 25);
@@ -243,7 +243,7 @@ extern "C"
             clicks.clear();
             urui_touch_event(0, 15, 25, 25);
             urui_touch_event(2, 15, 25, 25);
-            if (!clicks.empty() && clicks.back() == "plain")
+            if (!clicks.empty() && ClickId(clicks.back()) == "plain")
                 pass |= 64;
             urui_unload_document();
         }

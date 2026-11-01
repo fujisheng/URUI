@@ -204,8 +204,10 @@ namespace URUI.Tests
                     panel.Style.SetBackgroundColor(Color.green);
                     panel.Style.SetWidth(200);
                     panel.SetAttribute("data-test", "中文");
-                    label.SetText("<b>&中文");
-                    Throws<ArgumentException>(() => panel.SetAttribute("id", "changed"));
+                    label.Text = "<b>&中文";
+                    panel.Name = "changed";
+                    Need(ReferenceEquals(panel, document.Q("changed")), "rename preserves identity");
+                    panel.SetAttribute("id", "panel");
                     Throws<ArgumentOutOfRangeException>(() => panel.Style.SetWidth(float.NaN));
                     var threadFailure = Task.Run(() => {
                         try
@@ -220,12 +222,12 @@ namespace URUI.Tests
                     }).Result;
                     Need(threadFailure, "worker thread rejected before Unity/native access");
                     Action<ClickEvent> handler = value => {
-                        Need(value.Target == action, "event target");
+                        Need(value.CurrentTarget == action && value.Target.IsValid, "event receiver and actual target");
                         clicks++;
                     };
-                    subscription = action.RegisterClickCallback(handler);
-                    Need(ReferenceEquals(subscription, action.RegisterClickCallback(handler)), "duplicate callback registration");
-                    panel.RegisterClickCallback(value => filtered++);
+                    subscription = action.RegisterCallback<ClickEvent>(handler);
+                    Need(ReferenceEquals(subscription, action.RegisterCallback<ClickEvent>(handler)), "duplicate callback registration");
+                    panel.RegisterCallback<ClickEvent>(value => filtered++);
                     var other = new GameObject("Other").AddComponent<Document>();
                     Throws<InvalidOperationException>(() => other.LoadMarkup(Markup));
                     Destroy(other.gameObject);
@@ -266,20 +268,22 @@ namespace URUI.Tests
                     Click();
                     panel.SetInnerMarkup("<span id='label'>New label</span>");
                     Need(!label.IsValid, "inner markup invalidates old object");
-                    Throws<InvalidOperationException>(() => label.SetText("stale"));
+                    Throws<InvalidOperationException>(() => label.Text = "stale");
                     Need(document.Q("label").IsValid, "same id gets fresh object");
                 }
 
                 if (frames == 13)
                 {
                     Need(clicks == 1, "disposed subscription receives no clicks");
-                    panel.Remove();
+                    panel.Destroy();
                     Need(!panel.IsValid, "remove invalidation");
-                    var replacement = document.Q("root").Append("div", "panel");
+                    var replacement = document.CreateElement();
+                    replacement.Name = "panel";
+                    document.Q("root").Add(replacement);
                     Need(replacement.IsValid && !panel.IsValid, "same id never revives old element");
                     IDisposable later = null;
-                    action.RegisterClickCallback(value => later.Dispose());
-                    later = action.RegisterClickCallback(value => skipped++);
+                    action.RegisterCallback<ClickEvent>(value => later.Dispose());
+                    later = action.RegisterCallback<ClickEvent>(value => skipped++);
                     Click();
                 }
 
@@ -291,8 +295,8 @@ namespace URUI.Tests
                     document.enabled = true;
                     Need(document.IsLoaded && loaded == 2, "enable restores requested markup");
                     action = document.Q("action");
-                    action.RegisterClickCallback(value => document.LoadMarkup(Markup));
-                    action.RegisterClickCallback(value => skipped++);
+                    action.RegisterCallback<ClickEvent>(value => document.LoadMarkup(Markup));
+                    action.RegisterCallback<ClickEvent>(value => skipped++);
                 }
                 // 新 context 需要下一次 Update 计算命中区域，加载完成不等于布局完成。
                 if (frames == 18)

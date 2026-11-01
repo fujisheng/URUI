@@ -1,66 +1,87 @@
 # C# API
 
-业务接口位于 namespace **URUI**、程序集 **URUI.Runtime**。公开类型为 `Document`、`Element`、`ElementStyle`、`ImageAsset` 和 `ClickEvent`。有 asmdef 的业务程序集引用 `URUI.Runtime`。
+当前文档描述 URUI 的 Element API。Unity 运行验证范围为 6000.3.22f1 / macOS ARM64 Editor；平台产物与检查范围见[支持矩阵](LIMITATIONS_ZH.md)。没有数据绑定或 FUI 依赖。
 
 ## Document
 
-`Document` 是承载 RML 文档的 `MonoBehaviour`。所有加载、查询、更新和释放操作均在 Unity 主线程完成。
-
-| 成员 | 行为 |
+| 接口 | 行为 |
 | --- | --- |
-| `Source` | `TextAsset` 文档源；启用时加载。运行时赋值后可显式 `Load`，或在下次启用时加载 |
-| `Images` | `ImageAsset[]` 图片映射；数组读写使用副本，纹理仍由应用持有 |
-| `FontPath` | 字体文件绝对路径；为空时使用平台默认路径 |
-| `Load(TextAsset)` | 同步加载应用持有的文本资产 |
-| `LoadMarkup(string)` | 同步加载 RML 字符串 |
-| `IsLoaded` | 文档已加载，可查询元素；不表示当帧布局和绘制已经完成 |
-| `Q(string id)` | 按唯一 RML ID 查询，不带 `#`；未加载或缺少节点时返回 `null` |
-| `Unload()` | 同步释放文档、渲染资源与订阅；可重复调用 |
-| `Loaded` / `Unloaded` | 加载完成和卸载通知；不能在生命周期回调中再次加载或卸载 |
+| `Source`、`Images`、`FontPath` | 下次加载使用的资产配置；修改前先卸载，资产仍由调用者持有 |
+| `Load(TextAsset)`、`LoadMarkup(string)` | 同步解析，完成后触发 Loaded；布局与命中在后续更新中完成 |
+| `IsLoaded`、`Loaded`、`Unloaded` | 文档生命周期；生命周期通知中不能重入加载/卸载 |
+| `Root` | 当前 RML 根节点；未加载时为 null，根的 Parent 为 null |
+| `CreateElement(string tag = "div")` | 创建由文档拥有、尚未挂载的原生节点 |
+| `Q(name: null, className: null)` | 从根开始查首项，未加载时返回 null |
+| `Query(name: null, className: null)` | 从根开始查有序快照，未加载时返回空列表 |
+| `Unload()` | 释放活动文档、脱离的子树和渲染资源，取消自动恢复 |
 
-修改 `Source`、`Images`、`FontPath` 前先 `Unload()`。`Load` 和 `LoadMarkup` 会替换当前文档；旧元素引用随之失效。
+一个活动文档、Unity 主线程访问。组件启用会加载 Source；业务组件应订阅 Loaded，并处理已经加载的情况，不能假设不同组件的 OnEnable 顺序。
 
-## Element
+## Element 身份与层级
 
-通过 `Document.Q(id)` 获取元素；同一有效节点复用包装对象。`Id` 表示查询时的 ID，`IsValid` 表示原节点和所属文档仍有效。
+`Element` 表示原节点，不按名字重新定位。相同节点在查询、Parent、索引、脱离与重新挂载中复用同一个托管包装。
 
-| 成员 | 行为 |
+| 接口 | 行为 |
 | --- | --- |
-| `SetText(value)` | 写入普通文本，不将 `<`、`&` 解释为 RML；可能替换原子节点的子元素 |
-| `SetAttribute(name, value)` | 设置属性；不允许修改 `id` |
-| `SetInnerMarkup(rml)` | 显式替换内部 RML；旧子节点与其订阅失效 |
-| `Append(tag, id)` | 追加具有唯一 ID 的 RML 元素，返回其 `Element` |
-| `Remove()` | 删除节点并释放本引用和订阅；子节点随结构删除而失效 |
-| `SetTransform(translation, scale)` | 使用两个 `Vector2` 设置二维位移和缩放 |
-| `RegisterClickCallback(callback)` | 注册 `Action<ClickEvent>`，返回可释放的 `IDisposable` |
-| `UnregisterClickCallback(callback)` | 解绑指定委托；重复解绑安全 |
-| `Dispose()` | 释放引用与订阅，不删除 RML 节点；可重新查询 |
+| `Name` | 读写 RML id，可为空或重复；名字变化不改变身份 |
+| `TagName` | 只读标签名，文本节点为 `#text` |
+| `IsValid` | 原节点和所属文档世代仍有效；脱离层级仍为 true |
+| `IsAttached` | 当前连接到文档根；无效节点访问会抛异常 |
+| `Parent`、`ChildCount`、`this[index]` | 真实 DOM 父子关系，不含 RmlUi 内部非 DOM 装饰节点 |
+| `Children()` | 直接子节点的有序快照 |
+| `Add(child)` | 移到末尾，可挂载脱离的子树 |
+| `Insert(index, child)` | 移到最终索引，ChildCount 表示追加；同父级移动按移除后的顺序定位 |
+| `Remove(child)`、`RemoveFromHierarchy()` | 移出但不销毁，保留子树和订阅 |
+| `Clear()` | 移出所有直接子节点，文档继续拥有它们 |
+| `Destroy()` | 销毁节点及子树，对应包装和订阅失效 |
 
-元素 ID 必须唯一。通过 `SetInnerMarkup` 编写结构时也要维持这一约束。元素被移除、替换、卸载或重载后，旧包装不会指向相同 ID 的新节点。
+引用预算耗尽时，查询或父级获取会明确报告失败，不会将真实父级误报为 null。不能移动/销毁文档根，不能跨文档挂载或形成循环。索引/循环等普通校验失败不会先移动节点。`Element` 不实现 IDisposable；文档统一管理节点，长期不再需要的子树应 Destroy。订阅的 IDisposable 仅用于解绑。
 
-## ElementStyle
+```csharp
+var panel = document.Root.Q("panel");
+var label = document.CreateElement("span");
+label.Name = "caption";
+label.Text = "Ready";
+label.AddToClassList("caption");
+panel.Add(label);
+label.RemoveFromHierarchy();
+panel.Insert(0, label);
+label.Destroy();
+```
 
-通过 `element.Style` 写入 RmlUi RCSS 行内样式。
+## 查询
 
-| 成员 | 行为 |
+`Q`/`Query` 搜索自身及 DOM 后代，以兄弟顺序做深度优先遍历。name 和单个 className 均为可选的精确过滤条件，提供两者时同时匹配。查询不会跳到文档外，也不解析 `#document` 等特殊名字。
+
+```csharp
+var panel = document.Root.Q("panel");
+var first = panel.Q(className: "item");
+foreach (var item in panel.Query(name: "item", className: "selected"))
+{
+    item.Style.SetOpacity(0.5f);
+}
+```
+
+Query 返回 `IReadOnlyList<Element>` 快照，不是 UQueryBuilder、CSS 选择器或实时集合。名字可重复，Q 取首项，Query 取全部；RML 的样式与外部 ID 使用仍应遵守应用自己的命名约定。没有泛型控件查询、Button/Label 控件层或无分配查询保证。
+
+## 文本、属性、类名和样式
+
+| 接口 | 行为 |
 | --- | --- |
-| `Set(property, value)` | 写入 RCSS 字符串，例如 `Set("display", "flex")` |
-| `SetPixels(property, value)` | 写入 px 数值 |
-| `SetWidth/SetHeight/SetLeft/SetTop(value)` | 常用 px 属性 |
-| `SetOpacity(value)` | 写入 0～1 透明度 |
-| `SetDisplay(visible)` | `true` 写入 `block`，`false` 写入 `none`；其他布局用 `Set` 指定 |
-| `SetBackgroundColor(Color)` | 写入 RGBA 背景色 |
+| `Text` | 读写普通文本，保留空白、Unicode、实体样式字符和花括号；不解析 RML。读取结构化子元素会抛异常，写入会销毁旧子节点 |
+| `SetInnerMarkup(markup)` | 必须先挂载节点，再使用 RmlUi 解析器替换子结构，遵循其容错规则，没有事务性校验或自动绑定 |
+| `GetAttribute/HasAttribute/SetAttribute/RemoveAttribute` | 真实、区分大小写的属性；缺失返回 null，存在但空返回空字符串。小写 id 对应 Name |
+| `ClassListContains/AddToClassList/RemoveFromClassList/EnableInClassList` | 单个、区分大小写的类名，类名方法与 class 属性保持一致 |
+| `Style.Set(property, value)` | 写入原生 RCSS 行内属性 |
+| `Style.SetPixels`、`SetWidth/Height/Left/Top` | 有限数值的 px 写入 |
+| `Style.SetOpacity/SetBackgroundColor/SetDisplay` | 常用样式写入；display 的 true 明确写 block，恢复样式表规则应 Remove |
+| `Style.Remove(property)` | 移除行内覆盖，让类名/样式表重新决定值 |
+| `SetTransform(translation, scale)` | 有限二维位移和缩放，保持 RmlUi 的变换顺序与 origin 语义 |
 
-数值接口拒绝 NaN 和 Infinity。样式更新按 RCSS 的布局规则解释；当前没有已计算样式的读取接口。
+不伪造已计算样式 getter，也不提供完整 UITK StyleLength/布局类型体系。
 
-## 图片与事件
+## 事件与未来适配边界
 
-`new ImageAsset("icons/coin.png", texture)` 将 RML/RCSS 中的路径映射到可读 `Texture2D`。`Source`、`Texture` 为只读属性；URUI 不销毁应用的纹理。
+`RegisterCallback<ClickEvent>` 返回订阅；`UnregisterCallback<ClickEvent>` 解绑同一委托。当前只有 ClickEvent，其他结构类型明确抛 NotSupportedException。实际目标、接收者及回调修改规则见[点击事件](EVENTS_ZH.md)。
 
-`ClickEvent.Target` 是收到通知的 `Element`。事件目标选择和释放方式见[点击事件](EVENTS_ZH.md)，资产配置见[生命周期与资源](LIFECYCLE_ZH.md)。
-
-## 错误与边界
-
-无效元素的写入、跨线程操作、禁用时加载、第二个活动文档、生命周期回调重入会抛出 `InvalidOperationException`。无效参数或资源配置会抛出 `ArgumentException` 及其派生异常。被 RmlUi 拒绝的属性或样式写入会报告失败，加载问题也会输出到 Unity Console。
-
-`Q` 只接受 ID，不是 CSS 选择器或通用控件查询。URUI 不提供 Unity UI Toolkit 的 UXML、USS、泛型控件、UI Builder、PanelSettings 或完整事件协议。RML/RCSS 语义以包内 RmlUi 版本为准。
+未来 FUI 适配器可以包装 Element 的 Name/Parent、创建/移动/销毁、属性/样式与订阅令牌。当前不实现 FUI 接口、不添加依赖、不提供数据绑定、渲染器工厂或空的扩展框架。

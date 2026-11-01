@@ -38,7 +38,7 @@ namespace
         std::vector<unsigned char> pixels;
     };
     std::string error_message;
-    std::deque<std::string> clicks;
+    std::deque<Rml::ObserverPtr<Rml::Element>> clicks;
     std::unordered_map<uint64_t, Rml::Vector2f> active_touches;
     RenderSerial render_serial;
     std::thread::id context_thread;
@@ -226,17 +226,18 @@ namespace
     {
         void ProcessEvent(Rml::Event& event) override
         {
-            for (auto* el = event.GetTargetElement(); el; el = el->GetParentNode())
-            {
-                const auto& id = el->GetId();
-                if (!id.empty())
-                {
-                    clicks.push_back(id);
-                    break;
-                }
-            }
+            auto* target = event.GetTargetElement();
+            if (target && clicks.size() < 4096)
+                clicks.push_back(target->GetObserverPtr());
         }
     };
+    Rml::String ClickId(const Rml::ObserverPtr<Rml::Element>& value)
+    {
+        for (auto* el = value.get(); el; el = el->GetParentNode())
+            if (!el->GetId().empty())
+                return el->GetId();
+        return {};
+    }
     std::unique_ptr<Renderer> render;
     std::unique_ptr<Listener> listener;
     Rml::Context* context = nullptr;
@@ -303,7 +304,7 @@ extern "C"
 {
     int urui_bridge_abi_version(void)
     {
-        return 2;
+        return 3;
     }
     int urui_create(int w, int h, const char* font)
     {
@@ -1125,7 +1126,7 @@ extern "C"
     {
         if (clicks.empty() || !out)
             return 0;
-        auto& value = clicks.front();
+        auto value = ClickId(clicks.front());
         if (cap < (int)value.size() + 1)
             return -(int)value.size() - 1;
         std::memcpy(out, value.c_str(), value.size() + 1);
@@ -1497,3 +1498,5 @@ extern "C"
 #if defined(URUI_DEBUG)
 #include "Debug/bridge_debug.inl"
 #endif
+
+#include "elements.inl"

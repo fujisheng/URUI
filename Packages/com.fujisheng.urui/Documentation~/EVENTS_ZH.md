@@ -1,34 +1,33 @@
 # 点击事件
 
-`Element.RegisterClickCallback` 将 C# 业务连接到 RmlUi 的点击通知，返回可释放的订阅。
-
 ```csharp
-Action<ClickEvent> handler = notification => Debug.Log(notification.Target.Id);
-IDisposable subscription = document.Q("action").RegisterClickCallback(handler);
-
-// 组件禁用时释放；重复释放安全。
+var button = document.Root.Q("action");
+Action<ClickEvent> handler = evt => Debug.Log(evt.CurrentTarget.Name);
+IDisposable subscription = button.RegisterCallback(handler);
+button.UnregisterCallback(handler);
 subscription.Dispose();
 ```
 
-如果保留了同一个委托，也可调用 `element.UnregisterClickCallback(handler)` 解绑。相等的委托在同一有效元素上重复注册只产生一次回调，并返回同一订阅。使用不同 lambda 注册时，保留各自的返回值以便释放。
+当前只支持 `ClickEvent`；可以显式写 `RegisterCallback<ClickEvent>`。相同委托重复注册返回同一订阅，不重复调用；不同 lambda 是不同订阅。订阅 Dispose 或 Unregister 只解绑，不删除节点。
 
-## 事件目标
+## 目标与接收者
 
-原生桥收到 RmlUi `click` 后，从实际目标向父级寻找最近的非空 ID。`Document` 只将通知交给对应 ID 的有效、已查询 `Element`。
+原生队列保存实际点击节点的弱身份，不按 ID 重新查找。因此匿名节点可以收点击，同名节点和同名替换不会误收旧通知。
 
-例如，点击没有 ID 的按钮文字，可以通知带 ID 的父元素；如果子元素自己有 ID，则目标为该子元素，父元素不会额外收到通知。`ClickEvent.Target` 表示此目标。
+- `Target`：真实点击目标，可能是未命名的子节点。
+- `CurrentTarget`：当前正在执行回调的注册节点。
 
-当前公开事件不提供捕获、冒泡、`StopPropagation`、指针捕获或键盘导航协议，也不等于完整输入控件系统。
+分发时先保存从目标到根的父级路径，以及路径上所有已注册的订阅，再按目标到根的顺序通知。这是普通点击通知，不提供 UITK 的捕获阶段、StopPropagation、指针捕获或事件池协议。
 
-## 生命周期与回调顺序
+## 回调期间的变化
 
-业务组件在 `OnDisable` 主动释放订阅。文档重载、禁用、销毁，或者节点删除、替换时，也会使对应元素与订阅失效。在 `Loaded` 中重新查询和绑定即可连接新文档。
+- 解绑后，本次快照中的对应回调也不会继续执行。
+- 新增订阅从下一次点击生效，包括在子回调中新注册的祖先订阅。
+- 目标销毁、脱离文档或文档卸载/重载后，停止剩余分发。
+- 目标在同一文档内重新挂载时，本次仍使用已经保存的父级路径。
+- 队列中的目标在交付前失效或已脱离层级时，丢弃通知。
+- 用户回调异常记录到 Unity Console，其他仍有效的回调继续执行。
 
-点击回调中可以更新文本和样式、解绑回调，或重新加载文档：
+移出层级会保留订阅，重新挂载后继续使用。Destroy 和文档卸载会同步清空相关回调，避免闭包等待下次查询才被释放。OnDisable 中仍建议释放业务持有的订阅令牌。
 
-- 已解绑的回调在本次分发中不再调用。
-- 新注册的回调从下一次点击开始生效。
-- 文档重载或元素失效后，原元素的剩余回调停止。
-- 用户点击回调抛出的异常会记录到 Unity Console，其他仍有效的回调继续执行。
-
-`Loaded`、`Unloaded` 是独立的文档生命周期通知，不能在其中再次调用 `Load`、`LoadMarkup` 或 `Unload`。它们按普通 C# event 传播异常，业务代码应自行处理回调中的错误。
+Loaded/Unloaded 是独立的 C# 生命周期事件，不能在其中重入加载/卸载；它们按普通 C# event 传播异常。

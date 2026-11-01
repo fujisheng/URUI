@@ -97,7 +97,7 @@ namespace URUI.Tests
                 {
                     var document = sample.GetComponent<Document>();
                     Need(document.IsLoaded && document.Q("action").IsValid, "sample loaded via new API");
-                    document.Q("action").RegisterClickCallback(value => clicks++);
+                    document.Q("action").RegisterCallback<ClickEvent>(value => clicks++);
                     Click();
                 }
 
@@ -135,7 +135,7 @@ namespace URUI.Tests
 
                 if (frames == 12)
                 {
-                    sample.GetComponent<Document>().Q("action").RegisterClickCallback(value => clicks++);
+                    sample.GetComponent<Document>().Q("action").RegisterCallback<ClickEvent>(value => clicks++);
                     Click();
                 }
 

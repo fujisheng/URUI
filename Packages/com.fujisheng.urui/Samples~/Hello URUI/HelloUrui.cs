@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 namespace URUI.Samples
@@ -33,26 +34,56 @@ div { display:block; }
 
             document = GetComponent<Document>();
             document.Loaded += OnLoaded;
-            document.LoadMarkup(Markup);
+            if (document.IsLoaded)
+            {
+                OnLoaded(document);
+            }
+            else
+            {
+                StartCoroutine(LoadWhenEnabled());
+            }
+        }
+
+        IEnumerator LoadWhenEnabled()
+        {
+            while (document && !document.isActiveAndEnabled)
+            {
+                yield return null;
+            }
+
+            if (!document || !isActiveAndEnabled || document.IsLoaded)
+            {
+                yield break;
+            }
+
+            if (document.Source)
+            {
+                document.Load(document.Source);
+            }
+            else
+            {
+                document.LoadMarkup(Markup);
+            }
         }
 
         void OnLoaded(Document loadedDocument)
         {
             // 重载会替换节点树；每次 Loaded 都重新查询，并释放上一轮订阅。
             clickSubscription?.Dispose();
-            loadedDocument.Q("label").SetText("Hello URUI · " + count);
-            clickSubscription = loadedDocument.Q("action").RegisterClickCallback(OnClicked);
+            loadedDocument.Root.Q("label").Text = "Hello URUI · " + count;
+            clickSubscription = loadedDocument.Root.Q("action").RegisterCallback<ClickEvent>(OnClicked);
         }
 
         void OnClicked(ClickEvent notification)
         {
             count++;
-            document.Q("label").SetText("Clicks: " + count);
-            document.Q("panel").Style.SetBackgroundColor(count % 2 == 0 ? new Color(.12f, .25f, .5f) : new Color(.12f, .4f, .3f));
+            document.Root.Q("label").Text = "Clicks: " + count;
+            document.Root.Q("panel").Style.SetBackgroundColor(count % 2 == 0 ? new Color(.12f, .25f, .5f) : new Color(.12f, .4f, .3f));
         }
 
         void OnDisable()
         {
+            StopAllCoroutines();
             clickSubscription?.Dispose();
             clickSubscription = null;
             if (document)

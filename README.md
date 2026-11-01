@@ -8,7 +8,7 @@ URUI 将 [RmlUi](https://github.com/mikke89/RmlUi) 接入 Unity。RmlUi 负责�
 
 传统 uGUI 界面的信息分散在场景层级、Prefab、Inspector 配置和对象引用中。AI 需要还原这些对象之间的关系，才能判断一段修改会影响哪里；布局问题也往往需要在编辑器中反复定位。
 
-AI 更熟悉 Web 风格的文本结构与样式。URUI 将界面层级、布局和外观写成可直接阅读的 RML/RCSS，让人和 AI 都能在文本中理解界面、讨论修改并检查差异。C# 保留游戏状态和业务逻辑，使用明确的 ID 查询、样式更新与点击回调连接界面。
+AI 更熟悉 Web 风格的文本结构与样式。URUI 将界面层级、布局和外观写成可直接阅读的 RML/RCSS，让人和 AI 都能在文本中理解界面、讨论修改并检查差异。C# 保留游戏状态和业务逻辑，使用局部节点查询、样式更新与点击回调连接界面。
 
 - **易于理解**：结构和样式可集中阅读，减少对场景与 Inspector 隐含配置的依赖。
 - **易于修改和审查**：界面变更体现为文本差异，便于 AI 提出局部修改，也便于开发者检查。
@@ -18,30 +18,34 @@ RML/RCSS 使用 RmlUi 的规则。URUI 不提供完整浏览器环境，也不�
 
 ## 安装与开始
 
-在 Unity Package Manager 中选择 **Add package from git URL**：
+在 Package Manager 选择 **Add package from git URL**，输入：
 
 ```text
-https://github.com/fujisheng/URUI.git?path=/Packages/com.fujisheng.urui#main
+https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui
 ```
 
-Git 安装需要仓库访问权限。也可从磁盘选择 `Packages/com.fujisheng.urui/package.json`，或将完整包目录复制到项目 `Packages/`。
+也可通过 **Add package from disk** 选择 `Packages/com.fujisheng.urui/package.json`，或将完整包目录作为嵌入包。
 
 导入 **Hello URUI** 样例，将 `HelloUrui` 添加到空 GameObject 后进入 Play Mode；或使用 **Tools > URUI > Create Minimal UI Scene** 创建最小文档场景。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)包含完整的 RML 和业务脚本。
 
 ```csharp
 document.LoadMarkup(rml);
-var panel = document.Q("panel");
-panel.SetText("Hello URUI");
+var panel = document.Root.Q("panel");
+var label = document.CreateElement("span");
+label.Text = "Hello URUI";
+panel.Add(label);
 panel.Style.SetWidth(320);
-var subscription = panel.RegisterClickCallback(evt => Debug.Log(evt.Target.Id));
+var subscription = panel.RegisterCallback<ClickEvent>(evt => Debug.Log(evt.CurrentTarget.Name));
 // 组件禁用时释放订阅：subscription.Dispose();
 ```
 
 ## 当前支持
 
-当前验证目标是 **Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal**。包内同时提供 Android、Windows、macOS ARM64/x86_64、iOS 设备 ARM64、WebGL 的已编译原生插件；其他目标完成编译/链接检查，尚未完成 Unity 运行验证。一次支持一个活动文档，所有操作在 Unity 主线程完成。场景需要 `MainCamera`，输入使用 **Input Manager (Old)** 或 **Both**，图片需要开启 **Read/Write**，字体需要可读取的字体文件。
+Unity 运行验证环境为 **6000.3.22f1 / macOS ARM64 Editor / Built-in / Metal**。包内包含同源 ABI3 插件：macOS ARM64/x86_64、Windows x64、Android ARM64/x86_64、iOS 设备 ARM64、WebGL wasm32；均已完成原生编译、架构与导出检查，iOS/WebGL 静态库通过完整链接检查。其他平台尚未做 Unity Player 或设备运行验证。
 
-目前提供 RML 文档加载、按 ID 查询、文本和结构更新、RCSS 样式、二维位移/缩放、图片映射和点击订阅。其他平台、URP/HDRP、完整键盘/IME/表单交互尚未进入已验证支持范围。详见[支持矩阵与限制](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)和[路线图](Packages/com.fujisheng.urui/Documentation~/ROADMAP_ZH.md)。
+提供文档根、局部 Name/Class 查询、动态节点与层级、普通文本/属性、类名、行内 RCSS 样式、二维变换、图片映射和普通点击通知。一个活动文档，Unity 主线程访问；需 MainCamera、Input Manager (Old) 或 Both，图片开启 Read/Write，字体文件可读。
+
+不包含数据绑定或 FUI 依赖；未来可通过可选适配器包装 Name/Parent、节点操作及订阅。当前不模拟完整 VisualElement/UQuery、浏览器或键盘/IME/表单体系。调试宏 URUI_DEBUG 默认关闭。详见[支持范围](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
 
 ## 文档
 

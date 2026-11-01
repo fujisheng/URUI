@@ -152,7 +152,7 @@ namespace URUI.Internal
 
         readonly ShaderPropertyState shaderPropertyState = new ShaderPropertyState();
 
-        public event Action<string> Clicked;
+        public event Action<ulong> Clicked;
         public event Action<PointerInputEvent> PointerInput;
 
         public bool reusePropertyBlock;
@@ -279,12 +279,10 @@ namespace URUI.Internal
         MaterialPropertyBlock reusableProperties;
         Camera targetCamera;
         bool active;
-        int referenceThread;
         int lastWidth;
         int lastHeight;
         CommandNative[] commands = Array.Empty<CommandNative>();
         float[] commandTransforms = Array.Empty<float>();
-        byte[] eventBuffer = new byte[4096];
         Texture2D white;
 
         void ClearBatches()
@@ -366,9 +364,9 @@ namespace URUI.Internal
             lastHeight = Screen.height;
             try
             {
-                if (NativeMethods.urui_bridge_abi_version() != 2)
+                if (NativeMethods.urui_bridge_abi_version() != 3)
                 {
-                    throw new Exception("URUIBridge ABI version 2 is required");
+                    throw new Exception("URUIBridge ABI version 3 is required");
                 }
 
                 if (NativeMethods.urui_create(UiWidth, UiHeight, ResolveFontPath()) == 0)
@@ -378,7 +376,6 @@ namespace URUI.Internal
 
                 active = true;
                 ActiveHost = this;
-                referenceThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
 #if URUI_DEBUG
                 if (useInlineLookupQueue && !SetInlineLookupQueue(true))
                 {
@@ -436,7 +433,7 @@ namespace URUI.Internal
             }
             catch (EntryPointNotFoundException ex)
             {
-                Debug.LogError("Update Native/URUIBridge to ABI version 2: " + ex.Message);
+                Debug.LogError("Update Native/URUIBridge to ABI version 3: " + ex.Message);
                 AbortStartup();
             }
             catch (Exception ex)
@@ -646,26 +643,18 @@ namespace URUI.Internal
         {
             while (active)
             {
-                int n = NativeMethods.urui_pop_event(eventBuffer, eventBuffer.Length);
-                if (n == 0)
+                int result = NativeMethods.urui_element_pop_click(out var target);
+                if (result == 0)
                 {
                     break;
                 }
 
-                if (n < 0)
+                if (result < 0)
                 {
-                    int required = checked(-n);
-                    if (required <= eventBuffer.Length)
-                    {
-                        throw new InvalidOperationException("Invalid Rml event buffer requirement: " + required);
-                    }
-
-                    Array.Resize(ref eventBuffer, required);
-                    continue;
+                    throw new InvalidOperationException("URUI 点击身份队列无效。");
                 }
 
-                var id = Encoding.UTF8.GetString(eventBuffer, 0, n);
-                Clicked?.Invoke(id);
+                Clicked?.Invoke(target);
             }
         }
 
@@ -748,82 +737,6 @@ namespace URUI.Internal
             long t = phaseDiagnostics ? Now() : 0;
 #endif
             bool ok = NativeMethods.urui_set_translate_scale_2d(id, x, y, sx, sy) == 1;
-#if URUI_DEBUG
-            if (phaseDiagnostics)
-            {
-                apiFrame.styleMs += Millis(Now() - t);
-                apiFrame.styles++;
-            }
-#endif
-            return ok;
-        }
-
-        /// <summary>
-        /// 按 ID 重新查询并绑定原节点身份；节点缺失、宿主未启用或引用预算耗尽时返回 null。
-        /// 返回值由文档释放，不会持有可直接访问的原生元素指针。
-        /// </summary>
-        public ElementReference AcquireElementReference(string id)
-        {
-            if (!active)
-            {
-                return null;
-            }
-
-            CheckReferenceThread();
-            try
-            {
-                ulong token = NativeMethods.urui_element_ref_acquire(id);
-                return token == 0 ? null : new ElementReference(this, token);
-            }
-            catch (EntryPointNotFoundException e)
-            {
-                throw new NotSupportedException("Native bridge has no explicit element reference API", e);
-            }
-        }
-
-        void CheckReferenceThread()
-        {
-            if (System.Threading.Thread.CurrentThread.ManagedThreadId != referenceThread)
-            {
-                throw new InvalidOperationException("URUI element references require their context thread");
-            }
-        }
-
-        internal bool ReferenceIsValid(ulong token)
-        {
-            if (!active)
-            {
-                return false;
-            }
-
-            CheckReferenceThread();
-            return NativeMethods.urui_element_ref_valid(token) == 1;
-        }
-
-        internal void ReleaseReference(ulong token)
-        {
-            if (!active)
-            {
-                return;
-            }
-
-            CheckReferenceThread();
-            NativeMethods.urui_element_ref_release(token);
-        }
-
-        internal bool SetReferenceTransform(ulong token, float x, float y, float sx, float sy)
-        {
-            if (!active)
-            {
-                return false;
-            }
-
-            CheckReferenceThread();
-#if URUI_DEBUG
-            using var marker = propertyApiMarker.Auto();
-            long t = phaseDiagnostics ? Now() : 0;
-#endif
-            bool ok = NativeMethods.urui_element_ref_set_translate_scale_2d(token, x, y, sx, sy) == 1;
 #if URUI_DEBUG
             if (phaseDiagnostics)
             {

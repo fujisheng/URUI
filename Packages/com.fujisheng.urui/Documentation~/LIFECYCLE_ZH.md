@@ -12,11 +12,11 @@
 
 ## 元素身份
 
-`Q` 获取的是原节点的引用包装。节点移除、内部结构替换、文档卸载或重载后，旧引用失效；即使新结构有同名 ID，旧包装也不会复活。使用 `IsValid` 检查，或在 `Loaded` 后重新查询。
+节点由 Document 拥有，Element 包装表示稳定的原生对象身份。Name 变化不会改换对象，查询、Parent 和索引返回同一包装。节点预算为每个 context 65536 个被跟踪的活节点；没有无限引用保证。
 
-`Element.Dispose()` 释放包装和订阅，不删除节点。`Remove()` 才会删除节点。大量临时查询使用结束后可主动 `Dispose()`，文档释放也会统一清理。每个 context 的引用令牌上限为 65536；没有无限引用保证。
+CreateElement 产生脱离层级的节点，Add/Insert 后才显示并接收输入。RemoveFromHierarchy、Remove(child)、Clear 会保留子树、身份与回调，之后可以重新挂载。长期不再使用时调用 Destroy，或由 Unload 统一释放；不能把脱离层级当作释放资源。
 
-ID 必须唯一，并在节点存活期间保持不变。`SetAttribute` 禁止修改 ID；`SetInnerMarkup` 的调用者负责避免重复 ID。普通更新仍依赖 ID 定位，重复 ID 会破坏正确寻址。
+Destroy、Text/SetInnerMarkup 替换子结构、文档重载或卸载会让对应旧包装失效，即使同名节点再次出现也不会复活。Element 本身不实现 IDisposable；IDisposable 订阅只用于解绑。Name 可以重复，Q 取局部首项，Query 取全部；样式和外部 ID 使用仍由应用维护命名约定。
 
 ## 资产所有权
 
@@ -26,7 +26,7 @@ ID 必须唯一，并在节点存活期间保持不变。`SetAttribute` 禁止�
 | `LoadMarkup` 的内部 `TextAsset` | `Document` | 卸载、重载或销毁时释放 |
 | `Images` 中的 `Texture2D` | 应用 | 复制像素，不销毁原图；要求开启 Read/Write |
 | 原生纹理副本、Unity mesh/material/command buffer | URUI | 文档释放时清理 |
-| 元素引用与点击订阅 | `Document` / `Element` | 释放、失效或文档卸载时清理 |
+| 附着及脱离的节点、点击订阅 | `Document` / `Element` | Destroy、结构替换或文档卸载时清理 |
 | 字体文件 | 应用或平台 | 应用保证文件路径和所需字形可用 |
 
 ## 字体与图片

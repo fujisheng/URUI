@@ -13,7 +13,7 @@ namespace URUI
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("URUI/Document")]
-    public sealed class Document : MonoBehaviour
+    public sealed partial class Document : MonoBehaviour
     {
         [SerializeField]
         TextAsset source;
@@ -21,7 +21,6 @@ namespace URUI
         ImageAsset[] images = Array.Empty<ImageAsset>();
         [SerializeField]
         string fontPath = "";
-        readonly Dictionary<string, Element> elements = new Dictionary<string, Element>(StringComparer.Ordinal);
         RenderHost host;
         TextAsset ownedMarkup;
         string requestedMarkup;
@@ -314,42 +313,6 @@ namespace URUI
             }
         }
 
-        /// <summary>
-        /// 按 RML id 查询元素（不带 #）。不存在或尚未加载时返回 null；不是 CSS/UQuery 选择器。
-        /// </summary>
-        /// <param name="id">非空且唯一的 RML 元素 ID。</param>
-        /// <returns>当前节点的引用包装；未加载、节点不存在或引用获取失败时为 null。</returns>
-        /// <remarks>同一有效节点复用包装；节点替换或文档重载后需要重新查询。</remarks>
-        public Element Q(string id)
-        {
-            CheckThread();
-            RequireName(id, nameof(id));
-            if (!IsLoaded)
-            {
-                return null;
-            }
-
-            if (elements.TryGetValue(id, out var cached))
-            {
-                if (cached.IsValid)
-                {
-                    return cached;
-                }
-
-                cached.Dispose();
-            }
-
-            var reference = host.AcquireElementReference(id);
-            if (reference == null)
-            {
-                return null;
-            }
-
-            var element = new Element(this, id, generation, reference);
-            elements.Add(id, element);
-            return element;
-        }
-
         void ValidateImages()
         {
             images = images ?? Array.Empty<ImageAsset>();
@@ -400,14 +363,6 @@ namespace URUI
             }
         }
 
-        void DispatchClick(string id)
-        {
-            if (isActiveAndEnabled && elements.TryGetValue(id, out var element) && element.IsValid)
-            {
-                element.DispatchClick();
-            }
-        }
-
         void CheckConfiguration()
         {
             CheckThread();
@@ -430,15 +385,6 @@ namespace URUI
         internal bool IsCurrent(uint version) => IsLoaded && generation == version;
 
         internal RenderHost Host => host;
-
-        internal void Forget(Element element)
-        {
-            // 同一个 ID 可能已经被重新查询，旧包装释放时不能移除新的缓存项。
-            if (elements.TryGetValue(element.Id, out var existing) && ReferenceEquals(existing, element))
-            {
-                elements.Remove(element.Id);
-            }
-        }
 
         internal static void RequireName(string value, string parameter)
         {

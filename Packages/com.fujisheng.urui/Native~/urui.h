@@ -25,7 +25,7 @@ extern "C"
         float tx, ty;
         int clip_enabled, clip_x, clip_y, clip_w, clip_h;
     } UruiCommand;
-    // URUI bridge ABI version 2. UruiVertex is 20 bytes; UruiCommand is 48 bytes.
+    // URUI bridge ABI version 3. UruiVertex is 20 bytes; UruiCommand is 48 bytes.
     URUI_API int urui_bridge_abi_version(void);
     URUI_API int urui_create(int width, int height, const char* font_path);
     URUI_API void urui_destroy(void);
@@ -91,6 +91,34 @@ extern "C"
     URUI_API int urui_texture_exists(uint64_t id);
     URUI_API int urui_pop_event(char* out, int capacity);
     URUI_API const char* urui_last_error(void);
+    // Document-owned element identities. Query is self-inclusive DOM-only DFS.
+    // Query returns required count without writes when capacity is insufficient.
+    URUI_API uint64_t urui_element_root(void);
+    URUI_API uint64_t urui_element_create(const char* tag);
+    // parent/find return UINT64_MAX for failure, zero for no parent/no match.
+    // UINT64_MAX is reserved and is never a node identity.
+    URUI_API uint64_t urui_element_parent(uint64_t token);
+    URUI_API int urui_element_child_count(uint64_t token);
+    URUI_API uint64_t urui_element_child_at(uint64_t token, int index);
+    URUI_API uint64_t urui_element_find(uint64_t token, const char* name, const char* class_name);
+    URUI_API int urui_element_query(uint64_t token, const char* name, const char* class_name, uint64_t* out, int capacity);
+    // read fields: 0=name, 1=tag, 2=plain text, 3=attribute. UTF8 required includes NUL.
+    // 1 success; 0 absent attribute; -1 invalid; -2 structured text; -3 capacity probe.
+    URUI_API int urui_element_read(uint64_t token, int field, const char* name, char* out, int capacity, int* required);
+    // write fields: 0=name, 1=plain text, 2=attribute, 3=attached inner RML, 4=inline style.
+    URUI_API int urui_element_write(uint64_t token, int field, const char* name, const char* value);
+    // erase fields: 0=attribute, 1=inline style. Class action: -1=query, 0=remove, 1=add.
+    URUI_API int urui_element_erase(uint64_t token, int field, const char* name);
+    URUI_API int urui_element_class(uint64_t token, const char* name, int action);
+    // Insert validates before moving; -1 index means append. Detach/Clear retain nodes.
+    URUI_API int urui_element_insert(uint64_t parent, uint64_t child, int index);
+    URUI_API int urui_element_detach(uint64_t token);
+    URUI_API int urui_element_clear(uint64_t token);
+    URUI_API int urui_element_destroy(uint64_t token);
+    URUI_API int urui_element_attached(uint64_t token);
+    // Actual weak click target, never an ID lookup. Removed/unloaded targets are discarded.
+    URUI_API int urui_element_pop_click(uint64_t* target);
+
     // Optional exact retained-plan tracking. Native Update/Render are never skipped.
     // flags: 1 complete/supported stamp; 2 unsupported optional renderer operation;
     // otherwise 0 (disabled/incomplete/exhausted). Counts/bytes are diagnostics only.
@@ -127,7 +155,8 @@ extern "C"
                                       float* worlds, int capacity, UruiCoreSummary* info);
     // Explicit weak OBJECT references, not live ID selectors. Acquire uses fresh ID
     // semantics; rename does not retarget. Unload/destroy invalidates all tokens.
-    // Single context thread only (-3 for foreign-thread operations); dispose tokens.
+    // Single context thread only (-3 for foreign-thread operations). Managed nodes
+    // retain canonical identities until destruction/unload; raw release invalidates a token.
     // Budget: 65536 outstanding tokens. Invalid/stale writes return 0, bad numeric -1.
     URUI_API uint64_t urui_element_ref_acquire(const char* id);
     URUI_API int urui_element_ref_valid(uint64_t token);

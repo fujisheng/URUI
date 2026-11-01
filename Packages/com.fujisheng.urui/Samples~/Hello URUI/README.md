@@ -1,9 +1,7 @@
 # Hello URUI
 
-在 Package Manager → URUI → Samples 中导入，将 `HelloUrui` 添加到空 GameObject，进入 Play Mode。点击界面按钮，观察计数和背景色变化。
+导入样例，在空 GameObject 添加 HelloUrui 后进入 Play Mode。未配置 Source 时使用内置 RML；也可以为同一对象的 Document.Source 指定可编辑 TextAsset。
 
-样例使用 `Document.LoadMarkup` 加载内联 RML/RCSS，在 `Loaded` 中查询元素和注册点击，在 `OnDisable` 中释放订阅并卸载文档。重新加载后重新查询，避免持有失效元素。
+样例通过 Loaded 获取 Root，再用局部 Q 查询 label/action/panel；Text 显式写入文本，RegisterCallback<ClickEvent> 订阅点击，Style 写入 RCSS。控制器等待 Document 启用后才主动加载，避免组件启用顺序造成异常。
 
-已有 MainCamera 时复用；没有时创建相机，并在销毁样例时清理。一次只运行一个 URUI 文档。使用环境为 Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal，Active Input Handling 设为 Input Manager (Old) 或 Both。
-
-完整步骤与自行创建文档的示例见[快速开始](../../Documentation~/QUICK_START_ZH.md)。
+OnDisable 释放订阅并卸载文档，调用者提供的 TextAsset 不会被销毁。需要动态创建、重挂载和销毁示例时，导入 Element Playground。

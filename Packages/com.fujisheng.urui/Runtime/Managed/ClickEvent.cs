@@ -1,22 +1,27 @@
 namespace URUI
 {
     /// <summary>
-    /// 当前桥提供的点击通知。Target 是最近的带 id 元素，不提供 UITK 的冒泡/捕获语义。
+    /// 普通点击通知，沿分发时快照的父级路径由目标向根分发。
+    /// 不提供 UITK 的捕获、传播中止、指针捕获或事件池协议。
     /// </summary>
     public readonly struct ClickEvent
     {
-        /// <summary>
-        /// 接收此通知的元素，即实际点击目标向上查找到的最近带 ID 节点。
-        /// </summary>
-        /// <remarks>仅表示当前分发目标，不包含冒泡阶段或指针捕获信息。</remarks>
+        /// <summary>实际被点击的节点，包括没有 Name 的节点；身份不会按名字重新查找。</summary>
         public Element Target
         {
             get;
         }
 
-        internal ClickEvent(Element target)
+        /// <summary>当前正在执行此回调的注册节点。</summary>
+        public Element CurrentTarget
+        {
+            get;
+        }
+
+        internal ClickEvent(Element target, Element currentTarget)
         {
             Target = target;
+            CurrentTarget = currentTarget;
         }
     }
 }

@@ -16,6 +16,11 @@
       "displayName": "Hello URUI",
       "description": "Managed Document, query, style updates and disposable click subscriptions.",
       "path": "Samples~/Hello URUI"
+    },
+    {
+      "displayName": "Element Playground",
+      "description": "Explicit element creation, scoped queries, hierarchy, classes and click subscriptions; no data binding.",
+      "path": "Samples~/Element Playground"
     }
   ]
 }

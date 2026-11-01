@@ -6,7 +6,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 option(URUI_DEBUG "Compile native diagnostic probes, profiling and selftests" OFF)
 
 # Build a self-contained plugin with static RmlUi and static FreeType.
-# The packaged macOS bridge exposes ABI 2.
+# Packaged plugins expose ABI 3 on every target.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Static third-party dependencies" FORCE)
 set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
 set(RMLUI_TESTS OFF CACHE BOOL "" FORCE)

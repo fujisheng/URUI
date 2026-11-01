@@ -110,6 +110,12 @@ namespace URUI
             Set("background-color", "#" + ColorUtility.ToHtmlStringRGBA(value));
         }
 
+        /// <summary>移除行内 RCSS 覆盖，让类名或样式表重新决定该属性。</summary>
+        public void Remove(string property)
+        {
+            element.RemoveStyle(property);
+        }
+
         internal static void RequireFinite(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))
