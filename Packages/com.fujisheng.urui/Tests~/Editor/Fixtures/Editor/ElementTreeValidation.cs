@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using URUI.Elements;
 
 namespace URUI.Tests.Editor
 {

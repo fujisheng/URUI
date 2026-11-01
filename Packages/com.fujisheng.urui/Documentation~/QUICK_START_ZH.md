@@ -25,7 +25,10 @@ Source 由 Document 在启用时自动加载。业务组件订阅 Loaded，并�
 
 ```csharp
 using System;
-using URUI;
+using URUI.Documents;
+using URUI.Elements;
+using URUI.Events;
+using URUI.Resources;
 using UnityEngine;
 
 [RequireComponent(typeof(Document))]

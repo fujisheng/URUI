@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using URUI.Documents;
+using URUI.Events;
 
 namespace URUI.Samples
 {

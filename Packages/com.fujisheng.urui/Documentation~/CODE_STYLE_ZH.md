@@ -9,13 +9,15 @@ URUI 的业务接口保持简洁：RML/RCSS 表达界面，C# 通过 `Document`�
 - 公共接口保持窄职责，使用 XML 注释说明参数、所有权、线程和失效条件。
 - 修改样式使用明确的 `Set` 方法；没有真实读取能力时不提供误导性的 getter。
 - 点击注册保留返回的订阅，在 `OnDisable` 中释放；文档重载后重新查询和绑定。
-- 每个文件围绕单一职责组织，业务代码仅依赖 `URUI.Runtime` 的公开接口。
+- 每个文件围绕单一职责组织；文件夹与命名空间体现 Documents、Elements、Events、Resources 以及内部子系统边界。
+- 较大的 partial 类型按生命周期、资源、录制、提交等职责拆分；初始化状态集中保留，不能因为移动成员改变初始化顺序。
+- 业务代码仅依赖 `URUI.Runtime` 的公开接口。
 
 ## RML/RCSS
 
 - 为业务需要访问的元素设置清晰、唯一且稳定的 ID。
 - 将布局规则写在样式中，显式设置需要的 `display` 与定位方式。
-- `SetText` 用于普通文字，`SetInnerMarkup` 仅用于有意修改结构。
+- `Element.Text` 用于普通文字，`SetInnerMarkup` 仅用于有意修改结构。
 - 用能表达业务含义的 ID 和样式组织界面，让文本及其差异便于人和 AI 阅读。
 - 自定义字体填写真实 family，图片路径与 `ImageAsset.Source` 保持一致。
 

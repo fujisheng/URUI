@@ -7,7 +7,7 @@ URUI 是 `Packages/com.fujisheng.urui` 下的 Unity Package。产品使用方式
 使用 Unity **6000.3.22f1 / macOS ARM64 / Built-in / Metal**。在独立测试项目中从磁盘安装包，启用旧 Input Manager，准备 MainCamera，并显式导入 Hello URUI 样例。
 
 - 运行时业务引用 `URUI.Runtime`，编辑器程序集为 `URUI.Editor`。
-- 公共 API 维护在 namespace `URUI`；渲染和互操作实现位于 `URUI.Internal`。
+- 公共 API 按 `URUI.Documents`、`URUI.Elements`、`URUI.Events`、`URUI.Resources` 分类；内部实现按宿主、输入、渲染和互操作分区，见[代码组织](CODE_ORGANIZATION_ZH.md)。
 - 文档、样例和菜单使用相同公开 API；修改生命周期或事件时同步检查这些入口。
 - shader 标识为 `URUI/Premultiplied` 与 `URUI/ParameterTable`，随包的资源需要保留。
 

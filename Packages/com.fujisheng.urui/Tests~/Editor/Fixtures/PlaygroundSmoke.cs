@@ -4,6 +4,8 @@ using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using URUI.Samples;
+using URUI.Documents;
+using URUI.Elements;
 
 namespace URUI.Tests
 {

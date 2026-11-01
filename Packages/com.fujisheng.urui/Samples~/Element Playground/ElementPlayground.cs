@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using URUI.Documents;
+using URUI.Elements;
+using URUI.Events;
 
 namespace URUI.Samples
 {

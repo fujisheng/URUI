@@ -5,8 +5,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using URUI;
-using URUI.Editor;
+using URUI.Editor.Menus;
+using URUI.Documents;
 
 namespace URUI.Tests.Editor
 {

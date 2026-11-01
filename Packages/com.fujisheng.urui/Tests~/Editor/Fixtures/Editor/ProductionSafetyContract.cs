@@ -14,7 +14,7 @@ namespace URUI.Tests.Editor
     {
         public static void Check(Assembly runtime)
         {
-            var rendererType = runtime.GetType("URUI.Internal.ParameterTableRenderer", true);
+            var rendererType = runtime.GetType("URUI.Internal.Rendering.Parameters.ParameterTableRenderer", true);
             var packetType = rendererType.GetNestedType("Packet", BindingFlags.NonPublic);
             var stateType = rendererType.GetNestedType("State", BindingFlags.NonPublic);
             var packetsField = rendererType.GetField("packets", BindingFlags.Instance | BindingFlags.NonPublic);

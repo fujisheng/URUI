@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
+using UnityResources = UnityEngine.Resources;
 
 namespace URUI.Tests.Editor
 {
@@ -35,7 +36,7 @@ namespace URUI.Tests.Editor
             Need(!runtime.assemblyReferences.Any(value => value.name == "Unity.ugui"), "runtime dependency closure");
             var definitions = Directory.GetFiles(info.resolvedPath, "*.asmdef", SearchOption.AllDirectories).Where(path => !path.Split(Path.DirectorySeparatorChar).Any(part => part.EndsWith("~"))).ToArray();
             Need(definitions.Length == 2, "single runtime and editor assembly definitions");
-            var shader = Resources.Load<Shader>("URUI/Premultiplied");
+            var shader = UnityResources.Load<Shader>("URUI/Premultiplied");
             Need(shader && shader.name == "URUI/Premultiplied", "shader identity");
             Need(AssetDatabase.LoadAssetAtPath<Shader>(Package + "/Runtime/Resources/URUI/ParameterTable.shader"), "parameter shader asset");
             var plugin = (PluginImporter)AssetImporter.GetAtPath(Package + "/Runtime/Plugins/macOS/libURUIBridge.dylib");

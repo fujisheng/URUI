@@ -1,6 +1,6 @@
 # 安装
 
-包名 `com.fujisheng.urui`，程序集 `URUI.Runtime`，命名空间 `URUI`。
+包名 `com.fujisheng.urui`，程序集 `URUI.Runtime`，公开命名空间按 Documents、Elements、Events、Resources 分类，见[API](API_ZH.md)。
 
 ## 从 Git 安装
 

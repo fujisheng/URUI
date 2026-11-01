@@ -2,6 +2,17 @@
 
 当前文档描述 URUI 的 Element API。Unity 运行验证范围为 6000.3.22f1 / macOS ARM64 Editor；平台产物与检查范围见[支持矩阵](LIMITATIONS_ZH.md)。没有数据绑定或 FUI 依赖。
 
+## 命名空间
+
+| 命名空间 | 公开类型 |
+| --- | --- |
+| `URUI.Documents` | `Document` |
+| `URUI.Elements` | `Element`、`ElementStyle` |
+| `URUI.Events` | `ClickEvent` |
+| `URUI.Resources` | `ImageAsset` |
+
+以上类型均位于 `URUI.Runtime` 程序集。按使用的类型添加 using；内部命名空间不是业务扩展接口。
+
 ## Document
 
 | 接口 | 行为 |

@@ -3,6 +3,9 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using URUI.Documents;
+using URUI.Elements;
+using URUI.Events;
 
 namespace URUI.Tests
 {

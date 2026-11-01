@@ -20,18 +20,18 @@ namespace URUI.Tests.Editor
             var runtime = assemblies.Single(value => value.GetName().Name == "URUI.Runtime");
             var actual = runtime.GetExportedTypes().Select(value => value.FullName).OrderBy(value => value).ToArray();
             var expected = new[] {
-                "URUI.ClickEvent",
-                "URUI.Document",
-                "URUI.Element",
-                "URUI.ElementStyle",
-                "URUI.ImageAsset"
+                "URUI.Documents.Document",
+                "URUI.Elements.Element",
+                "URUI.Elements.ElementStyle",
+                "URUI.Events.ClickEvent",
+                "URUI.Resources.ImageAsset"
             };
             if (!actual.SequenceEqual(expected))
             {
                 throw new Exception("URUI public surface differs: " + string.Join(",", actual));
             }
 
-            var borrowed = runtime.GetType("URUI.Internal.BorrowedFrame", true);
+            var borrowed = runtime.GetType("URUI.Internal.Rendering.Frames.BorrowedFrame", true);
             var layout = borrowed.GetProperty("LayoutMatches", BindingFlags.NonPublic | BindingFlags.Static);
             if (!(bool)layout.GetValue(null))
             {

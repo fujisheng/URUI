@@ -2,7 +2,7 @@
 
 **为 AI 辅助开发而设计的 Unity UI：用 RML/RCSS 描述界面，用 C# 驱动交互。**
 
-URUI 将 [RmlUi](https://github.com/mikke89/RmlUi) 接入 Unity。RmlUi 负责文档解析与布局，Unity 负责绘制和输入，业务代码通过 `URUI.Document` 查询与更新元素。
+URUI 将 [RmlUi](https://github.com/mikke89/RmlUi) 接入 Unity。RmlUi 负责文档解析与布局，Unity 负责绘制和输入，业务代码通过 `URUI.Documents.Document` 查询与更新元素。
 
 ## 为什么做 URUI
 
@@ -29,6 +29,9 @@ https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui
 导入 **Hello URUI** 样例，将 `HelloUrui` 添加到空 GameObject 后进入 Play Mode；或使用 **Tools > URUI > Create Minimal UI Scene** 创建最小文档场景。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)包含完整的 RML 和业务脚本。
 
 ```csharp
+using URUI.Documents;
+using URUI.Events;
+
 document.LoadMarkup(rml);
 var panel = document.Root.Q("panel");
 var label = document.CreateElement("span");
@@ -51,6 +54,6 @@ Unity 运行验证环境为 **6000.3.22f1 / macOS ARM64 Editor / Built-in / Meta
 
 - [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)
 - [C# API](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [点击事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md) · [生命周期与资源](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md)
-- [架构](docs/ARCHITECTURE_ZH.md) · [开发与原生构建](docs/DEVELOPMENT_ZH.md) · [代码约定](Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)
+- [代码组织](docs/CODE_ORGANIZATION_ZH.md) · [架构](docs/ARCHITECTURE_ZH.md) · [开发与原生构建](docs/DEVELOPMENT_ZH.md) · [代码约定](Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)
 
 包包含 RmlUi 6.3 与 FreeType 2.13.3 源码。项目许可见 [LICENSE.md](Packages/com.fujisheng.urui/LICENSE.md)，第三方版权与许可见 [Third Party Notices](Packages/com.fujisheng.urui/Third%20Party%20Notices.md)。
