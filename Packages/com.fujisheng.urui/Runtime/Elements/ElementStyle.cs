@@ -5,9 +5,9 @@ using UnityEngine;
 namespace URUI.Elements
 {
     /// <summary>
-    /// 写入 RmlUi 行内样式。使用显式 Set 方法，不缓存或伪造已计算样式的 getter。
+    /// 读写真实 RmlUi 行内样式。计算结果由 ResolvedStyle 单独读取。
     /// </summary>
-    public sealed class ElementStyle
+    public sealed partial class ElementStyle
     {
         readonly Element element;
 

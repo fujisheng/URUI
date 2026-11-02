@@ -80,4 +80,4 @@ panel.Insert(0, caption);       // 同一个对象重新挂载
 caption.Destroy();             // 明确销毁
 ```
 
-Name/Class 查询是局部、精确匹配，Query 返回快照；不是 CSS 选择器或完整 UITK。完整按钮操作见 Element Playground。继续阅读 [API](API_ZH.md)、[事件](EVENTS_ZH.md)和[支持范围](LIMITATIONS_ZH.md)。
+Name/Class 查询是局部、精确匹配，Query 返回快照。类型化控件可通过 `document.Q<Button>("action")` 或 `document.Create<Button>()` 获取；使用 `URUI.Controls` 命名空间。综合设置、表单和虚拟列表见 Runtime Controls 样例，基础节点操作见 Element Playground。继续阅读 [API](API_ZH.md)、[事件](EVENTS_ZH.md)和[支持范围](LIMITATIONS_ZH.md)。

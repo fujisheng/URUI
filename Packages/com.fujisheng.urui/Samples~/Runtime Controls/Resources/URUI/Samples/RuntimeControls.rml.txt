@@ -1,0 +1,55 @@
+<rml><head><style>
+body { width:100%; min-height:100%; margin:0; padding:24px; box-sizing:border-box; background-color:#101827; font-family:__URUI_FONT__; font-size:16px; color:#e5edf9; }
+div, label, foldout, list-view, progress-bar { display:block; }
+label { margin-bottom:10px; }
+.title { font-size:28px; margin-bottom:8px; }
+.subtitle { color:#a4b3c8; margin-bottom:24px; }
+.columns { display:flex; flex-direction:row; align-items:flex-start; width:100%; }
+.card { width:23.5%; flex-shrink:0; margin-right:1.5%; padding:16px; box-sizing:border-box; background-color:#1b2940; border-width:1px; border-color:#334764; }
+.brand { display:flex; align-items:center; }
+.brand img { width:28px; height:28px; margin-right:12px; }
+.heading { font-size:20px; margin-bottom:18px; }
+.caption { color:#a4b3c8; font-size:14px; }
+.row { display:flex; align-items:center; margin-bottom:14px; }
+.row label { margin:0 0 0 10px; }
+textarea, select, input[type=number], input.field { width:100%; margin-bottom:16px; }
+input[type=range] { width:100%; margin-bottom:16px; }
+button { display:block; width:100%; margin-top:8px; }
+progress-bar { width:100%; margin-bottom:16px; }
+list-view { width:100%; height:280px; }
+scroll-view { width:100%; height:72px; margin-top:10px; }
+.inventory-row { padding-left:8px; padding-top:4px; box-sizing:border-box; white-space:nowrap; }
+.inventory-row:hover { background-color:#263c59; }
+#status { margin-top:22px; color:#78d3c0; }
+@media (max-width:760px) {
+    .columns { display:block; }
+    .card { width:100%; margin-right:0; margin-bottom:16px; }
+}
+</style></head><body>
+<div class="brand"><img id="sample-icon" src="runtime-controls-icon"/><label class="title">URUI Runtime Controls</label></div>
+<label class="subtitle">Package control styles, editing, keyboard navigation and reusable rows.</label>
+<div class="columns">
+<div class="card"><label class="heading">Settings</label>
+<div class="row"><input id="sound" type="checkbox" checked="checked"/><label for="sound">Sound enabled</label></div>
+<label class="caption">Volume</label><input id="volume" type="range" min="0" max="100" value="50"/>
+<progress-bar id="progress"/>
+<label class="caption">Quality</label><select id="quality"><option value="Low">Low</option><option value="Medium" selected="selected">Medium</option><option value="High">High</option></select>
+<foldout text="Advanced"><scroll-view><div style="height:150px;"><label class="caption">Nested ScrollView</label><label class="caption">Use wheel, touch or focus and PageDown.</label><label class="caption">Collapsed content keeps its state.</label></div></scroll-view></foldout>
+</div>
+<div class="card"><label class="heading">Player profile</label>
+<label class="caption">Player name</label><textarea id="player-name" data-urui-multiline="false" rows="1">Player</textarea>
+<label class="caption">Mode</label>
+<div class="row"><input id="casual" type="radio" name="mode" value="casual" checked="checked"/><label for="casual">Casual</label></div>
+<div class="row"><input id="ranked" type="radio" name="mode" value="ranked"/><label for="ranked">Ranked</label></div>
+<button id="apply">Apply profile</button>
+<label class="caption">Use Tab, Shift+Tab, Enter and Space.</label>
+</div>
+<div class="card"><label class="heading">Editing</label>
+<label class="caption">Quantity - Enter to commit</label><input id="count" type="number" value="10"/>
+<label class="caption">Weight - arrows step by 0.25</label><input id="weight" class="field" type="text" data-urui-type="URUI.Controls.FloatField" value="1.5"/>
+<label class="caption">Selectable, read only</label><textarea id="read-only" data-urui-multiline="false">Copy this text</textarea>
+<label id="level-caption" class="caption">Level 5</label><input id="level" type="range" data-urui-type="URUI.Controls.IntegerSlider" min="1" max="10" value="5"/>
+</div>
+<div class="card"><label class="heading">Inventory</label><label class="caption">1,000 items, visible rows only.</label><list-view id="items"/></div>
+</div><label id="status">Ready</label>
+</body></rml>

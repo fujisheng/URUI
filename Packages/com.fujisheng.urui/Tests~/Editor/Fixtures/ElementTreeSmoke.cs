@@ -9,6 +9,8 @@ using URUI.Events;
 
 namespace URUI.Tests
 {
+    sealed class CustomEvent : EventBase { }
+
     /// <summary>跨真实 Editor 帧检查节点树、身份、匿名目标及回调修改期间的事件边界。</summary>
     public sealed class ElementTreeSmoke : MonoBehaviour
     {
@@ -161,8 +163,12 @@ namespace URUI.Tests
                         Need(evt.Target == target && evt.CurrentTarget == action, "receiver differs from target");
                         parentCalls++;
                     });
-                    Throws<NotSupportedException>(() => target.RegisterCallback<int>(_ => {
-                    }));
+                    int customEvents = 0;
+                    using (target.RegisterCallback<CustomEvent>(_ => customEvents++))
+                    {
+                        target.SendEvent(new CustomEvent());
+                    }
+                    Need(customEvents == 1, "custom managed events");
                 }
 
                 if (frames == 5)
@@ -203,6 +209,7 @@ namespace URUI.Tests
                     Need(targetCalls == 3 && parentCalls == 3 && lateCalls == 2 && skipped == 0, "reattach retains remaining subscriptions");
                     target.Name = "reused";
                     Click();
+                    Need(parentCalls == 4 && lateCalls == 3, "click dispatch completes synchronously before replacement");
                     target.Destroy();
                     var replacement = document.CreateElement();
                     replacement.Name = "reused";
@@ -212,7 +219,7 @@ namespace URUI.Tests
 
                 if (frames == 17)
                 {
-                    Need(parentCalls == 3 && lateCalls == 2, "queued click cannot retarget replacement or old parent");
+                    Need(parentCalls == 4 && lateCalls == 3, "completed click cannot replay on replacement or old parent");
                     var oldRoot = document.Root;
                     var detached = document.CreateElement();
                     document.Unload();
@@ -237,6 +244,7 @@ namespace URUI.Tests
 
         void Finish(bool passed, string error)
         {
+            Directory.CreateDirectory("Evidence");
             finished = true;
             File.WriteAllText("Evidence/element-tree.json", JsonUtility.ToJson(new Report { passed = passed, frames = frames, targetCalls = targetCalls, parentCalls = parentCalls, error = error }, true));
             Debug.Log(passed ? "URUI_ELEMENT_TREE_PASS" : "URUI_ELEMENT_TREE_FAIL " + error);

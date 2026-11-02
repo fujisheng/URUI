@@ -19,17 +19,21 @@ namespace URUI.Tests.Editor
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var runtime = assemblies.Single(value => value.GetName().Name == "URUI.Runtime");
             var actual = runtime.GetExportedTypes().Select(value => value.FullName).OrderBy(value => value).ToArray();
-            var expected = new[] {
-                "URUI.Documents.Document",
-                "URUI.Elements.Element",
-                "URUI.Elements.ElementStyle",
-                "URUI.Events.ClickEvent",
-                "URUI.Resources.ImageAsset"
+            var required = new[] {
+                "URUI.Documents.Document", "URUI.Documents.DocumentInput",
+                "URUI.Elements.Element", "URUI.Elements.ElementContext", "URUI.Elements.ElementStyle",
+                "URUI.Events.EventBase", "URUI.Events.ClickEvent", "URUI.Resources.ImageAsset",
+                "URUI.Controls.Button", "URUI.Controls.TextField", "URUI.Controls.Toggle", "URUI.Controls.ListView"
             };
-            if (!actual.SequenceEqual(expected))
-            {
-                throw new Exception("URUI public surface differs: " + string.Join(",", actual));
-            }
+            string[] allowed = {"URUI.Documents", "URUI.Elements", "URUI.Events", "URUI.Resources", "URUI.Controls"};
+            if (required.Except(actual).Any() || runtime.GetExportedTypes().Any(type => !allowed.Contains(type.Namespace)))
+                throw new Exception("URUI public boundary differs: " + string.Join(",", actual));
+            if (runtime.GetType("URUI.Elements.Element").IsSealed)
+                throw new Exception("Custom controls require an extensible Element");
+            var packet = runtime.GetType("URUI.Internal.Interop.ElementEventNative", true);
+            if (System.Runtime.InteropServices.Marshal.SizeOf(packet) != 72
+                || System.Runtime.InteropServices.Marshal.OffsetOf(packet, "text").ToInt32() != 64)
+                throw new Exception("Element event ABI layout differs");
 
             var borrowed = runtime.GetType("URUI.Internal.Rendering.Frames.BorrowedFrame", true);
             var layout = borrowed.GetProperty("LayoutMatches", BindingFlags.NonPublic | BindingFlags.Static);

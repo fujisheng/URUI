@@ -28,52 +28,7 @@ namespace URUI.Internal.Hosting
                     lastHeight = Screen.height;
                     NativeMethods.urui_resize(UiWidth, UiHeight);
                 }
-#if UNITY_ANDROID && !UNITY_EDITOR
-                for (int i = 0; i < UnityInput.touchCount; i++)
-                {
-                    var touch = UnityInput.GetTouch(i);
-                    int touchPhase = touch.phase == TouchPhase.Began ? 0 : touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary ? 1 : touch.phase == TouchPhase.Ended ? 2 : 3;
-                    float x = touch.position.x * UiWidth / Screen.width;
-                    float y = UiHeight - 1 - touch.position.y * UiHeight / Screen.height;
-                    if (NativeMethods.urui_touch_event(touchPhase, (ulong)(uint)touch.fingerId, x, y) == 1)
-                    {
-                        PointerInput?.Invoke(new PointerInputEvent { phase = (PointerPhase)touchPhase, pointerId = touch.fingerId, x = x, y = y, hitId = HitTestId(x, y) });
-                    }
-                }
-#else
-                var mouse = UnityInput.mousePosition;
-                NativeMethods.urui_mouse_move((int)(mouse.x * UiWidth / Screen.width), UiHeight - 1 - (int)(mouse.y * UiHeight / Screen.height));
-                for (int b = 0; b < 3; b++)
-                {
-                    if (UnityInput.GetMouseButtonDown(b))
-                    {
-                        NativeMethods.urui_mouse_button(b, 1);
-                        if (b == 0)
-                        {
-                            EmitMousePointer(PointerPhase.Down, mouse);
-                        }
-                    }
-
-                    if (UnityInput.GetMouseButtonUp(b))
-                    {
-                        NativeMethods.urui_mouse_button(b, 0);
-                        if (b == 0)
-                        {
-                            EmitMousePointer(PointerPhase.Up, mouse);
-                        }
-                    }
-                }
-
-                if (UnityInput.GetMouseButton(0) && !UnityInput.GetMouseButtonDown(0))
-                {
-                    EmitMousePointer(PointerPhase.Move, mouse);
-                }
-
-                if (Mathf.Abs(UnityInput.mouseScrollDelta.y) > 0.001f)
-                {
-                    NativeMethods.urui_mouse_wheel(-UnityInput.mouseScrollDelta.y);
-                }
-#endif
+                OwnerDocument?.Input.PollUnity();
             }
 #if URUI_DEBUG
             long timer = (measureBridge || phaseDiagnostics) ? Now() : 0;
@@ -146,21 +101,10 @@ namespace URUI.Internal.Hosting
 
         void DrainEvents()
         {
-            while (active)
-            {
-                int result = NativeMethods.urui_element_pop_click(out var target);
-                if (result == 0)
-                {
-                    break;
-                }
-
-                if (result < 0)
-                {
-                    throw new InvalidOperationException("URUI 点击身份队列无效。");
-                }
-
-                Clicked?.Invoke(target);
-            }
+            // ABI3 keeps its legacy queue for native consumers; managed dispatch is synchronous.
+            while (active && NativeMethods.urui_element_pop_click(out _) > 0) { }
+            OwnerDocument?.RefreshElements(true);
+            OwnerDocument?.FinishNativeCall();
         }
 
         public string HitTestId(float logicalX, float logicalY)

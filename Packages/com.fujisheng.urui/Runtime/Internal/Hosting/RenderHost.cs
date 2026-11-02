@@ -31,6 +31,7 @@ namespace URUI.Internal.Hosting
             private set;
         }
 
+        internal URUI.Documents.Document OwnerDocument;
         bool startupAttempted;
         bool resourcesReleased;
         public TextAsset document;
@@ -75,7 +76,6 @@ namespace URUI.Internal.Hosting
 
         readonly ShaderPropertyState shaderPropertyState = new ShaderPropertyState();
 
-        public event Action<ulong> Clicked;
         public event Action<PointerInputEvent> PointerInput;
 
         public bool reusePropertyBlock;

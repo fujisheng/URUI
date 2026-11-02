@@ -1,0 +1,45 @@
+body { font-family:__URUI_FONT__; font-size:16px; color:#e5edf9; }
+button { display:inline-block; box-sizing:border-box; min-width:72px; min-height:30px; padding:5px 12px; background-color:#316fca; border:1px #527eb3; color:white; text-align:center; tab-index:auto; }
+button:hover { background-color:#4482d9; }
+button:active { background-color:#255895; }
+button:focus, input:focus, textarea:focus, select:focus, scroll-view:focus, list-view:focus { border-color:#82b8ff; }
+button:disabled, input:disabled, textarea:disabled, select:disabled { color:#91a0b6; background-color:#273447; }
+input, textarea, select { box-sizing:border-box; color:#e5edf9; background-color:#142136; border:1px #4c6487; }
+input[type=text], input[type=password], input[type=number], textarea { display:inline-block; width:180px; height:32px; padding:5px 7px; }
+textarea { height:76px; }
+textarea[data-urui-multiline=false] { height:32px; }
+input[readonly], textarea[readonly] { background-color:#233044; color:#afc0d8; }
+input:placeholder-shown, textarea:placeholder-shown { color:#8a9bb3; }
+input[type=checkbox], input[type=radio] { width:18px; height:18px; margin:3px; }
+input[type=checkbox] { border-radius:3px; }
+input[type=radio] { border-radius:9px; }
+input[type=checkbox]:checked, input[type=radio]:checked { background-color:#48c5af; border-color:#8fe6d5; }
+input[type=checkbox]:disabled, input[type=radio]:disabled { background-color:#445164; border-color:#657186; }
+input:disabled sliderbar { background-color:#657186; }
+input[type=range] { display:inline-block; width:180px; height:26px; padding:0; border-width:0; background-color:transparent; }
+input[type=range] slidertrack { height:4px; margin-top:10px; background-color:#344b68; }
+input[type=range] sliderbar { width:12px; height:20px; margin-top:-8px; background-color:#6bd3c0; }
+input[type=range] sliderprogress { height:4px; background-color:#318877; }
+input[orientation=vertical] { width:26px; height:160px; }
+input[orientation=vertical] slidertrack { width:4px; height:auto; margin-top:0; margin-left:10px; }
+input[orientation=vertical] sliderbar { width:20px; height:12px; margin-top:0; margin-left:-8px; }
+input[orientation=vertical] sliderprogress { width:4px; height:auto; }
+select { display:inline-block; width:180px; height:32px; padding:5px 7px; }
+select selectvalue { display:block; }
+select selectarrow { width:0; height:0; margin-top:7px; border-top:6px #9fc3ed; border-left:5px #00000000; border-right:5px #00000000; }
+select selectbox { background-color:#142136; border:1px #5c7da7; max-height:220px; overflow-y:auto; }
+select option { display:block; padding:6px 8px; }
+select option:hover, select option:checked { background-color:#315e8c; }
+scroll-view, list-view { display:block; width:240px; height:200px; box-sizing:border-box; border:1px #425b7d; background-color:#101b2d; }
+scrollbarvertical { width:12px; }
+scrollbarhorizontal { height:12px; }
+scrollbarvertical slidertrack, scrollbarhorizontal slidertrack { background-color:#1e3048; }
+scrollbarvertical sliderbar { width:10px; min-height:18px; margin-left:1px; background-color:#5a779d; }
+scrollbarhorizontal sliderbar { height:10px; min-width:18px; margin-top:1px; background-color:#5a779d; }
+scrollbarcorner { background-color:#1e3048; }
+.urui-selected { background-color:#315e8c; }
+foldout { display:block; }
+.urui-foldout-header { display:block; width:100%; text-align:left; }
+progress-bar { display:block; width:200px; height:28px; box-sizing:border-box; background-color:#142136; }
+.urui-progress-fill { display:block; top:0; left:0; background-color:#318877; }
+.urui-progress-title { display:block; margin:0; text-align:center; padding-top:3px; }

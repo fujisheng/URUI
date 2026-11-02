@@ -1,0 +1,5 @@
+{
+  "name": "URUI.Samples.Controls",
+  "rootNamespace": "URUI.Samples",
+  "references": ["URUI.Runtime"]
+}

@@ -300,6 +300,13 @@ namespace
     }
 
 } // namespace
+namespace urui_interaction
+{
+    extern int callback_depth;
+    extern bool pending_destroy, pending_unload;
+    void Reset();
+    void Install();
+}
 extern "C"
 {
     int urui_bridge_abi_version(void)
@@ -320,6 +327,7 @@ extern "C"
         render = std::make_unique<Renderer>();
         listener = std::make_unique<Listener>();
         Rml::SetRenderInterface(render.get());
+        urui_interaction::Install();
         if (!Rml::Initialise())
         {
             error_message = "RmlUi Initialise failed";
@@ -342,6 +350,7 @@ extern "C"
     }
     void urui_destroy(void)
     {
+        if (urui_interaction::callback_depth) { urui_interaction::pending_destroy = true; return; }
         urui_unload_document();
         if (context)
         {
@@ -366,6 +375,8 @@ extern "C"
     }
     void urui_unload_document(void)
     {
+        if (urui_interaction::callback_depth) { urui_interaction::pending_unload = true; return; }
+        urui_interaction::Reset();
         element_references.Clear();
         URUI_DEBUG_CODE(typed_probe = {};)
         if (render)
@@ -1500,3 +1511,5 @@ extern "C"
 #endif
 
 #include "elements.inl"
+#include "element_runtime.inl"
+#include "element_events.inl"

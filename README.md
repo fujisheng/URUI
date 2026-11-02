@@ -26,7 +26,7 @@ https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui
 
 也可通过 **Add package from disk** 选择 `Packages/com.fujisheng.urui/package.json`，或将完整包目录作为嵌入包。
 
-导入 **Hello URUI** 样例，将 `HelloUrui` 添加到空 GameObject 后进入 Play Mode；或使用 **Tools > URUI > Create Minimal UI Scene** 创建最小文档场景。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)包含完整的 RML 和业务脚本。
+导入 **Runtime Controls** 样例可查看设置、表单与千行虚拟列表；导入 **Hello URUI** 样例，将 `HelloUrui` 添加到空 GameObject 后进入 Play Mode；或使用 **Tools > URUI > Create Minimal UI Scene** 创建最小文档场景。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)包含完整的 RML 和业务脚本。
 
 ```csharp
 using URUI.Documents;
@@ -42,18 +42,20 @@ var subscription = panel.RegisterCallback<ClickEvent>(evt => Debug.Log(evt.Curre
 // 组件禁用时释放订阅：subscription.Dispose();
 ```
 
+![Runtime Controls](Packages/com.fujisheng.urui/Documentation~/Images/runtime-controls.png)
+
 ## 当前支持
 
-Unity 运行验证环境为 **6000.3.22f1 / macOS ARM64 Editor / Built-in / Metal**。包内包含同源 ABI3 插件：macOS ARM64/x86_64、Windows x64、Android ARM64/x86_64、iOS 设备 ARM64、WebGL wasm32；均已完成原生编译、架构与导出检查，iOS/WebGL 静态库通过完整链接检查。其他平台尚未做 Unity Player 或设备运行验证。
+Unity 运行验证环境为 **6000.3.22f1 / macOS ARM64 Editor 与 ARM64 IL2CPP Player / Built-in / Metal**。包内包含同源 ABI3 / 元素协议 v1 插件：macOS ARM64/x86_64、Windows x64、Android ARM64/x86_64、iOS 设备 ARM64、WebGL wasm32；均已完成原生编译、架构与导出检查，iOS/WebGL 静态库通过完整链接检查。其他平台尚未做 Unity Player 或设备运行验证。
 
-提供文档根、局部 Name/Class 查询、动态节点与层级、普通文本/属性、类名、行内 RCSS 样式、二维变换、图片映射和普通点击通知。一个活动文档，Unity 主线程访问；需 MainCamera、Input Manager (Old) 或 Both，图片开启 Read/Write，字体文件可读。
+提供类型化控件与自定义 Element 工厂、泛型查询、内容容器、强类型 RCSS 与布局/坐标读取、同步事件传播、指针捕获、焦点键盘、文本输入与固定行高虚拟列表。一个活动文档，Unity 主线程访问；需 MainCamera、Input Manager (Old) 或 Both，图片开启 Read/Write，字体文件可读。
 
-不包含数据绑定或 FUI 依赖；未来可通过可选适配器包装 Name/Parent、节点操作及订阅。当前不模拟完整 VisualElement/UQuery、浏览器或键盘/IME/表单体系。调试宏 URUI_DEBUG 默认关闭。详见[支持范围](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
+不包含数据绑定或 FUI 依赖；未来可通过可选适配器包装 Name/Parent、节点操作及订阅。当前不承诺其他 UI 系统的完整接口兼容；系统 IME、移动软键盘与设备验证边界见支持范围。调试宏 URUI_DEBUG 默认关闭。详见[支持范围](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
 
 ## 文档
 
 - [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)
-- [C# API](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [点击事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md) · [生命周期与资源](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md)
+- [C# API](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [输入与事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md) · [生命周期与资源](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md)
 - [代码组织](docs/CODE_ORGANIZATION_ZH.md) · [架构](docs/ARCHITECTURE_ZH.md) · [开发与原生构建](docs/DEVELOPMENT_ZH.md) · [代码约定](Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)
 
 包包含 RmlUi 6.3 与 FreeType 2.13.3 源码。项目许可见 [LICENSE.md](Packages/com.fujisheng.urui/LICENSE.md)，第三方版权与许可见 [Third Party Notices](Packages/com.fujisheng.urui/Third%20Party%20Notices.md)。

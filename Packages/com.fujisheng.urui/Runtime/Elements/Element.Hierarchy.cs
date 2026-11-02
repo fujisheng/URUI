@@ -4,7 +4,7 @@ using URUI.Internal.Interop;
 
 namespace URUI.Elements
 {
-    public sealed partial class Element
+    public partial class Element
     {
         /// <summary>真实 DOM 父级；文档根和脱离层级的根节点返回 null。</summary>
         public Element Parent
@@ -22,6 +22,7 @@ namespace URUI.Elements
             get
             {
                 RequireValid();
+                if (!ReferenceEquals(ContentContainer, this)) return ContentContainer.ChildCount;
                 int count = NativeMethods.urui_element_child_count(token);
                 if (count < 0)
                 {
@@ -37,6 +38,7 @@ namespace URUI.Elements
         {
             get
             {
+                if (!ReferenceEquals(ContentContainer, this)) return ContentContainer[index];
                 if (index < 0 || index >= ChildCount)
                 {
                     throw new ArgumentOutOfRangeException(nameof(index));
@@ -117,7 +119,7 @@ namespace URUI.Elements
         }
 
         /// <summary>将同一文档的节点移动到末尾；可挂载新建或脱离层级的完整子树。</summary>
-        public void Add(Element child) => MoveChild(child, -1);
+        public void Add(Element child) => ContentContainer.MoveChild(child, -1);
 
         /// <summary>移动到最终子节点索引；ChildCount 表示追加，普通校验失败不会移动节点。</summary>
         public void Insert(int index, Element child)
@@ -127,10 +129,10 @@ namespace URUI.Elements
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
 
-            MoveChild(child, index);
+            ContentContainer.MoveChild(child, index);
         }
 
-        void MoveChild(Element child, int index)
+        internal void MoveChild(Element child, int index)
         {
             RequireValid();
             if (child == null)
@@ -158,6 +160,7 @@ namespace URUI.Elements
             }
 
             RequireSuccess(NativeMethods.urui_element_insert(token, child.token, index), "移动子节点");
+            document.RefreshElements(false);
         }
 
         /// <summary>移出指定的直接子节点，节点和其回调仍可复用。</summary>
@@ -169,7 +172,7 @@ namespace URUI.Elements
                 throw new ArgumentNullException(nameof(child));
             }
 
-            if (!ReferenceEquals(child.Parent, this))
+            if (!ReferenceEquals(child.Parent, ContentContainer))
             {
                 throw new ArgumentException("节点不是当前元素的直接子节点。", nameof(child));
             }
@@ -182,13 +185,15 @@ namespace URUI.Elements
         {
             RequireValid();
             RequireSuccess(NativeMethods.urui_element_detach(token), "移出层级");
+            document.RefreshElements(false);
         }
 
         /// <summary>将所有直接子节点移出层级；它们仍由文档拥有，需要删除时显式 Destroy。</summary>
         public void Clear()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_clear(token), "清空层级");
+            RequireSuccess(NativeMethods.urui_element_clear(ContentContainer.token), "清空层级");
+            document.RefreshElements(false);
         }
 
         /// <summary>销毁此节点及其子树，使相关包装与订阅失效；不能销毁文档根。</summary>

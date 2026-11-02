@@ -134,7 +134,7 @@ namespace URUI.Internal.Hosting
 
                 var fontFile = Path.GetFileNameWithoutExtension(ResolveFontPath()).ToLowerInvariant();
                 var family = fontFile.Contains("roboto") ? "Roboto" : fontFile.Contains("noto") ? "Noto Sans" : fontFile.Contains("dejavu") ? "DejaVu Sans" : "Arial";
-                var rml = (string.IsNullOrEmpty(InitialMarkup) ? document.text : InitialMarkup).Replace("__URUI_FONT__", family);
+                var rml = ControlStyleSheet.Apply(string.IsNullOrEmpty(InitialMarkup) ? document.text : InitialMarkup).Replace("__URUI_FONT__", family);
                 if (NativeMethods.urui_load_document(rml) == 0)
                 {
                     throw new Exception(NativeMethods.LastError());

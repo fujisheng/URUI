@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `Runtime/Documents/` | `URUI.Documents` | Document 配置、加载、生命周期、节点缓存与点击分发 |
 | `Runtime/Elements/` | `URUI.Elements` | 元素身份、层级、查询、属性、样式及事件订阅 |
+| `Runtime/Controls/` | `URUI.Controls` | 常用控件、值协议、组合容器与虚拟列表 |
 | `Runtime/Events/` | `URUI.Events` | 传给业务回调的事件数据 |
 | `Runtime/Resources/Images/` | `URUI.Resources` | 调用者持有的图片映射 |
 

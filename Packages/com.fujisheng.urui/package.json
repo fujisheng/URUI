@@ -1,6 +1,6 @@
 {
   "name": "com.fujisheng.urui",
-  "version": "0.1.0-preview.1",
+  "version": "0.2.0-preview.1",
   "displayName": "URUI",
   "description": "Text-based RML/RCSS UI for AI-assisted Unity development, powered by RmlUi with a managed C# API.",
   "unity": "6000.3",
@@ -9,7 +9,8 @@
     "name": "fujisheng"
   },
   "dependencies": {
-    "com.unity.modules.jsonserialize": "1.0.0"
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0"
   },
   "samples": [
     {
@@ -21,6 +22,11 @@
       "displayName": "Element Playground",
       "description": "Explicit element creation, scoped queries, hierarchy, classes and click subscriptions; no data binding.",
       "path": "Samples~/Element Playground"
+    },
+    {
+      "displayName": "Runtime Controls",
+      "description": "Typed controls, form input, focus navigation and a reusable virtual list.",
+      "path": "Samples~/Runtime Controls"
     }
   ]
 }

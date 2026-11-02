@@ -1,98 +1,149 @@
 # C# API
 
-当前文档描述 URUI 的 Element API。Unity 运行验证范围为 6000.3.22f1 / macOS ARM64 Editor；平台产物与检查范围见[支持矩阵](LIMITATIONS_ZH.md)。没有数据绑定或 FUI 依赖。
+URUI 0.2 提供类型化控件、查询、样式与输入事件。所有节点操作限 Unity 主线程，一个活动 Document；RML/RCSS 的布局规则仍由 RmlUi 决定。平台证据见[支持范围](LIMITATIONS_ZH.md)。
 
-## 命名空间
+## 公开模块
 
-| 命名空间 | 公开类型 |
+| 命名空间 | 职责 |
 | --- | --- |
-| `URUI.Documents` | `Document` |
-| `URUI.Elements` | `Element`、`ElementStyle` |
-| `URUI.Events` | `ClickEvent` |
-| `URUI.Resources` | `ImageAsset` |
+| `URUI.Documents` | `Document`、`DocumentInput`：加载、节点工厂、输入与焦点 |
+| `URUI.Elements` | `Element`、`ElementContext`、`ElementHierarchy`、`ElementQuery<T>`、样式/长度/几何 |
+| `URUI.Controls` | 文本、图片、按钮、值控件、滚动/折叠/进度容器与虚拟列表 |
+| `URUI.Events` | 事件、传播阶段、指针阶段与输入修饰键 |
+| `URUI.Resources` | `ImageAsset` 图片映射 |
 
-以上类型均位于 `URUI.Runtime` 程序集。按使用的类型添加 using；内部命名空间不是业务扩展接口。
+内部渲染和互操作命名空间不是业务接口。无数据绑定、FUI、uGUI 或 Unity UIElements 运行依赖。剪贴板使用引擎内置 IMGUI 模块的 `GUIUtility.systemCopyBuffer`。
 
-## Document
+## Document 与身份
 
-| 接口 | 行为 |
-| --- | --- |
-| `Source`、`Images`、`FontPath` | 下次加载使用的资产配置；修改前先卸载，资产仍由调用者持有 |
-| `Load(TextAsset)`、`LoadMarkup(string)` | 同步解析，完成后触发 Loaded；布局与命中在后续更新中完成 |
-| `IsLoaded`、`Loaded`、`Unloaded` | 文档生命周期；生命周期通知中不能重入加载/卸载 |
-| `Root` | 当前 RML 根节点；未加载时为 null，根的 Parent 为 null |
-| `CreateElement(string tag = "div")` | 创建由文档拥有、尚未挂载的原生节点 |
-| `Q(name: null, className: null)` | 从根开始查首项，未加载时返回 null |
-| `Query(name: null, className: null)` | 从根开始查有序快照，未加载时返回空列表 |
-| `Unload()` | 释放活动文档、脱离的子树和渲染资源，取消自动恢复 |
-
-一个活动文档、Unity 主线程访问。组件启用会加载 Source；业务组件应订阅 Loaded，并处理已经加载的情况，不能假设不同组件的 OnEnable 顺序。
-
-## Element 身份与层级
-
-`Element` 表示原节点，不按名字重新定位。相同节点在查询、Parent、索引、脱离与重新挂载中复用同一个托管包装。
-
-| 接口 | 行为 |
-| --- | --- |
-| `Name` | 读写 RML id，可为空或重复；名字变化不改变身份 |
-| `TagName` | 只读标签名，文本节点为 `#text` |
-| `IsValid` | 原节点和所属文档世代仍有效；脱离层级仍为 true |
-| `IsAttached` | 当前连接到文档根；无效节点访问会抛异常 |
-| `Parent`、`ChildCount`、`this[index]` | 真实 DOM 父子关系，不含 RmlUi 内部非 DOM 装饰节点 |
-| `Children()` | 直接子节点的有序快照 |
-| `Add(child)` | 移到末尾，可挂载脱离的子树 |
-| `Insert(index, child)` | 移到最终索引，ChildCount 表示追加；同父级移动按移除后的顺序定位 |
-| `Remove(child)`、`RemoveFromHierarchy()` | 移出但不销毁，保留子树和订阅 |
-| `Clear()` | 移出所有直接子节点，文档继续拥有它们 |
-| `Destroy()` | 销毁节点及子树，对应包装和订阅失效 |
-
-引用预算耗尽时，查询或父级获取会明确报告失败，不会将真实父级误报为 null。不能移动/销毁文档根，不能跨文档挂载或形成循环。索引/循环等普通校验失败不会先移动节点。`Element` 不实现 IDisposable；文档统一管理节点，长期不再需要的子树应 Destroy。订阅的 IDisposable 仅用于解绑。
+`Load(TextAsset)` / `LoadMarkup(string)` 同步加载，`Loaded` 后可查询；布局由随后的更新完成。`Source`、`Images`、`FontPath` 在卸载后配置，原始资产仍由调用者持有。`Unload` 释放文档、全部脱离的节点和自有渲染资源；Loaded/Unloaded 中禁止重入加载。
 
 ```csharp
-var panel = document.Root.Q("panel");
-var label = document.CreateElement("span");
+using URUI.Controls;
+using URUI.Documents;
+using URUI.Elements;
+
+var root = document.Root;
+var save = root.Q<Button>("save");
+var label = document.Create<Label>();
 label.Name = "caption";
 label.Text = "Ready";
-label.AddToClassList("caption");
-panel.Add(label);
-label.RemoveFromHierarchy();
-panel.Insert(0, label);
-label.Destroy();
+root.Add(label);
 ```
+
+`Create<T>()` 通过文档工厂创建节点；`CreateElement(tag)` 保留按标签创建方式。RML、泛型查询、父子遍历始终复用同一 token 的同一个类型实例。节点不按名字重新定位，名字可变或重复。输入控件的 type 与内部控件标记在首次包装时确定，之后不能通过修改属性改变类型。
+
+`IsValid` 检查节点和文档世代；`IsAttached` 检查是否连接到文档根。移出仍有效，Destroy、结构替换、卸载后失效。节点不能跨文档移动，也不能形成循环或移动/销毁文档根。Element 不实现 IDisposable：文档拥有节点，订阅返回的 IDisposable 仅负责解绑。
+
+## 层级与组合控件
+
+| 接口 | 语义 |
+| --- | --- |
+| `Parent` | 真实 DOM 父级；组合控件的业务子节点父级可能是内部内容区 |
+| `ContentContainer` | 业务子节点容器，普通 Element 为自身 |
+| `ChildCount`、索引、`Children()` | 内容区的直接子节点；Children 返回有序快照 |
+| `Add`、`Insert`、`Remove`、`Clear` | 操作内容区；Clear 只移出节点，不销毁 |
+| `Hierarchy` | 显式访问真实 DOM 子节点，包含控件内部节点 |
+| `RemoveFromHierarchy` | 脱离父级并保留身份及订阅 |
+| `Destroy` | 销毁节点及其子树 |
+| `Contains`、`GetFirstAncestorOfType<T>` | 包含关系与祖先查询 |
+| `BringToFront`、`SendToBack` | 调整兄弟顺序 |
+
+`Text` 是纯文本；普通元素写 Text 会销毁原子节点，读结构化内容会抛异常。TextField、Foldout、ProgressBar 的 Text 分别更新值或标题，保留内部结构。`SetInnerMarkup` 需要已挂载节点，不提供事务性解析或自动绑定；不要使用它绕过组合控件的内部所有权。
 
 ## 查询
 
-`Q`/`Query` 搜索自身及 DOM 后代，以兄弟顺序做深度优先遍历。name 和单个 className 均为可选的精确过滤条件，提供两者时同时匹配。查询不会跳到文档外，也不解析 `#document` 等特殊名字。
+非泛型 `Q(name, className)` / `Query(name, className)` 保留自身包含、DOM 深度优先和快照语义。名字与单个类名精确匹配，不解析 CSS 选择器。
 
 ```csharp
-var panel = document.Root.Q("panel");
-var first = panel.Q(className: "item");
-foreach (var item in panel.Query(name: "item", className: "selected"))
-{
-    item.Style.SetOpacity(0.5f);
-}
+var first = root.Q<Button>("save");
+root.Query<Toggle>(className: "setting")
+    .Where(field => field.EnabledInHierarchy)
+    .ForEach(field => field.SetValueWithoutNotify(true));
 ```
 
-Query 返回 `IReadOnlyList<Element>` 快照，不是 UQueryBuilder、CSS 选择器或实时集合。名字可重复，Q 取首项，Query 取全部；RML 的样式与外部 ID 使用仍应遵守应用自己的命名约定。没有泛型控件查询、Button/Label 控件层或无分配查询保证。
+`Query<T>()` 支持 `Where`、`Children`、`First`、`Last`、`AtIndex`、`ToList`、`ForEach`，每次执行重新取当前快照。类型筛选包含派生类。没有无分配或完整 UQuery 兼容承诺。
 
-## 文本、属性、类名和样式
+## 状态、样式与坐标
 
-| 接口 | 行为 |
+`SetEnabled`、`EnabledSelf`、`EnabledInHierarchy` 控制交互状态及继承。禁用子树会取消其指针并释放子树内焦点；`Visible` 隐藏绘制但保留布局，`Style.Display = DisplayStyle.None` 移出布局。`Focusable`、`TabIndex`、`Focus/Blur` 与 `Document.FocusedElement` 管理焦点。正 TabIndex 先按值排序，默认 0 随后按 DOM 顺序；Shift+Tab 反向。文档根的内部焦点不作为业务焦点返回。
+
+```csharp
+panel.Style.Display = DisplayStyle.Flex;
+panel.Style.FlexDirection = FlexDirection.Column;
+panel.Style.Width = Length.Percent(50);
+panel.Style.PaddingLeft = 12;
+panel.Style.Opacity = .8f;
+panel.Style.BackgroundColor = UnityEngine.Color.blue;
+panel.Style.Width = Length.Unset;
+```
+
+Style 的长度保留 px/%/em/rem/auto；Unset 或 nullable 属性的 null 移除行内覆盖。还可使用既有 Set/SetPixels/SetWidth 等方法。`Style.Get` 只读真正行内值；`ResolvedStyle.Get` 读取级联与变量解析结果，返回值可能仍包含相对单位。强类型枚举只覆盖当前明确映射的 RCSS，复杂表达式使用原生字符串接口。
+
+`HasLayout` 表示节点至少参与一次已完成的布局。`Layout` 是相对布局父级的边框矩形，`ContentRect` 是本地内容区，`WorldBound` 是累积变换后的文档坐标包围框；`ResolvedStyle.Width/Height` 是实际边框像素尺寸。新节点未布局时读取会抛异常；样式更改后读的是最近完成的布局，使用 `GeometryChangedEvent` 观察变化。`LocalToWorld` / `WorldToLocal` 支持实际变换，奇异变换明确报告失败。
+
+## 控件与值
+
+| 控件 | 主要接口 |
 | --- | --- |
-| `Text` | 读写普通文本，保留空白、Unicode、实体样式字符和花括号；不解析 RML。读取结构化子元素会抛异常，写入会销毁旧子节点 |
-| `SetInnerMarkup(markup)` | 必须先挂载节点，再使用 RmlUi 解析器替换子结构，遵循其容错规则，没有事务性校验或自动绑定 |
-| `GetAttribute/HasAttribute/SetAttribute/RemoveAttribute` | 真实、区分大小写的属性；缺失返回 null，存在但空返回空字符串。小写 id 对应 Name |
-| `ClassListContains/AddToClassList/RemoveFromClassList/EnableInClassList` | 单个、区分大小写的类名，类名方法与 class 属性保持一致 |
-| `Style.Set(property, value)` | 写入原生 RCSS 行内属性 |
-| `Style.SetPixels`、`SetWidth/Height/Left/Top` | 有限数值的 px 写入 |
-| `Style.SetOpacity/SetBackgroundColor/SetDisplay` | 常用样式写入；display 的 true 明确写 block，恢复样式表规则应 Remove |
-| `Style.Remove(property)` | 移除行内覆盖，让类名/样式表重新决定值 |
-| `SetTransform(translation, scale)` | 有限二维位移和缩放，保持 RmlUi 的变换顺序与 origin 语义 |
+| `Label` / `Image` | Text、Label.For 关联输入控件；Image.Source 对应 ImageAsset.Source |
+| `Button` | Text、Clicked；指针、Enter 与 Space 激活 |
+| `Toggle` / `RadioButton` | bool Value；Enter/Space 完整按下释放；RadioButton 方向键在所属表单/文档组内导航并跳过禁用项 |
+| `Slider` / `IntegerSlider` | Value、LowValue、HighValue、Step、Direction、Inverted；独立指针捕获，方向/反向与键盘一致 |
+| `TextField` | Value/Text、Multiline；共享文本输入能力见下文 |
+| `IntegerField` / `FloatField` | 区域无关数值、Step 上下键步进；不完整/非有限输入保留上次提交值，提交或失焦恢复规范文本 |
+| `Dropdown` | Value、Choices、SelectedIndex；使用原生选项存储 |
+| `ScrollView` | ContentContainer、ScrollOffset、ScrollSize、ViewportRect、ScrollTo；焦点键盘与触摸滚动 |
+| `Foldout` | Text、bool Value、SetValueWithoutNotify |
+| `ProgressBar` | Text、Value、LowValue、HighValue；默认 0..100，RML 使用 min/max/value |
+| `ListView` | 固定行高虚拟化、行复用及单选，见下文 |
 
-不伪造已计算样式 getter，也不提供完整 UITK StyleLength/布局类型体系。
+BaseField<T> 统一 Value、SetValueWithoutNotify、RegisterValueChangedCallback、UnregisterValueChangedCallback；变化事件包含 PreviousValue/NewValue，相同值不重复通知。输入法预览不修改已提交值，提交后通知一次。
 
-## 事件与未来适配边界
+TextField 与数值字段继承 TextInputField<T>，共享 Placeholder、MaxLength、Selection、SelectRange、IsReadOnly、IsDelayed、CommitValue 和 Submitted。只读允许选择/复制与程序赋值，阻止键盘编辑、粘贴、直接文本及组合串输入。延后模式在 Enter、失焦或 CommitValue 时提交；切回即时模式会提交当前草稿。无效数字恢复上一有效值，不抛出业务输入异常。Submitted 只在单行 Enter 有效提交时触发；多行 TextField 保留 Enter 换行。
 
-`RegisterCallback<ClickEvent>` 返回订阅；`UnregisterCallback<ClickEvent>` 解绑同一委托。当前只有 ClickEvent，其他结构类型明确抛 NotSupportedException。实际目标、接收者及回调修改规则见[点击事件](EVENTS_ZH.md)。
+```csharp
+var quantity = document.Create<IntegerField>();
+quantity.IsDelayed = true;
+quantity.Step = 5;
+quantity.Submitted += value => UnityEngine.Debug.Log(value);
+var text = document.Create<TextField>();
+text.IsReadOnly = true;
+```
 
-未来 FUI 适配器可以包装 Element 的 Name/Parent、创建/移动/销毁、属性/样式与订阅令牌。当前不实现 FUI 接口、不添加依赖、不提供数据绑定、渲染器工厂或空的扩展框架。
+数值字段的 Text 返回当前编辑文字，Value 是已提交值；TextField 的 Text 保持与 Value 一致。IntegerField 的步进在 int 边界饱和。IntegerSlider 仍由原生 float 范围控件绘制，不能承诺覆盖完整 int32 精度范围。
+
+TextField 兼容原生 input text/password 与 textarea；C# 创建以 textarea 为载体，可切换 Multiline。RML input 本身只能单行；需要多行或动态切换时使用 textarea。选区索引采用 Unicode 字符而非 C# UTF-16 代码单元。字体仍需调用者提供相应字形。
+
+## ListView
+
+```csharp
+var list = document.Create<ListView>();
+list.Style.Height = 280;
+list.FixedItemHeight = 28;
+list.MakeItem = () => document.Create<Label>();
+list.BindItem = (row, index) => row.Text = items[index].ToString();
+list.UnbindItem = (row, index) => { /* 释放上次绑定的业务订阅 */ };
+list.ItemsSource = items;
+root.Add(list);
+```
+
+只实例化可见行及前后缓冲；ItemsSource 原地修改后调用 RefreshItems，更换工厂后调用 Rebuild。MakeItem 必须返回唯一、同文档、未挂载的有效节点。每次绑定保留对应的 UnbindItem 委托，在更换索引、行退役和文档卸载时清理；卸载后的解绑应只做业务清理和订阅释放，不再写旧节点。绑定回调中重载文档会在控件更新安全退出后执行。
+
+选择使用 SelectedIndex/SelectionChanged，支持 ScrollToItem。列表获得焦点后，方向键、Home/End、PageUp/PageDown 选择并显示对应项，Enter 通过 ItemChosen 确认。行内输入控件拥有焦点时保留其编辑按键。固定行高和单选是本版本的约束，不提供动态行高或 TreeView。
+
+## 控件基础样式
+
+包内 Controls.rcss.txt 在业务样式之前加载，提供基本尺寸、焦点/禁用/选中外观、滑块、下拉选项、滚动条和进度条。业务 RML 中的同等或更高优先级规则继续覆盖基础样式；通用 div 的布局仍由业务决定。Runtime Controls 样例只定义页面布局，使用这份包内控件样式。
+
+ScrollView.ViewportRect 是扣除内边距与滚动条后的实际内容视口；ContentRect 保持普通元素盒模型含义。计算可见行和滚动到子项时应使用 ViewportRect，不能把容器全部宽度当作滚动内容宽度。
+
+## 自定义控件
+
+派生 Element，构造函数接收 ElementContext，在 OnInitialize 构造内部节点、注册回调；需要组合内容时覆写 ContentContainer，通过 Hierarchy 放入内部结构。OnUpdate 在原生布局后执行；OnInvalidated 只做托管清理，不再访问原生节点。
+
+在加载自定义 RML 前注册：`document.RegisterElementType("counter", context => new Counter(context));`，之后可用 `document.Create<Counter>()`。构造工厂不通过反射创建，适用于 IL2CPP。
+
+## 输入与事件
+
+`Document.Input` 默认轮询旧 Input Manager；设置 UseUnityInput=false 后可由外部系统使用 SendPointer/SendKey/SendText 和组合串接口提供输入。发送指针时使用文档左上角坐标、稳定的非负编号；完整接口与传播规则见[事件说明](EVENTS_ZH.md)。

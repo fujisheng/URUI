@@ -38,6 +38,7 @@ namespace URUI.Documents
         void LoadContent(string markup, TextAsset requestedSource)
         {
             CheckThread();
+            if (Defer(() => LoadContent(markup, requestedSource))) return;
             if (string.IsNullOrWhiteSpace(markup))
             {
                 throw new ArgumentException("RML 内容不能为空。", nameof(markup));
@@ -97,6 +98,7 @@ namespace URUI.Documents
                 renderer.transform.SetParent(transform, false);
                 renderer.hideFlags = HideFlags.HideAndDontSave;
                 host = renderer.AddComponent<RenderHost>();
+                host.OwnerDocument = this;
                 host.document = ownedMarkup;
                 host.overrideFontPath = fontPath;
                 host.imageAssets = new ImageBinding[images.Length];
@@ -115,7 +117,8 @@ namespace URUI.Documents
                     throw new InvalidOperationException("URUI 文档加载失败，详情见 Unity Console。");
                 }
 
-                host.Clicked += DispatchClick;
+                StartEvents();
+                InitializeElements();
                 Loaded?.Invoke(this);
             }
             catch
@@ -137,6 +140,7 @@ namespace URUI.Documents
         public void Unload()
         {
             CheckThread();
+            if (Defer(Unload)) return;
             if (changingContent)
             {
                 throw new InvalidOperationException("不能在文档生命周期回调中重入加载或卸载。");

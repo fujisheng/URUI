@@ -10,6 +10,7 @@
 #else
 #define URUI_API __attribute__((visibility("default")))
 #endif
+#include "element_runtime.h"
 #ifdef __cplusplus
 extern "C"
 {

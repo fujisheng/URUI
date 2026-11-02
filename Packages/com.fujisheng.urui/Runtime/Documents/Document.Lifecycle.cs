@@ -50,6 +50,9 @@ namespace URUI.Documents
 
         void ReleaseContent()
         {
+            if (Defer(ReleaseContent)) return;
+            StopEvents();
+            input?.OnUnload();
             var wasLoaded = host && host.Ready;
             // 先推进世代并使引用失效，再释放宿主与通知业务，避免回调继续使用旧节点。
             generation++;
@@ -61,7 +64,6 @@ namespace URUI.Documents
             elements.Clear();
             if (host)
             {
-                host.Clicked -= DispatchClick;
                 host.ReleaseForDocument();
                 Destroy(host.gameObject);
                 host = null;

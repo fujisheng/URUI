@@ -7,9 +7,9 @@ namespace URUI.Elements
 {
     /// <summary>
     /// 文档拥有的 RmlUi 节点身份。名字变化、移动与脱离层级不改变身份；销毁或卸载后失效。
-    /// 所有访问限 Unity 主线程，不暴露原生指针，也不实现数据绑定或 UITK 控件协议。
+    /// 所有访问限 Unity 主线程，不暴露原生指针，节点类型和资源由文档工厂管理，不内置数据绑定。
     /// </summary>
-    public sealed partial class Element
+    public partial class Element
     {
         readonly Document document;
         readonly uint generation;
@@ -52,7 +52,7 @@ namespace URUI.Elements
 
         /// <summary>普通文本。读取结构化子节点会抛异常；写入会销毁原来的子节点。</summary>
         /// <remarks>文本不会被解释成标签、实体或数据表达式，保留 UTF-8 内容与空白。</remarks>
-        public string Text
+        public virtual string Text
         {
             get
             {
@@ -121,6 +121,10 @@ namespace URUI.Elements
         {
             Document.RequireName(name, nameof(name));
             RequireText(value, nameof(value));
+            if (((name == "type" && TagName == "input") || name == "data-urui-type") && GetAttribute(name) != value)
+            {
+                throw new InvalidOperationException("控件类型在创建时确定，不能通过属性更换。");
+            }
             Write(2, name, value);
         }
 
@@ -129,6 +133,10 @@ namespace URUI.Elements
         {
             RequireValid();
             Document.RequireName(name, nameof(name));
+            if (((name == "type" && TagName == "input") || name == "data-urui-type") && HasAttribute(name))
+            {
+                throw new InvalidOperationException("控件类型在创建时确定，不能移除类型属性。");
+            }
             RequireSuccess(NativeMethods.urui_element_erase(token, 0, name), "移除属性");
         }
 
@@ -227,6 +235,15 @@ namespace URUI.Elements
             }
 
             invalid = true;
+            UserData = null;
+            try
+            {
+                OnInvalidated();
+            }
+            catch (Exception error)
+            {
+                Debug.LogException(error);
+            }
             foreach (var subscription in subscriptions)
             {
                 subscription.Clear();
