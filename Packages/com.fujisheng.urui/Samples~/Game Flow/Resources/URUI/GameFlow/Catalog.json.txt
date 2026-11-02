@@ -1,0 +1,283 @@
+{
+  "player": {
+    "callSign": "Rhea",
+    "level": 12,
+    "credits": 4280,
+    "power": 1600,
+    "rank": 12
+  },
+  "inventory": [
+    {
+      "id": "field-item-1",
+      "name": "FIELD SCANNER",
+      "category": "Equipment",
+      "rarity": "Rare",
+      "power": 140,
+      "count": 1,
+      "description": "Calibrated for coastal relay surveys.",
+      "icon": "gameflow/item-01.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-2",
+      "name": "SURVEY CASE",
+      "category": "Equipment",
+      "rarity": "Epic",
+      "power": 220,
+      "count": 1,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-02.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-3",
+      "name": "ENERGY CELL",
+      "category": "Consumables",
+      "rarity": "Rare",
+      "power": 180,
+      "count": 1,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-03.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-4",
+      "name": "RELAY TRIPOD",
+      "category": "Equipment",
+      "rarity": "Uncommon",
+      "power": 90,
+      "count": 1,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-04.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-5",
+      "name": "FIELD CRATE",
+      "category": "Materials",
+      "rarity": "Common",
+      "power": 0,
+      "count": 7,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-05.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-6",
+      "name": "SCOUT PROBE",
+      "category": "Equipment",
+      "rarity": "Uncommon",
+      "power": 0,
+      "count": 8,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-06.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-7",
+      "name": "POWER CORE",
+      "category": "Consumables",
+      "rarity": "Common",
+      "power": 0,
+      "count": 9,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-07.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-8",
+      "name": "NAV MODULE",
+      "category": "Materials",
+      "rarity": "Rare",
+      "power": 0,
+      "count": 10,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-08.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-9",
+      "name": "FIELD PACK",
+      "category": "Equipment",
+      "rarity": "Common",
+      "power": 0,
+      "count": 11,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-09.png",
+      "equipped": false
+    },
+    {
+      "id": "field-item-10",
+      "name": "SURVEY TABLET",
+      "category": "Equipment",
+      "rarity": "Uncommon",
+      "power": 0,
+      "count": 12,
+      "description": "Original field equipment for the coastal relay team.",
+      "icon": "gameflow/item-10.png",
+      "equipped": false
+    }
+  ],
+  "rankings": [
+    {
+      "name": "Mira",
+      "score": 24860
+    },
+    {
+      "name": "Kade",
+      "score": 22940
+    },
+    {
+      "name": "Sable",
+      "score": 21560
+    },
+    {
+      "name": "Orin",
+      "score": 19880
+    },
+    {
+      "name": "Vela",
+      "score": 18740
+    },
+    {
+      "name": "Nox",
+      "score": 17950
+    },
+    {
+      "name": "Echo",
+      "score": 16962
+    },
+    {
+      "name": "Atlas",
+      "score": 16789
+    },
+    {
+      "name": "Skye",
+      "score": 16616
+    },
+    {
+      "name": "Astra",
+      "score": 16443
+    },
+    {
+      "name": "Sable",
+      "score": 16270
+    },
+    {
+      "name": "Juno",
+      "score": 16097
+    },
+    {
+      "name": "Kestrel",
+      "score": 15924
+    },
+    {
+      "name": "Iris",
+      "score": 15751
+    },
+    {
+      "name": "Haze",
+      "score": 15578
+    },
+    {
+      "name": "Corvus",
+      "score": 15405
+    },
+    {
+      "name": "Rook",
+      "score": 15232
+    },
+    {
+      "name": "Lumen",
+      "score": 15059
+    },
+    {
+      "name": "Aero",
+      "score": 14886
+    },
+    {
+      "name": "Nyx",
+      "score": 14713
+    },
+    {
+      "name": "Talon",
+      "score": 14540
+    },
+    {
+      "name": "Zenith",
+      "score": 14367
+    },
+    {
+      "name": "Mira",
+      "score": 14194
+    },
+    {
+      "name": "Cobalt",
+      "score": 14021
+    },
+    {
+      "name": "Helix",
+      "score": 13848
+    },
+    {
+      "name": "Rhea",
+      "score": 13675
+    },
+    {
+      "name": "Ember",
+      "score": 13502
+    },
+    {
+      "name": "Sora",
+      "score": 13329
+    },
+    {
+      "name": "Aster",
+      "score": 13156
+    },
+    {
+      "name": "Flux",
+      "score": 12983
+    },
+    {
+      "name": "Piper",
+      "score": 12810
+    },
+    {
+      "name": "Oriel",
+      "score": 12637
+    },
+    {
+      "name": "Delta",
+      "score": 12464
+    },
+    {
+      "name": "Faye",
+      "score": 12291
+    },
+    {
+      "name": "Aurora",
+      "score": 12118
+    },
+    {
+      "name": "Crux",
+      "score": 11945
+    },
+    {
+      "name": "Argo",
+      "score": 11772
+    },
+    {
+      "name": "Riven",
+      "score": 11599
+    },
+    {
+      "name": "Pavo",
+      "score": 11426
+    },
+    {
+      "name": "Thea",
+      "score": 11253
+    }
+  ]
+}

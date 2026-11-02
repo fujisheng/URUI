@@ -4,7 +4,15 @@ URUI 为 AI 辅助开发 Unity UI 提供可读的文本界面：使用 RML/RCSS 
 
 uGUI 的场景、Prefab、Inspector 与对象引用需要共同还原界面关系。RML/RCSS 将更多界面信息表达为文本，便于人和 AI 阅读、修改与审查。URUI 采用 Web 风格的工作方式，实际语法与能力以 RmlUi 为准，不提供完整浏览器或 JavaScript 运行环境。
 
-本文档对应仓库 `main` 分支。安装见[安装指南](Documentation~/INSTALL_ZH.md)。从 Package Manager 导入 **Hello URUI**，或运行 **Tools > URUI > Create Minimal UI Scene** 即可开始。
+本文档对应仓库 `main` 分支。安装见[安装指南](Documentation~/INSTALL_ZH.md)。默认推荐从 **Game Flow** 开始：在 Package Manager 选择 URUI，在 Samples 中导入 **Game Flow**，打开导入目录中的 `GameFlow.unity` 进入 Play Mode。也可使用 **Tools > URUI > Open Game Flow Sample** 导入并打开；安装包本身不会自动导入样例。
+
+权威源码在包内 `Samples~/Game Flow`。Unity 标准导入到 `Assets/Samples/URUI/<包版本>/Game Flow`，以实际返回路径为准；项目内 Assets 是导入副本。完整 RML/RCSS、图片、字体、脚本、场景和程序集配置随样例提供，不需要开发工作区或 Artifacts。见 [Game Flow 运行说明](Samples~/Game%20Flow/README.md)。
+
+Hello URUI、Element Playground、Runtime Controls 和 **Create Minimal UI Scene** 保留为次要学习入口。
+
+![Game Flow：Unity Editor 实际运行录制](Documentation~/Images/game-flow.gif)
+
+动图由 Unity Editor 的实际运行画面连续采帧生成，展示加载、登录、主界面、物品选择/装备、设置、排行榜和返回。登录及排行使用本地 mock；960×540、约25秒，无 Player 构建。
 
 业务代码引用程序集 `URUI.Runtime`，按职责使用 `URUI.Documents`、`URUI.Elements`、`URUI.Controls` 和 `URUI.Events`：通过 `Document` 加载文档，查询或创建有类型节点，再更新文本、结构、样式和事件订阅。
 
@@ -22,4 +30,4 @@ uGUI 的场景、Prefab、Inspector 与对象引用需要共同还原界面关�
 
 ## 类型化控件
 
-导入 **Runtime Controls** 样例，打开随附的 `RuntimeControls.unity` 场景进入 Play Mode，或将 `RuntimeControls` 添加到空 GameObject。样例使用包内控件基础样式，覆盖全部现有控件、只读/延后字段、键盘导航、滚动条和千行虚拟列表。API 通过 `Document.Create<T>()` / `Q<T>()`、值变化订阅、ContentContainer 与 Document.Input 连接业务，详见 Documentation~/API_ZH.md。
+主要样例 **Game Flow** 展示加载、模拟登录、主界面、背包、设置和排行榜的组合流程，使用独立 RML/RCSS 资源。需要逐项学习控件时，再导入 **Runtime Controls** 并打开 `RuntimeControls.unity`。API 通过 `Document.Create<T>()` / `Q<T>()`、值变化订阅、ContentContainer 与 Document.Input 连接业务，详见 Documentation~/API_ZH.md。

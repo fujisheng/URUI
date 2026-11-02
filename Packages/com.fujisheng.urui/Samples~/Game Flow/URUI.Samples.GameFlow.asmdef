@@ -1,0 +1,7 @@
+{
+  "name": "URUI.Samples.GameFlow",
+  "rootNamespace": "URUI.Samples.GameFlow",
+  "references": [
+    "URUI.Runtime"
+  ]
+}

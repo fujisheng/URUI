@@ -100,13 +100,25 @@ namespace URUI.Controls
         /// <summary>触摸超过拖动阈值后捕获指针，释放时取消误点击。</summary>
         protected override void OnEvent(EventBase evt)
         {
-            if (evt is PointerCancelEvent || evt is PointerCaptureOutEvent || evt is BlurEvent)
+            // A pointer down can transfer keyboard focus from a child to this viewport.
+            // That blur is not pointer cancellation and must not erase the new drag.
+            if (evt is PointerCancelEvent || evt is PointerCaptureOutEvent)
             {
                 dragging = -1;
                 return;
             }
             if (!EnabledInHierarchy || !HasLayout)
             {
+                return;
+            }
+
+            // Before the threshold there is no capture, so an up outside this
+            // viewport is delivered elsewhere. Do not retain that ended touch.
+            // A child's leave while still inside the viewport must keep the drag.
+            if (evt is PointerLeaveEvent leave && leave.PointerId == dragging
+                && !moved && !WorldBound.Contains(leave.Position))
+            {
+                dragging = -1;
                 return;
             }
 
@@ -145,10 +157,6 @@ namespace URUI.Controls
             else if (evt is PointerUpEvent up && up.PointerId == dragging)
             {
                 if (moved) { up.PreventDefault(); ReleasePointer(dragging); }
-                dragging = -1;
-            }
-            else if (evt is PointerCancelEvent || evt is PointerCaptureOutEvent)
-            {
                 dragging = -1;
             }
         }

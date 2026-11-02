@@ -1,0 +1,123 @@
+body { display:block; position:relative; width:100%; height:100%; overflow:hidden; margin:0; padding:0; font-family:LatoLatin; font-size:16px; color:#e8e9e4; background-color:#111922; }
+div,label,progress-bar,list-view,scroll-view { display:block; box-sizing:border-box; } label { margin:0; }
+.backdrop { position:absolute; left:0; top:0; width:100%; height:100%; z-index:0; }
+.operator-art { position:absolute; left:27.1%; top:9%; width:17.3%; height:86.6%; z-index:1; pointer-events:none; }
+.menu-shade { position:absolute; left:0; top:0; width:100%; height:100%; background-color:#0b14252b; z-index:1; }
+button { display:block; position:relative; top:0; min-height:36px; box-sizing:border-box; padding:8px 14px; border:1px #77838b; background-color:#1d2932d9; color:#e8e9e3; font-family:LatoLatin; font-size:14px; transition:background-color 0.12s linear-out,top 0.12s linear-out; }
+button:hover { background-color:#8bded32a; } button:active { top:2px; background-color:#78e0d747; } button:focus { border-color:#94e9e5; } button:disabled { opacity:.4; }
+.nine-frame { position:relative; background-color:transparent; } .frame-part { position:absolute; z-index:0; pointer-events:none; }
+.frame-00 { left:0; top:0; width:12px; height:12px; } .frame-01 { left:12px; right:12px; top:0; width:auto; height:12px; } .frame-02 { right:0; top:0; width:12px; height:12px; }
+.frame-10 { left:0; top:12px; bottom:12px; width:12px; height:auto; } .frame-11 { left:12px; right:12px; top:12px; bottom:12px; width:auto; height:auto; opacity:.78; } .frame-12 { right:0; top:12px; bottom:12px; width:12px; height:auto; }
+.frame-20 { left:0; bottom:0; width:12px; height:12px; } .frame-21 { left:12px; right:12px; bottom:0; width:auto; height:12px; } .frame-22 { right:0; bottom:0; width:12px; height:12px; }
+.art-action { position:relative; height:13.8vh; min-height:65px; padding:0; border-width:0; background-color:transparent; } .art-action:hover { background-color:#b8fff41a; } .art-action:active { background-color:#62aeb321; }
+.action-art { position:absolute; top:0; height:100%; z-index:0; pointer-events:none; } .action-left { left:0; width:12.3vh; } .action-middle { left:12.3vh; right:10.8vh; width:auto; } .action-right { right:0; width:10.8vh; }
+.action-caption { position:absolute; left:13%; top:26%; width:73%; text-align:center; color:#0d3039; font-size:3.8vh; letter-spacing:.5vw; z-index:1; pointer-events:none; } .action-chevron { position:absolute; right:7%; top:25%; font-size:4.3vh; color:#15393d; z-index:1; pointer-events:none; }
+.quiet { letter-spacing:2px; font-size:12px; background-color:#17262fc9; }
+textarea,select { display:block; box-sizing:border-box; height:36px; padding:8px 11px; background-color:#19232bda; border:1px #77838b; color:#e4e8e1; font-family:LatoLatin; font-size:14px; } textarea:focus,select:focus { border-color:#8be8e0; } select selectvalue { display:block; } select selectbox { background-color:#19242bf5; border:1px #85969b; } select option { padding:9px; } select option:hover { background-color:#344d55; }
+.hidden { display:none; } .muted { color:#bec6c7; line-height:1.5; } .eyebrow { color:#a6c1c5; font-size:11px; letter-spacing:3px; margin-bottom:16px; } .status { color:#bac8c9; font-size:13px; line-height:1.45; margin-top:16px; }
+#home-layer { position:relative; width:100%; height:100%; z-index:2; }
+.player-hud { position:absolute; left:2.7%; top:2.5%; width:24%; height:9%; display:flex; align-items:center; border-left:1px #9fb7b8; padding-left:8px; } .portrait { width:8.2vh; height:8.2vh; margin-right:2vw; } .player-copy { width:16vw; } .player-name { font-size:2.8vh; } .player-level { font-size:2.2vh; margin-top:3px; } .experience { width:14vw; height:4px; margin-top:5px; background-color:#67878a66; } .experience .urui-progress-fill { background-color:#77e7e3; } .experience .urui-progress-title { display:none; }
+.currency-hud { position:absolute; z-index:2; right:10.3%; top:3%; display:flex; align-items:center; } .currency { display:flex; align-items:center; height:5vh; min-height:31px; min-width:9vw; margin-left:12px; padding:5px 13px; } .currency .currency-icon,.currency label { position:relative; z-index:1; } .currency .currency-icon { width:3.2vh; height:3.7vh; margin-right:11px; } .currency .frame-part { margin:0; } .currency label { font-size:2.5vh; }
+.logout-button { position:absolute; right:2.4%; top:2.6%; width:45px; background-color:transparent; border-width:0; font-size:28px; }
+.cover-title { position:absolute; z-index:2; left:3.5%; top:42%; width:28%; } .game-title { font-size:3.7vw; letter-spacing:.65vw; color:#eeeee7; white-space:nowrap; } .cover-kicker { font-size:1.1vh; letter-spacing:.3vw; margin-top:6px; color:#e5e5df; }
+.game-dock { position:absolute; left:2.4%; bottom:4.6%; display:flex; width:30%; } .dock-button { width:25%; height:11.1vh; padding:2px 5px; border-width:0; border-right:1px #9aaba791; background-color:transparent; text-align:center; } .dock-button img { width:5.2vh; height:5.2vh; display:block; margin:0 auto 1.3vh; } .dock-button label { font-size:1.3vh; letter-spacing:.12vw; }
+.deploy-area { position:absolute; left:62%; bottom:5.2%; width:36%; } .location-line { display:flex; align-items:center; justify-content:space-between; padding:14px 22px; height:6.8vh; margin:0 8px 8px 30px; } .location-line label { position:relative; z-index:1; font-size:1.6vh; letter-spacing:.22vw; } .location-line .ready-marker { color:#7af0ec; font-size:1.4vh; } .deploy-button { width:100%; } .deploy-button .action-caption { left:14%; width:52%; font-size:4.2vh; } .field-index { position:absolute; right:15%; bottom:5.1vh; font-size:1.35vh; color:#22434a; letter-spacing:.15vw; pointer-events:none; }
+.modal-shade { position:absolute; left:0; top:0; width:100%; height:100%; z-index:6; background-color:#07121ec4; } .quest-window,.profile-window { position:absolute; left:30%; top:22%; width:40%; padding:30px; } .quest-window > label,.profile-window > label,.profile-heading,.profile-stats,.reward-line,.quest-window button,.profile-window button { position:relative; z-index:1; } .window-title { font-size:27px; letter-spacing:3px; margin-bottom:15px; } .close-button { position:absolute; right:15px; top:12px; width:36px; height:36px; padding:4px; min-height:36px; border-width:0; background-color:transparent; font-size:25px; } .quest-window .close-button,.profile-window .close-button { position:absolute; } .close-button:active { top:14px; } .reward-line { display:flex; align-items:center; margin:20px 0; } .reward-line img { width:60px; height:60px; margin-right:13px; } .reward-line label { font-size:11px; color:#b9ced0; } .quest-window .art-action,.profile-window .art-action { width:100%; height:78px; } .quest-window .action-left,.profile-window .action-left { width:70px; } .quest-window .action-middle,.profile-window .action-middle { left:70px; right:61px; } .quest-window .action-right,.profile-window .action-right { width:61px; } .quest-window .action-caption,.profile-window .action-caption { font-size:20px; letter-spacing:3px; } .profile-heading { display:flex; align-items:center; margin:22px 0; } .profile-heading img { width:90px; height:90px; margin-right:25px; } .profile-stats { display:flex; margin:20px 0; } .profile-stats div { width:50%; padding:10px; border-left:1px #7f9da3; } .profile-number { font-size:28px; color:#8be8e0; }
+.page-header { position:absolute; z-index:3; left:2.7%; top:2.2%; height:8%; display:flex; align-items:center; } .back-button { width:7.5vh; height:7.3vh; min-height:40px; padding:0; font-size:4.3vh; border-width:0; margin-right:2.1vw; } .page-index { font-size:2.4vh; color:#d2d5ce; padding-right:1.7vw; margin-right:1.8vw; border-right:1px #a1b3b1; } .page-title { font-size:4.3vh; letter-spacing:.7vw; }
+.inventory-panel { position:absolute; z-index:2; left:2.6%; top:11.4%; width:59.5%; height:83.6%; padding:0; } .inventory-tabs { position:absolute; left:1%; top:0; width:98%; height:8.3%; display:flex; z-index:1; } .inventory-tab { width:33.33%; height:100%; padding:0; border-width:0; background-color:transparent; font-size:1.8vh; letter-spacing:.28vw; } .inventory-tab.selected { border-bottom:3px #76f1ef; background-color:#82dddc16; }
+#item-scroll { position:absolute; left:1.6%; top:10.2%; width:95.8%; height:72.7%; padding:0; z-index:1; background-color:transparent; } #item-grid { display:flex; flex-wrap:wrap; width:100%; align-items:flex-start; }
+.item-slot,.empty-slot { position:relative; width:18.8%; height:18.8vh; margin:.6%; padding:0; border-width:0; background-color:transparent; } .slot-frame,.slot-selected-art { position:absolute; left:0; top:0; width:100%; height:100%; z-index:0; pointer-events:none; } .slot-selected-art { display:none; } .item-slot.selected .slot-selected-art { display:block; } .item-slot:hover { background-color:#9ce6dd22; } .item-icon { position:absolute; left:8%; top:9%; width:84%; height:80%; z-index:1; pointer-events:none; } .item-count { position:absolute; right:9%; bottom:9%; font-size:1.6vh; color:#ecefe6; z-index:2; pointer-events:none; } .equipped-mark { position:absolute; left:9%; top:7%; font-size:.95vh; letter-spacing:1px; color:#6ef5ef; z-index:2; pointer-events:none; } .slot-name { display:none; }
+.inventory-footer { position:absolute; left:2.2%; bottom:6.3%; width:95%; display:flex; align-items:center; z-index:1; border-top:1px #9aaba760; padding-top:15px; } #result-count { width:19%; font-size:2.2vh; letter-spacing:2px; } .inventory-footer select { width:28%; height:32px; font-size:11px; margin-right:2%; } .inventory-footer textarea { width:31%; height:32px; font-size:12px; margin-right:2%; } .inventory-footer button { width:18%; height:32px; min-height:32px; padding:4px; font-size:10px; } .bag-status { position:absolute; left:3%; bottom:1.8%; width:90%; color:#a9c0c3; font-size:1.4vh; z-index:1; }
+.detail-panel { position:absolute; z-index:2; left:63%; top:11.5%; width:34%; height:83.5%; padding:0 1.1%; border-left:1px #91b2bc6e; } #item-detail { height:100%; padding-top:10px; } #item-detail.reward .item-title { color:#7ff5eb; } .rarity-caption { font-size:1.7vh; color:#7df5f1; letter-spacing:.45vw; border-left:2px #73f6ef; padding-left:15px; } .item-pedestal { height:40vh; margin-top:1vh; } .item-pedestal img { width:100%; height:100%; display:block; } .item-title { font-size:3.7vh; letter-spacing:.35vw; margin:1.3vh 0; } .item-power { font-size:2.4vh; letter-spacing:.25vw; color:#83f7ef; margin-bottom:2.3vh; } .item-description { font-size:1.8vh; line-height:1.5; color:#c5d0cf; padding-top:15px; border-top:1px #97afb787; } .detail-stats { display:flex; justify-content:space-between; border-top:1px #849da56b; padding-top:14px; margin-top:2.4vh; } .detail-stats label { font-size:1.25vh; letter-spacing:1px; color:#c4d3d1; } #item-action { position:absolute; left:0; right:0; bottom:0; top:auto; width:auto; } #item-action:active { top:auto; bottom:-2px; } #item-action .action-caption { font-size:3.6vh; }
+.empty { position:absolute; left:12%; top:35%; width:75%; text-align:center; font-size:18px; color:#c6e6e0; z-index:3; } scrollbarvertical { width:5px; } scrollbarvertical slidertrack { background-color:#34475355; } scrollbarvertical sliderbar { width:3px; background-color:#84c0c4a8; } .compact .item-slot,.compact .empty-slot { height:16.8vh; } .cyan .action-art { opacity:.9; }
+/* Cover resources retain real controls during the first two-page checkpoint. */
+.loading-panel { position:absolute; z-index:3; left:5%; bottom:7%; width:90%; padding:20px; background-color:#14212caa; } #loading-progress { width:100%; height:5px; margin:16px 0; background-color:#8bafb344; } #loading-progress .urui-progress-fill { background-color:#7af7ef; transition:width .18s linear-out; } #loading-progress .urui-progress-title { display:none; } .loading-status { font-size:14px; color:#c9d8d3; } .loading-panel #retry { margin-top:14px; } .boot-heading { display:flex; justify-content:space-between; font-size:11px; letter-spacing:2px; }
+.login-window { position:absolute; z-index:3; left:62%; top:54%; width:35%; padding:24px; background-color:#14212cd9; } .account-strip { display:flex; justify-content:space-between; font-size:9px; color:#bdcfd0; margin-bottom:18px; } .account-fields { display:flex; width:100%; } .account-name { width:37%; margin-right:3%; } .account-code { width:27%; margin-right:3%; } .account-connection { width:30%; } .field-label { font-size:9px; margin-bottom:8px; } .account-fields textarea,.account-fields select { width:100%; font-size:12px; } .login-card .primary { width:100%; margin-top:20px; }
+@media (max-width:1000px) { .inventory-footer select { width:30%; } .inventory-footer textarea { width:28%; } .detail-stats { display:none; } }
+@media (max-width:760px) { .operator-art { left:23%; width:30%; } .player-hud { width:38%; } .player-copy { width:24vw; } .player-name { font-size:21px; } .player-level { font-size:13px; } .portrait { width:58px; height:58px; margin-right:12px; } .experience { width:130px; } .currency-hud { right:3%; } .currency { min-width:81px; } .currency label { font-size:15px; } .currency .currency-icon { width:24px; height:28px; } .logout-button { display:none; } .cover-title { top:39%; width:50%; } .game-title { font-size:27px; } .cover-kicker { font-size:8px; letter-spacing:2px; } .game-dock { width:48%; bottom:4%; } .dock-button label { font-size:8px; letter-spacing:0; } .dock-button img { width:40px; height:40px; } .deploy-area { left:58%; width:40%; bottom:4%; } .location-line { margin-left:0; padding:10px; } .location-line label { font-size:10px; letter-spacing:1px; } .location-line .ready-marker { display:none; } .art-action { height:85px; } .action-left { width:76px; } .action-middle { left:76px; right:67px; } .action-right { width:67px; } .action-caption,.deploy-button .action-caption { font-size:20px; letter-spacing:2px; } .deploy-button .action-caption { width:74%; left:13%; } .action-chevron { font-size:28px; } .field-index { display:none; } .page-title { font-size:26px; letter-spacing:5px; } .page-index { font-size:18px; } .back-button { height:48px; width:48px; font-size:30px; } .page-header { top:2%; } .page-header + .currency-hud { display:none; } .inventory-tab { font-size:11px; letter-spacing:1px; } .inventory-panel { top:11%; height:84%; width:58%; } .detail-panel { left:62%; width:36%; top:11%; height:84%; } .item-slot,.empty-slot { width:30%; margin:1.5%; height:15vh; } .compact .item-slot,.compact .empty-slot { height:13vh; } .item-count { font-size:12px; } .equipped-mark { font-size:6px; letter-spacing:0; } .inventory-footer { flex-wrap:wrap; bottom:7%; padding-top:9px; } #result-count { width:35%; font-size:16px; } .inventory-footer select { width:62%; margin:0; } .inventory-footer textarea { width:69%; margin-top:8px; } .inventory-footer button { width:28%; margin-top:8px; } #item-scroll { height:70%; } .bag-status { font-size:11px; } .item-title { font-size:22px; letter-spacing:2px; } .item-power { font-size:15px; letter-spacing:1px; } .item-description { font-size:13px; } .item-pedestal { height:31vh; } .rarity-caption { font-size:12px; letter-spacing:3px; } #item-action .action-caption { font-size:18px; letter-spacing:2px; } .quest-window,.profile-window { left:12%; width:76%; } .login-window { left:30%; width:65%; top:52%; } }
+/* Same-system extension screens, authored after their whole design masters. */
+.loading-panel { left:5%; bottom:5%; width:90%; padding:0; background-color:transparent; }
+.boot-heading { font-size:1.8vh; color:#e8e8df; letter-spacing:.3vw; }
+#loading-percent { color:#7ff7ef; font-size:2.5vh; letter-spacing:0; }
+#loading-progress { margin:18px 0 14px; height:5px; }
+.loading-panel #retry { position:absolute; right:0; top:65px; width:170px; height:46px; margin:0; z-index:1; }
+.demo-footnote { margin-top:35px; font-size:9px; letter-spacing:2px; color:#a5b9bb; }
+.login-window { left:62.5%; top:52.5%; width:35%; padding:23px 25px 12px; background-color:transparent; }
+.login-card { position:relative; z-index:1; }
+.access-title { font-size:3.3vh; letter-spacing:.5vw; margin-bottom:15px; }
+.access-row { display:flex; align-items:center; height:36px; margin-bottom:10px; }
+.access-row label { width:29%; color:#cfdbd7; font-size:1.4vh; letter-spacing:1px; }
+.access-row textarea,.access-row select { width:71%; height:34px; }
+.login-card .art-action { width:100%; margin-top:16px; height:10.7vh; }
+.login-card .action-left { width:9.5vh; } .login-card .action-middle { left:9.5vh; right:8.4vh; } .login-card .action-right { width:8.4vh; }
+.login-card .action-caption { font-size:3.2vh; letter-spacing:.4vw; }
+.login-card .status { font-size:1.25vh; margin-top:9px; min-height:34px; }
+.settings-window { position:absolute; z-index:2; left:2.6%; top:11.5%; width:94.3%; height:83.4%; }
+.settings-categories { position:absolute; left:0; top:5%; width:21%; height:76%; padding:0 8px; border-right:1px #8fa4ad8a; z-index:1; }
+.settings-tab { width:100%; height:10.5vh; margin:0; background-color:transparent; border-width:0; border-bottom:1px #6e8d985a; font-size:1.8vh; letter-spacing:.3vw; text-align:left; padding-left:20px; }
+.settings-tab.selected { border-left:3px #75f5ef; background-color:#76ecec20; color:#96f8ef; }
+.settings-rows { position:absolute; left:24%; top:6%; width:71%; height:70%; z-index:1; }
+.settings-group-title { font-size:1.7vh; letter-spacing:.4vw; padding-bottom:14px; margin-bottom:16px; border-bottom:1px #96aeb87a; }
+.setting-line { display:flex; align-items:center; min-height:12vh; border:1px #708c9668; padding:16px 19px; margin-bottom:10px; background-color:#1526324d; }
+.setting-copy { width:55%; font-size:1.7vh; letter-spacing:.18vw; }
+.setting-help { font-size:1.2vh; color:#a8c2c6; letter-spacing:0; margin-top:9px; }
+.setting-line select { width:45%; }
+#volume { width:36%; height:25px; }
+#volume slidertrack { height:5px; margin-top:10px; background-color:#5879827d; }
+#volume sliderbar { width:14px; height:25px; border:1px #b7eeeb; border-radius:10px; background-color:#7ef0ed; }
+.value-caption { width:9%; text-align:right; font-size:2vh; color:#bcece7; }
+.switch { position:relative; margin-left:auto; width:92px; height:38px; border:1px #96aeb5; border-radius:22px; background-color:#13232cd9; }
+.switch input { position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; z-index:3; }
+.switch label { position:absolute; right:10px; top:10px; color:#d9e5dc; font-size:12px; }
+.switch-thumb { position:absolute; left:4px; top:4px; width:28px; height:28px; background-color:#b9c5c1; border-radius:18px; }
+.switch.on { border-color:#7af7ef; background-color:#14505c88; }
+.switch.on .switch-thumb { left:58px; background-color:#79f8ef; }
+.switch.on label { left:15px; right:auto; color:#99fcf1; }
+.preview-button { margin-top:20px; width:200px; height:44px; }
+.settings-note { margin-top:30px; color:#bad0cf; line-height:1.6; }
+.settings-footer { position:absolute; right:2%; bottom:2%; width:47%; display:flex; align-items:center; z-index:1; }
+.settings-footer #settings-cancel { width:30%; height:52px; margin-right:2%; }
+.settings-footer .art-action { width:68%; height:11vh; }
+.settings-footer .action-left { width:9.8vh; } .settings-footer .action-middle { left:9.8vh; right:8.6vh; } .settings-footer .action-right { width:8.6vh; }
+.settings-footer .action-caption { font-size:3.2vh; }
+.settings-status { position:absolute; left:3%; bottom:5%; width:47%; z-index:1; font-size:1.4vh; color:#89dbd9; }
+.ranking-window { position:absolute; z-index:2; left:2.6%; top:11.5%; width:66%; height:83.4%; }
+.ranking-toolbar { position:absolute; left:2%; top:2%; width:96%; height:7%; display:flex; align-items:center; z-index:1; }
+.ranking-toolbar select { width:33%; height:100%; border-width:0; border-bottom:3px #7af3ec; font-size:1.7vh; letter-spacing:3px; }
+.ranking-toolbar #refresh { margin-left:auto; width:23%; height:100%; font-size:1.4vh; }
+.ranking-columns { position:absolute; left:4%; top:12%; width:90%; display:flex; font-size:1.3vh; letter-spacing:3px; z-index:1; }
+.ranking-columns label { width:22%; } .ranking-columns label + label { width:53%; } .ranking-columns label + label + label { width:25%; text-align:right; }
+#rankings { position:absolute; left:2%; top:17%; width:96%; bottom:23%; height:auto; background-color:transparent; z-index:1; }
+.ranking-row { position:relative; display:flex; align-items:center; height:100%; padding:6px 18px; background-color:#1728325c; border-bottom:1px #86a8b34f; }
+.ranking-row label,.rank-avatar { position:relative; z-index:1; }
+.ranking-position { width:12%; font-size:2.6vh; letter-spacing:3px; }
+.rank-avatar { width:7vh; height:6.5vh; margin-right:4%; }
+.ranking-pilot { flex-grow:1; font-size:2.2vh; }
+.ranking-score { width:30%; font-size:2.4vh; text-align:right; letter-spacing:2px; }
+.first-rank { border-left:3px #7bf5ef; }
+.personal-rank { position:absolute; left:2%; bottom:2.5%; width:96%; height:10%; display:flex; align-items:center; padding:10px 20px; border:1px #7de8e5; z-index:1; }
+.personal-rank label,.personal-rank .personal-portrait { position:relative; z-index:1; }
+.personal-rank .personal-portrait { width:6.5vh; height:6.5vh; margin:0 25px; }
+.my-rank-marker { width:20%; color:#7ef8ed; letter-spacing:3px; font-size:1.8vh; }
+#your-rank { font-size:2vh; letter-spacing:1px; }
+.rank-status { position:absolute; left:4%; bottom:15.5%; width:80%; font-size:1.3vh; letter-spacing:1px; z-index:1; }
+.rank-retry { position:absolute; right:3%; top:auto; bottom:14%; width:110px; z-index:2; }
+.rank-retry:active { top:auto; bottom:13.7%; }
+.rank-empty { position:absolute; top:42%; width:100%; text-align:center; color:#c1ddd9; z-index:2; }
+@media (max-width:760px) { .login-window { left:33%; top:53%; width:65%; padding:18px; } .access-title { font-size:24px; letter-spacing:4px; } .access-row label { font-size:10px; } .login-card .art-action { height:78px; } .login-card .action-caption { font-size:23px; } .login-card .status { font-size:10px; } .settings-categories { width:26%; padding:0 4px; } .settings-tab { padding-left:10px; font-size:12px; letter-spacing:1px; } .settings-rows { left:29%; width:67%; } .setting-copy { width:51%; font-size:12px; letter-spacing:1px; } .setting-help { font-size:10px; margin-right:8px; } .setting-line { padding:13px; } .setting-line select { width:49%; font-size:12px; } .settings-group-title { font-size:13px; } .value-caption { font-size:13px; } #volume { width:32%; } .settings-footer { width:59%; bottom:3%; } .settings-footer .art-action { height:76px; } .settings-footer .action-caption { font-size:22px; } .settings-status { width:90%; bottom:16%; font-size:11px; } .ranking-window { width:94.4%; } .ranking-position { font-size:18px; } .ranking-pilot { font-size:16px; } .ranking-score { font-size:16px; } .ranking-row { padding:6px 12px; } .rank-avatar { width:48px; height:48px; } .my-rank-marker { font-size:12px; } #your-rank { font-size:14px; } .rank-status { font-size:11px; } }
+/* Match the approved inventory's dark wells and centered category labels. */
+.menu-shade { background-color:#08111b55; }
+.inventory-panel { background-color:#14212d48; }
+.inventory-tab { padding-top:18px; font-size:2vh; }
+.item-slot { background-color:#15212aaf; }
+.item-slot,.empty-slot { height:19.8vh; }
+.compact .item-slot,.compact .empty-slot { height:17.6vh; }
+@media (max-width:760px) { .inventory-tab { padding-top:22px; font-size:11px; } .item-slot,.empty-slot { height:15vh; } .compact .item-slot,.compact .empty-slot { height:13vh; } }
+.framed-caption { position:relative; z-index:1; text-align:center; pointer-events:none; }
+.back-button .framed-caption { padding-top:4px; }
+.login-window { top:52.5%; bottom:3%; height:auto; padding:16px 20px 10px; }
+.login-card .eyebrow { margin-bottom:12px; font-size:10px; }
+.login-card .access-title { margin-bottom:10px; }
+.login-card .access-row { margin-bottom:8px; }
+.login-card .status { min-height:16px; font-size:10px; line-height:1.3; margin-top:6px; }
+@media (max-width:760px) { .login-window { top:51%; bottom:auto; height:auto; } }

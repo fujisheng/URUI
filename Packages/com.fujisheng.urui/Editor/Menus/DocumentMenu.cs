@@ -15,7 +15,7 @@ namespace URUI.Editor.Menus
         /// 创建包含文本资产、Document 与相机的最小场景；已有同名资产不会被覆盖。
         /// </summary>
         /// <remarks>先询问保存当前场景；Source 通过序列化赋值，避免在编辑状态加载文档。</remarks>
-        [MenuItem("Tools/URUI/Create Minimal UI Scene")]
+        [MenuItem("Tools/URUI/Create Minimal UI Scene", false, 100)]
         public static void CreateMinimalScene()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())

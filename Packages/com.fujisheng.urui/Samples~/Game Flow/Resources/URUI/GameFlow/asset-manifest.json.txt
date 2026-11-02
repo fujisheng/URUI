@@ -1,0 +1,1328 @@
+{
+  "name": "North / 07 approved design-derived independent production assets",
+  "designApproval": "User 2026-11-02 07:19:54: \u6211\u611f\u89c9\u53ef\u4ee5; continuation authorizes local slicing and implementation",
+  "referenceResolution": {
+    "width": 1672,
+    "height": 941
+  },
+  "runtimeWideResolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "sourceDevelopmentRecords": "Workspace FUI-CLI/GameFlowDesign (optional authoring evidence, never loaded at runtime)",
+  "workflowReference": "fujisheng/fui-cli@0e09b7fbf5ba814bf53175ea550f7af7775cdf75 / Skills/fui-cli/references/asset-generation-workflow.md",
+  "adaptation": "URUI RML/RCSS and public Texture2D mapping. Actual visual bboxes/crops/masks/edit targets/imageGen/alpha/scale records retained; public Editor layout snapshots and composed screen comparisons replace FUI Web-to-UGUI handoff. No visual-ui.json or UGUI-prefab pass is claimed. Per-box bounds are executor-reviewed under approved design, not separately user-click-confirmed.",
+  "noWholeScreenUITexture": true,
+  "assets": [
+    {
+      "id": "action-left",
+      "runtimeFile": "Images/action-left.png",
+      "runtimeAlias": "gameflow/action-left.png",
+      "size": [
+        118,
+        132
+      ],
+      "mode": "RGBA",
+      "sha256": "49549692ef3bf2b50f1ae4881ba12b237aa4f6c305031ef4fe3a5f60eada7932",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 1054,
+        "y": 769,
+        "width": 574,
+        "height": 132
+      },
+      "sourceCrop": "sources/action.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic three-slice; fixed end hardware",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        2,
+        5,
+        118,
+        114
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "action-middle",
+      "runtimeFile": "Images/action-middle.png",
+      "runtimeAlias": "gameflow/action-middle.png",
+      "size": [
+        352,
+        132
+      ],
+      "mode": "RGBA",
+      "sha256": "6fce64a5fb3d20cb4775546044b016d4d66f21513e8658200129a96e3b8ed287",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 1054,
+        "y": 769,
+        "width": 574,
+        "height": 132
+      },
+      "sourceCrop": "sources/action.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic three-slice; fixed end hardware",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        5,
+        352,
+        127
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "action-right",
+      "runtimeFile": "Images/action-right.png",
+      "runtimeAlias": "gameflow/action-right.png",
+      "size": [
+        104,
+        132
+      ],
+      "mode": "RGBA",
+      "sha256": "f3a4a12073ee25d8b00b7d01426a052a621e0d9a8ec3640150811ea522969f71",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 1054,
+        "y": 769,
+        "width": 574,
+        "height": 132
+      },
+      "sourceCrop": "sources/action.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic three-slice; fixed end hardware",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        5,
+        102,
+        127
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "avatar",
+      "runtimeFile": "Images/avatar.png",
+      "runtimeAlias": "gameflow/avatar.png",
+      "size": [
+        80,
+        76
+      ],
+      "mode": "RGB",
+      "sha256": "945c27235ab9c31c300991c99f50387f93c0886a4ebeef81460bc6710618aecc",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 58,
+        "y": 23,
+        "width": 80,
+        "height": 76
+      },
+      "sourceCrop": "sources/avatar.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; no ordinary runtime text",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "currency-core",
+      "runtimeFile": "Images/currency-core.png",
+      "runtimeAlias": "gameflow/currency-core.png",
+      "size": [
+        40,
+        51
+      ],
+      "mode": "RGBA",
+      "sha256": "93131deeafd92f0cd1361deebf9daf855d789febac88712ff3f10d387a404b79",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 1375,
+        "y": 24,
+        "width": 40,
+        "height": 51
+      },
+      "sourceCrop": "sources/currency-core.png",
+      "strategy": "source_crop_alpha_png",
+      "processing": "source_crop_alpha_png; EXPLICIT border-connected dark matte extraction; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "chroma",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        24,
+        8,
+        40,
+        46
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "currency-credit",
+      "runtimeFile": "Images/currency-credit.png",
+      "runtimeAlias": "gameflow/currency-credit.png",
+      "size": [
+        41,
+        41
+      ],
+      "mode": "RGBA",
+      "sha256": "9027426d0273db6b2f76c624cfd27e0ed2ee8c0803749cded5d1e89a297139a8",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 1217,
+        "y": 29,
+        "width": 41,
+        "height": 41
+      },
+      "sourceCrop": "sources/currency-credit.png",
+      "strategy": "source_crop_alpha_png",
+      "processing": "source_crop_alpha_png; EXPLICIT border-connected dark matte extraction; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "chroma",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        5,
+        6,
+        32,
+        37
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "dock-inventory",
+      "runtimeFile": "Images/dock-inventory.png",
+      "runtimeAlias": "gameflow/dock-inventory.png",
+      "size": [
+        68,
+        68
+      ],
+      "mode": "RGBA",
+      "sha256": "fcdaac04ea559e5fc30958ad826f78e57c9380c63286f174bf16425a363a1caf",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 76,
+        "y": 791,
+        "width": 452,
+        "height": 98
+      },
+      "sourceCrop": "sources/dock-icons.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        5,
+        2,
+        63,
+        66
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "dock-profile",
+      "runtimeFile": "Images/dock-profile.png",
+      "runtimeAlias": "gameflow/dock-profile.png",
+      "size": [
+        68,
+        68
+      ],
+      "mode": "RGBA",
+      "sha256": "0f0274f1a788606105d4a31d2a76f333bb8689a986d68ca6a2e96712b5dfeb76",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 76,
+        "y": 791,
+        "width": 452,
+        "height": 98
+      },
+      "sourceCrop": "sources/dock-icons.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        2,
+        2,
+        65,
+        66
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "dock-rankings",
+      "runtimeFile": "Images/dock-rankings.png",
+      "runtimeAlias": "gameflow/dock-rankings.png",
+      "size": [
+        68,
+        68
+      ],
+      "mode": "RGBA",
+      "sha256": "3fef10d30527c4e835e38352fc03dee2a64822de99c5961475b17f87cee03484",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 76,
+        "y": 791,
+        "width": 452,
+        "height": 98
+      },
+      "sourceCrop": "sources/dock-icons.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        5,
+        2,
+        62,
+        66
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "dock-settings",
+      "runtimeFile": "Images/dock-settings.png",
+      "runtimeAlias": "gameflow/dock-settings.png",
+      "size": [
+        68,
+        68
+      ],
+      "mode": "RGBA",
+      "sha256": "38450a4853c04812d4834be5e95a87df7356236ddf08d83ed86bb25fdc8d1218",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 76,
+        "y": 791,
+        "width": 452,
+        "height": 98
+      },
+      "sourceCrop": "sources/dock-icons.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        2,
+        2,
+        66,
+        66
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-01",
+      "runtimeFile": "Images/item-01.png",
+      "runtimeAlias": "gameflow/item-01.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "99674e2d5b1c66a2a8364db617cbd1744da1974e756d1500ce12582a59f282a1",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 81,
+        "y": 221,
+        "width": 157,
+        "height": 139
+      },
+      "sourceCrop": "sources/item-01.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        14,
+        15,
+        498,
+        497
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-02",
+      "runtimeFile": "Images/item-02.png",
+      "runtimeAlias": "gameflow/item-02.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "33cc29ea8e20b53c007753068d73f1ea713ddfa5aecacc75d09cdf855375f1d9",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 277,
+        "y": 225,
+        "width": 143,
+        "height": 135
+      },
+      "sourceCrop": "sources/item-02.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        14,
+        62,
+        498,
+        450
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-03",
+      "runtimeFile": "Images/item-03.png",
+      "runtimeAlias": "gameflow/item-03.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "3688485224daaffcda69ba52ce954964310866701d5b97a451398eb5fadd507e",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 493,
+        "y": 220,
+        "width": 82,
+        "height": 137
+      },
+      "sourceCrop": "sources/item-03.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        143,
+        14,
+        368,
+        498
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-04",
+      "runtimeFile": "Images/item-04.png",
+      "runtimeAlias": "gameflow/item-04.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "6220d14e459a42775d0bf60f9cb83b75ff1965aaeeb71827da5d86ab6b20dd13",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 654,
+        "y": 216,
+        "width": 123,
+        "height": 145
+      },
+      "sourceCrop": "sources/item-04.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        70,
+        14,
+        442,
+        498
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-05",
+      "runtimeFile": "Images/item-05.png",
+      "runtimeAlias": "gameflow/item-05.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "096a6c29715329444092e0749f9a3084091d2c8eeb0a6447912f86f03ae897cf",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 839,
+        "y": 226,
+        "width": 144,
+        "height": 132
+      },
+      "sourceCrop": "sources/item-05.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        14,
+        41,
+        498,
+        470
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-06",
+      "runtimeFile": "Images/item-06.png",
+      "runtimeAlias": "gameflow/item-06.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "612a4eccf9b185aff6226f14410c1cc39b4b225d591125964f8e6bd3195243fe",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 90,
+        "y": 410,
+        "width": 138,
+        "height": 137
+      },
+      "sourceCrop": "sources/item-06.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        39,
+        14,
+        473,
+        498
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-07",
+      "runtimeFile": "Images/item-07.png",
+      "runtimeAlias": "gameflow/item-07.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "63b6783d7387a9b89008b576f44b7319118e53a20f1584ccf608493f449c90a9",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 274,
+        "y": 409,
+        "width": 143,
+        "height": 133
+      },
+      "sourceCrop": "sources/item-07.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        14,
+        32,
+        498,
+        479
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-08",
+      "runtimeFile": "Images/item-08.png",
+      "runtimeAlias": "gameflow/item-08.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "0039ad05574911844dda3f5f5ef4fcc44958c0552705128e700fd8a64043aa75",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 482,
+        "y": 408,
+        "width": 121,
+        "height": 143
+      },
+      "sourceCrop": "sources/item-08.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        31,
+        14,
+        480,
+        498
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-09",
+      "runtimeFile": "Images/item-09.png",
+      "runtimeAlias": "gameflow/item-09.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "ffeeb8303f47dda065188337af32da44d75b4f9002be49ff285012dcf638081e",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 663,
+        "y": 401,
+        "width": 130,
+        "height": 149
+      },
+      "sourceCrop": "sources/item-09.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        37,
+        14,
+        475,
+        498
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "item-10",
+      "runtimeFile": "Images/item-10.png",
+      "runtimeAlias": "gameflow/item-10.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "a8c58256d387bfae6d9acf705a02088780ad1da09e47b9b1af60fde0c0e7da87",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 840,
+        "y": 408,
+        "width": 140,
+        "height": 142
+      },
+      "sourceCrop": "sources/item-10.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        14,
+        22,
+        498,
+        490
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "operator",
+      "runtimeFile": "Images/operator.png",
+      "runtimeAlias": "gameflow/operator.png",
+      "size": [
+        360,
+        978
+      ],
+      "mode": "RGBA",
+      "sha256": "c5e22aeb7e73c0fe6ed3c4c0fb8271965498a3477a27449290c1c1ff549a527b",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 440,
+        "y": 85,
+        "width": 300,
+        "height": 815
+      },
+      "sourceCrop": "sources/operator.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        24,
+        4,
+        335,
+        974
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "panel-00",
+      "runtimeFile": "Images/panel-00.png",
+      "runtimeAlias": "gameflow/panel-00.png",
+      "size": [
+        22,
+        22
+      ],
+      "mode": "RGBA",
+      "sha256": "c0086660d7d72fe6977fcfdad612643700cf2ea414e5a5e4e2a4a9a068e42fbe",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        2,
+        10,
+        22,
+        22
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "panel-01",
+      "runtimeFile": "Images/panel-01.png",
+      "runtimeAlias": "gameflow/panel-01.png",
+      "size": [
+        950,
+        22
+      ],
+      "mode": "RGBA",
+      "sha256": "b5889f4cd00037e9e9a6f3c229bfe5d2c8a72b511d133e953bae2ea4c23888b2",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        10,
+        950,
+        22
+      ],
+      "alphaRange": [
+        0,
+        254
+      ]
+    },
+    {
+      "id": "panel-02",
+      "runtimeFile": "Images/panel-02.png",
+      "runtimeAlias": "gameflow/panel-02.png",
+      "size": [
+        22,
+        22
+      ],
+      "mode": "RGBA",
+      "sha256": "60bb4e15fc789a799af2a54197bad98f07e3d4c2e5fb6cc92ad696f4563eda4e",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        10,
+        19,
+        22
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "panel-10",
+      "runtimeFile": "Images/panel-10.png",
+      "runtimeAlias": "gameflow/panel-10.png",
+      "size": [
+        22,
+        741
+      ],
+      "mode": "RGBA",
+      "sha256": "7e7a5d46310bbe19b9c0b05ea461a01a4cfcddb3ea1b4911c9599b0b44789e65",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        2,
+        0,
+        22,
+        741
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "panel-11",
+      "runtimeFile": "Images/panel-11.png",
+      "runtimeAlias": "gameflow/panel-11.png",
+      "size": [
+        950,
+        741
+      ],
+      "mode": "RGBA",
+      "sha256": "834e3a576749ef62dafa127f746836d0d7eaa7054851471ac7b72a96eb1a618c",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        0,
+        950,
+        741
+      ],
+      "alphaRange": [
+        251,
+        254
+      ]
+    },
+    {
+      "id": "panel-12",
+      "runtimeFile": "Images/panel-12.png",
+      "runtimeAlias": "gameflow/panel-12.png",
+      "size": [
+        22,
+        741
+      ],
+      "mode": "RGBA",
+      "sha256": "1341761ff72160de4d44c97c4cfef397abe81a014f032f9d0653702e4a4f5114",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        0,
+        20,
+        741
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "panel-20",
+      "runtimeFile": "Images/panel-20.png",
+      "runtimeAlias": "gameflow/panel-20.png",
+      "size": [
+        22,
+        22
+      ],
+      "mode": "RGBA",
+      "sha256": "296c896a43da2fe006c6252709fc111a96a4b756e813030da5702c922e8c7f56",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        3,
+        0,
+        22,
+        11
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "panel-21",
+      "runtimeFile": "Images/panel-21.png",
+      "runtimeAlias": "gameflow/panel-21.png",
+      "size": [
+        950,
+        22
+      ],
+      "mode": "RGBA",
+      "sha256": "dcf0de57ff5c8d9d9cac68ea05fd9bec69c63842ac97a0c4910c45483b52ec40",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        0,
+        950,
+        11
+      ],
+      "alphaRange": [
+        0,
+        253
+      ]
+    },
+    {
+      "id": "panel-22",
+      "runtimeFile": "Images/panel-22.png",
+      "runtimeAlias": "gameflow/panel-22.png",
+      "size": [
+        22,
+        22
+      ],
+      "mode": "RGBA",
+      "sha256": "4952d537c1b8a12b029a2ef60428f6b7c9d7af5e0066ab952373b17237f50d4f",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "deterministic nine-slice; preserve corner pixels",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        0,
+        0,
+        18,
+        11
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "rank-avatar-1",
+      "runtimeFile": "Images/rank-avatar-1.png",
+      "runtimeAlias": "gameflow/rank-avatar-1.png",
+      "size": [
+        80,
+        72
+      ],
+      "mode": "RGB",
+      "sha256": "024eddaaec3652dcb473805479b9b78669b4da247273d824523b6862776b0ba7",
+      "sourceMaster": "Leaderboard.design-master",
+      "sourceVisualBBox": {
+        "x": 200,
+        "y": 234,
+        "width": 80,
+        "height": 72
+      },
+      "sourceCrop": "sources/rank-avatar-1.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; portrait only, no runtime text",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "rank-avatar-2",
+      "runtimeFile": "Images/rank-avatar-2.png",
+      "runtimeAlias": "gameflow/rank-avatar-2.png",
+      "size": [
+        80,
+        72
+      ],
+      "mode": "RGB",
+      "sha256": "35e62f321eb9118a41f852825665c53cf5a2babfd9823240f4837671591d92f8",
+      "sourceMaster": "Leaderboard.design-master",
+      "sourceVisualBBox": {
+        "x": 200,
+        "y": 315,
+        "width": 80,
+        "height": 72
+      },
+      "sourceCrop": "sources/rank-avatar-2.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; portrait only, no runtime text",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "rank-avatar-3",
+      "runtimeFile": "Images/rank-avatar-3.png",
+      "runtimeAlias": "gameflow/rank-avatar-3.png",
+      "size": [
+        80,
+        72
+      ],
+      "mode": "RGB",
+      "sha256": "58165cbb4ab6a71bafb7df57b323f4f01e32badaf019f928bb59fa3b3bf3df70",
+      "sourceMaster": "Leaderboard.design-master",
+      "sourceVisualBBox": {
+        "x": 200,
+        "y": 397,
+        "width": 80,
+        "height": 72
+      },
+      "sourceCrop": "sources/rank-avatar-3.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; portrait only, no runtime text",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "rank-avatar-4",
+      "runtimeFile": "Images/rank-avatar-4.png",
+      "runtimeAlias": "gameflow/rank-avatar-4.png",
+      "size": [
+        80,
+        72
+      ],
+      "mode": "RGB",
+      "sha256": "5696d5e6e0ebebe712a5498230544d6f5f21cc7b23f2ae786bc17007c113fd95",
+      "sourceMaster": "Leaderboard.design-master",
+      "sourceVisualBBox": {
+        "x": 200,
+        "y": 479,
+        "width": 80,
+        "height": 72
+      },
+      "sourceCrop": "sources/rank-avatar-4.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; portrait only, no runtime text",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "rank-avatar-5",
+      "runtimeFile": "Images/rank-avatar-5.png",
+      "runtimeAlias": "gameflow/rank-avatar-5.png",
+      "size": [
+        80,
+        72
+      ],
+      "mode": "RGB",
+      "sha256": "0c3ad9790c0df0a2b6c9eac7b933fd14fc10cf02fb36f9cfcdaa2e5f0fdb5945",
+      "sourceMaster": "Leaderboard.design-master",
+      "sourceVisualBBox": {
+        "x": 200,
+        "y": 560,
+        "width": 80,
+        "height": 72
+      },
+      "sourceCrop": "sources/rank-avatar-5.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; portrait only, no runtime text",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "rank-avatar-6",
+      "runtimeFile": "Images/rank-avatar-6.png",
+      "runtimeAlias": "gameflow/rank-avatar-6.png",
+      "size": [
+        80,
+        72
+      ],
+      "mode": "RGB",
+      "sha256": "a45d299f73cc6d8e6eda1b6d80460303c2197689805e9f4ab14498090eb91a06",
+      "sourceMaster": "Leaderboard.design-master",
+      "sourceVisualBBox": {
+        "x": 200,
+        "y": 642,
+        "width": 80,
+        "height": 72
+      },
+      "sourceCrop": "sources/rank-avatar-6.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; portrait only, no runtime text",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "slot-empty",
+      "runtimeFile": "Images/slot-empty.png",
+      "runtimeAlias": "gameflow/slot-empty.png",
+      "size": [
+        172,
+        177
+      ],
+      "mode": "RGB",
+      "sha256": "4a1f67173d7ee4cb00fb7e9ce1e717cb4adc8fc9cdb40f8336c464165eca9a6d",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 448,
+        "y": 578,
+        "width": 172,
+        "height": 177
+      },
+      "sourceCrop": "sources/slot.png",
+      "strategy": "source_crop_exact_png",
+      "processing": "source_crop_exact_png; static empty-cell cross only",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    },
+    {
+      "id": "slot-normal",
+      "runtimeFile": "Images/slot-normal.png",
+      "runtimeAlias": "gameflow/slot-normal.png",
+      "size": [
+        172,
+        177
+      ],
+      "mode": "RGBA",
+      "sha256": "99057fedea7dc4556066cfae1a659bf39356acd32571eb010fc16f01342ee511",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 44,
+        "y": 108,
+        "width": 994,
+        "height": 785
+      },
+      "sourceCrop": "sources/panel.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "nine-slice reuse for an empty occupied-slot well; no code-painted art",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        2,
+        10,
+        170,
+        167
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "slot-selected",
+      "runtimeFile": "Images/slot-selected.png",
+      "runtimeAlias": "gameflow/slot-selected.png",
+      "size": [
+        188,
+        186
+      ],
+      "mode": "RGBA",
+      "sha256": "5bad4e08b06432aa775d8de0a52f92f9b50869ae24bb981a3ba859e6a305cdae",
+      "sourceMaster": "Inventory.design-master",
+      "sourceVisualBBox": {
+        "x": 61,
+        "y": 192,
+        "width": 188,
+        "height": 186
+      },
+      "sourceCrop": "sources/slot-selected.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
+      "transparent": true,
+      "alphaSourceKind": "native",
+      "isReadable": true,
+      "mipmaps": false,
+      "alphaBBox": [
+        2,
+        3,
+        186,
+        183
+      ],
+      "alphaRange": [
+        0,
+        255
+      ]
+    },
+    {
+      "id": "world",
+      "runtimeFile": "Images/world.png",
+      "runtimeAlias": "gameflow/background.png",
+      "size": [
+        1672,
+        941
+      ],
+      "mode": "RGB",
+      "sha256": "864f069df69a037be519a47e1ac2fe5a822efb46698dac1179398a25c66e4bd8",
+      "sourceMaster": "Home.design-master",
+      "sourceVisualBBox": {
+        "x": 0,
+        "y": 0,
+        "width": 1672,
+        "height": 941
+      },
+      "sourceCrop": "sources/world.png",
+      "strategy": "direct_repaired_asset",
+      "processing": "unchanged decoded pixels; pure clean world",
+      "transparent": false,
+      "alphaSourceKind": "opaque",
+      "isReadable": true,
+      "mipmaps": false
+    }
+  ]
+}

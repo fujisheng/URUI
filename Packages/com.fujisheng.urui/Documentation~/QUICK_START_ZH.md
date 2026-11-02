@@ -2,7 +2,15 @@
 
 按[安装指南](INSTALL_ZH.md)准备 Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal 工程、MainCamera 和 Input Manager (Old) 或 Both。
 
-## 文档资产
+## 默认示例：Game Flow
+
+1. 在 Package Manager 选择已安装的 URUI，在 Samples 中点击 **Game Flow** 的 Import。
+2. 打开 Unity 实际导入目录中的 `GameFlow.unity`。标准目录为 `Assets/Samples/URUI/<包版本>/Game Flow`。
+3. 进入 Play Mode，使用任意 2–18 字符呼号与公开演示码 **demo**，体验完整六页面流程。登录、离线和排名均为本地 mock。
+
+菜单 **Tools > URUI > Open Game Flow Sample** 可执行同样的标准导入并打开场景。样例源码只维护在包内 `Samples~/Game Flow`；`Assets/Samples` 是项目副本，不要求开发工作区或 Artifacts。完整资源和生命周期说明见 [Game Flow README](../Samples~/Game%20Flow/README.md)。Unity 不会在安装包时自动导入 Samples。
+
+## 从最小文档学习 API（可选）
 
 创建 TextAsset，例如 `Panel.rml.txt`，将它指定给 Document.Source：
 

@@ -2,9 +2,17 @@
 
 此目录由 Unity 默认忽略。在独立、可丢弃的 Unity **6000.3.22f1 / macOS ARM64 / Built-in / Metal** 工程中显式导入，检查当前公开 API 与编辑器入口。
 
+## 默认包样例验收
+
+URUI 的主要推荐样例是包内 `Samples~/Game Flow`。从 Source 运行 `python3 Tools/verify-game-flow.py`，由 Unity `Sample.FindByPackage` / `Sample.Import` 决定并执行标准导入，再运行短六页面验收。导入路径和源文件校验写入 `Artifacts/GameFlow/package-import.json`。`GameFlowValidation` 从已安装包的 Sample 元数据打开场景，资源恢复夹具从当前脚本资产反推导入根目录，不要求 `Assets/Game Flow Showcase`。
+
+下列 Hello/API/控件检查是分项回归入口，不是包的默认示例。
+
+## 分项 API 与最小示例检查
+
 1. 从本地磁盘安装 `com.fujisheng.urui`，导入 Hello URUI 样例。测试工程保留引擎自带的 `com.unity.modules.imageconversion` 1.0.0 模块，用于 PNG 截图。
 2. 将 `Fixtures/ApiSmoke.cs`、`Fixtures/UsabilitySmoke.cs`、`Fixtures/ElementTreeSmoke.cs` 复制到工程 `Assets/URUIEditorChecks`。
-3. 将 `Fixtures/Editor` 内脚本复制到 `Assets/URUIEditorChecks/Editor`；普通检查工程排除 `PlaygroundValidation.cs`，它属于 URUI-Dev 的专用场景检查。
+3. 将对应分项的 Editor 夹具复制到 `Assets/URUIEditorChecks/Editor`；不要整目录复制。GameFlow 夹具由上述工具准备；PlaygroundValidation 属于开发工程的专用场景检查。
 4. 运行以下命令之一。Unity 在断言结束后退出，将报告保存到项目 `Evidence/`。命令应指向独立测试工程。
 
 ```sh

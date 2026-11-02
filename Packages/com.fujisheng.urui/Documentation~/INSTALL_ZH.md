@@ -28,6 +28,8 @@ Packages/com.fujisheng.urui/package.json
 
 准备 Input Manager (Old) 或 Both、启用的 MainCamera、一个活动 Document。字体路径需要可读，图片 Texture2D 开启 Read/Write。没有自动热重载 RML；修改文档资产后重新进入 Play Mode 或显式调用 Load。
 
-可以导入 Hello URUI；或导入 Element Playground，把它的 RML TextAsset 指定给 Document.Source，再添加对应控制器。仓库的 Tools > URUI > Create Minimal UI Scene 菜单也可创建最小文档场景。
+默认推荐导入 **Game Flow**：Package Manager → URUI → Samples → Game Flow → Import，再打开导入目录内的 `GameFlow.unity`。也可使用 **Tools > URUI > Open Game Flow Sample**。Unity 标准目录为 `Assets/Samples/URUI/<包版本>/Game Flow`，实际路径由 Unity 决定；安装包不自动导入样例。所需资源均在包内，无需开发工程或 Artifacts。
+
+Hello URUI、Element Playground、Runtime Controls 和 Create Minimal UI Scene 菜单保留为次要学习示例。
 
 Documentation~、Samples~、Tests~、Native~ 默认不参与 Unity 资产导入，样例与测试需要显式导入。完整用法见[快速开始](QUICK_START_ZH.md)。

@@ -26,7 +26,13 @@ https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui
 
 也可通过 **Add package from disk** 选择 `Packages/com.fujisheng.urui/package.json`，或将完整包目录作为嵌入包。
 
-导入 **Runtime Controls** 样例可查看设置、表单与千行虚拟列表；导入 **Hello URUI** 样例，将 `HelloUrui` 添加到空 GameObject 后进入 Play Mode；或使用 **Tools > URUI > Create Minimal UI Scene** 创建最小文档场景。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)包含完整的 RML 和业务脚本。
+默认从包内 **Game Flow** 样例开始：Package Manager → URUI → Samples → **Game Flow** → Import，打开实际导入目录中的 `GameFlow.unity`。也可使用 **Tools > URUI > Open Game Flow Sample**。它展示加载、模拟登录、主界面、背包、设置和排行榜，全部必需资源随包提供；见 [Game Flow 运行说明](Packages/com.fujisheng.urui/Samples~/Game%20Flow/README.md)。
+
+权威源码位于 `Packages/com.fujisheng.urui/Samples~/Game Flow`。Unity 标准导入到 `Assets/Samples/URUI/<包版本>/Game Flow`，项目内是导入副本；安装包不会自动导入 Samples。Hello URUI、Element Playground、Runtime Controls 和最小场景菜单保留为次要学习入口。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)先介绍默认样例，再说明最小 API 用法。
+
+![Game Flow：Unity Editor 实际运行录制](Packages/com.fujisheng.urui/Documentation~/Images/game-flow.gif)
+
+实际 Editor 流程演示，登录和排行榜为本地 mock。动图与包 README 共用一份资源。
 
 ```csharp
 using URUI.Documents;
@@ -42,7 +48,7 @@ var subscription = panel.RegisterCallback<ClickEvent>(evt => Debug.Log(evt.Curre
 // 组件禁用时释放订阅：subscription.Dispose();
 ```
 
-![Runtime Controls](Packages/com.fujisheng.urui/Documentation~/Images/runtime-controls.png)
+逐控件学习可另行导入 Runtime Controls；完整游戏 UI 流程请以 Game Flow 为入口。
 
 ## 当前支持
 

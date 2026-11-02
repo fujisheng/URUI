@@ -10,22 +10,28 @@
   },
   "dependencies": {
     "com.unity.modules.jsonserialize": "1.0.0",
-    "com.unity.modules.imgui": "1.0.0"
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.audio": "1.0.0"
   },
   "samples": [
     {
+      "displayName": "Game Flow",
+      "description": "Recommended starting sample: North / 07. Loading, mock sign-in, game HUD, inventory, settings and rankings with independent RML/RCSS and bundled resources.",
+      "path": "Samples~/Game Flow"
+    },
+    {
       "displayName": "Hello URUI",
-      "description": "Managed Document, query, style updates and disposable click subscriptions.",
+      "description": "Learning example. Managed Document, query, style updates and disposable click subscriptions.",
       "path": "Samples~/Hello URUI"
     },
     {
       "displayName": "Element Playground",
-      "description": "Explicit element creation, scoped queries, hierarchy, classes and click subscriptions; no data binding.",
+      "description": "Learning example. Explicit element creation, scoped queries, hierarchy, classes and click subscriptions; no data binding.",
       "path": "Samples~/Element Playground"
     },
     {
       "displayName": "Runtime Controls",
-      "description": "Typed controls, form input, focus navigation and a reusable virtual list.",
+      "description": "Learning example. Typed controls, form input, focus navigation and a reusable virtual list.",
       "path": "Samples~/Runtime Controls"
     }
   ]

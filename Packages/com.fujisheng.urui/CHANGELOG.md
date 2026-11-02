@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+- Fix touch scrolling being cancelled by a bubbled keyboard-focus Blur event during pointer down.
+- Make Game Flow the recommended package sample: six external RML pages, shared RCSS, original bundled resources, cancellable mock services, preferences, inventory and rankings.
+- Add standard Unity Sample import/open menu and a continuous Editor gameplay-UI recording in the package README.
+
 - Provide `URUI.Documents.Document`, `Element`, `ElementStyle`, `ImageAsset` and `ClickEvent` in `URUI.Runtime`.
 - Support RML loading, ID queries, text and structure updates, RCSS styles, 2D transforms, image mappings and disposable click subscriptions.
 - Define main-thread access, one active document, element invalidation and resource ownership.

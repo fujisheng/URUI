@@ -1,0 +1,118 @@
+North / 07 — approved overall design → original independent resources
+
+Built-in imageGen only. No commercial-game assets, Editor screenshot inputs, API/CLI fallback or copied franchise characters. Complete designs are references only, never runtime UI textures. Runtime text/buttons/inputs are RML.
+Approved masters: Home v1, Inventory v2. Four same-system extensions generated before their UI implementation. Original masters/crops/masks/native-alpha outputs/review tools are retained in workspace Artifacts/GameFlow/DesignFirst/20261102 and FUI-CLI/GameFlowDesign. They are not runtime dependencies.
+
+Explicit postprocess: alpha>8 bbox trim with contain scaling and declared padding, native originals unchanged; frame pieces use deterministic slicing. Currency glyphs use an explicitly declared border-connected matte branch. Tiny disconnected dock-atlas noise was removed after visual inspection; no blanket alpha erosion, feathering or despill. Exact dimensions/hash/lineage are in asset-manifest.json.txt and development asset-processing-report.json.
+
+SHARED RESOURCE PROMPTS
+
+world
+Use case: precise-object-edit. Create the clean world/background plate for the supplied APPROVED original game design. Input1 is the complete original Home master; Input2 is the same image with repair holes indicated by transparency. Remove ALL UI, words, HUD, currency capsules, bottom dock, big action button, floating location bar and the foreground field operator including carried scanner and boots. Reconstruct the architecture/ground/sky behind only these occluders. Preserve the original camera, coastal station architecture, sea, island relay tower, setting sun, clouds, lighting and dusk color exactly as closely as possible. Output one complete opaque landscape world plate, same approximate16:9 composition. No character, no UI, no text, no logos, no new objects, no style redesign. This must be a pure clean original environment asset, not the full UI image.
+
+operator
+Use case: background-extraction. The supplied Source Crop is the exact original operator from an approved game design. Extract and reconstruct ONE complete independent full-body operator sprite from it. Keep the same face, short brown hair, ivory utility overshirt, charcoal outfit, pose, lit edges, proportions, hands, carried scanner and both boots. Remove ALL coastal architecture/ground/sky, cropped stray lettering and the PROFILE dock icon/label at lower left. Do not redesign the character or outfit. Preserve complete silhouette/hair/antialiased edges; add a modest even transparent margin, no cropping of scanner/boots. Output native genuinely transparent PNG, isolated full-body sprite, no floor/shadow plane, no frame or text. Background must be real alpha, no checkerboard baked in.
+
+action
+Use case: precise-object-edit. Use this exact Source Crop of the approved game's ceramic/graphite/cyan action button as the primary pixel/design reference. Produce a complete clean independent EMPTY button artwork. Remove only the ordinary UNEQUIP text and the right chevron, reconstruct their clean cyan inset surface. Keep the exact overall slim horizontal silhouette, ivory/graphite hardware surround, subtle wear, screws, satin highlights, thin cyan edge and original proportions. Preserve the whole outer shadow/antialiased edges with modest transparent margin. No world background. Real native transparent PNG outside the complete button, not checkerboard. No label, symbol, icon, word or invented decoration. This one reusable empty frame will sit behind real runtime text. Landscape very wide button, not a complete screen.
+
+slot-selected
+Use case: precise-object-edit. From this exact approved game Source Crop create ONE complete independent selected inventory-cell FRAME artwork. Preserve the graphite satin well, subtle beveled precision surround, thin luminous cyan chamfered border/corner indicators and original near-square proportions. Remove the entire scanner item, the EQUIPPED word and x1 quantity; repair the clean empty well underneath. NO letters, digits, symbols or center plus. Output a complete frame with small transparent outer padding and real native PNG alpha outside the frame, no checkerboard or unrelated background. Do not redesign, no heavy glow or fantasy trim. This frame is reused under real runtime items and text.
+
+panel
+Use case: precise-object-edit. This is a Source Crop of the left inventory panel from the approved original game design. Create ONE complete independent EMPTY reusable panel background artwork. Retain its exact thin graphite/metal chamfered outer frame with tiny corner fasteners, soft translucent charcoal/slate inner material and original wide-portrait proportions, subtle coherent surface finish. Remove ALL three category tabs, tab icons, cyan selection line, every item-slot frame, all objects, all lettering/numbers, the capacity line, sort control and all interior separator lines. Reconstruct a clean uncluttered dark satin interior. No ocean/architecture/ground imagery or world silhouettes in the panel. Preserve modest depth, small edge highlights, tiny corner detailing and antialiased outer shadow. Native transparent alpha outside the outer frame; inner panel may be dark translucent. No text or icon anywhere. Do not invent ornament or change the visual language. This is a single blank UI surface for real runtime controls.
+
+dock-icons
+Use case: background-extraction. Reconstruct the FOUR ORIGINAL warm-ivory dock pictograms from this approved Source Crop as ONE clean horizontal sprite strip. From left to right: small rounded field backpack, three-bar rankings chart, plain settings cog, simple operator bust. Keep their exact restrained shapes and stroke/filled style from the source; do not redesign. Remove every text label, cyan underline, separator line and all world/ground/background. Output one genuine native-transparent PNG atlas with exactly these four isolated icons centered in FOUR EQUAL-WIDTH SQUARE CELLS in a horizontal row, equal visual icon size, comfortable transparent margins, no touching, no extra glyphs or words, no checkerboard. This atlas is a source for deterministic individual icon cuts; transparent region must be actual alpha. Warm ivory icons only, no border, shadow or colored background.
+
+ITEM RESOURCE PROMPTS
+
+item-01
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: angular compact sci-fi scanner / circular cyan optical ring, black graphite circular central housing, asymmetrical ivory hard-shell side panels and gold fasteners; keep the precise tilted three-quarter view.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-02
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: ivory and graphite rectangular equipment case with a black top handle, rounded armor corners, metal seams, narrow vertical cyan light on its left-front face and small amber inset; keep the precise three-quarter view.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-03
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: upright compact cylindrical energy cell, dark graphite caps, ivory metal segmented top collar, luminous cyan glass vertical chamber and warm brass accents; keep the exact original cylinder silhouette.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-04
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: folded upright twin-antenna communications device on a compact three-legged mechanical tripod, ivory long vertical panels, graphite hinges, tiny amber metal details; keep the complete original silhouette including all feet.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-05
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: blocky square ivory and graphite equipment crate, black inset center front, narrow horizontal cyan light, top handle / rails, gold corner accents; keep original three-quarter view and armor panel arrangement.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-06
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: ivory spherical optical drone supported by short dark mechanical legs, large black front lens with bright blue/cyan center, segmented shell and small gold fasteners; preserve all visible legs and original three-quarter view.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-07
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: long diagonal cylindrical energy capsule, dark metal and ivory end fittings, twin luminous cyan lengthwise channels with gold ring details; keep the exact lower-left to upper-right diagonal orientation and end shape.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-08
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: slim square ivory/graphite technical module with circular cyan-and-black fan-like front optic, top handle/rails, metal rivets and black side housing; keep the exact original frontal three-quarter view.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-09
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: gray and black tactical backpack with black carry loop and shoulder straps, pale gray central fabric panel bearing its original dark stylized circular insignia, multiple pouches and gold fasteners; preserve exact original silhouette and material.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
+
+item-10
+Use case: background-extraction.
+Asset type: one production inventory item sprite.
+Input image 1 is the primary exact edit target, an original approved design source crop. Extract/reconstruct ONLY its existing item. This is faithful background removal, not a redesign.
+Subject: handheld rugged sci-fi tablet tilted diagonally, ivory chamfered frame with small metal fasteners, black glass screen carrying original cyan topographic contour artwork, amber corner details; keep exact outline and screen artwork.
+Keep the SAME object identity, exact shape, proportions, orientation, camera angle, material colors, panel arrangement, wear, lighting and small visible details of the original. Retain any decorative insignia or artwork that is part of the object itself. Repair only pixels needed to recover its clean original silhouette.
+Remove the dark inventory cell/world background, ground plane, cast ground shadow, stray edge/frame, quantity numerals such as x1/x2/x3/x4/x5, external labels and all interface elements. Do not add anything.
+Return exactly ONE independent item, complete and uncropped, centered with modest transparent padding, object occupying roughly 85% of the canvas. REAL native transparent alpha background including gaps between parts, no opaque or checkered background. No new text, quantity, label, border, frame, extra object or redesign.
