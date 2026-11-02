@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using URUI.Internal.Rendering.Shaders;
 using URUI.Internal.Rendering.Parameters;
 
 namespace URUI.Internal.Rendering.Frames
@@ -147,6 +148,7 @@ namespace URUI.Internal.Rendering.Frames
             var s = d.state;
             properties.Clear();
             properties.SetTexture("_MainTex", d.texture);
+            TextureShaderState.Apply(properties, d.texture, s.texture);
             properties.SetFloat("_UruiClipEnabled", s.enabled);
             properties.SetVector("_UruiClipRect", new Vector4(s.x, s.y, unchecked(s.x + s.w), unchecked(s.y + s.h)));
             if (s.kind == 0)

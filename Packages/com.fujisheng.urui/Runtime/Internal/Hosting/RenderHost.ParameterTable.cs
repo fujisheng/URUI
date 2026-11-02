@@ -115,7 +115,7 @@ namespace URUI.Internal.Hosting
             if (parameterRenderer == null || preparedCapability != parameterCapability)
             {
                 RetireParameterRenderer();
-                parameterRenderer = new ParameterTableRenderer(shader, parameterCapability.Parameter);
+                parameterRenderer = new ParameterTableRenderer(shader, parameterCapability.Parameter, borrowedTextures: borrowedTextures);
                 preparedCapability = parameterCapability;
             }
 

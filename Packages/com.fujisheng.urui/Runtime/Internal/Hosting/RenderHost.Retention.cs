@@ -94,6 +94,7 @@ namespace URUI.Internal.Hosting
                 }
             }
 
+            borrowedTextures.Validate();
             foreach (var d in retainedTextures)
             {
                 var t = d.texture;
@@ -134,6 +135,8 @@ namespace URUI.Internal.Hosting
 #endif
             retainedTextures.Clear();
             AddTextureDependency(white);
+            foreach (var texture in borrowedTextures.Textures)
+                AddTextureDependency(texture);
             foreach (var pair in textures)
             {
                 AddTextureDependency(pair.Value);

@@ -59,7 +59,7 @@ if previous_import.exists():
 
 # These fixtures reference the sample assembly. Archive them during bootstrap so
 # Unity can compile and import a previously unimported sample using only Editor APIs.
-for relative in ("GameFlowSmoke.cs", "GameFlowSmoke.cs.meta", "Editor/GameFlowValidation.cs", "Editor/GameFlowValidation.cs.meta"):
+for relative in ("GameFlowSmoke.cs", "GameFlowSmoke.cs.meta", "Editor/GameFlowValidation.cs", "Editor/GameFlowValidation.cs.meta", "GameFlowRecording.cs", "GameFlowRecording.cs.meta", "Editor/GameFlowRecordingValidation.cs", "Editor/GameFlowRecordingValidation.cs.meta"):
     path = target / relative
     if path.exists():
         destination = archive / "Verification" / relative

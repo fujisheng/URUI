@@ -13,6 +13,7 @@
 #include <cstring>
 #include <deque>
 #include <memory>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,10 +35,27 @@ namespace
     struct Texture
     {
         int width = 0, height = 0;
-        bool registered = false;
+        bool borrowed = false;
+        size_t aliases = 0;
+        Rml::TextureHandle render_handle = 0;
         std::vector<unsigned char> pixels;
     };
+    constexpr uint64_t borrowed_texture_bit = uint64_t{1} << 63;
     std::string error_message;
+    template <typename Handle> uint64_t AllocateTextureId(uint64_t& next)
+    {
+        // RmlUi uses uintptr_t handles, including on 32-bit WebGL. Public IDs
+        // remain uint64_t, with the entire high-bit domain reserved for borrowing.
+        constexpr uint64_t limit = std::numeric_limits<Handle>::max() < borrowed_texture_bit
+                                       ? std::numeric_limits<Handle>::max()
+                                       : borrowed_texture_bit - 1;
+        if (!next || next > limit)
+        {
+            error_message = "Texture handle space exhausted";
+            return 0;
+        }
+        return next++;
+    }
     std::deque<Rml::ObserverPtr<Rml::Element>> clicks;
     std::unordered_map<uint64_t, Rml::Vector2f> active_touches;
     RenderSerial render_serial;
@@ -55,12 +73,43 @@ namespace
         std::unordered_map<uint64_t, Geometry> meshes;
         std::unordered_map<uint64_t, Texture> textures;
         std::unordered_map<std::string, uint64_t> named_textures;
+        std::unordered_map<Rml::TextureHandle, uint64_t> borrowed_texture_handles;
         std::vector<UruiCommand> commands;
         std::vector<std::array<float, 16>> command_transforms;
         Rml::Matrix4f active_transform = Rml::Matrix4f::Identity();
         uint64_t next_mesh = 1, next_texture = 1;
         bool clipped = false;
         Rml::Rectanglei clip = {};
+        uint64_t AllocateTextureHandle()
+        {
+            uint64_t id = AllocateTextureId<Rml::TextureHandle>(next_texture);
+            if (id && (textures.count(id) || borrowed_texture_handles.count(static_cast<Rml::TextureHandle>(id))))
+            {
+                error_message = "Texture handle collision";
+                return 0;
+            }
+            return id;
+        }
+        uint64_t LogicalTextureId(Rml::TextureHandle handle) const
+        {
+            auto found = borrowed_texture_handles.find(handle);
+            return found == borrowed_texture_handles.end() ? static_cast<uint64_t>(handle) : found->second;
+        }
+        void ReleaseNamedTexture(const std::string& source)
+        {
+            auto alias = named_textures.find(source);
+            if (alias == named_textures.end())
+                return;
+            Rml::ReleaseTexture(source, this);
+            auto texture = textures.find(alias->second);
+            if (texture != textures.end() && texture->second.aliases && --texture->second.aliases == 0)
+            {
+                if (texture->second.borrowed)
+                    borrowed_texture_handles.erase(texture->second.render_handle);
+                textures.erase(texture);
+            }
+            named_textures.erase(alias);
+        }
         Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vs, Rml::Span<const int> ids) override
         {
             URUI_DEBUG_CODE(ProfileScope timer(profile.geometry_compile_ns);)
@@ -82,7 +131,7 @@ namespace
         {
             UruiCommand c{};
             c.geometry = static_cast<uint64_t>(geo);
-            c.texture = static_cast<uint64_t>(tex);
+            c.texture = LogicalTextureId(tex);
             c.tx = move.x;
             c.ty = move.y;
             c.clip_enabled = clipped ? 1 : 0;
@@ -122,16 +171,19 @@ namespace
                 return 0;
             }
             dims = {texture->second.width, texture->second.height};
-            return static_cast<Rml::TextureHandle>(found->second);
+            return texture->second.render_handle;
         }
         Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> pixels, Rml::Vector2i dims) override
         {
             if (dims.x <= 0 || dims.y <= 0)
                 return 0;
-            uint64_t id = next_texture++;
+            uint64_t id = AllocateTextureHandle();
+            if (!id)
+                return 0;
             Texture t;
             t.width = dims.x;
             t.height = dims.y;
+            t.render_handle = static_cast<Rml::TextureHandle>(id);
             t.pixels.assign(pixels.begin(), pixels.end());
             textures.emplace(id, std::move(t));
             plan.ResourceChanged();
@@ -139,8 +191,8 @@ namespace
         }
         void ReleaseTexture(Rml::TextureHandle id) override
         {
-            auto found = textures.find(static_cast<uint64_t>(id));
-            if (found != textures.end() && !found->second.registered)
+            auto found = textures.find(LogicalTextureId(id));
+            if (found != textures.end() && !found->second.aliases)
             {
                 textures.erase(found);
                 plan.ResourceChanged();
@@ -313,6 +365,10 @@ extern "C"
     {
         return 3;
     }
+    int urui_texture_protocol_version(void)
+    {
+        return 1;
+    }
     int urui_create(int w, int h, const char* font)
     {
         if (started)
@@ -439,17 +495,14 @@ extern "C"
             error_message = "Invalid texture source";
             return -1;
         }
-        auto old = render->named_textures.find(normalized);
-        if (old != render->named_textures.end())
-        {
-            Rml::ReleaseTexture(normalized, render.get());
-            render->textures.erase(old->second);
-        }
-        uint64_t id = render->next_texture++;
+        uint64_t id = render->AllocateTextureHandle();
+        if (!id)
+            return -1;
         Texture t;
         t.width = width;
         t.height = height;
-        t.registered = true;
+        t.aliases = 1;
+        t.render_handle = static_cast<Rml::TextureHandle>(id);
         t.pixels.resize(static_cast<size_t>(byte_count));
         for (int i = 0; i < byte_count; i += 4)
         {
@@ -460,9 +513,68 @@ extern "C"
             t.pixels[i + 3] = a;
         }
         render->textures.emplace(id, std::move(t));
+        render->ReleaseNamedTexture(normalized);
         render->named_textures[normalized] = id;
         render->plan.ResourceChanged();
         *handle = id;
+        error_message.clear();
+        return 1;
+    }
+    int urui_register_external_texture(const char* source, int width, int height, uint64_t resource_id)
+    {
+        if (!render || !source || !*source || width <= 0 || height <= 0 || width > 8192 || height > 8192 ||
+            !(resource_id & borrowed_texture_bit))
+        {
+            error_message = "Invalid external texture registration";
+            return -1;
+        }
+        if (document)
+        {
+            error_message = "Unload the document before registering textures";
+            return -2;
+        }
+        Rml::String normalized;
+        Rml::GetSystemInterface()->JoinPath(normalized, "demo.rml", source);
+        if (normalized.empty())
+        {
+            error_message = "Invalid texture source";
+            return -1;
+        }
+        auto existing = render->textures.find(resource_id);
+        if (existing != render->textures.end() &&
+            (!existing->second.borrowed || existing->second.width != width || existing->second.height != height))
+        {
+            error_message = "External texture ID kind or dimensions conflict";
+            return -1;
+        }
+        auto alias = render->named_textures.find(normalized);
+        if (alias != render->named_textures.end() && alias->second == resource_id)
+        {
+            error_message.clear();
+            return 1;
+        }
+        if (existing != render->textures.end() && existing->second.aliases == std::numeric_limits<size_t>::max())
+        {
+            error_message = "Texture alias count exhausted";
+            return -1;
+        }
+        if (existing == render->textures.end())
+        {
+            uint64_t handle = render->AllocateTextureHandle();
+            if (!handle)
+                return -1;
+            Texture t;
+            t.width = width;
+            t.height = height;
+            t.borrowed = true;
+            t.render_handle = static_cast<Rml::TextureHandle>(handle);
+            render->textures.emplace(resource_id, std::move(t));
+            render->borrowed_texture_handles.emplace(static_cast<Rml::TextureHandle>(handle), resource_id);
+        }
+        render->ReleaseNamedTexture(normalized);
+        ++render->textures.at(resource_id).aliases;
+        render->named_textures[normalized] = resource_id;
+        render->plan.ResourceChanged();
         error_message.clear();
         return 1;
     }
@@ -486,9 +598,7 @@ extern "C"
             error_message = "Texture not registered";
             return 0;
         }
-        Rml::ReleaseTexture(normalized, render.get());
-        render->textures.erase(found->second);
-        render->named_textures.erase(found);
+        render->ReleaseNamedTexture(normalized);
         render->plan.ResourceChanged();
         error_message.clear();
         return 1;
@@ -1110,6 +1220,13 @@ extern "C"
         std::copy(g.indices.begin(), g.indices.end(), i);
         return 1;
     }
+    int urui_get_texture_kind(uint64_t id)
+    {
+        if (!render)
+            return 0;
+        auto found = render->textures.find(id);
+        return found == render->textures.end() ? 0 : found->second.borrowed ? 2 : 1;
+    }
     int urui_get_texture_info(uint64_t id, int* w, int* h, int* bytes)
     {
         if (!render || !render->textures.count(id))
@@ -1125,9 +1242,17 @@ extern "C"
     }
     int urui_copy_texture(uint64_t id, uint8_t* out, int cap)
     {
-        if (!render || !render->textures.count(id) || !out)
+        if (!render || !render->textures.count(id))
             return 0;
-        auto& p = render->textures.at(id).pixels;
+        auto& texture = render->textures.at(id);
+        if (texture.borrowed)
+        {
+            error_message = "Cannot copy pixels from a borrowed external texture";
+            return -2;
+        }
+        if (!out)
+            return 0;
+        auto& p = texture.pixels;
         if (cap < (int)p.size())
             return 0;
         std::copy(p.begin(), p.end(), out);

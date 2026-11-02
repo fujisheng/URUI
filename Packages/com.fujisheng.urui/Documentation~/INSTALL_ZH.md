@@ -26,7 +26,7 @@ Packages/com.fujisheng.urui/package.json
 
 运行验证环境为 Unity **6000.3.22f1 / macOS ARM64 Editor / Built-in / Metal**。包内七份平台插件均使用 ABI3、默认关闭 URUI_DEBUG；其他平台的编译、链接与运行验证范围见[支持矩阵](LIMITATIONS_ZH.md)。
 
-准备 Input Manager (Old) 或 Both、启用的 MainCamera、一个活动 Document。字体路径需要可读，图片 Texture2D 开启 Read/Write。没有自动热重载 RML；修改文档资产后重新进入 Play Mode 或显式调用 Load。
+准备 Input Manager (Old) 或 Both、启用的 MainCamera、一个活动 Document。字体路径需要可读，图片映射借用 Texture2D，无需 Read/Write；图片需完整常驻 mip0，不能启用纹理流送或 active mipmap limit。没有自动热重载 RML；修改文档资产后重新进入 Play Mode 或显式调用 Load。
 
 默认推荐导入 **Game Flow**：Package Manager → URUI → Samples → Game Flow → Import，再打开导入目录内的 `GameFlow.unity`。也可使用 **Tools > URUI > Open Game Flow Sample**。Unity 标准目录为 `Assets/Samples/URUI/<包版本>/Game Flow`，实际路径由 Unity 决定；安装包不自动导入样例。所需资源均在包内，无需开发工程或 Artifacts。
 

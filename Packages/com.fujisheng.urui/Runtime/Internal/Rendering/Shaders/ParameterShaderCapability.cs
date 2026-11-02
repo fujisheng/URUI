@@ -7,7 +7,7 @@ namespace URUI.Internal.Rendering.Shaders
     internal sealed class ParameterShaderCapability : ScriptableObject
     {
         public const string SourcePath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/ParameterTable.shader";
-        public const string SourceHash = "ed3b104eb76f2cd4d1b74c0a6e5d2722b90af0e44ed3561f2eef4b46dd6d39b2";
+        public const string SourceHash = "21b78c79daa5693c467ce26ab3111e0fb3fcf19f02148cad5fd4bef2fcdd2049";
         [SerializeField]
         Shader parameter;
         [SerializeField]
@@ -21,7 +21,7 @@ namespace URUI.Internal.Rendering.Shaders
 
         public bool Supports(Material m, ShaderPropertyContract old)
         {
-            if (revision != 1 || audit != SourceHash || !parameter || !legacy || !m || m.shader != legacy || !old || !old.Supports(m))
+            if (revision != 2 || audit != SourceHash || !parameter || !legacy || !m || m.shader != legacy || !old || !old.Supports(m))
             {
                 return false;
             }
@@ -43,8 +43,9 @@ namespace URUI.Internal.Rendering.Shaders
             }
 
             using var sha = System.Security.Cryptography.SHA256.Create();
-            return revision == 1
+            return revision == 2
                 && audit == SourceHash
+                && ShaderPropertyContract.SamplingSourceMatches()
                 && BitConverter.ToString(sha.ComputeHash(System.IO.File.ReadAllBytes(ShaderSources.ResolveAssetPath(path)))).Replace("-", "").ToLowerInvariant() == SourceHash;
         }
 
@@ -53,7 +54,7 @@ namespace URUI.Internal.Rendering.Shaders
             parameter = p;
             legacy = l;
             audit = SourceHash;
-            revision = 1;
+            revision = 2;
             if (!AuditEditor())
             {
                 throw new ArgumentException("Parameter shader capability requires audited framework sources");

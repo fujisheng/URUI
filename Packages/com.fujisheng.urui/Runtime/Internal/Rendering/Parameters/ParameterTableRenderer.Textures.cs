@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using URUI.Internal.Interop;
+using URUI.Internal.Resources;
 
 namespace URUI.Internal.Rendering.Parameters
 {
@@ -17,6 +18,15 @@ namespace URUI.Internal.Rendering.Parameters
             if (plan.textures.TryGetValue(id, out var t))
             {
                 return t;
+            }
+
+            if (BorrowedTextureRegistry.IsBorrowed(id))
+            {
+                if (borrowedTextures == null || !borrowedTextures.TryResolve(id, out var borrowed))
+                    throw new InvalidOperationException("Borrowed texture registry is required for this context");
+                plan.borrowedTextureIds.Add(id);
+                plan.textures.Add(id, borrowed);
+                return borrowed;
             }
 
             var key = (plan.epoch, id);

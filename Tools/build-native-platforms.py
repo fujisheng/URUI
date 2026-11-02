@@ -75,7 +75,7 @@ def build(platform):
                 subprocess.run([str(strip), "--strip-debug", str(binary)], check=True)
             exports = check_exports(platform, binary)
             row.update(bytes=binary.stat().st_size, sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
-                       abi_version=3, element_api_version=1, urui_exports=exports, native_source_sha256=before)
+                       abi_version=3, element_api_version=1, texture_protocol_version=1, urui_exports=exports, native_source_sha256=before)
             if source_hash() != before:
                 raise ValueError("Native sources changed during this build; rebuild incrementally")
             if platform.startswith("android"):
@@ -109,12 +109,13 @@ if args.install:
         temporary = destination.with_name(destination.name + ".new")
         shutil.copy2(row["binary"], temporary)
         temporary.replace(destination)
-        entry.update(bytes=row["bytes"], sha256=row["sha256"], element_api_version=1,
+        entry.update(bytes=row["bytes"], sha256=row["sha256"], element_api_version=1, texture_protocol_version=1,
                      runtime_validation=None, compiled=True, URUI_DEBUG=False,
                      urui_exports=row["urui_exports"], native_source_sha256=row["native_source_sha256"],
-                     abi_validation="ABI3 layouts unchanged; protocol entry points present; runtime versions checked on macOS ARM64")
+                     abi_validation="ABI3 layouts unchanged; element v1 / texture v1 entry points present; runtime versions require matching evidence")
         if "load_segment_alignments" in row:
             entry["load_segment_alignments"] = row["load_segment_alignments"]
+    manifest["texture_protocol_version"] = 1
     manifest["production_exports"] = sorted(expected_exports)
     manifest["production_export_set_sha256"] = hashlib.sha256(("\n".join(sorted(expected_exports)) + "\n").encode()).hexdigest()
     manifest["production_exports_scope"] = f"All seven packaged ABI3 plugins have the same {len(expected_exports)} production exports; diagnostics excluded"

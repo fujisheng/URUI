@@ -39,6 +39,9 @@ namespace URUI.Internal.Rendering.Shaders
                 && ReferenceEquals(texture, tex)
                 && ReferenceEquals(material, owner)
                 && ReferenceEquals(shader, currentShader)
+                // Borrowed/owned shader mode depends on the logical texture ID,
+                // even when both commands happen to bind Unity's white texture.
+                && previous.texture == command.texture
                 && previous.clip_enabled == command.clip_enabled
                 && previous.clip_x == command.clip_x
                 && previous.clip_y == command.clip_y

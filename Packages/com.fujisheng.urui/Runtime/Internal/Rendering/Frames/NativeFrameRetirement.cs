@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using URUI.Internal.Resources;
 using UnityEngine.Rendering;
 
 namespace URUI.Internal.Rendering.Frames
@@ -14,14 +15,14 @@ namespace URUI.Internal.Rendering.Frames
 
         internal static bool Admission => live < 4;
 
-        internal static NativeFrameRoot Create(CommandBuffer target, Shader legacy, Shader parameter)
+        internal static NativeFrameRoot Create(CommandBuffer target, Shader legacy, Shader parameter, BorrowedTextureRegistry borrowedTextures = null)
         {
             if (!Admission)
             {
                 return null;
             }
 
-            var value = new NativeFrameRoot(target, legacy, parameter)
+            var value = new NativeFrameRoot(target, legacy, parameter, borrowedTextures)
             {
                 registered = true
             };

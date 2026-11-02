@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using URUI.Internal.Resources;
 using UnityEngine.Rendering;
 
 namespace URUI.Internal.Rendering.Frames
@@ -12,6 +13,7 @@ namespace URUI.Internal.Rendering.Frames
         readonly Dictionary<ulong, MeshEntry> meshes = new Dictionary<ulong, MeshEntry>();
         readonly Dictionary<(ulong, ulong), TextureEntry> textures = new Dictionary<(ulong, ulong), TextureEntry>();
         readonly List<Retirement> retired = new List<Retirement>();
+        readonly BorrowedTextureRegistry borrowedTextures;
         readonly Material parameter;
         readonly Material legacy;
         readonly MaterialPropertyBlock properties = new MaterialPropertyBlock();
@@ -50,8 +52,9 @@ namespace URUI.Internal.Rendering.Frames
             private set;
         }
 
-        internal NativeFrameRoot(CommandBuffer target, Shader legacyShader, Shader parameterShader)
+        internal NativeFrameRoot(CommandBuffer target, Shader legacyShader, Shader parameterShader, BorrowedTextureRegistry borrowedTextures = null)
         {
+            this.borrowedTextures = borrowedTextures;
             attachment = target;
             root = target;
             failedUpload = RetireFailedUpload;

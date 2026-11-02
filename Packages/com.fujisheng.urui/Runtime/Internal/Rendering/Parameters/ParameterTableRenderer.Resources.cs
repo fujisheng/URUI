@@ -135,14 +135,15 @@ namespace URUI.Internal.Rendering.Parameters
                     }
                 }
 
-                foreach (var tex in plan.textures.Values)
+                foreach (var tex in plan.textures)
                 {
-                    if (tex)
-                    {
-                        UnityEngine.Object.Destroy(tex);
-                    }
+                    if (!plan.borrowedTextureIds.Contains(tex.Key) && tex.Value)
+                        UnityEngine.Object.Destroy(tex.Value);
                 }
             }
+
+            plan.textures.Clear();
+            plan.borrowedTextureIds.Clear();
 
             foreach (var b in plan.batches)
             {

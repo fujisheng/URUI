@@ -20,6 +20,7 @@ namespace URUI.Internal.Rendering.Frames
         {
             internal (ulong, ulong) id;
             internal Texture2D texture;
+            internal bool owned = true;
             internal int refs;
             internal long bytes;
         }

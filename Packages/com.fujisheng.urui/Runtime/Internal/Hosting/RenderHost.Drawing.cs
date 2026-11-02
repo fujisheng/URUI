@@ -41,6 +41,7 @@ namespace URUI.Internal.Hosting
             ResetParameterRootMetrics();
 #endif
             RequireNativeStopPermission();
+            borrowedTextures.Validate();
             shaderPropertyState.Reset();
 #if URUI_DEBUG
             PropertyCalls = PropertyWriteCalls = PropertyReuseHits = 0;

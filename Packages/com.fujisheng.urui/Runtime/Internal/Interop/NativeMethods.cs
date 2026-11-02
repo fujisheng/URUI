@@ -30,6 +30,17 @@ namespace URUI.Internal.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void urui_unload_document();
 
+        // Versioned metadata-only registration; resource IDs are logical, never GPU pointers.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_texture_protocol_version();
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_register_external_texture(
+            [MarshalAs(UnmanagedType.LPUTF8Str)] string source, int width, int height, ulong resourceId);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_get_texture_kind(ulong id);
+
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_register_rgba_texture(
             [MarshalAs(UnmanagedType.LPUTF8Str)] string source,

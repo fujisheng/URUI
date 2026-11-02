@@ -24,7 +24,7 @@ Hello URUI、Element Playground、Runtime Controls 和 **Create Minimal UI Scene
 - [路线图](Documentation~/ROADMAP_ZH.md)
 - [代码约定](Documentation~/CODE_STYLE_ZH.md)
 
-当前验证目标：**Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal**。运行需要单个活动文档、Unity 主线程、`MainCamera`、旧 Input Manager、可读取的字体文件与开启 Read/Write 的图片。其他目标的原生插件已编译并随包提供，Unity 运行验证仍待完成；已提供控件、键盘、表单与组合串接口；真实系统 IME、默认移动软键盘接入、SRP 和设备验证范围见支持矩阵。
+当前验证目标：**Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal**。运行需要单个活动文档、Unity 主线程、`MainCamera`、旧 Input Manager、可读取的字体文件及完整常驻 mip0 的颜色图片；图片直接借用 Texture2D，无需 Read/Write。七个平台的 ABI3 / texture protocol v1 原生插件已同步编译并随包提供；本轮仅验证 macOS ARM64 Editor，其他目标的 Unity 运行验证仍待完成；已提供控件、键盘、表单与组合串接口；真实系统 IME、默认移动软键盘接入、SRP 和设备验证范围见支持矩阵。
 
 项目许可见 [LICENSE.md](LICENSE.md)，第三方许可见 [Third Party Notices](Third%20Party%20Notices.md) 与 `Documentation~/Licenses/`。
 

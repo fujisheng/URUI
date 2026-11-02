@@ -1,5 +1,6 @@
 using UnityEngine;
 using URUI.Internal.Interop;
+using URUI.Internal.Rendering.Shaders;
 
 namespace URUI.Internal.Hosting
 {
@@ -11,6 +12,7 @@ namespace URUI.Internal.Hosting
 #if URUI_DEBUG
             using var marker = propertiesMarker.Auto();
 #endif
+            TextureShaderState.Apply(properties, texture, cmd.texture);
             var clip = new Vector4(cmd.clip_x, cmd.clip_y, cmd.clip_x + cmd.clip_w, cmd.clip_y + cmd.clip_h);
             var translation = batch ? Vector4.zero : new Vector4(cmd.tx, cmd.ty, 0, 0);
             if (useShaderPropertyIds)

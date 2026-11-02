@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using URUI.Resources;
+using URUI.Internal.Resources;
 
 namespace URUI.Documents
 {
@@ -30,7 +31,7 @@ namespace URUI.Documents
         }
 
         /// <summary>
-        /// 下次加载使用的图片映射；Texture2D 必须开启 Read/Write。
+        /// 下次加载使用的借用图片映射；Texture2D 无需开启 Read/Write。
         /// </summary>
         /// <remarks>数组读写使用副本，数组中的纹理仍由调用者持有。修改前先卸载文档。</remarks>
         public ImageAsset[] Images
@@ -79,11 +80,12 @@ namespace URUI.Documents
             foreach (var image in images)
             {
                 RequireName(image.Source, nameof(Images));
-                if (!image.Texture || !image.Texture.isReadable)
+                if (!image.Texture)
                 {
-                    throw new ArgumentException("图片必须是开启 Read/Write 的 Texture2D。", nameof(Images));
+                    throw new ArgumentException("图片必须是有效的 Texture2D；使用期间不要销毁或卸载。", nameof(Images));
                 }
 
+                BorrowedTextureRegistry.ValidateTexture(image.Texture);
                 if (!names.Add(image.Source))
                 {
                     throw new ArgumentException("图片 Source 不能重复。", nameof(Images));

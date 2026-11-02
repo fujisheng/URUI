@@ -45,3 +45,5 @@
 ## 验证
 
 在 Source 运行 `python3 Tools/Tests/GameFlow/verify_assets.py` 与 `dotnet run --project Tools/Tests/GameFlow/GameFlowTests.csproj`。`python3 Tools/verify-game-flow.py` 将整个Sample导入独立目录，运行现有工程短Editor验收，输出本地截图、布局JSON和报告到 Artifacts/GameFlow。当前为94项Editor断言、18项模型断言通过。没有新增Player、设备或性能验收，也没有自动发布。
+
+图片由 Document 直接借用 Unity Texture2D，40张运行 PNG 默认关闭 Read/Write；不再读取像素、保留原生 RGBA 或创建第二张绘制纹理。样例仍使用同一套公开 ImageAsset 映射、外部 RML/RCSS 和资源加载流程。

@@ -1,0 +1,8 @@
+{
+  "name": "URUI.Tests.TextureBorrowing",
+  "references": [
+    "URUI.Runtime"
+  ],
+  "includePlatforms": [],
+  "autoReferenced": true
+}

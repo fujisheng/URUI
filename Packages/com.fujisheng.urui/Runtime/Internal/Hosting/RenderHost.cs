@@ -100,6 +100,7 @@ namespace URUI.Internal.Hosting
         // whether they are still alive; off-screen resources remain cached.
         readonly Dictionary<ulong, MeshCache> meshes = new Dictionary<ulong, MeshCache>();
         bool? meshBatchMode;
+        readonly BorrowedTextureRegistry borrowedTextures = new BorrowedTextureRegistry();
         readonly Dictionary<ulong, Texture2D> textures = new Dictionary<ulong, Texture2D>();
         readonly List<ulong> retiredTextureIds = new List<ulong>();
         readonly Dictionary<ulong, BatchCache> batches = new Dictionary<ulong, BatchCache>();

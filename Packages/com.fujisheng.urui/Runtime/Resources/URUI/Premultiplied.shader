@@ -1,6 +1,12 @@
 Shader "URUI/Premultiplied"
 {
- Properties { _MainTex ("Atlas", 2D) = "white" {} }
+ Properties
+ {
+  _MainTex ("Atlas", 2D) = "white" {}
+  [HideInInspector] _UruiBorrowedTexture ("Borrowed Texture", Float) = 0
+  [HideInInspector] _UruiSourceSize ("Source Size", Vector) = (1,1,1,1)
+  [HideInInspector] _UruiSourceSrgb ("Source sRGB", Float) = 0
+ }
  SubShader
  {
   Tags { "Queue"="Overlay" "RenderType"="Transparent" }
@@ -9,10 +15,11 @@ Shader "URUI/Premultiplied"
   Pass
   {
    CGPROGRAM
+   #pragma target 3.5
    #pragma vertex vert
    #pragma fragment frag
    #include "UnityCG.cginc"
-   sampler2D _MainTex;
+   #include "BorrowedTextureSampling.cginc"
    float4 _UruiClipRect;
    float4 _UruiTranslation;
    float _UruiClipEnabled;
@@ -36,9 +43,9 @@ Shader "URUI/Premultiplied"
      clip(_UruiClipRect.z - i.pixel.x);
      clip(_UruiClipRect.w - i.pixel.y);
     }
-    // RmlUi supplies premultiplied-alpha vertices and generated atlas pixels.
-    // Do not multiply RGB by alpha again.
-    return tex2D(_MainTex,i.uv)*i.color;
+    // Both texture branches return premultiplied pixels; RmlUi vertex colors
+    // are already premultiplied too.
+    return UruiSampleMainTexture(i.uv)*i.color;
    }
    ENDCG
   }

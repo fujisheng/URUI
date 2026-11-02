@@ -52,9 +52,9 @@ var subscription = panel.RegisterCallback<ClickEvent>(evt => Debug.Log(evt.Curre
 
 ## 当前支持
 
-Unity 运行验证环境为 **6000.3.22f1 / macOS ARM64 Editor 与 ARM64 IL2CPP Player / Built-in / Metal**。包内包含同源 ABI3 / 元素协议 v1 插件：macOS ARM64/x86_64、Windows x64、Android ARM64/x86_64、iOS 设备 ARM64、WebGL wasm32；均已完成原生编译、架构与导出检查，iOS/WebGL 静态库通过完整链接检查。其他平台尚未做 Unity Player 或设备运行验证。
+本次重编后的 Unity 运行验证环境为 **6000.3.22f1 / macOS ARM64 Editor / Built-in / Metal**；此前 ARM64 IL2CPP Player 证据对应上一版插件，未代替本次重编后的 Player 验收。包内包含同源 ABI3 / 元素协议 v1 / 纹理协议 v1 插件：macOS ARM64/x86_64、Windows x64、Android ARM64/x86_64、iOS 设备 ARM64、WebGL wasm32；均已完成原生编译、架构与导出检查，iOS/WebGL 静态库通过完整链接检查。其他平台尚未做 Unity Player 或设备运行验证。
 
-提供类型化控件与自定义 Element 工厂、泛型查询、内容容器、强类型 RCSS 与布局/坐标读取、同步事件传播、指针捕获、焦点键盘、文本输入与固定行高虚拟列表。一个活动文档，Unity 主线程访问；需 MainCamera、Input Manager (Old) 或 Both，图片开启 Read/Write，字体文件可读。
+提供类型化控件与自定义 Element 工厂、泛型查询、内容容器、强类型 RCSS 与布局/坐标读取、同步事件传播、指针捕获、焦点键盘、文本输入与固定行高虚拟列表。一个活动文档，Unity 主线程访问；需 MainCamera、Input Manager (Old) 或 Both，图片直接借用现有 Texture2D，无需 Read/Write（需完整常驻 mip0，无流送/active mipmap limit），字体文件可读。
 
 不包含数据绑定或 FUI 依赖；未来可通过可选适配器包装 Name/Parent、节点操作及订阅。当前不承诺其他 UI 系统的完整接口兼容；系统 IME、移动软键盘与设备验证边界见支持范围。调试宏 URUI_DEBUG 默认关闭。详见[支持范围](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
 

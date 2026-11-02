@@ -72,6 +72,7 @@ namespace URUI.Internal.Rendering.Parameters
             internal int references;
             internal bool retired;
             internal readonly Dictionary<ulong, Mesh> source = new Dictionary<ulong, Mesh>();
+            internal readonly HashSet<ulong> borrowedTextureIds = new HashSet<ulong>();
             internal readonly Dictionary<ulong, Texture2D> textures = new Dictionary<ulong, Texture2D>();
             internal readonly List<Batch> batches = new List<Batch>();
         }

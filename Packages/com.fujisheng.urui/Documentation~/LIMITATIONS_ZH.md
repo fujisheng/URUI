@@ -5,17 +5,17 @@
 - Unity 6000.3.22f1；当前主要运行环境为 macOS ARM64 / Built-in / Metal。
 - 一个活动 Document，节点与输入操作限主线程；需要 MainCamera。
 - 内置输入使用 Input Manager (Old) / Both；其他输入来源可设置 UseUnityInput=false 并使用 Document.Input。
-- 图片通过 ImageAsset 映射可读 Texture2D，字体仍需提供可读取且包含所需字形的文件。
-- 原生 ABI3 的顶点、命令与帧布局保持不变，元素协议版本为 1，增量提供真实滚动视口查询。包内七份 Release / URUI_DEBUG=OFF 插件同源，均检查真实架构及 120 个正式导出；哈希见 PLUGINS.json。
+- 图片通过 ImageAsset 直接借用颜色 Texture2D（无需可读），字体仍需提供可读取且包含所需字形的文件。
+- 原生 ABI3 的顶点、命令与帧布局保持不变，元素协议版本为 1，图片借用协议版本为 1，增量提供真实滚动视口查询。包内七份 Release / URUI_DEBUG=OFF 插件同源，均检查真实架构及 123 个正式导出；哈希见 PLUGINS.json。
 
 | 目标 | 已执行检查 | Unity 运行范围 |
 | --- | --- | --- |
-| macOS ARM64 | 架构、导出、协议版本、真实原生契约 | Editor 与 ARM64 IL2CPP Player 的 52 项控件/输入/生命周期断言；Editor 另有既有 API/场景回归 |
+| macOS ARM64 | 架构、导出、协议版本、真实原生契约 | 本次重编后只做 Editor 借用/渲染/生命周期及既有控件/场景回归；历史 ARM64 IL2CPP Player52项对应旧插件 |
 | macOS x86_64 | 架构与全部正式导出 | 尚未运行 |
 | Windows x64 | DLL 架构与全部正式导出，使用 Windows Universal CRT | 尚未运行 |
 | Android ARM64 / x86_64 | ELF 架构、全部正式导出、API23+、16 KiB 对齐、静态 C++ 运行库 | 尚未运行或设备测试 |
 | iOS 设备 ARM64 | 真实设备架构、全部正式导出、iphoneos SDK 完整链接 | 尚未运行或设备测试 |
-| WebGL wasm32 | Wasm 对象、全部正式导出、完整链接、Node 中原生创建/加载/ABI 检查 | 尚未运行 Unity WebGL Player |
+| WebGL wasm32 | Wasm 对象、全部正式导出、完整链接、Node 中原生创建/加载/ABI 与64位借用 ID 经32位 Rml句柄转换检查 | 尚未运行 Unity WebGL Player |
 
 Linux、iOS 模拟器、URP/HDRP、其他 Unity 版本及图形后端不在本次验证范围。
 
@@ -47,3 +47,5 @@ macOS Player 选择 ARM64 或 x64 单架构；目前随包分开提供这两个�
 ## 调试与渲染
 
 URUI_DEBUG 默认关闭，包括 Editor 和 Development Build。诊断版原生插件与托管宏必须同时匹配；线程、身份、生命周期与 GPU 资源安全校验始终保留。实验渲染路径仍是内部实现，不构成一般性能优势承诺，历史研究仍暂停。
+
+图片借用的资源生命周期、颜色/采样约束及 active mipmap limit/纹理流送限制见 [生命周期与资源](LIFECYCLE_ZH.md)。借用省去图片的原生 RGBA 和额外 Unity 绘制纹理；仍存在必要的源 GPU、字体等生成纹理及驱动资源，不承诺固定减半或全链路零拷贝。

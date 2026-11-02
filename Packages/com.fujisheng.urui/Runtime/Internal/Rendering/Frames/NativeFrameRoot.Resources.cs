@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using URUI.Internal.Interop;
+using URUI.Internal.Resources;
 using URUI.Internal.Rendering.Parameters;
 
 namespace URUI.Internal.Rendering.Frames
@@ -68,7 +69,7 @@ namespace URUI.Internal.Rendering.Frames
                 {
                     textures.Remove(e.id);
                     retainedBytes -= e.bytes;
-                    UnityEngine.Object.Destroy(e.texture);
+                    if (e.owned) UnityEngine.Object.Destroy(e.texture);
                 }
             }
         }
@@ -97,6 +98,16 @@ namespace URUI.Internal.Rendering.Frames
                 stats.textureHits++;
 #endif
                 return existing.texture;
+            }
+
+            if (BorrowedTextureRegistry.IsBorrowed(id))
+            {
+                if (borrowedTextures == null || !borrowedTextures.TryResolve(id, out var borrowed))
+                    throw new InvalidOperationException("Borrowed texture registry is required for this context");
+                var external = new TextureEntry { id = key, texture = borrowed, owned = false, bytes = 0, refs = 1 };
+                textures.Add(key, external);
+                plan.textures.Add(external);
+                return borrowed;
             }
 
             if (NativeMethods.urui_get_texture_info(id, out int w, out int h, out int bytes) != 1

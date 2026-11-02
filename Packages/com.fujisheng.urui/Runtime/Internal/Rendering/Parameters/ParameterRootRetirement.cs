@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using URUI.Internal.Resources;
 using UnityEngine.Rendering;
 
 namespace URUI.Internal.Rendering.Parameters
@@ -24,14 +25,15 @@ namespace URUI.Internal.Rendering.Parameters
             bool lazySourceMeshes = false,
             bool nativePrepared = false,
             bool nativeIncremental = false,
-            bool nativePinned = false)
+            bool nativePinned = false,
+            BorrowedTextureRegistry borrowedTextures = null)
         {
             if (!Admission)
             {
                 return null;
             }
 
-            var result = new ParameterRootRecording(target, legacy, parameter, shareResources, reuseBatches, reuseBatchScratch, lazySourceMeshes, nativePrepared, nativeIncremental, nativePinned)
+            var result = new ParameterRootRecording(target, legacy, parameter, shareResources, reuseBatches, reuseBatchScratch, lazySourceMeshes, nativePrepared, nativeIncremental, nativePinned, borrowedTextures)
             {
                 registered = true
             };

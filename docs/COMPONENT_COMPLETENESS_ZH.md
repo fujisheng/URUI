@@ -11,7 +11,7 @@
 | 输入、焦点、事件 | 已实现，有缺口 | 同步传播/捕获/默认取消、Tab/按键、独立指针、剪贴板、Unicode/组合串注入；真实系统 IME 仍需人工验收，移动默认软键盘、手柄和无障碍缺失。Document.Input.cs、Element.Events.cs。 |
 | 生命周期清理 | 已实现 | 旧包装和订阅失效、脱离节点回收、回调内重载延后、调用者纹理/TextAsset 不由文档销毁；一个文档限制仍在。Document.Events.cs、Document.Loading.cs。 |
 | RML/RCSS 资源 | 部分实现 | 原生能解析外部 RCSS，但公开 Load 没有 base URL/资源提供者，native 固定 demo.rml。Game Flow 使用有限资源适配器；不等于通用 Resources/Addressables/异步下载接口。 |
-| 字体与图片 | 部分实现 | 一个可读字体文件、显式可读 Texture2D 映射；缺少自动打包、字体回退列表、异步解析。Game Flow 打包 OFL 字体并声明真实 family。 |
+| 字体与图片 | 部分实现 | 一个可读字体文件、显式借用 Texture2D 映射（无需可读，原生只保留元数据）；缺少自动打包、字体回退列表、异步解析。Game Flow 打包 OFL 字体并声明真实 family。 |
 | 样式与布局 | 已实现子集 | 常用强类型 RCSS、原始属性接口、真实布局与坐标/滚动视口；完整浏览器 CSS、任意选择器和无分配查询不在支持范围。 |
 | 裁剪与高级效果 | 部分实现/缺失 | 矩形 scissor、变换、普通实色边框/纹理可用；clip mask、layer/compositing、filter 和 shader decorator 默认 unsupported/no-op。圆角溢出裁剪、渐变装饰和 blur 均有原生失败证据。bridge.cpp:149–210。 |
 | Unity 集成 | 部分实现 | Built-in、MainCamera、Old/Both 输入，或用户自接 Document.Input；URP/HDRP、多个活动文档和其他图形后端没有本轮支持承诺。 |

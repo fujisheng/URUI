@@ -36,7 +36,7 @@
       "processing": "deterministic three-slice; fixed end hardware",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         2,
@@ -71,7 +71,7 @@
       "processing": "deterministic three-slice; fixed end hardware",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -106,7 +106,7 @@
       "processing": "deterministic three-slice; fixed end hardware",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -141,7 +141,7 @@
       "processing": "source_crop_exact_png; no ordinary runtime text",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -166,7 +166,7 @@
       "processing": "source_crop_alpha_png; EXPLICIT border-connected dark matte extraction; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "chroma",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         24,
@@ -201,7 +201,7 @@
       "processing": "source_crop_alpha_png; EXPLICIT border-connected dark matte extraction; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "chroma",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         5,
@@ -236,7 +236,7 @@
       "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         5,
@@ -271,7 +271,7 @@
       "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         2,
@@ -306,7 +306,7 @@
       "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         5,
@@ -341,7 +341,7 @@
       "processing": "equal-cell atlas crop, explicit removal of disconnected <45px alpha noise components after visual inspection, contain64 in68 canvas",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         2,
@@ -376,7 +376,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         14,
@@ -411,7 +411,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         14,
@@ -446,7 +446,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         143,
@@ -481,7 +481,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         70,
@@ -516,7 +516,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         14,
@@ -551,7 +551,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         39,
@@ -586,7 +586,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         14,
@@ -621,7 +621,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         31,
@@ -656,7 +656,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         37,
@@ -691,7 +691,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         14,
@@ -726,7 +726,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         24,
@@ -761,7 +761,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         2,
@@ -796,7 +796,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -831,7 +831,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -866,7 +866,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         2,
@@ -901,7 +901,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -936,7 +936,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -971,7 +971,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         3,
@@ -1006,7 +1006,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -1041,7 +1041,7 @@
       "processing": "deterministic nine-slice; preserve corner pixels",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         0,
@@ -1076,7 +1076,7 @@
       "processing": "source_crop_exact_png; portrait only, no runtime text",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -1101,7 +1101,7 @@
       "processing": "source_crop_exact_png; portrait only, no runtime text",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -1126,7 +1126,7 @@
       "processing": "source_crop_exact_png; portrait only, no runtime text",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -1151,7 +1151,7 @@
       "processing": "source_crop_exact_png; portrait only, no runtime text",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -1176,7 +1176,7 @@
       "processing": "source_crop_exact_png; portrait only, no runtime text",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -1201,7 +1201,7 @@
       "processing": "source_crop_exact_png; portrait only, no runtime text",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -1226,7 +1226,7 @@
       "processing": "source_crop_exact_png; static empty-cell cross only",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     },
     {
@@ -1251,7 +1251,7 @@
       "processing": "nine-slice reuse for an empty occupied-slot well; no code-painted art",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         2,
@@ -1286,7 +1286,7 @@
       "processing": "EXPLICIT trim to alpha>8 bbox, preserve original source; contain with declared transparent padding; no erosion/feather/despill",
       "transparent": true,
       "alphaSourceKind": "native",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false,
       "alphaBBox": [
         2,
@@ -1321,7 +1321,7 @@
       "processing": "unchanged decoded pixels; pure clean world",
       "transparent": false,
       "alphaSourceKind": "opaque",
-      "isReadable": true,
+      "isReadable": false,
       "mipmaps": false
     }
   ]

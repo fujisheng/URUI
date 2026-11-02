@@ -28,6 +28,8 @@ extern "C"
     } UruiCommand;
     // URUI bridge ABI version 3. UruiVertex is 20 bytes; UruiCommand is 48 bytes.
     URUI_API int urui_bridge_abi_version(void);
+    // Additive texture protocol v1; existing vertex/command layouts stay ABI 3.
+    URUI_API int urui_texture_protocol_version(void);
     URUI_API int urui_create(int width, int height, const char* font_path);
     URUI_API void urui_destroy(void);
     URUI_API int urui_load_document(const char* rml);
@@ -37,6 +39,11 @@ extern "C"
     // Returns 1 on registration/replacement, negative for invalid/busy.
     URUI_API int urui_register_rgba_texture(const char* source, int width, int height, const uint8_t* rgba,
                                             int byte_count, uint64_t* handle);
+    // Metadata only: resource_id must have bit 63 set. Matching id/dimensions
+    // may have multiple source aliases. Dimensions are 1..8192; registration,
+    // replacement and unregister require an unloaded document. The caller owns
+    // the external texture; no pixel data or native graphics pointer is retained.
+    URUI_API int urui_register_external_texture(const char* source, int width, int height, uint64_t resource_id);
     URUI_API int urui_unregister_texture(const char* source);
     URUI_API void urui_resize(int width, int height);
     URUI_API void urui_mouse_move(int x, int y);
@@ -86,7 +93,11 @@ extern "C"
     URUI_API int urui_get_commands(UruiCommand* out, int capacity);
     URUI_API int urui_get_geometry_info(uint64_t id, int* v, int* i);
     URUI_API int urui_copy_geometry(uint64_t id, UruiVertex* v, int vc, int* i, int ic);
+    // kind: 0 missing, 1 owned RGBA/generated, 2 borrowed external metadata.
+    URUI_API int urui_get_texture_kind(uint64_t id);
+    // Borrowed metadata reports its dimensions and zero pixel bytes.
     URUI_API int urui_get_texture_info(uint64_t id, int* w, int* h, int* bytes);
+    // Borrowed textures return -2 with an explicit error; no output is written.
     URUI_API int urui_copy_texture(uint64_t id, uint8_t* out, int capacity);
     URUI_API int urui_geometry_exists(uint64_t id);
     URUI_API int urui_texture_exists(uint64_t id);

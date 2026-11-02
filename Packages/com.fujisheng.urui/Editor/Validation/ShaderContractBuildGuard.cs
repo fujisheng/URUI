@@ -33,6 +33,7 @@ namespace URUI.Editor.Validation
             using var sha = SHA256.Create();
             string hash = File.Exists(ShaderSources.ResolveAssetPath(path)) ? BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(ShaderSources.ResolveAssetPath(path)))).Replace("-", "").ToLowerInvariant() : "";
             if (path != ShaderPropertyContract.BuiltinPath
+                || !ShaderPropertyContract.SamplingSourceMatches()
                 || hash != ShaderPropertyContract.BuiltinHash
                 || contract.VerifiedSourceHash != hash)
             {

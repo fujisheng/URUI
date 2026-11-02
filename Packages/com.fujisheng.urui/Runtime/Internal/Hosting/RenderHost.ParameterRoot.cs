@@ -155,7 +155,7 @@ namespace URUI.Internal.Hosting
 #endif
             if (parameterRoot == null)
             {
-                parameterRoot = ParameterRootRetirement.Create(buffer, shader, parameterCapability.Parameter, shareParameterResources, reuseParameterBatches, reuseParameterBatchScratch, lazyParameterSourceMeshes, useNativePreparedBatches, useNativeIncrementalPayloads, useNativePinnedPayloads);
+                parameterRoot = ParameterRootRetirement.Create(buffer, shader, parameterCapability.Parameter, shareParameterResources, reuseParameterBatches, reuseParameterBatchScratch, lazyParameterSourceMeshes, useNativePreparedBatches, useNativeIncrementalPayloads, useNativePinnedPayloads, borrowedTextures);
             }
 
             if (parameterRoot == null)

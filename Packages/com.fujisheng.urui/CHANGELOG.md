@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+- ImageAsset 直接借用现有 Unity Texture2D，支持不可读颜色纹理及同图多路径共享；原生只保留元数据，取消图片 RGBA 与额外 GPU 纹理副本。字体等生成纹理继续由 URUI 拥有。
+- 添加 texture protocol v1、WebGL32句柄转换与七平台同步插件；渲染正确处理借用图片 UV/预乘/颜色，不修改调用者 sampler。完整常驻 mip0 约束及生命周期见资源文档。
+
+
 - Fix touch scrolling being cancelled by a bubbled keyboard-focus Blur event during pointer down.
 - Make Game Flow the recommended package sample: six external RML pages, shared RCSS, original bundled resources, cancellable mock services, preferences, inventory and rankings.
 - Add standard Unity Sample import/open menu and a continuous Editor gameplay-UI recording in the package README.

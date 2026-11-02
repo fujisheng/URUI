@@ -3,7 +3,7 @@ using URUI.Internal.Interop;
 
 namespace URUI.Internal.Hosting
 {
-    // 创建原生图片的 Unity 副本，并在原生资源释放后清理宿主缓存。
+    // 借用调用者图片；仅为原生生成纹理创建 Unity 副本，并清理自有缓存。
     internal sealed partial class RenderHost
     {
         Texture2D LoadTexture(ulong id)
@@ -12,6 +12,9 @@ namespace URUI.Internal.Hosting
             {
                 return white;
             }
+
+            if (borrowedTextures.TryResolve(id, out var borrowed))
+                return borrowed;
 
             if (textures.TryGetValue(id, out var old))
             {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using URUI.Internal.Resources;
 using URUI.Internal.Rendering.Meshes;
 
 namespace URUI.Internal.Rendering.Parameters
@@ -10,6 +11,7 @@ namespace URUI.Internal.Rendering.Parameters
     {
         readonly Dictionary<(ulong epoch, ulong id), SharedMesh> sharedMeshes = new Dictionary<(ulong, ulong), SharedMesh>();
         readonly Dictionary<(ulong epoch, ulong id), SharedTexture> sharedTextures = new Dictionary<(ulong, ulong), SharedTexture>();
+        readonly BorrowedTextureRegistry borrowedTextures;
         readonly bool lazySourceMeshes;
         readonly bool shareResources;
         long texturePayload;
@@ -58,8 +60,10 @@ namespace URUI.Internal.Rendering.Parameters
             bool lazySourceMeshes = false,
             bool nativePrepared = false,
             bool nativeIncremental = false,
-            bool nativePinned = false)
+            bool nativePinned = false,
+            BorrowedTextureRegistry borrowedTextures = null)
         {
+            this.borrowedTextures = borrowedTextures;
             this.nativePinned = nativePinned;
             this.nativeIncremental = nativeIncremental;
             this.nativePrepared = shareResources && nativePrepared && NativePrepared.Available;

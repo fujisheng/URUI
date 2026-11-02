@@ -52,7 +52,7 @@ namespace URUI.Internal.Hosting
                     return false;
                 }
 
-                borrowedRoot = NativeFrameRetirement.Create(buffer, shader, parameterCapability.Parameter);
+                borrowedRoot = NativeFrameRetirement.Create(buffer, shader, parameterCapability.Parameter, borrowedTextures);
             }
 
             var writer = borrowedRoot;

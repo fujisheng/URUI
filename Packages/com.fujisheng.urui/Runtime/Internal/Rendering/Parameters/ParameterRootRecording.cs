@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using URUI.Internal.Resources;
 using UnityEngine.Rendering;
 
 namespace URUI.Internal.Rendering.Parameters
@@ -92,7 +93,8 @@ namespace URUI.Internal.Rendering.Parameters
             bool lazySourceMeshes = false,
             bool nativePrepared = false,
             bool nativeIncremental = false,
-            bool nativePinned = false)
+            bool nativePinned = false,
+            BorrowedTextureRegistry borrowedTextures = null)
         {
             NativePinned = shareResources && nativePrepared && nativePinned;
             NativeIncremental = shareResources && nativePrepared && nativeIncremental;
@@ -102,7 +104,7 @@ namespace URUI.Internal.Rendering.Parameters
             ReusesBatches = shareResources && reuseBatches;
             SharesResources = shareResources;
             this.root = root;
-            geometry = new ParameterTableRenderer(legacy, parameter, shareResources: shareResources, reuseBatches: reuseBatches, reuseBatchScratch: reuseBatchScratch, lazySourceMeshes: lazySourceMeshes, nativePrepared: nativePrepared, nativeIncremental: nativeIncremental, nativePinned: nativePinned);
+            geometry = new ParameterTableRenderer(legacy, parameter, shareResources: shareResources, reuseBatches: reuseBatches, reuseBatchScratch: reuseBatchScratch, lazySourceMeshes: lazySourceMeshes, nativePrepared: nativePrepared, nativeIncremental: nativeIncremental, nativePinned: nativePinned, borrowedTextures: borrowedTextures);
             thread = System.Threading.Thread.CurrentThread.ManagedThreadId;
             append = Append;
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using URUI.Internal.Rendering.Shaders;
 using UnityEngine.Rendering;
 #if URUI_DEBUG
 using URUI.Internal.Diagnostics;
@@ -224,7 +225,9 @@ namespace URUI.Internal.Rendering.Parameters
         void Bind(Plan plan, ParameterKey key)
         {
             properties.Clear();
-            properties.SetTexture("_MainTex", key.texture == 0 ? Texture2D.whiteTexture : plan.textures[key.texture]);
+            var texture = key.texture == 0 ? Texture2D.whiteTexture : plan.textures[key.texture];
+            properties.SetTexture("_MainTex", texture);
+            TextureShaderState.Apply(properties, texture, key.texture);
             properties.SetFloat("_UruiClipEnabled", key.enabled);
             properties.SetVector("_UruiClipRect", key.ClipVector);
         }

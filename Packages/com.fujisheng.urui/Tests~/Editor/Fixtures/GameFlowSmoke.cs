@@ -63,6 +63,8 @@ namespace URUI.Tests
                 doc.Q<Dropdown>("connection").Value = "Online"; Click("login-submit");
                 Need(app.IsBusy, "login exposes busy state");
                 await Page(GamePage.Home); Capture("03-home");
+                Need(doc.Images.Length == 40, "default sample registers all forty independent borrowed images");
+                Need(Array.TrueForAll(doc.Images, image => image.Texture && !image.Texture.isReadable), "default sample runs with every image non-readable");
                 Need(doc.Q<Label>("greeting").Text.Contains("Rhea"), "profile rendered");
                 Need(doc.Q("player-hud").Layout.width > 200, "game HUD external RCSS loaded");
                 Need(doc.Q("open-expedition").Layout.width > 200, "real layout available");

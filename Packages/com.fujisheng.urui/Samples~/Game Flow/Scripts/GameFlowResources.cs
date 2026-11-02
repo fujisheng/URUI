@@ -30,10 +30,8 @@ namespace URUI.Samples.GameFlow
             File.WriteAllBytes(FontPath, font.bytes);
             File.WriteAllText(stylesheet, css.text);
             var background = Required<Texture2D>("Images/world");
-            if (!background.isReadable) throw new InvalidOperationException("Background image needs the included Read/Write setting.");
             BackgroundSize = new Vector2(background.width, background.height);
             var actor = Required<Texture2D>("Images/operator");
-            if (!actor.isReadable) throw new InvalidOperationException("Operator image needs the included Read/Write setting.");
             var bootstrap = new System.Collections.Generic.List<ImageAsset> {
                 new ImageAsset("gameflow/background.png", background), new ImageAsset("gameflow/operator.png", actor) };
             // Loading/retry is drawn before the remaining image catalog is ready.
@@ -43,7 +41,6 @@ namespace URUI.Samples.GameFlow
                 {
                     string name = "panel-" + y + x;
                     var image = Required<Texture2D>("Images/" + name);
-                    if (!image.isReadable) throw new InvalidOperationException("Bootstrap frame needs the included Read/Write setting.");
                     bootstrap.Add(new ImageAsset("gameflow/" + name + ".png", image));
                 }
             Images = bootstrap.ToArray();
@@ -58,7 +55,6 @@ namespace URUI.Samples.GameFlow
             var images = new System.Collections.Generic.List<ImageAsset>();
             foreach (var image in textures)
             {
-                if (!image.isReadable) throw new InvalidOperationException("Game Flow images require the included Read/Write importer settings.");
                 string alias = image.name == "world" ? "background" : image.name;
                 images.Add(new ImageAsset("gameflow/" + alias + ".png", image));
                 if (image.name == "world") BackgroundSize = new Vector2(image.width, image.height);

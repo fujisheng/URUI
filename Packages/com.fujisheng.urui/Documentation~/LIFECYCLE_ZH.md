@@ -24,8 +24,8 @@ Destroy、Text/SetInnerMarkup 替换子结构、文档重载或卸载会让对�
 | --- | --- | --- |
 | Inspector 或 `Load` 的 `TextAsset` | 应用 | 读取内容，不销毁原资产 |
 | `LoadMarkup` 的内部 `TextAsset` | `Document` | 卸载、重载或销毁时释放 |
-| `Images` 中的 `Texture2D` | 应用 | 复制像素，不销毁原图；要求开启 Read/Write |
-| 原生纹理副本、Unity mesh/material/command buffer | URUI | 文档释放时清理 |
+| `Images` 中的 `Texture2D` | 应用 | 直接借用同一 GPU 纹理，不读像素、不销毁原图；无需 Read/Write |
+| 字体等生成纹理的自有上传副本、Unity mesh/material/command buffer | URUI | 文档释放时清理 |
 | 附着及脱离的节点、点击订阅 | `Document` / `Element` | Destroy、结构替换或文档卸载时清理 |
 | 字体文件 | 应用或平台 | 应用保证文件路径和所需字形可用 |
 
@@ -36,11 +36,19 @@ Destroy、Text/SetInnerMarkup 替换子结构、文档重载或卸载会让对�
 ```csharp
 document.Unload();
 document.FontPath = absoluteFontPath;
-document.Images = new[] { new ImageAsset("icons/coin.png", readableTexture) };
+document.Images = new[] { new ImageAsset("icons/coin.png", texture) };
 document.Load(markupAsset);
 ```
 
-图片 `Source` 必须唯一，并与 RML/RCSS 中引用的相对路径一致，例如 `<img src="icons/coin.png" />`。纹理导入设置必须开启 **Read/Write**。当前没有远程图片自动下载或异步资源提供接口；入门文档将 RCSS 内联在 RML 的 `<style>` 中。
+图片 `Source` 必须唯一，并与 RML/RCSS 中引用的相对路径一致，例如 `<img src="icons/coin.png" />`。无需开启 **Read/Write**。同一 Texture2D 的多个路径共享一个资源记录及原 GPU 对象；原生侧只保存路径、尺寸、逻辑 ID，不持有该图片 RGBA。当前没有远程图片自动下载或异步资源提供接口；入门文档将 RCSS 内联在 RML 的 `<style>` 中。
+
+借用期间，应用不得 `Destroy`、`Resources.UnloadAsset` 或重建纹理的尺寸/格式。正常修改像素并 `Apply` 会直接反映到 UI；修改配置或重建纹理前先 `Unload`。URUI 撤销注册后，已有绘制计划会保留所需引用直到 GPU 退役；原图的最终释放仍由应用安排。只保留 C# 引用不能阻止应用主动销毁 Unity 对象，违反约束会明确报错，不会偷偷生成替代副本。`Unload` 保留 `Images` 配置供重载，应用不再需要时可清空它。
+
+UI 图片沿用 bilinear/clamp/base-mip0 采样：shader 在四个原 texel 上预乘后插值，处理上下方向；不改变原纹理的 filter/wrap/aniso/mipmap 设置。sRGB 图片保持原有字节预乘效果；linear 图片按 linear 数据解释，修正旧路径统一标记 sRGB 的问题。要求完整常驻 mip0：不支持启用纹理流送或 active mipmap limit 的源图，会明确拒绝。这里支持颜色 Texture2D；法线、整数/深度等非颜色数据和 HDR 输出保真不在验证范围。
+
+字体/程序生成纹理没有调用者现成 GPU 原图，仍走 URUI 自有上传、缓存和释放路径。减少重复副本不等于整条加载链零拷贝，也不会自动删除应用因 Read/Write 保留的 CPU 数据。磁盘/网络图片仍由应用加载成 Texture2D 后注册；URUI 不会自己下载或解码 RML 图片地址。
+
+原生桥保留 ABI3 布局，同时要求 texture protocol v1；新包与旧插件混用会明确报错。更新插件后重启 Editor。
 
 `FontPath` 使用可读取的字体文件绝对路径。为空时使用平台默认路径；macOS 默认路径为 `/System/Library/Fonts/Supplemental/Arial.ttf`。示例中的 `__URUI_FONT__` 按默认字体约定替换，不是任意字体的自动 family 检测器；使用自定义字体时，在 RCSS 中填写该字体真实的 `font-family`。
 

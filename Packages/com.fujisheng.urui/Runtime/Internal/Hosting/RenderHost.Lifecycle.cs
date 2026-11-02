@@ -83,6 +83,9 @@ namespace URUI.Internal.Hosting
                     throw new Exception("URUIBridge ABI version 3 is required");
                 }
 
+                if (NativeMethods.urui_texture_protocol_version() != 1)
+                    throw new Exception("URUIBridge texture protocol v1 is required; update all platform plugins");
+
                 if (NativeMethods.urui_create(UiWidth, UiHeight, ResolveFontPath()) == 0)
                 {
                     throw new Exception(NativeMethods.LastError());
@@ -96,41 +99,7 @@ namespace URUI.Internal.Hosting
                     throw new Exception("This native build has no inline lookup queue support");
                 }
 #endif
-                foreach (var asset in imageAssets ?? Array.Empty<ImageBinding>())
-                {
-                    if (string.IsNullOrEmpty(asset.source) || !asset.texture)
-                    {
-                        throw new Exception("URUI image asset needs a source and texture");
-                    }
-
-                    if ((asset.expectedWidth > 0 && asset.texture.width != asset.expectedWidth)
-                        || (asset.expectedHeight > 0 && asset.texture.height != asset.expectedHeight))
-                    {
-                        throw new Exception("URUI image dimensions differ from declared atlas/source pixels: " + asset.source);
-                    }
-
-                    var pixels = asset.texture.GetPixels32();
-                    var rgba = new byte[pixels.Length * 4];
-                    // Unity GetPixels32 is bottom-row first; RmlUi's image and spritesheet
-                    // coordinates are top-row first. Convert row order before registration.
-                    int j = 0;
-                    for (int y = asset.texture.height - 1; y >= 0; y--)
-                    {
-                        for (int x = 0; x < asset.texture.width; x++)
-                        {
-                            var p = pixels[y * asset.texture.width + x];
-                            rgba[j++] = p.r;
-                            rgba[j++] = p.g;
-                            rgba[j++] = p.b;
-                            rgba[j++] = p.a;
-                        }
-                    }
-
-                    if (NativeMethods.urui_register_rgba_texture(asset.source, asset.texture.width, asset.texture.height, rgba, rgba.Length, out _) != 1)
-                    {
-                        throw new Exception("URUI image registration: " + NativeMethods.LastError());
-                    }
-                }
+                borrowedTextures.Register(imageAssets);
 
                 var fontFile = Path.GetFileNameWithoutExtension(ResolveFontPath()).ToLowerInvariant();
                 var family = fontFile.Contains("roboto") ? "Roboto" : fontFile.Contains("noto") ? "Noto Sans" : fontFile.Contains("dejavu") ? "DejaVu Sans" : "Arial";
@@ -147,7 +116,7 @@ namespace URUI.Internal.Hosting
             }
             catch (EntryPointNotFoundException ex)
             {
-                Debug.LogError("Update Native/URUIBridge to ABI version 3: " + ex.Message);
+                Debug.LogError("Update Native/URUIBridge to ABI3 with texture protocol v1: " + ex.Message);
                 AbortStartup();
             }
             catch (Exception ex)
@@ -187,6 +156,7 @@ namespace URUI.Internal.Hosting
                 ActiveHost = null;
             }
 
+            borrowedTextures.Clear();
             enabled = false;
         }
 
@@ -304,6 +274,7 @@ namespace URUI.Internal.Hosting
                 active = false;
             }
 
+            borrowedTextures.Clear();
             if (ReferenceEquals(ActiveHost, this))
             {
                 ActiveHost = null;

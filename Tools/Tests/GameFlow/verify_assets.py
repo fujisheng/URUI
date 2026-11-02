@@ -24,7 +24,7 @@ for name in ["world", "operator", "avatar", "slot-normal", "slot-empty", "slot-s
     data = asset.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n", asset
     assert min(struct.unpack(">II", data[16:24])) > 0, asset
-    assert "isReadable: 1" in asset.with_name(asset.name + ".meta").read_text(), asset
+    assert "isReadable: 0" in asset.with_name(asset.name + ".meta").read_text(), asset
 manifest = json.loads((resources / "asset-manifest.json.txt").read_text())
 pngs = {p.name for p in (resources / "Images").glob("*.png")}
 assert len(pngs) == 40 and {Path(a["runtimeFile"]).name for a in manifest["assets"]} == pngs
