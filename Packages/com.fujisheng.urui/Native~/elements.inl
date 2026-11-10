@@ -5,8 +5,55 @@
 
 namespace urui_elements
 {
-    Rml::Element* Get(uint64_t token)
+    int ReplaceHtml(URUI::Element& element, const char* source)
     {
+        const auto* owner = element.GetOwnerDocument();
+        const URUI::String url = owner ? owner->GetSourceURL() : "urui:fragment";
+        auto parsed = URUI::ParseHtmlFragment(source, element.GetTagName(), url.empty() ? "urui:fragment" : url);
+        if (!parsed) {
+            error_message = parsed.diagnostics.empty() ? "Invalid HTML fragment" : parsed.diagnostics.front().message;
+            return -2;
+        }
+        URUI::Vector<URUI::Diagnostic> diagnostics;
+        if (!URUI::ReplaceInnerHtml(element, *parsed.document, diagnostics)) {
+            error_message = diagnostics.empty() ? "HTML fragment construction failed" : diagnostics.front().message;
+            return -2;
+        }
+        error_message.clear();
+        return 1;
+    }
+
+    bool AcceptNumber(const URUI::PropertySpecification& specification, URUI::PropertyId id, int unit)
+    {
+        const auto* definition = specification.GetProperty(id);
+        if (!definition) return false;
+        const auto initial = definition->GetDefaultValue()->unit;
+        if (unit == 4) return initial == URUI::Unit::KEYWORD;
+        if (unit == 0) return initial == URUI::Unit::NUMBER || id == URUI::PropertyId::ZIndex;
+        if (initial == URUI::Unit::PX || initial == URUI::Unit::DP || initial == URUI::Unit::EM ||
+            initial == URUI::Unit::REM || initial == URUI::Unit::PERCENT) return true;
+        switch (id)
+        {
+        case URUI::PropertyId::BorderTopWidth: case URUI::PropertyId::BorderRightWidth:
+        case URUI::PropertyId::BorderBottomWidth: case URUI::PropertyId::BorderLeftWidth: return unit == 1;
+        case URUI::PropertyId::Width: case URUI::PropertyId::Height:
+        case URUI::PropertyId::MinWidth: case URUI::PropertyId::MinHeight:
+        case URUI::PropertyId::MaxWidth: case URUI::PropertyId::MaxHeight:
+        case URUI::PropertyId::Left: case URUI::PropertyId::Right:
+        case URUI::PropertyId::Top: case URUI::PropertyId::Bottom:
+        case URUI::PropertyId::FontSize: case URUI::PropertyId::LineHeight: return true;
+        default: return false;
+        }
+    }
+    URUI::ElementDocument* Document(UruiDocumentHandle owner)
+    {
+        if (!element_references.Owner() || !document_registry) return nullptr;
+        auto* state = document_registry->Find(owner);
+        return state ? state->Element() : nullptr;
+    }
+    URUI::Element* Get(UruiDocumentHandle owner, uint64_t token)
+    {
+        auto* document = Document(owner);
         auto* element = element_references.Resolve(token, document);
         if (!element)
             error_message = "Invalid element identity or context thread";
@@ -21,10 +68,10 @@ namespace urui_elements
                 return false;
         return true;
     }
-    std::vector<Rml::Element*> Query(Rml::Element* root, const char* name, const char* class_name, bool first = false)
+    std::vector<URUI::Element*> Query(URUI::Element* root, const char* name, const char* class_name, bool first = false)
     {
-        std::vector<Rml::Element*> result;
-        std::vector<Rml::Element*> pending{root};
+        std::vector<URUI::Element*> result;
+        std::vector<URUI::Element*> pending{root};
         while (!pending.empty())
         {
             auto* current = pending.back();
@@ -43,20 +90,10 @@ namespace urui_elements
 
 extern "C"
 {
-    uint64_t urui_element_root(void)
+    uint64_t urui_element_create(UruiDocumentHandle document_handle, const char* tag)
     try
     {
-        return element_references.Track(document, document);
-    }
-    catch (...)
-    {
-        // C++ failures must not unwind across the managed/native ABI.
-        try { error_message = "Native element operation failed"; } catch (...) {}
-        return 0;
-    }
-    uint64_t urui_element_create(const char* tag)
-    try
-    {
+        auto* document = urui_elements::Document(document_handle);
         if (!tag || !*tag)
             return 0;
         for (auto* p = tag; *p; ++p)
@@ -70,10 +107,112 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return 0;
     }
-    uint64_t urui_element_parent(uint64_t token)
+    uint64_t urui_element_clone(UruiDocumentHandle document_handle, uint64_t token)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* document = urui_elements::Document(document_handle);
+        if (urui_interaction::callback_depth)
+            return 0;
+        auto* source = urui_elements::Get(document_handle, token);
+        return source ? element_references.Clone(source, document) : 0;
+    }
+    catch (...)
+    {
+        try { error_message = "Native template clone failed"; } catch (...) {}
+        return 0;
+    }
+    int urui_element_number(UruiDocumentHandle document_handle, uint64_t token, const char* property, float value, int unit)
+    try
+    {
+        if (!property || !*property || !std::isfinite(value) || unit < 0 || unit > 4 || urui_interaction::callback_depth)
+            return -1;
+        auto* el = urui_elements::Get(document_handle, token);
+        if (!el)
+            return -1;
+        if (std::strncmp(property, "--", 2) == 0 && el->GetPropertySpecification().GetPropertyId(property) == URUI::PropertyId::Invalid)
+        {
+            if (unit == 4) return -1;
+            const auto units = unit == 0 ? URUI::Unit::NUMBER : unit == 1 ? URUI::Unit::PX : unit == 2 ? URUI::Unit::PERCENT : URUI::Unit::DP;
+            el->GetStyle()->SetCustomProperty(property, URUI::Property(value, units));
+            return 1;
+        }
+        const auto* definition = el->GetPropertySpecification().GetProperty(property);
+        URUI::PropertyIdSet properties;
+        if (definition) properties.Insert(definition->GetId());
+        else
+        {
+            const auto shorthand = el->GetPropertySpecification().GetShorthandId(property);
+            if (shorthand == URUI::ShorthandId::Invalid) return -1;
+            properties = el->GetPropertySpecification().GetShorthandUnderlyingProperties(shorthand);
+        }
+        if (properties.Empty()) return -1;
+        for (const auto id : properties)
+        {
+            if (!urui_elements::AcceptNumber(el->GetPropertySpecification(), id, unit)) return -1;
+            if (unit == 4)
+            {
+                if (value < 0 || value > 1024 || std::floor(value) != value) return -1;
+                URUI::String keyword; URUI::Property parsed;
+                const auto* def = el->GetPropertySpecification().GetProperty(id);
+                // URUI writes keyword text but returns false even for a valid keyword.
+                // Validate by parsing the result back into the same registered value.
+                def->GetValue(keyword,URUI::Property(int(value),URUI::Unit::KEYWORD));
+                if (!def->ParseValue(parsed,keyword) ||
+                    parsed.unit != URUI::Unit::KEYWORD || parsed.Get<int>() != int(value)) return -1;
+            }
+        }
+        const auto units = unit == 0 ? URUI::Unit::NUMBER : unit == 1 ? URUI::Unit::PX : unit == 2 ? URUI::Unit::PERCENT : unit == 3 ? URUI::Unit::DP : URUI::Unit::KEYWORD;
+        for (const auto id : properties)
+            if (!el->SetProperty(id, unit == 4 ? URUI::Property(int(value),units) : URUI::Property(value, units))) return -2;
+        return 1;
+    }
+    catch (...)
+    {
+        try { error_message = "Native numeric value failed"; } catch (...) {}
+        return -2;
+    }
+    int urui_element_color(UruiDocumentHandle document_handle, uint64_t token, const char* property, int red, int green, int blue, int alpha)
+    try
+    {
+        if (!property || red < 0 || red > 255 || green < 0 || green > 255 || blue < 0 || blue > 255 ||
+            alpha < 0 || alpha > 255 || urui_interaction::callback_depth) return -1;
+        auto* element = urui_elements::Get(document_handle, token);
+        const auto* definition = element ? element->GetPropertySpecification().GetProperty(property) : nullptr;
+        if (!element || !definition || definition->GetDefaultValue()->unit != URUI::Unit::COLOUR) return -1;
+        return element->SetProperty(definition->GetId(), URUI::Property(URUI::Colourb(red, green, blue, alpha), URUI::Unit::COLOUR)) ? 1 : -2;
+    }
+    catch (...)
+    {
+        try { error_message = "Native color value failed"; } catch (...) {}
+        return -2;
+    }
+    int urui_element_trs(UruiDocumentHandle document_handle, uint64_t token, const float* values, int count)
+    try
+    {
+        if (!values || count != 12 || urui_interaction::callback_depth) return -1;
+        for (int i = 0; i < count; ++i) if (!std::isfinite(values[i])) return -1;
+        const float axis_length = values[3] * values[3] + values[4] * values[4] + values[5] * values[5];
+        if (!std::isfinite(axis_length) || axis_length <= 0) return -1;
+        auto* element = urui_elements::Get(document_handle, token);
+        if (!element) return -1;
+        URUI::Transform::PrimitiveList primitives;
+        primitives.emplace_back(URUI::Transforms::Translate3D(values[0], values[1], values[2], URUI::Unit::PX));
+        primitives.emplace_back(URUI::Transforms::Rotate3D(values[3], values[4], values[5], values[6]));
+        primitives.emplace_back(URUI::Transforms::Scale3D(values[7], values[8], values[9]));
+        if (!element->SetProperty(URUI::PropertyId::TransformOriginX, URUI::Property(values[10], URUI::Unit::PERCENT)) ||
+            !element->SetProperty(URUI::PropertyId::TransformOriginY, URUI::Property(values[11], URUI::Unit::PERCENT))) return -2;
+        return element->SetProperty(URUI::PropertyId::Transform, URUI::Transform::MakeProperty(std::move(primitives))) ? 1 : -2;
+    }
+    catch (...)
+    {
+        try { error_message = "Native transform value failed"; } catch (...) {}
+        return -2;
+    }
+    uint64_t urui_element_parent(UruiDocumentHandle document_handle, uint64_t token)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
+        auto* el = urui_elements::Get(document_handle, token);
         if (!el) return UINT64_MAX;
         if (el == document || !el->GetParentNode()) return 0;
         const auto parent = element_references.Track(el->GetParentNode(), document);
@@ -85,10 +224,10 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return UINT64_MAX;
     }
-    int urui_element_child_count(uint64_t token)
+    int urui_element_child_count(UruiDocumentHandle document_handle, uint64_t token)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* el = urui_elements::Get(document_handle, token);
         return el ? el->GetNumChildren() : -1;
     }
     catch (...)
@@ -97,10 +236,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    uint64_t urui_element_child_at(uint64_t token, int index)
+    uint64_t urui_element_child_at(UruiDocumentHandle document_handle, uint64_t token, int index)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* document = urui_elements::Document(document_handle);
+        auto* el = urui_elements::Get(document_handle, token);
         return el && index >= 0 && index < el->GetNumChildren() ? element_references.Track(el->GetChild(index), document) : 0;
     }
     catch (...)
@@ -109,10 +249,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return 0;
     }
-    uint64_t urui_element_find(uint64_t token, const char* name, const char* class_name)
+    uint64_t urui_element_find(UruiDocumentHandle document_handle, uint64_t token, const char* name, const char* class_name)
     try
     {
-        auto* root = urui_elements::Get(token);
+        auto* document = urui_elements::Document(document_handle);
+        auto* root = urui_elements::Get(document_handle, token);
         if (!root || (class_name && !urui_elements::ClassToken(class_name))) return UINT64_MAX;
         auto result = urui_elements::Query(root, name, class_name, true);
         if (result.empty()) return 0;
@@ -125,10 +266,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return UINT64_MAX;
     }
-    int urui_element_query(uint64_t token, const char* name, const char* class_name, uint64_t* out, int capacity)
+    int urui_element_query(UruiDocumentHandle document_handle, uint64_t token, const char* name, const char* class_name, uint64_t* out, int capacity)
     try
     {
-        auto* root = urui_elements::Get(token);
+        auto* document = urui_elements::Document(document_handle);
+        auto* root = urui_elements::Get(document_handle, token);
         if (!root || capacity < 0 || (!out && capacity > 0) || (class_name && !urui_elements::ClassToken(class_name)))
             return -1;
         auto matches = urui_elements::Query(root, name, class_name);
@@ -156,37 +298,45 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_read(uint64_t token, int field, const char* name, char* out, int capacity, int* required)
+    int urui_element_read(UruiDocumentHandle document_handle, uint64_t token, int field, const char* name, char* out, int capacity, int* required)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* el = urui_elements::Get(document_handle, token);
         if (!el || !required || capacity < 0 || (!out && capacity > 0))
             return -1;
         *required = 0;
-        Rml::String value;
+        URUI::String value;
         switch (field)
         {
         case 0: value = el->GetId(); break;
         case 1: value = el->GetTagName(); break;
         case 2:
             if (el->GetTagName() == "#text")
-                value = static_cast<Rml::ElementText*>(el)->GetText();
+                value = static_cast<URUI::ElementText*>(el)->GetText();
             else
                 for (int i = 0; i < el->GetNumChildren(); ++i)
                 {
                     auto* child = el->GetChild(i);
                     if (child->GetTagName() != "#text")
                         return -2;
-                    value += static_cast<Rml::ElementText*>(child)->GetText();
+                    value += static_cast<URUI::ElementText*>(child)->GetText();
                 }
             break;
         case 3:
             if (!name || !*name)
                 return -1;
-            if (!el->HasAttribute(name))
-                return 0;
-            value = el->GetAttribute<Rml::String>(name, "");
+            if (std::strcmp(name, "class") == 0)
+            {
+                value = el->GetClassNames();
+                if (value.empty() && !el->HasAttribute(name)) return 0;
+            }
+            else
+            {
+                if (!el->HasAttribute(name)) return 0;
+                value = el->GetAttribute<URUI::String>(name, "");
+            }
             break;
+        case 4: value = el->GetInnerHTML(); break;
         default: return -1;
         }
         if (value.size() >= static_cast<size_t>(INT32_MAX))
@@ -203,18 +353,19 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_write(uint64_t token, int field, const char* name, const char* value)
+    int urui_element_write(UruiDocumentHandle document_handle, uint64_t token, int field, const char* name, const char* value)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* document = urui_elements::Document(document_handle);
+        auto* el = urui_elements::Get(document_handle, token);
         if (!el || !value)
             return -1;
         switch (field)
         {
-        case 0: el->SetAttribute("id", Rml::String(value)); break;
+        case 0: el->SetAttribute("id", URUI::String(value)); break;
         case 1:
             if (el->GetTagName() == "#text")
-                static_cast<Rml::ElementText*>(el)->SetText(value);
+                static_cast<URUI::ElementText*>(el)->SetText(value);
             else
             {
                 // Plain text is never parsed as markup, entities or a data expression.
@@ -231,16 +382,15 @@ extern "C"
         case 2:
             if (!name || !*name)
                 return -1;
-            el->SetAttribute(name, Rml::String(value));
+            el->SetAttribute(name, URUI::String(value));
             break;
         case 3:
-            // Template parsing in RmlUi dereferences the owner document.
-            if (el->GetTagName() == "#text" || !element_references.Attached(el, document))
+            if (el->GetTagName() == "#text" || el->GetTagName() == "#comment")
             {
-                error_message = "Attach the element before parsing inner RML";
+                error_message = "Attach the element before parsing inner HTML";
                 return -1;
             }
-            el->SetInnerRML(value);
+            if (urui_elements::ReplaceHtml(*el, value) != 1) return -2;
             element_references.Prune();
             break;
         case 4:
@@ -260,14 +410,17 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_erase(uint64_t token, int field, const char* name)
+    int urui_element_erase(UruiDocumentHandle document_handle, uint64_t token, int field, const char* name)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* el = urui_elements::Get(document_handle, token);
         if (!el || !name || !*name || (field != 0 && field != 1))
             return -1;
         if (field == 0)
+        {
+            if (std::strcmp(name, "class") == 0) el->SetClassNames("");
             el->RemoveAttribute(name);
+        }
         else
             el->RemoveProperty(name);
         return 1;
@@ -278,10 +431,10 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_class(uint64_t token, const char* name, int action)
+    int urui_element_class(UruiDocumentHandle document_handle, uint64_t token, const char* name, int action)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* el = urui_elements::Get(document_handle, token);
         if (!el || !urui_elements::ClassToken(name) || action < -1 || action > 1)
             return -1;
         if (action == -1)
@@ -289,7 +442,7 @@ extern "C"
         if (el->IsClassSet(name) == (action == 1))
             return 1;
         std::istringstream source(el->GetClassNames());
-        Rml::String result, current;
+        URUI::String result, current;
         while (source >> current)
             if (current != name)
             {
@@ -311,10 +464,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_insert(uint64_t parent, uint64_t child, int index)
+    int urui_element_insert(UruiDocumentHandle document_handle, uint64_t parent, uint64_t child, int index)
     try
     {
-        return element_references.Insert(urui_elements::Get(parent), urui_elements::Get(child), index, document);
+        auto* document = urui_elements::Document(document_handle);
+        return element_references.Insert(urui_elements::Get(document_handle, parent), urui_elements::Get(document_handle, child), index, document);
     }
     catch (...)
     {
@@ -322,10 +476,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_detach(uint64_t token)
+    int urui_element_detach(UruiDocumentHandle document_handle, uint64_t token)
     try
     {
-        return element_references.Detach(urui_elements::Get(token), document);
+        auto* document = urui_elements::Document(document_handle);
+        return element_references.Detach(urui_elements::Get(document_handle, token), document);
     }
     catch (...)
     {
@@ -333,10 +488,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_clear(uint64_t token)
+    int urui_element_clear(UruiDocumentHandle document_handle, uint64_t token)
     try
     {
-        return element_references.ClearChildren(urui_elements::Get(token), document);
+        auto* document = urui_elements::Document(document_handle);
+        return element_references.ClearChildren(urui_elements::Get(document_handle, token), document);
     }
     catch (...)
     {
@@ -344,10 +500,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_destroy(uint64_t token)
+    int urui_element_destroy(UruiDocumentHandle document_handle, uint64_t token)
     try
     {
-        return element_references.Destroy(urui_elements::Get(token), document);
+        auto* document = urui_elements::Document(document_handle);
+        return element_references.Destroy(urui_elements::Get(document_handle, token), document);
     }
     catch (...)
     {
@@ -355,10 +512,11 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_attached(uint64_t token)
+    int urui_element_attached(UruiDocumentHandle document_handle, uint64_t token)
     try
     {
-        auto* el = urui_elements::Get(token);
+        auto* document = urui_elements::Document(document_handle);
+        auto* el = urui_elements::Get(document_handle, token);
         return el ? (element_references.Attached(el, document) ? 1 : 0) : -1;
     }
     catch (...)
@@ -367,16 +525,19 @@ extern "C"
         try { error_message = "Native element operation failed"; } catch (...) {}
         return -1;
     }
-    int urui_element_pop_click(uint64_t* target)
+    int urui_element_pop_click(UruiDocumentHandle document_handle, uint64_t* target)
     try
     {
+        auto* document = urui_elements::Document(document_handle);
         if (!target || !element_references.Owner())
             return -1;
         *target = 0;
-        while (!clicks.empty())
+        for (auto it = clicks.begin(); it != clicks.end();)
         {
-            auto current = clicks.front();
-            clicks.pop_front();
+            auto current = *it;
+            if (!current) { it = clicks.erase(it); continue; }
+            if (current->GetOwnerDocument() != document) { ++it; continue; }
+            it = clicks.erase(it);
             if (current && element_references.Attached(current.get(), document))
             {
                 *target = element_references.Track(current.get(), document);

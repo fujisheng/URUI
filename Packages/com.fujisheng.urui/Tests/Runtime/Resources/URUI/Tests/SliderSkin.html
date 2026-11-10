@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head>
+  <link rel="stylesheet" href="/urui/controls.css">
+  <style>
+    body { margin:0; }
+    #slider-host { position:absolute; left:14px; top:10px; width:100px; height:44px; }
+    #track { top:8px; height:28px; background-color:blue; border-width:0; }
+    #fill { top:8px; height:28px; background-color:red; }
+    #thumb { width:44px; height:44px; margin-left:-22px; background-color:white; border-width:0; }
+    #slider-host[data-urui-orientation=vertical] > #track { left:8px; top:0; width:28px; height:100%; }
+    #slider-host[data-urui-orientation=vertical] > #fill { left:8px; top:0; width:28px; }
+    #slider-host[data-urui-orientation=vertical] > #thumb { margin-left:0; margin-top:-22px; }
+  </style>
+</head><body>
+  <urui-slider id="slider-host">
+    <input id="input" type="range" min="0" max="100" value="50">
+    <div id="track" class="urui-slider-track"></div>
+    <div id="fill" class="urui-slider-fill"></div>
+    <div id="thumb" class="urui-slider-thumb"></div>
+  </urui-slider>
+</body></html>

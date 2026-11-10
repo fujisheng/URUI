@@ -5,7 +5,7 @@ using URUI.Internal.Interop;
 
 namespace URUI.Elements
 {
-    /// <summary>RCSS 长度单位；Unset 表示没有行内覆盖。</summary>
+    /// <summary>CSS 长度单位；Unset 表示没有行内覆盖。</summary>
     public enum LengthUnit { Unset, Pixel, Percent, Em, Rem, Auto }
     /// <summary>保留单位的样式长度，所有数值必须有限。</summary>
     public readonly struct Length
@@ -33,7 +33,7 @@ namespace URUI.Elements
         public static Length Rem(float value) => new Length(value, LengthUnit.Rem);
         /// <summary>数值隐式转换为像素。</summary>
         public static implicit operator Length(float value) => Pixels(value);
-        /// <summary>返回保留原单位的 RCSS 表达式。</summary>
+        /// <summary>返回保留原单位的 CSS 表达式。</summary>
         public override string ToString()
         {
             if (Unit == LengthUnit.Unset)
@@ -75,25 +75,25 @@ namespace URUI.Elements
         }
     }
 
-    /// <summary>对应 RCSS 的 DisplayStyle 枚举；Unset 移除行内覆盖。</summary>
+    /// <summary>对应 CSS 的 DisplayStyle 枚举；Unset 移除行内覆盖。</summary>
     public enum DisplayStyle { Unset, Block, Inline, InlineBlock, Flex, InlineFlex, None }
 
-    /// <summary>对应 RCSS 的 Position 枚举；Unset 移除行内覆盖。</summary>
+    /// <summary>对应 CSS 的 Position 枚举；Unset 移除行内覆盖。</summary>
     public enum Position { Unset, Static, Relative, Absolute }
 
-    /// <summary>对应 RCSS 的 FlexDirection 枚举；Unset 移除行内覆盖。</summary>
+    /// <summary>对应 CSS 的 FlexDirection 枚举；Unset 移除行内覆盖。</summary>
     public enum FlexDirection { Unset, Row, RowReverse, Column, ColumnReverse }
 
-    /// <summary>对应 RCSS 的 FlexWrap 枚举；Unset 移除行内覆盖。</summary>
+    /// <summary>对应 CSS 的 FlexWrap 枚举；Unset 移除行内覆盖。</summary>
     public enum FlexWrap { Unset, Nowrap, Wrap, WrapReverse }
 
-    /// <summary>对应 RCSS 的 Align 枚举；Unset 移除行内覆盖。</summary>
+    /// <summary>对应 CSS 的 Align 枚举；Unset 移除行内覆盖。</summary>
     public enum Align { Unset, Auto, FlexStart, FlexEnd, Center, Stretch, Baseline }
 
-    /// <summary>对应 RCSS 的 Justify 枚举；Unset 移除行内覆盖。</summary>
+    /// <summary>对应 CSS 的 Justify 枚举；Unset 移除行内覆盖。</summary>
     public enum Justify { Unset, FlexStart, FlexEnd, Center, SpaceBetween, SpaceAround, SpaceEvenly }
 
-    /// <summary>对应 RCSS 的 Overflow 枚举；Unset 移除行内覆盖。</summary>
+    /// <summary>对应 CSS 的 Overflow 枚举；Unset 移除行内覆盖。</summary>
     public enum Overflow { Unset, Visible, Hidden, Auto, Scroll }
 
     public sealed partial class ElementStyle
@@ -102,7 +102,7 @@ namespace URUI.Elements
         public string Get(string property)
         {
             URUI.Documents.Document.RequireName(property, nameof(property));
-            return NativeMethods.ReadStyle(element.CheckedToken(), property, true);
+            return element.ReadStyle(property, true);
         }
         void SetLength(string name, Length value)
         {
@@ -333,6 +333,18 @@ namespace URUI.Elements
             get => GetEnum<Overflow>("overflow");
             set => SetEnum("overflow", value);
         }
+        /// <summary>水平方向的行内溢出处理。</summary>
+        public Overflow OverflowX
+        {
+            get => GetEnum<Overflow>("overflow-x");
+            set => SetEnum("overflow-x", value);
+        }
+        /// <summary>垂直方向的行内溢出处理。</summary>
+        public Overflow OverflowY
+        {
+            get => GetEnum<Overflow>("overflow-y");
+            set => SetEnum("overflow-y", value);
+        }
         /// <summary>opacity 的行内数值；null 移除覆盖。</summary>
         public float? Opacity
         {
@@ -382,7 +394,7 @@ namespace URUI.Elements
                     return value;
                 }
 
-                throw new NotSupportedException("请通过 Get 读取此 RCSS 颜色表达式：" + text);
+                throw new NotSupportedException("请通过 Get 读取此 CSS 颜色表达式：" + text);
             }
             set
             {

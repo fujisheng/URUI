@@ -7,37 +7,51 @@ namespace URUI.Internal.Interop
     internal static partial class NativeMethods
     {
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_element_root();
+        internal static extern int urui_element_refresh_state(ulong documentHandle, ulong token, out UnityEngine.Rect layout, int capacity);
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct RangeInfo { public float Min, Max, Step, StepBase; public int Flags; }
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_control_range_info(ulong owner, ulong token, out RangeInfo info);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_element_create([MarshalAs(UnmanagedType.LPUTF8Str)] string tag);
+        internal static extern ulong urui_element_create(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string tag);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_element_parent(ulong token);
+        internal static extern ulong urui_element_clone(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_child_count(ulong token);
+        internal static extern int urui_element_number(ulong documentHandle, ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string property, float value, int unit);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_element_child_at(ulong token, int index);
+        internal static extern int urui_element_color(ulong documentHandle, ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string property, int red, int green, int blue, int alpha);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_element_find(
-            ulong token,
+        internal static extern int urui_element_trs(ulong documentHandle, ulong token, [In] float[] values, int count);
+
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern ulong urui_element_parent(ulong documentHandle, ulong token);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_element_child_count(ulong documentHandle, ulong token);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern ulong urui_element_child_at(ulong documentHandle, ulong token, int index);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern ulong urui_element_find(ulong documentHandle, ulong token,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string className);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_query(
-            ulong token,
+        internal static extern int urui_element_query(ulong documentHandle, ulong token,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string className,
             [Out] ulong[] values,
             int capacity);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        static extern int urui_element_read(
-            ulong token,
+        static extern int urui_element_read(ulong documentHandle, ulong token,
             int field,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
             [Out] byte[] value,
@@ -45,40 +59,39 @@ namespace URUI.Internal.Interop
             out int required);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_write(
-            ulong token,
+        internal static extern int urui_element_write(ulong documentHandle, ulong token,
             int field,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_erase(ulong token, int field, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+        internal static extern int urui_element_erase(ulong documentHandle, ulong token, int field, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_class(ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int action);
+        internal static extern int urui_element_class(ulong documentHandle, ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int action);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_insert(ulong parent, ulong child, int index);
+        internal static extern int urui_element_insert(ulong documentHandle, ulong parent, ulong child, int index);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_detach(ulong token);
+        internal static extern int urui_element_detach(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_clear(ulong token);
+        internal static extern int urui_element_clear(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_destroy(ulong token);
+        internal static extern int urui_element_destroy(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_attached(ulong token);
+        internal static extern int urui_element_attached(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_pop_click(out ulong target);
+        internal static extern int urui_element_pop_click(ulong documentHandle, out ulong target);
 
         // Two synchronous copies: no borrowed native string survives the call.
-        internal static string ReadElement(ulong token, int field, string name = null)
+        internal static string ReadElement(ulong documentHandle, ulong token, int field, string name = null, string previous = null)
         {
-            int result = urui_element_read(token, field, name, null, 0, out var required);
+            int result = urui_element_read(documentHandle, token, field, name, null, 0, out var required);
             if (result == 0)
             {
                 return null;
@@ -89,20 +102,9 @@ namespace URUI.Internal.Interop
                 throw new InvalidOperationException("Text 仅支持普通文本子节点；结构内容请使用节点层级 API。");
             }
 
-            if (result != -3 || required <= 0)
-            {
-                throw new InvalidOperationException("URUI 无法读取元素：" + LastError());
-            }
-
-            var bytes = new byte[required];
-            if (urui_element_read(token, field, name, bytes, bytes.Length, out var actual) != 1
-                || actual != required
-                || bytes[required - 1] != 0)
-            {
-                throw new InvalidOperationException("URUI 元素字符串快照无效。");
-            }
-
-            return Encoding.UTF8.GetString(bytes, 0, required - 1);
+            var bytes = SnapshotBuffer(result, required, int.MaxValue);
+            ValidateSnapshot(urui_element_read(documentHandle, token, field, name, bytes, required, out var actual), actual, required, bytes);
+            return SnapshotText(bytes, required - 1, previous);
         }
     }
 }

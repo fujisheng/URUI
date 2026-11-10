@@ -1,6 +1,6 @@
 North / 07 — approved overall design → original independent resources
 
-Built-in imageGen only. No commercial-game assets, Editor screenshot inputs, API/CLI fallback or copied franchise characters. Complete designs are references only, never runtime UI textures. Runtime text/buttons/inputs are RML.
+Built-in imageGen only. No commercial-game assets, Editor screenshot inputs, API/CLI fallback or copied franchise characters. Complete designs are references only, never runtime UI textures. Runtime text/buttons/inputs are HTML.
 Approved masters: Home v1, Inventory v2. Four same-system extensions generated before their UI implementation. Original masters/crops/masks/native-alpha outputs/review tools are retained in workspace Artifacts/GameFlow/DesignFirst/20261102 and FUI-CLI/GameFlowDesign. They are not runtime dependencies.
 
 Explicit postprocess: alpha>8 bbox trim with contain scaling and declared padding, native originals unchanged; frame pieces use deterministic slicing. Currency glyphs use an explicitly declared border-connected matte branch. Tiny disconnected dock-atlas noise was removed after visual inspection; no blanket alpha erosion, feathering or despill. Exact dimensions/hash/lineage are in asset-manifest.json.txt and development asset-processing-report.json.

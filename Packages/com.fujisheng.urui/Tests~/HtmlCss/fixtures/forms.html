@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><link rel="stylesheet" href="/urui/base.css"><link rel="stylesheet" href="/urui/controls.css"><link rel="stylesheet" href="common.css"><style>
+#slider { position:absolute; left:40px; top:40px; width:200px; }
+#track { background-color:#335577; border-width:0; }
+#fill { background-color:#883355; }
+#thumb { background-color:#ffffff; border-width:0; }
+#progress { position:absolute; left:40px; top:120px; width:200px; height:24px; background-color:#335577; }
+#progress-fill { background-color:#779933; }
+#button { position:absolute; left:40px; top:180px; width:200px; height:44px; border:2px solid #335577; padding:0; background-color:#ddeeff; }
+</style></head><body>
+<urui-slider id="slider" data-test="slider">
+<input id="input" type="range" min="0" max="100" value="50">
+<div id="track" data-test="track" class="urui-slider-track"></div>
+<div id="fill" data-test="fill" class="urui-slider-fill"></div>
+<div id="thumb" data-test="thumb" class="urui-slider-thumb"></div>
+</urui-slider>
+<urui-progress-bar id="progress" data-test="progress" min="0" max="100" value="25" role="progressbar"><div id="progress-fill" data-test="progress-fill" class="urui-progress-fill"></div><span class="urui-progress-title"></span><div class="urui-progress-content"></div></urui-progress-bar>
+<button id="button" data-test="button" type="button">Action</button>
+</body></html>

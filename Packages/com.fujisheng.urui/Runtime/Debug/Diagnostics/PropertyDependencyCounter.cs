@@ -47,7 +47,7 @@ namespace URUI.Internal.Diagnostics
             bool same = valid
                 && ReferenceEquals(block, previousBlock)
                 && ReferenceEquals(texture, previousTexture)
-                && previous.clip_enabled == command.clip_enabled
+                && previous.flags == command.flags
                 && previous.clip_x == command.clip_x
                 && previous.clip_y == command.clip_y
                 && previous.clip_w == command.clip_w

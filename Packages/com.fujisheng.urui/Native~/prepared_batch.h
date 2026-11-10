@@ -85,7 +85,7 @@ namespace urui_prepared
         bool closing = false, delta_enabled = false;
         static bool State(const UruiPreparedDraw& a, const UruiCommand& b)
         {
-            return a.texture == b.texture && a.clip_enabled == b.clip_enabled && a.clip_x == b.clip_x &&
+            return a.texture == b.texture && a.flags == b.flags && a.clip_x == b.clip_x &&
                    a.clip_y == b.clip_y && a.clip_w == b.clip_w && a.clip_h == b.clip_h;
         }
         static bool Same(const Batch& b, uint64_t epoch, const std::vector<UruiCommand>& c, size_t first, size_t end,
@@ -110,7 +110,7 @@ namespace urui_prepared
         {
             if (!delta_enabled || !old || b.epoch != old->epoch || b.draw.slot != old->draw.slot ||
                 b.draw.count != old->draw.count || b.draw.kind != old->draw.kind ||
-                b.draw.texture != old->draw.texture || b.draw.clip_enabled != old->draw.clip_enabled ||
+                b.draw.texture != old->draw.texture || b.draw.flags != old->draw.flags ||
                 b.draw.clip_x != old->draw.clip_x || b.draw.clip_y != old->draw.clip_y ||
                 b.draw.clip_w != old->draw.clip_w || b.draw.clip_h != old->draw.clip_h ||
                 b.segments.size() != old->segments.size())
@@ -355,7 +355,7 @@ namespace urui_prepared
                 d.texture = c[begin].texture;
                 d.slot = uint32_t(begin);
                 d.kind = affine ? 0 : 1;
-                d.clip_enabled = c[begin].clip_enabled;
+                d.flags = c[begin].flags;
                 d.clip_x = c[begin].clip_x;
                 d.clip_y = c[begin].clip_y;
                 d.clip_w = c[begin].clip_w;

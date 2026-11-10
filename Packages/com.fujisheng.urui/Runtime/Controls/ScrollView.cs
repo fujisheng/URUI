@@ -10,8 +10,8 @@ namespace URUI.Controls
     public class ScrollView : Element
     {
         Element content;
+        bool generatedContent;
         float contentWidth = float.NaN;
-        readonly float[] viewport = new float[4];
         int dragging = -1;
         Vector2 start, offset;
         bool moved;
@@ -19,42 +19,34 @@ namespace URUI.Controls
         protected internal ScrollView(ElementContext context) : base(context) { }
         /// <summary>业务子节点放入滚动内容区。</summary>
         public override Element ContentContainer => content ?? this;
-        /// <summary>扣除边框、内边距和可见滚动条后的内容视口。</summary>
-        public Rect ViewportRect
-        {
-            get
-            {
-                RequireValid();
-                if (!HasLayout)
-                {
-                    throw new InvalidOperationException("请等待滚动区域完成布局。");
-                }
-
-                if (NativeMethods.urui_element_viewport(Token, viewport, viewport.Length) != 1)
-                {
-                    throw new InvalidOperationException("无法读取滚动视口。");
-                }
-
-                return new Rect(viewport[0], viewport[1], viewport[2], viewport[3]);
-            }
-        }
-        /// <summary>创建滚动内容区并迁移已有 RML 子节点。</summary>
+        /// <summary>复用作者显式内容区；空控件为有类型的运行时创建提供内容区。</summary>
         protected override void OnInitialize()
         {
             var existing = Hierarchy.Children();
+            bool hasOutsideContent = false;
+            foreach (var child in existing)
+            {
+                if (child.ClassListContains("urui-scroll-content"))
+                {
+                    if (content != null) throw new InvalidOperationException("urui-scroll-view 只能有一个直接的 urui-scroll-content 内容区。");
+                    content = child;
+                }
+                else if (!ControlMarkup.IsFormattingNode(child)) hasOutsideContent = true;
+            }
+            if (hasOutsideContent)
+                throw new InvalidOperationException("urui-scroll-view 的作者子节点必须放在显式的 urui-scroll-content 内容区内。");
+            Focusable = true;
+            if (content != null) return;
+
+            generatedContent = true;
             Style.Display = DisplayStyle.Block;
             Style.Overflow = Overflow.Auto;
-            Focusable = true;
             content = Document.Create<Element>();
             content.AddToClassList("urui-scroll-content");
             content.Style.Display = DisplayStyle.Block;
             content.Style.Position = Position.Relative;
             content.Style.Width = Length.Percent(100);
             Hierarchy.Add(content);
-            foreach (var child in existing)
-            {
-                content.Add(child);
-            }
         }
         /// <summary>将同一内容区中的后代滚动到可见范围，已经可见时保留当前位置。</summary>
         public void ScrollTo(Element child)
@@ -85,7 +77,7 @@ namespace URUI.Controls
         /// <summary>布局完成后使用视口实际宽度，避免原生滚动容器的百分比子宽度收缩为零。</summary>
         protected override void OnUpdate()
         {
-            if (!HasLayout)
+            if (!generatedContent || !HasLayout)
             {
                 return;
             }

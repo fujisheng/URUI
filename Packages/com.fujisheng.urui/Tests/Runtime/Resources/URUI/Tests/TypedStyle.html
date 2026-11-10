@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><link rel='stylesheet' href='/urui/base.css'><style>
+@property --fx-progress { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --inherited { syntax: "<number>"; inherits: true; initial-value: 0.25; }
+body, div { display:block; }
+body { font-size:12px; width: 400px; height: 200px; }
+#parent { --fx-progress: 0.75; --inherited: 0.6; width: 200px; height: 100px; }
+#child { width: 120px; height: 60px; opacity: var(--fx-progress); --test-edge:top;--padding:4px; --tint:#123456; --zero:0; }
+#bare {font-size:2em;}
+#animated { width: 100px; height: 40px; --fx-progress: 1; animation: progress 1s linear; }
+@keyframes progress { from { --fx-progress: 0; } to { --fx-progress: 1; } }
+</style></head><body><div id="parent"><div id="child"></div></div><div id="animated"></div><div id="bare"></div></body></html>

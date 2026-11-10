@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><style>
+body { margin:0; }
+#parent { position:absolute; left:0; top:0; width:200px; height:100px; visibility:hidden; background-color:red; }
+#inherited { display:block; width:10px; height:10px; background-color:red; }
+#shown { position:absolute; left:20px; top:20px; width:40px; height:40px; visibility:visible; background-color:lime; border-width:0; padding:0; }
+#layer { position:absolute; left:210px; top:0; width:100px; height:100px; visibility:hidden; transform:translate(5px,0); opacity:.5; background-color:red; }
+#layer-child { display:block; width:40px; height:40px; visibility:visible; background-color:blue; }
+#gone { position:absolute; left:0; top:120px; display:none; }
+#gone-child { display:block; width:40px; height:40px; visibility:visible; background-color:red; }
+</style></head><body>
+<div id="parent"><span id="inherited"></span><button id="shown"></button></div>
+<div id="layer"><div id="layer-child"></div></div>
+<div id="gone"><div id="gone-child"></div></div>
+</body></html>

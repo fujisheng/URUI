@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using URUI.Documents;
 using URUI.Elements;
@@ -14,16 +13,7 @@ namespace URUI.Tests
     /// <summary>跨真实 Editor 帧检查节点树、身份、匿名目标及回调修改期间的事件边界。</summary>
     public sealed class ElementTreeSmoke : MonoBehaviour
     {
-        const string Markup = "<rml><head><style>body{margin:0;}#action{position:absolute;left:0;top:0;width:160px;height:100px;background-color:red;}.hit{position:absolute;left:5px;top:5px;width:100px;height:60px;background-color:blue;}</style></head><body><div id='action'><div class='hit'/></div><div id='scope'/></body></rml>";
-
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_move(int x, int y);
-
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_button(int button, int pressed);
-
-        [DllImport("URUIBridge")]
-        static extern int urui_get_element_box(string id, [Out] float[] values);
+        const string Markup = "<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'><style>body{margin:0;}#action{position:absolute;left:0;top:0;width:160px;height:100px;background-color:red;}.hit{position:absolute;left:5px;top:5px;width:100px;height:60px;background-color:blue;}</style></head><body><div id='action'><div class='hit'></div></div><div id='scope'></div></body></html>";
 
         Document document;
         Element action;
@@ -60,23 +50,24 @@ namespace URUI.Tests
             throw new Exception("Expected " + typeof(T).Name);
         }
 
-        static void Click()
+        void Click()
         {
-            urui_mouse_move(30, 30);
-            urui_mouse_button(0, 1);
-            urui_mouse_button(0, 0);
+            document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(30, 30));
+            document.Surface.Input.SendPointer(PointerPhase.Up, new Vector2(30, 30));
         }
 
         void CheckTree()
         {
-            Need(document.Root != null && document.Root.Parent == null, "document root boundary");
-            var scope = document.Root.Q("scope");
+            Need(document.DocumentElement != null && document.DocumentElement.Parent == null, "document root boundary");
+            var scope = document.Q("scope");
             Need(ReferenceEquals(scope, scope.Q("scope")), "query includes self and canonical wrapper");
             var a = document.CreateElement();
             var b = document.CreateElement("span");
             var c = document.CreateElement();
             Need(a.Name == "" && a.IsValid && !a.IsAttached && a.Parent == null, "anonymous detached creation");
-            Throws<InvalidOperationException>(() => a.SetInnerMarkup("<template src='missing'/>"));
+            a.SetInnerHtml("<template id='inert'><span>inert content</span></template>", "ui/fragment.html");
+            Need(a[0].TagName == "template" && a[0].ChildCount == 0, "standard template content stays inert");
+            a.Clear();
             a.Name = b.Name = "same";
             a.AddToClassList("item");
             b.AddToClassList("item");
@@ -116,7 +107,7 @@ namespace URUI.Tests
             a.Destroy();
             Need(!a.IsValid && !b.IsValid && c.IsValid, "destroy invalidates subtree only");
             Throws<InvalidOperationException>(() => b.Text = "stale");
-            Throws<InvalidOperationException>(() => document.Root.Destroy());
+            Throws<InvalidOperationException>(() => document.DocumentElement.Destroy());
             c.Destroy();
         }
 
@@ -132,11 +123,11 @@ namespace URUI.Tests
             {
                 if (frames == 2)
                 {
-                    document = new GameObject("Element Tree").AddComponent<Document>();
-                    Need(document.Root == null && document.Query().Count == 0, "unloaded query");
-                    document.LoadMarkup(Markup);
+                    document = AcceptanceDocuments.Create(new GameObject("Element Tree"));
+                    Need(document.DocumentElement == null && document.Query().Count == 0, "unloaded query");
+                    document.LoadHtml(Markup, "ui/acceptance.html");
                     CheckTree();
-                    action = document.Root.Q("action");
+                    action = document.Q("action");
                     target = action.Q(className: "hit");
                     Need(target.Name == "" && target.Parent == action, "anonymous click target");
                     action.Style.SetWidth(10);
@@ -173,8 +164,7 @@ namespace URUI.Tests
 
                 if (frames == 5)
                 {
-                    var bounds = new float[6];
-                    Need(urui_get_element_box("action", bounds) == 1 && Mathf.Abs(bounds[2] - 160) < .1f, "style removal restores stylesheet");
+                    Need(Mathf.Abs(action.Layout.width - 160) < .1f, "style removal restores stylesheet");
                     Click();
                 }
 
@@ -220,12 +210,12 @@ namespace URUI.Tests
                 if (frames == 17)
                 {
                     Need(parentCalls == 4 && lateCalls == 3, "completed click cannot replay on replacement or old parent");
-                    var oldRoot = document.Root;
+                    var oldRoot = document.DocumentElement;
                     var detached = document.CreateElement();
                     document.Unload();
                     Need(!oldRoot.IsValid && !detached.IsValid, "unload invalidates detached ownership");
-                    document.LoadMarkup(Markup);
-                    Need(!ReferenceEquals(oldRoot, document.Root), "new document root generation");
+                    document.LoadHtml(Markup, "ui/acceptance.html");
+                    Need(!ReferenceEquals(oldRoot, document.DocumentElement), "new document root generation");
                     document.Unload();
                     late.Dispose();
                     Destroy(document.gameObject);

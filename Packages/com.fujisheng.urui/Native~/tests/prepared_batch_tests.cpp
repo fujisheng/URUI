@@ -37,7 +37,7 @@ int main()
         d.texture = 7;
     }
     c[1].geometry = 2;
-    c[2].clip_enabled = 1;
+    c[2].flags = 1;
     c[2].clip_w = 10;
     c[2].clip_h = 10;
     uint8_t mask[] = {1, 1, 1, 0};

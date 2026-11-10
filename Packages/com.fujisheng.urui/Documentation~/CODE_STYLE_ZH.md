@@ -1,6 +1,6 @@
 # 代码约定
 
-URUI 的业务接口保持简洁：RML/RCSS 表达界面，C# 通过 `Document`、`Element` 和显式方法驱动状态。
+URUI 的业务接口保持简洁：HTML/CSS 表达界面，C# 通过 `Document`、`Element` 和显式方法驱动状态。
 
 ## C#
 
@@ -13,11 +13,11 @@ URUI 的业务接口保持简洁：RML/RCSS 表达界面，C# 通过 `Document`�
 - 较大的 partial 类型按生命周期、资源、录制、提交等职责拆分；初始化状态集中保留，不能因为移动成员改变初始化顺序。
 - 业务代码仅依赖 `URUI.Runtime` 的公开接口。
 
-## RML/RCSS
+## HTML/CSS
 
 - 为业务需要访问的元素设置清晰、唯一且稳定的 ID。
 - 将布局规则写在样式中，显式设置需要的 `display` 与定位方式。
-- `Element.Text` 用于普通文字，`SetInnerMarkup` 仅用于有意修改结构。
+- `Element.Text` 用于普通文字，`SetInnerHtml` 仅用于有意修改结构。
 - 用能表达业务含义的 ID 和样式组织界面，让文本及其差异便于人和 AI 阅读。
 - 自定义字体填写真实 family，图片路径与 `ImageAsset.Source` 保持一致。
 

@@ -1,0 +1,8 @@
+body { margin:0; }
+#scaled { position:absolute; left:0; top:0; width:200px; height:200px; transform-origin:0 0; transform:scale(.8); }
+#viewport { width:200px; height:200px; overflow-x:hidden; overflow-y:auto; }
+#viewport { scrollbar-width:none; }
+#content { display:block; width:200px; }
+#target { display:block; width:200px; height:200px; padding:0; border-width:0; }
+#remaining { display:block; height:600px; }
+#viewport.clamped { --urui-scroll-boundary:clamped; }

@@ -1,0 +1,13 @@
+<!doctype html><html><head><style>
+@property --probe-progress { syntax:"<number>"; inherits:false; initial-value:0; }
+body { margin:0; }
+#group {display:block;width:400px;height:250px;filter:brightness(1);}
+img { display:block; }
+img[src="probe.png"] { --urui-image-effect:probe; }
+#a { width:120px; height:60px; --probe-progress:.2; --urui-image-slice-top:8px; --urui-image-slice-right:8px; --urui-image-slice-bottom:8px; --urui-image-slice-left:8px; }
+#b { width:240px; height:120px; --probe-progress:.8; --urui-image-fill-mode:radial360; --urui-image-fill-amount:.6; }
+.hidden { display:none; }
+img.plain { --urui-image-effect:none; }
+img.unknown { --urui-image-effect:missing-probe; }
+img.failing { --urui-image-effect:failing-probe; }
+</style></head><body><div id="group"><img id="a" src="probe.png"/><img id="b" src="probe.png"/></div></body></html>

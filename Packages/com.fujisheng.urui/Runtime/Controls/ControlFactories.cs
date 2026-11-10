@@ -14,15 +14,18 @@ namespace URUI.Controls
             document.RegisterFactory("input", context => new Slider(context), "range");
             document.RegisterFactory("input", context => new IntegerSlider(context), "range");
             document.RegisterFactory("textarea", context => new TextField(context));
+            document.RegisterFactory("input", context => new FloatField(context), "number");
             document.RegisterFactory("input", context => new IntegerField(context), "number");
-            document.RegisterFactory("input", context => new FloatField(context), "text");
             document.RegisterTag("input:text", typeof(TextField));
             document.RegisterTag("input:password", typeof(TextField));
-            document.RegisterFactory("scroll-view", context => new ScrollView(context));
+            document.RegisterFactory("urui-scroll-view", context => new ScrollView(context));
             document.RegisterFactory("select", context => new Dropdown(context));
-            document.RegisterFactory("foldout", context => new Foldout(context));
-            document.RegisterFactory("progress-bar", context => new ProgressBar(context));
-            document.RegisterFactory("list-view", context => new ListView(context));
+            document.RegisterFactory("urui-foldout", context => new Foldout(context));
+            document.RegisterFactory("urui-progress-bar", context => new ProgressBar(context));
+            document.RegisterFactory("urui-list-view", context => new ListView(context));
+            document.RegisterFactory("urui-slider", context => new AuthoredSliderSkin(context));
+            document.RegisterFactory("urui-select", context => new AuthoredDropdownSkin(context));
+            document.RegisterFactory("urui-scroll", context => new AuthoredScrollSkin(context));
         }
     }
 }

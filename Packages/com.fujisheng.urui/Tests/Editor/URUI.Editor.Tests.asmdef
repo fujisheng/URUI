@@ -1,0 +1,10 @@
+{
+  "name":"URUI.Editor.Tests",
+  "references":["URUI.Runtime","URUI.Editor"],
+  "includePlatforms":["Editor"],
+  "overrideReferences":true,
+  "precompiledReferences":["nunit.framework.dll"],
+  "autoReferenced":false,
+  "defineConstraints":["UNITY_INCLUDE_TESTS"],
+  "optionalUnityReferences":["TestAssemblies"]
+}

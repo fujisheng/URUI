@@ -1,0 +1,18 @@
+<!doctype html>
+<html><head><link rel='stylesheet' href='/urui/base.css'><style>
+@property --anim-progress {syntax:"<number>";inherits:false;initial-value:0;}
+@property --anim-same {syntax:"<number>";inherits:false;initial-value:1;}
+body {margin:0;}
+#a,#b {display:block;width:80px;height:40px;}
+.play #a {animation:short .03s linear,slow .15s linear;}
+.play #b {animation:delayed .05s .1s linear;}
+.same #a {animation:same-value .08s linear;}
+.instant #a {animation:instant-value 0s linear;}
+.trigger.activate-second #b {animation:delayed .05s linear;}
+#a.hidden,#b.hidden {display:none;}
+@keyframes short {from{transform:translate(0px,0px);}to{transform:translate(10px,0px);}}
+@keyframes slow {from{opacity:.1;}to{opacity:1;}}
+@keyframes delayed {from{--anim-progress:0;}to{--anim-progress:1;}}
+@keyframes same-value {from{--anim-same:1;}to{--anim-same:1;}}
+@keyframes instant-value {from{--anim-progress:0;}to{--anim-progress:1;}}
+</style></head><body><div id="a"></div><div id="b"></div></body></html>

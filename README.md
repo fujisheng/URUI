@@ -1,67 +1,42 @@
-# URUI · UnityRmlUi
+# URUI
 
-**为 AI 辅助开发而设计的 Unity UI：用 RML/RCSS 描述界面，用 C# 驱动交互。**
+URUI 使用 HTML/CSS 描述 Unity 游戏界面的结构、布局、皮肤和动画，通过 C# 操作类型化节点、处理事件并连接游戏业务。当前提供两个 Unity Package：
 
-URUI 将 [RmlUi](https://github.com/mikke89/RmlUi) 接入 Unity。RmlUi 负责文档解析与布局，Unity 负责绘制和输入，业务代码通过 `URUI.Documents.Document` 查询与更新元素。
+| 包 | 版本 | 文档 |
+| --- | --- | --- |
+| `com.fujisheng.urui` | `0.7.1-preview.1` | [Core 使用文档](Packages/com.fujisheng.urui/README.md) |
+| `com.fujisheng.urui.effect` | `0.4.1-preview.1` | [Effect 使用文档](Packages/com.fujisheng.urui.effect/README.md) |
 
-## 为什么做 URUI
+## 安装
 
-传统 uGUI 界面的信息分散在场景层级、Prefab、Inspector 配置和对象引用中。AI 需要还原这些对象之间的关系，才能判断一段修改会影响哪里；布局问题也往往需要在编辑器中反复定位。
-
-AI 更熟悉 Web 风格的文本结构与样式。URUI 将界面层级、布局和外观写成可直接阅读的 RML/RCSS，让人和 AI 都能在文本中理解界面、讨论修改并检查差异。C# 保留游戏状态和业务逻辑，使用局部节点查询、样式更新与点击回调连接界面。
-
-- **易于理解**：结构和样式可集中阅读，减少对场景与 Inspector 隐含配置的依赖。
-- **易于修改和审查**：界面变更体现为文本差异，便于 AI 提出局部修改，也便于开发者检查。
-- **接入 Unity 业务**：`Document`、`Element` 与可释放订阅提供简洁的托管接口，无需业务代码管理原生句柄。
-
-RML/RCSS 使用 RmlUi 的规则。URUI 不提供完整浏览器环境，也不承诺 HTML、CSS 或 JavaScript 的完整兼容；它不依赖 AI 服务，AI 辅助开发是使用方式。
-
-## 安装与开始
-
-在 Package Manager 选择 **Add package from git URL**，输入：
+在 Unity Package Manager 中依次选择 Add package from git URL，先安装 Core，再按需安装 Effect：
 
 ```text
-https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui
+https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui#main
+https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui.effect#main
 ```
 
-也可通过 **Add package from disk** 选择 `Packages/com.fujisheng.urui/package.json`，或将完整包目录作为嵌入包。
+可用经过验证的提交 SHA 替换 main 固定版本。也可从磁盘选择各包 package.json。Effect 依赖 Core 与 Unity 内置粒子模块，不依赖 FUI。Core 的业务绑定/导航由独立适配包承担。
 
-默认从包内 **Game Flow** 样例开始：Package Manager → URUI → Samples → **Game Flow** → Import，打开实际导入目录中的 `GameFlow.unity`。也可使用 **Tools > URUI > Open Game Flow Sample**。它展示加载、模拟登录、主界面、背包、设置和排行榜，全部必需资源随包提供；见 [Game Flow 运行说明](Packages/com.fujisheng.urui/Samples~/Game%20Flow/README.md)。
+## 快速开始
 
-权威源码位于 `Packages/com.fujisheng.urui/Samples~/Game Flow`。Unity 标准导入到 `Assets/Samples/URUI/<包版本>/Game Flow`，项目内是导入副本；安装包不会自动导入 Samples。Hello URUI、Element Playground、Runtime Controls 和最小场景菜单保留为次要学习入口。[快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)先介绍默认样例，再说明最小 API 用法。
+Package Manager → URUI → Samples → Game Flow → Import，打开导入的 GameFlow.unity 并进入 Play Mode。样例展示加载、模拟登录、主页、背包、设置和排行榜，资源随包提供，登录和排行榜为本地 mock。
 
 ![Game Flow：Unity Editor 实际运行录制](Packages/com.fujisheng.urui/Documentation~/Images/game-flow.gif)
 
-实际 Editor 流程演示，登录和排行榜为本地 mock。动图与包 README 共用一份资源。
+此动图为 Editor 录制，不能替代 Player 验收。一个活动 Surface 管理共享视口、时钟、输入与绘制，多个独立 Document 分别拥有 DOM 和资源。节点通过 Document.Create<T>/Q<T> 操作，原始输入入口为 document.Surface.Input。
 
-```csharp
-using URUI.Documents;
-using URUI.Events;
+## 使用文档
 
-document.LoadMarkup(rml);
-var panel = document.Root.Q("panel");
-var label = document.CreateElement("span");
-label.Text = "Hello URUI";
-panel.Add(label);
-panel.Style.SetWidth(320);
-var subscription = panel.RegisterCallback<ClickEvent>(evt => Debug.Log(evt.CurrentTarget.Name));
-// 组件禁用时释放订阅：subscription.Dispose();
-```
+- [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [Core 快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md) · [Effect 快速开始](Packages/com.fujisheng.urui.effect/Documentation~/QUICK_START_ZH.md)
+- [Document/Element](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [控件](Packages/com.fujisheng.urui/Documentation~/CONTROLS_ZH.md) · [输入与事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md)
+- [样式与动画](Packages/com.fujisheng.urui/Documentation~/STYLES_ANIMATION_ZH.md) · [资源生命周期](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md) · [渲染和视频](Packages/com.fujisheng.urui/Documentation~/RENDERING_ZH.md)
+- [Effect C# API](Packages/com.fujisheng.urui.effect/Documentation~/API_ZH.md) · [Effect CSS 参数](Packages/com.fujisheng.urui.effect/Documentation~/CSS_ZH.md) · [粒子与表面处理](Packages/com.fujisheng.urui.effect/Documentation~/RENDERING_ZH.md)
+- [Core 接口声明](Packages/com.fujisheng.urui/Documentation~/REFERENCE_ZH.md) · [Effect 接口声明](Packages/com.fujisheng.urui.effect/Documentation~/REFERENCE_ZH.md)
+- [架构](docs/ARCHITECTURE_ZH.md) · [代码组织](docs/CODE_ORGANIZATION_ZH.md) · [开发与原生构建](docs/DEVELOPMENT_ZH.md)
 
-逐控件学习可另行导入 Runtime Controls；完整游戏 UI 流程请以 Game Flow 为入口。
+## 支持范围
 
-## 当前支持
+主要运行验证环境为 Unity 6000.3.22f1 / macOS ARM64 / Metal，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 ABI8 / style4 / effect7 / filter3 / animation1。其他平台的构建、静态审计和设备运行范围分别记录在[支持矩阵](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)与[插件清单](Packages/com.fujisheng.urui/Documentation~/PLUGINS.json)。
 
-本次重编后的 Unity 运行验证环境为 **6000.3.22f1 / macOS ARM64 Editor / Built-in / Metal**；此前 ARM64 IL2CPP Player 证据对应上一版插件，未代替本次重编后的 Player 验收。包内包含同源 ABI3 / 元素协议 v1 / 纹理协议 v1 插件：macOS ARM64/x86_64、Windows x64、Android ARM64/x86_64、iOS 设备 ARM64、WebGL wasm32；均已完成原生编译、架构与导出检查，iOS/WebGL 静态库通过完整链接检查。其他平台尚未做 Unity Player 或设备运行验证。
-
-提供类型化控件与自定义 Element 工厂、泛型查询、内容容器、强类型 RCSS 与布局/坐标读取、同步事件传播、指针捕获、焦点键盘、文本输入与固定行高虚拟列表。一个活动文档，Unity 主线程访问；需 MainCamera、Input Manager (Old) 或 Both，图片直接借用现有 Texture2D，无需 Read/Write（需完整常驻 mip0，无流送/active mipmap limit），字体文件可读。
-
-不包含数据绑定或 FUI 依赖；未来可通过可选适配器包装 Name/Parent、节点操作及订阅。当前不承诺其他 UI 系统的完整接口兼容；系统 IME、移动软键盘与设备验证边界见支持范围。调试宏 URUI_DEBUG 默认关闭。详见[支持范围](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
-
-## 文档
-
-- [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md)
-- [C# API](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [输入与事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md) · [生命周期与资源](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md)
-- [代码组织](docs/CODE_ORGANIZATION_ZH.md) · [架构](docs/ARCHITECTURE_ZH.md) · [开发与原生构建](docs/DEVELOPMENT_ZH.md) · [代码约定](Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)
-
-包包含 RmlUi 6.3 与 FreeType 2.13.3 源码。项目许可见 [LICENSE.md](Packages/com.fujisheng.urui/LICENSE.md)，第三方版权与许可见 [Third Party Notices](Packages/com.fujisheng.urui/Third%20Party%20Notices.md)。
+HTML/CSS 是明确的支持子集；没有完整浏览器或 JavaScript 环境。系统 IME、移动软键盘和无障碍边界以支持矩阵为准。项目与第三方许可见 [Core LICENSE](Packages/com.fujisheng.urui/LICENSE.md)、[Core 第三方许可](Packages/com.fujisheng.urui/Third%20Party%20Notices.md)和 [Effect 第三方许可](Packages/com.fujisheng.urui.effect/ThirdPartyNotices.md)。

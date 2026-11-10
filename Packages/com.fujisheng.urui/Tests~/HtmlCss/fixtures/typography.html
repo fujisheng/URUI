@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><link rel="stylesheet" href="/urui/base.css"><link rel="stylesheet" href="common.css"><style>
+.line { position:absolute; left:40px; margin:0; font-size:20px; line-height:28px; }
+#regular { top:40px; }
+#bold { top:80px; font-weight:700; }
+#italic { top:120px; font-style:italic; }
+#mono { top:160px; font-family:"URUI Mono"; }
+#wrap { top:200px; width:180px; }
+#fallback { top:320px; font-family:"URUI Mono","URUI Serif"; }
+#fractional { top:370px; font-size:16.5px; line-height:23.75px; }
+#fractional-small { top:420px; font-size:13.25px; line-height:18.25px; }
+#color { position:absolute; left:400px; top:40px; width:40px; height:40px; }
+</style></head><body>
+<p id="regular" data-test="regular" class="line">Hello URUI 123</p>
+<p id="bold" data-test="bold" class="line">Hello URUI 123</p>
+<p id="italic" data-test="italic" class="line">Hello URUI 123</p>
+<p id="mono" data-test="mono" class="line">iiii WWWW 123</p>
+<p id="wrap" data-test="wrap" class="line">Alpha beta gamma delta epsilon zeta</p>
+<p id="fallback" data-test="fallback" class="line">jjjj &#567;&#567;&#567;&#567;</p>
+<p id="fractional" data-test="fractional" class="line">Hello URUI 123</p>
+<p id="fractional-small" data-test="fractional-small" class="line">Hello URUI 123</p>
+<div id="color" data-test="color" class="sample"></div>
+</body></html>

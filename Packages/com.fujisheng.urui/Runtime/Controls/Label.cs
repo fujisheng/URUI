@@ -2,7 +2,7 @@ using URUI.Elements;
 
 namespace URUI.Controls
 {
-    /// <summary>普通文本标签，不解析 RML。</summary>
+    /// <summary>普通文本标签，不解析 HTML。</summary>
     public class Label : Element
     {
         /// <summary>文档工厂构造入口。</summary>

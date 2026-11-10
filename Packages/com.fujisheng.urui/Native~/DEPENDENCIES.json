@@ -1,15 +1,73 @@
 {
-  "rmlui": {
-    "version": "6.3",
-    "source": "https://github.com/mikke89/RmlUi",
-    "path": "ThirdParty/RmlUi",
-    "license": "ThirdParty/RmlUi/LICENSE.txt"
-  },
   "freetype": {
     "version": "2.13.3",
     "source": "https://freetype.org/",
     "path": "ThirdParty/freetype",
     "license": "ThirdParty/freetype/docs/FTL.TXT"
   },
-  "build": "Vendored source; offline CMake build"
+  "build": "Vendored source; offline CMake build",
+  "urui_engine": {
+    "source": "https://github.com/mikke89/RmlUi",
+    "path": "Engine",
+    "license": "Engine/LICENSE.txt",
+    "local_patches": [
+      "DecoratorShader painter owner identity",
+      "WidgetTextInput selection/composition behavior",
+      "ElementImage source geometry and sprite sampling",
+      "ScrollController inertia retains fractional pixel distance, matching its smooth-scroll accumulation",
+      "Strict HTML DTO construction and owned fragment transactions; obsolete XML/template/data/script modules removed",
+      "Standard CSS tokenizer/cascade, document-local property/keyframe/font contexts and fractional font metrics",
+      "Explicit multi-document identities, presentation/modal/input routing and resource ownership",
+      "Exception-safe initialization, render abort/retry and allocation-free resource release bookkeeping",
+      "Transactional document publication/retirement and exception-safe reentrant focus state, notification and retry"
+    ],
+    "upstream_name": "RmlUi",
+    "upstream_version": "6.3"
+  },
+  "gumbo": {
+    "source": "https://codeload.github.com/litehtml/litehtml/tar.gz/f358a56a5d537e6f815e267fe8cab5cca1c742cb",
+    "commit": "f358a56a5d537e6f815e267fe8cab5cca1c742cb",
+    "path": "ThirdParty/gumbo",
+    "license": "ThirdParty/gumbo/LICENSE",
+    "archive_sha256": "68df06bd8edce9c24182459a7f6097b152f91dd5773a89ca5b3b97acee00a031",
+    "version": "Gumbo 0.14.1 (2026-09-27)",
+    "files_sha256": {
+      "CMakeLists.txt": "1c539c521bdcdba2efb239715e73af6cde675d42e83c2d7260f40f876adf0be8",
+      "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "VERSION.txt": "2490fbe7cb742a7ae9334d17bef9c0026e5d64b498dd198fd96da9b532241652",
+      "src/attribute.c": "8ef119b956d2f1cc89eddff49f3445aff3e066615c66bb1bf686a2106b215bd6",
+      "src/attribute.h": "d525873ec65b4e3ef2a0d9fd0512a1ca2dc5a74a554650d5add920546339301a",
+      "src/char_ref.c": "dc336f658f2b879039e788e3f025cd1612300d5d75e8a15cfb76a620eeefcf96",
+      "src/char_ref.h": "0e34c1eb80f99bcecdaa970464c652b5addcc072a41a5b38e67886c376e313b6",
+      "src/char_ref_gperf.c": "5ae87a5b94094a31442664fc7527106a545a4a014d8822b5b3de114abc8cf647",
+      "src/char_ref_gperf.gperf": "189a9677faa85f88cfb55d5f946b15b57ad6a8eeec17cf740c8d16ffaa867c71",
+      "src/error.c": "e4d777af9372483d9053e8722558acd9edec7c840087e7cd6d8ba8652e866a22",
+      "src/error.h": "a960531b971ee1b00276075ffeae151254b5e67feeec8432c579245b080380c6",
+      "src/gumbo.h": "50632920ec1a6efba811ecd88a19dedad1edf7056f665727100e68c8b93ad0b1",
+      "src/insertion_mode.h": "f86a11e20d6935b427a05689ec4164f445ee2d75a95fe44173555ceeff3c5fd0",
+      "src/parser.c": "ddf3050c3957ad40911c9f6d1f32369a3e4bf7766aafd1aff908696adcfd18b6",
+      "src/parser.h": "d9163faafb6edc383209ab4859869164a1e116929b927c6ab7c158b2070abd63",
+      "src/string_buffer.c": "aa221dafc32d91aa8b367c819965a816c61e8884a6148f03372b445d2ed99b1b",
+      "src/string_buffer.h": "9dfed9a0efded7df57afecf349e26f3930429d14216ecd5156506694a3e9aa04",
+      "src/string_piece.c": "08a92fb76160f82e5b6a0a2229892057903ec4b76dbce08c8723b6479de1b0e9",
+      "src/string_piece.h": "bb0f6d849bc895b99e198666460143b1dac2c0557051054c337248c89d2c3ce2",
+      "src/tag.c": "f3f432f6f1b29d16262fff6e65f5aef2f7933b6918b170a27d5bfe7121ae374d",
+      "src/tag.in": "ac3a2eed1bc33cfd5f5ddab92278afd71fd744575d2e66e1ab22c6554343fb1c",
+      "src/tag_enum.h": "b3477365ac929de00135fb244e02446a6b1e67dfc07537aa39242494b32be18b",
+      "src/tag_gperf.h": "2c50ed4888f7b54437bee1799dff28bb06852cb881b759e2c94839973838e3b2",
+      "src/tag_sizes.h": "8a5698673894b6b791bf72968ba7dcf5566575e29a4f001b6bce444fd1219f74",
+      "src/tag_strings.h": "b1c4b18134bc1316dd5a99d2dfb4f7456403b6874263e373da0d147a6d32d95a",
+      "src/token_type.h": "0629b5f6c5a666dabd1cd81122767c9269b57d35701e37bfdb410429207c8bb4",
+      "src/tokenizer.c": "fbac96299cadc1009f96528168829635a945566699870be0273a06f4d6698243",
+      "src/tokenizer.h": "f0b1985b5df5b139b27b6a5337f11adffee5fe592d6f76eafc147a0000242438",
+      "src/tokenizer_states.h": "943dbd21ec8737c63254efa6310539a049c36a990c8258b7828581a93f9d140a",
+      "src/utf8.c": "721d317237d4cf1be279b8037d7e6941fb90980c61a20771758ed6942e5af914",
+      "src/utf8.h": "c7bf2f9176c8d29b05f3046b133bce5ddca9539c7e7f55cbe6b91c9547d59a5b",
+      "src/util.c": "a475451b46362b9059a7a1c7322f110b165a34c17dd7603119151bc936b5a371",
+      "src/util.h": "33ba1ed3ad85bb3ff123dd7015f08f1b9bb5868cf161099218e1a6a46b2beb4c",
+      "src/vector.c": "5a41a60acc66e107cdd309749af556de06c0d22fb5a750e084f0e4c8cbd31177",
+      "src/vector.h": "881a8261d4bcc9920d85b4aa1f20b4dbb9420106a70178f46e30fdf336abab53",
+      "visualc/include/strings.h": "e6855f303778cefcebd0085af2fdbf994049a4ac94ed9c03228a3cef305cfc8b"
+    }
+  }
 }

@@ -23,8 +23,8 @@ namespace URUI.Tests
         }
         readonly Result result = new Result();
         Document document;
-        const string Markup = @"<rml><head><style>
-body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
+        const string Markup = @"<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'><style>
+body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
 #scroll {position:absolute;left:300px;top:200px;width:160px;height:80px;}
 #list {position:absolute;left:300px;top:300px;width:160px;height:100px;}
 #slider {position:absolute;left:240px;top:20px;width:100px;height:100px;}
@@ -32,17 +32,17 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
 <button id='button'>Action</button><input id='toggle' type='checkbox'/>
 <input id='radio-a' type='radio' name='group' checked='checked'/><input id='radio-b' type='radio' name='group' disabled='disabled'/><input id='radio-c' type='radio' name='group'/>
 <textarea id='text' data-urui-multiline='false'>old</textarea>
-<input id='integer' type='number' value='2'/><input id='float' type='text' data-urui-type='URUI.Controls.FloatField' value='2'/>
+<input id='integer' type='number' data-urui-type='URUI.Controls.IntegerField' value='2'/><input id='float' type='number' step='any' value='2'/>
 <input id='slider' type='range' min='0' max='100' value='50'/>
 <select id='dropdown'><option value='a'>A</option><option value='b'>B</option></select>
-<progress-bar id='progress'/><foldout id='foldout' text='Group'><label>Content</label></foldout>
-<scroll-view id='scroll'><div id='scroll-end' style='display:block;margin-top:400px;width:20px;height:20px;'/></scroll-view>
-<list-view id='list'/></body></rml>";
+<urui-progress-bar id='progress'></urui-progress-bar><urui-foldout id='foldout' data-urui-label='Group'><button class='urui-foldout-header'><span class='urui-foldout-label'>Group</span></button><div class='urui-foldout-content'><label>Content</label></div></urui-foldout>
+<urui-scroll-view id='scroll'><div class='urui-scroll-content'><div id='scroll-end' style='display:block;margin-top:400px;width:20px;height:20px;'></div></div></urui-scroll-view>
+<urui-list-view id='list'></urui-list-view></body></html>";
 
         IEnumerator Start()
         {
-            document = gameObject.AddComponent<Document>();
-            document.Input.UseUnityInput = false;
+            document = AcceptanceDocuments.Create(gameObject);
+            document.Surface.Input.UseUnityInput = false;
             var cases = new (string name, Action test)[]
             {
                 ("toggle_keyboard", ToggleKeyboard), ("radio_navigation", RadioNavigation),
@@ -54,15 +54,15 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
                 ("scroll_to_child", ScrollToChild), ("list_keyboard", ListKeyboard),
                 ("list_binding_cleanup", ListBindingCleanup), ("default_control_styles", DefaultStyles),
                 ("scroll_viewport", ScrollViewport), ("list_binding_reload", ListBindingReload),
-                ("business_styles_override", BusinessStylesOverride), ("headless_document_styles", HeadlessStyles),
+                ("business_styles_override", BusinessStylesOverride), ("strict_document_structure", StrictDocumentStructure),
                 ("inverted_slider_step", InvertedSliderStep), ("delayed_mode_switch", DelayedModeSwitch),
-                ("progress_rml_range", ProgressRmlRange)
+                ("progress_html_range", ProgressHtmlRange)
             };
             foreach (var test in cases)
             {
                 try
                 {
-                    document.LoadMarkup(test.name == "business_styles_override" ? Markup.Replace("<style>", "<style>#button { height:47px; }") : Markup);
+                    document.LoadHtml(test.name == "business_styles_override" ? Markup.Replace("<style>", "<style>#button { height:47px; }") : Markup, "ui/acceptance.html");
                     if (test.name.StartsWith("list_"))
                     {
                         var items = new List<string>();
@@ -114,14 +114,14 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
         }
         void Key(KeyCode key)
         {
-            document.Input.SendKey(key, true);
-            document.Input.SendKey(key, false);
+            document.Surface.Input.SendKey(key, true);
+            document.Surface.Input.SendKey(key, false);
         }
         void ReplaceText(string text)
         {
-            document.Input.SendKey(KeyCode.A, true, InputModifiers.Control);
-            document.Input.SendKey(KeyCode.A, false, InputModifiers.Control);
-            document.Input.SendText(text);
+            document.Surface.Input.SendKey(KeyCode.A, true, InputModifiers.Control);
+            document.Surface.Input.SendKey(KeyCode.A, false, InputModifiers.Control);
+            document.Surface.Input.SendText(text);
         }
         void ToggleKeyboard()
         {
@@ -129,11 +129,11 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
             int changes = 0;
             toggle.RegisterValueChangedCallback(evt => changes++);
             Need(toggle.Focus(), "toggle focus");
-            document.Input.SendKey(KeyCode.Space, true);
+            document.Surface.Input.SendKey(KeyCode.Space, true);
             Need(!toggle.Value, "space press waits for release");
-            document.Input.SendKey(KeyCode.Space, false);
+            document.Surface.Input.SendKey(KeyCode.Space, false);
             Need(toggle.Value && changes == 1, "space release toggles once");
-            document.Input.SendKey(KeyCode.Space, false);
+            document.Surface.Input.SendKey(KeyCode.Space, false);
             Need(changes == 1, "orphan release does not toggle");
         }
         void RadioNavigation()
@@ -148,7 +148,7 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
         void ButtonReloadBoundary()
         {
             var button = document.Q<Button>("button"); int late = 0;
-            button.Clicked += () => document.LoadMarkup("<rml><body><label id='new'>new</label></body></rml>");
+            button.Clicked += () => document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><label id='new'>new</label></body></html>", "ui/acceptance.html");
             button.Clicked += () => late++;
             button.Focus(); Key(KeyCode.Return);
             Need(late == 0 && !button.IsValid && document.Q("new") != null, "reload stops remaining Clicked handlers");
@@ -170,7 +170,7 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
         {
             var text = document.Q<TextField>("text");
             text.IsReadOnly = true; text.Focus();
-            ReplaceText("changed"); document.Input.SendComposition("preview"); document.Input.CommitComposition("commit");
+            ReplaceText("changed"); document.Surface.Input.SendComposition("preview"); document.Surface.Input.CommitComposition("commit");
             Need(text.Value == "old", "readonly rejects direct text and composition");
             text.IsReadOnly = false; ReplaceText("editable");
             Need(text.Value == "editable", "readonly can be reversed without losing focus");
@@ -200,8 +200,8 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
             var slider = document.Q<Slider>("slider"); slider.Direction = URUI.Controls.SliderDirection.Vertical;
             var bounds = slider.WorldBound;
             var point = new Vector2(bounds.center.x, bounds.yMin + bounds.height * .8f);
-            document.Input.SendPointer(PointerPhase.Down, point);
-            document.Input.SendPointer(PointerPhase.Up, point);
+            document.Surface.Input.SendPointer(PointerPhase.Down, point);
+            document.Surface.Input.SendPointer(PointerPhase.Up, point);
             Need(slider.Value >= 75 && slider.Value <= 85, "vertical slider uses y coordinate");
             slider.Inverted = true; slider.Focus(); Key(KeyCode.DownArrow);
             Need(slider.Value < 80, "inverted slider reverses keyboard direction");
@@ -276,17 +276,20 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
                 if (!requested)
                 {
                     requested = true;
-                    document.LoadMarkup("<rml><body><label id='binding-loaded'>ready</label></body></rml>");
+                    document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><label id='binding-loaded'>ready</label></body></html>", "ui/acceptance.html");
                 }
             };
             list.RefreshItems();
             Need(!list.IsValid && document.Q("binding-loaded") != null, "bind callback reload completes safely after row update returns");
         }
         void BusinessStylesOverride() => Need(document.Q<Button>("button").Layout.height == 47, "authored stylesheet overrides basic control sizing");
-        void HeadlessStyles()
+        void StrictDocumentStructure()
         {
-            document.LoadMarkup("<!-- <head> ignored </head> --><rml><body><button id='headless'>Ready</button></body></rml>");
-            Need(document.Q<Button>("headless") != null, "basic styles do not invalidate a document without head");
+            var oldButton = document.Q<Button>("button");
+            bool rejected = false;
+            try { document.LoadHtml("<!doctype html><html><body><button>Ready</button></body></html>", "ui/missing-head.html"); }
+            catch (InvalidOperationException) { rejected = true; }
+            Need(rejected && oldButton.IsValid, "missing head is rejected without replacing the current document");
         }
         void InvertedSliderStep()
         {
@@ -302,11 +305,11 @@ body { margin:0; width:100%; height:100%; font-family:__URUI_FONT__; }
             field.Focus(); ReplaceText("42"); field.IsDelayed = false;
             Need(field.Value == 42, "turning off delayed mode commits current editing text");
         }
-        void ProgressRmlRange()
+        void ProgressHtmlRange()
         {
-            document.LoadMarkup("<rml><body><progress-bar id='range' min='20' max='80' value='35'/></body></rml>");
+            document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><urui-progress-bar id='range' min='20' max='80' value='35'></urui-progress-bar></body></html>", "ui/acceptance.html");
             Need(document.Q<ProgressBar>("range").Q(className: "urui-progress-fill").Style.Width.Value == 25,
-                "RML progress bounds determine actual fill ratio");
+                "HTML progress bounds determine actual fill ratio");
         }
     }
 }

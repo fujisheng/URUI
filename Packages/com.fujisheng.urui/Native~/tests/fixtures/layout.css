@@ -1,0 +1,19 @@
+#panel { width: 200px; height: 100px; padding: 10px; border: 2px solid black; }
+#percent { width: 50%; height: 25%; margin-left: 10%; padding-top: 5%; }
+#rem { width: 2rem; height: 1rem; }
+#border { width: 20px; height: 10px; border-top-width: 8px; border: solid; }
+#font-reset { font-style: italic; font-weight: bold; line-height: 2; font: 18px/1.5 serif; height: 1em; }
+#flex, #flex-zero { display: flex; width: 100px; height: 10px; }
+#flex-item, #flex-item-zero { flex: 1; }
+#flex-item-zero { min-width: 0; }
+#flex-sized, #flex-scroll { display: flex; width: 100px; height: 10px; }
+#flex-sized-item { flex: 1 1 auto; width: 100px; }
+#flex-scroll-item { flex: 1; overflow: auto; }
+#column { display: flex; flex-direction: column; width: 100px; height: 30px; }
+#column-item { flex: 1; }
+.tall { height: 60px; }
+.fixed-height { flex: none; height: 20px; }
+.wide { width: 180px; height: 10px; }
+.fixed { flex: none; width: 20px; }
+#media { width: 20px; height: 10px; }
+@media (min-width: 600px) { #media { width: 30px; } }

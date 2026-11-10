@@ -26,7 +26,7 @@ class RenderPlan
     std::vector<std::array<float, 16>> previous_matrices;
     uint64_t epoch = 0, commands = 0, resources = 0;
     URUI_DEBUG_CODE(uint64_t compared = 0;)
-    bool enabled = false, supported = true, complete = false, have_previous = false;
+    bool supported = true, complete = false, have_previous = false;
     void ClearPrevious()
     {
         std::vector<UruiCommand>().swap(previous);
@@ -41,15 +41,6 @@ public:
         commands = serial.Next();
         resources = serial.Next();
     }
-    void Enable(bool value)
-    {
-        if (value == enabled)
-            return;
-        enabled = value;
-        complete = false;
-        ClearPrevious();
-        commands = serial.Next();
-    }
     void ResourceChanged()
     {
         resources = serial.Next();
@@ -63,6 +54,7 @@ public:
         URUI_DEBUG_CODE(compared = 0;)
         ClearPrevious();
     }
+    void DocumentsChanged() { complete = false; }
     void Unsupported()
     {
         supported = false;
@@ -73,7 +65,7 @@ public:
     {
         complete = false;
         URUI_DEBUG_CODE(compared = 0;)
-        if (enabled && supported)
+        if (supported)
         {
             previous.swap(current);
             previous_matrices.swap(matrices);
@@ -83,7 +75,7 @@ public:
     }
     void Finish(const std::vector<UruiCommand>& current, const std::vector<std::array<float, 16>>& matrices)
     {
-        if (!enabled || !supported)
+        if (!supported)
             return;
         if (current.size() != matrices.size())
         {
@@ -117,9 +109,9 @@ public:
         URUI_DEBUG_CODE(out.compare_bytes = compared;)
         if (count <= std::numeric_limits<uint32_t>::max())
             out.count = static_cast<uint32_t>(count);
-        if (enabled && !supported)
+        if (!supported)
             out.flags = 2;
-        else if (enabled && supported && complete && !serial.exhausted && count <= std::numeric_limits<uint32_t>::max())
+        else if (complete && !serial.exhausted && count <= std::numeric_limits<uint32_t>::max())
             out.flags = 1;
         return out;
     }

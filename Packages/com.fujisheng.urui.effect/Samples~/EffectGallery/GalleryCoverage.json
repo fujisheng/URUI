@@ -1,0 +1,3211 @@
+{
+  "schemaVersion": 1,
+  "sourceVersion": "UIEffect 5.8.4",
+  "cards": [
+    {
+      "id": "ToneFilter-None",
+      "coverageId": "enum:ToneFilter.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ToneFilter-None-default",
+          "declarations": {
+            "tone-filter": "none"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ToneFilter-None-extreme",
+          "declarations": {
+            "tone-filter": "none",
+            "tone-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ToneFilter-None-off",
+          "declarations": {
+            "tone-filter": "none"
+          }
+        }
+      ],
+      "family": "ToneFilter",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "ToneFilter-Grayscale",
+      "coverageId": "enum:ToneFilter.Grayscale",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ToneFilter-Grayscale-default",
+          "declarations": {
+            "tone-filter": "grayscale"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ToneFilter-Grayscale-extreme",
+          "declarations": {
+            "tone-filter": "grayscale",
+            "tone-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ToneFilter-Grayscale-off",
+          "declarations": {
+            "tone-filter": "none"
+          }
+        }
+      ],
+      "family": "ToneFilter",
+      "mode": "Grayscale",
+      "value": 1
+    },
+    {
+      "id": "ToneFilter-Sepia",
+      "coverageId": "enum:ToneFilter.Sepia",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ToneFilter-Sepia-default",
+          "declarations": {
+            "tone-filter": "sepia"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ToneFilter-Sepia-extreme",
+          "declarations": {
+            "tone-filter": "sepia",
+            "tone-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ToneFilter-Sepia-off",
+          "declarations": {
+            "tone-filter": "none"
+          }
+        }
+      ],
+      "family": "ToneFilter",
+      "mode": "Sepia",
+      "value": 2
+    },
+    {
+      "id": "ToneFilter-Negative",
+      "coverageId": "enum:ToneFilter.Negative",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ToneFilter-Negative-default",
+          "declarations": {
+            "tone-filter": "negative"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ToneFilter-Negative-extreme",
+          "declarations": {
+            "tone-filter": "negative",
+            "tone-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ToneFilter-Negative-off",
+          "declarations": {
+            "tone-filter": "none"
+          }
+        }
+      ],
+      "family": "ToneFilter",
+      "mode": "Negative",
+      "value": 3
+    },
+    {
+      "id": "ToneFilter-Retro",
+      "coverageId": "enum:ToneFilter.Retro",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ToneFilter-Retro-default",
+          "declarations": {
+            "tone-filter": "retro"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ToneFilter-Retro-extreme",
+          "declarations": {
+            "tone-filter": "retro",
+            "tone-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ToneFilter-Retro-off",
+          "declarations": {
+            "tone-filter": "none"
+          }
+        }
+      ],
+      "family": "ToneFilter",
+      "mode": "Retro",
+      "value": 4
+    },
+    {
+      "id": "ToneFilter-Posterize",
+      "coverageId": "enum:ToneFilter.Posterize",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ToneFilter-Posterize-default",
+          "declarations": {
+            "tone-filter": "posterize"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ToneFilter-Posterize-extreme",
+          "declarations": {
+            "tone-filter": "posterize",
+            "tone-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ToneFilter-Posterize-off",
+          "declarations": {
+            "tone-filter": "none"
+          }
+        }
+      ],
+      "family": "ToneFilter",
+      "mode": "Posterize",
+      "value": 5
+    },
+    {
+      "id": "ColorFilter-None",
+      "coverageId": "enum:ColorFilter.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-None-default",
+          "declarations": {
+            "color-filter": "none"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-None-extreme",
+          "declarations": {
+            "color-filter": "none",
+            "color": "#c85080b3",
+            "color-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-None-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "ColorFilter-Multiply",
+      "coverageId": "enum:ColorFilter.Multiply",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-Multiply-default",
+          "declarations": {
+            "color-filter": "multiply"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-Multiply-extreme",
+          "declarations": {
+            "color-filter": "multiply",
+            "color": "#c85080b3",
+            "color-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-Multiply-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "Multiply",
+      "value": 1
+    },
+    {
+      "id": "ColorFilter-Additive",
+      "coverageId": "enum:ColorFilter.Additive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-Additive-default",
+          "declarations": {
+            "color-filter": "additive"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-Additive-extreme",
+          "declarations": {
+            "color-filter": "additive",
+            "color": "#c85080b3",
+            "color-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-Additive-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "Additive",
+      "value": 2
+    },
+    {
+      "id": "ColorFilter-Subtractive",
+      "coverageId": "enum:ColorFilter.Subtractive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-Subtractive-default",
+          "declarations": {
+            "color-filter": "subtractive"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-Subtractive-extreme",
+          "declarations": {
+            "color-filter": "subtractive",
+            "color": "#c85080b3",
+            "color-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-Subtractive-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "Subtractive",
+      "value": 3
+    },
+    {
+      "id": "ColorFilter-Replace",
+      "coverageId": "enum:ColorFilter.Replace",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-Replace-default",
+          "declarations": {
+            "color-filter": "replace"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-Replace-extreme",
+          "declarations": {
+            "color-filter": "replace",
+            "color": "#c85080b3",
+            "color-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-Replace-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "Replace",
+      "value": 4
+    },
+    {
+      "id": "ColorFilter-MultiplyLuminance",
+      "coverageId": "enum:ColorFilter.MultiplyLuminance",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-MultiplyLuminance-default",
+          "declarations": {
+            "color-filter": "multiply-luminance"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-MultiplyLuminance-extreme",
+          "declarations": {
+            "color-filter": "multiply-luminance",
+            "color": "#c85080b3",
+            "color-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-MultiplyLuminance-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "MultiplyLuminance",
+      "value": 5
+    },
+    {
+      "id": "ColorFilter-MultiplyAdditive",
+      "coverageId": "enum:ColorFilter.MultiplyAdditive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-MultiplyAdditive-default",
+          "declarations": {
+            "color-filter": "multiply-additive"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-MultiplyAdditive-extreme",
+          "declarations": {
+            "color-filter": "multiply-additive",
+            "color": "#c85080b3",
+            "color-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-MultiplyAdditive-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "MultiplyAdditive",
+      "value": 6
+    },
+    {
+      "id": "ColorFilter-HsvModifier",
+      "coverageId": "enum:ColorFilter.HsvModifier",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-HsvModifier-default",
+          "declarations": {
+            "color-filter": "hsv-modifier"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-HsvModifier-extreme",
+          "declarations": {
+            "color-filter": "hsv-modifier",
+            "color-hue-shift": ".5",
+            "color-saturation-shift": "1",
+            "color-value-shift": "1",
+            "color-alpha": ".7"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-HsvModifier-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "HsvModifier",
+      "value": 7
+    },
+    {
+      "id": "ColorFilter-Contrast",
+      "coverageId": "enum:ColorFilter.Contrast",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ColorFilter-Contrast-default",
+          "declarations": {
+            "color-filter": "contrast"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ColorFilter-Contrast-extreme",
+          "declarations": {
+            "color-filter": "contrast",
+            "color-contrast-shift": "1",
+            "color-brightness-shift": "1",
+            "color-alpha": ".7"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ColorFilter-Contrast-off",
+          "declarations": {
+            "color-filter": "none"
+          }
+        }
+      ],
+      "family": "ColorFilter",
+      "mode": "Contrast",
+      "value": 8
+    },
+    {
+      "id": "GradationColorFilter-None",
+      "coverageId": "enum:GradationColorFilter.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationColorFilter-None-default",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationColorFilter-None-extreme",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationColorFilter-None-off",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        }
+      ],
+      "family": "GradationColorFilter",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "GradationColorFilter-Multiply",
+      "coverageId": "enum:GradationColorFilter.Multiply",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationColorFilter-Multiply-default",
+          "declarations": {
+            "gradation-color-filter": "multiply",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationColorFilter-Multiply-extreme",
+          "declarations": {
+            "gradation-color-filter": "multiply",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationColorFilter-Multiply-off",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        }
+      ],
+      "family": "GradationColorFilter",
+      "mode": "Multiply",
+      "value": 1
+    },
+    {
+      "id": "GradationColorFilter-Additive",
+      "coverageId": "enum:GradationColorFilter.Additive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationColorFilter-Additive-default",
+          "declarations": {
+            "gradation-color-filter": "additive",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationColorFilter-Additive-extreme",
+          "declarations": {
+            "gradation-color-filter": "additive",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationColorFilter-Additive-off",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        }
+      ],
+      "family": "GradationColorFilter",
+      "mode": "Additive",
+      "value": 2
+    },
+    {
+      "id": "GradationColorFilter-Subtractive",
+      "coverageId": "enum:GradationColorFilter.Subtractive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationColorFilter-Subtractive-default",
+          "declarations": {
+            "gradation-color-filter": "subtractive",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationColorFilter-Subtractive-extreme",
+          "declarations": {
+            "gradation-color-filter": "subtractive",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationColorFilter-Subtractive-off",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        }
+      ],
+      "family": "GradationColorFilter",
+      "mode": "Subtractive",
+      "value": 3
+    },
+    {
+      "id": "GradationColorFilter-Replace",
+      "coverageId": "enum:GradationColorFilter.Replace",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationColorFilter-Replace-default",
+          "declarations": {
+            "gradation-color-filter": "replace",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationColorFilter-Replace-extreme",
+          "declarations": {
+            "gradation-color-filter": "replace",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationColorFilter-Replace-off",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        }
+      ],
+      "family": "GradationColorFilter",
+      "mode": "Replace",
+      "value": 4
+    },
+    {
+      "id": "GradationColorFilter-MultiplyLuminance",
+      "coverageId": "enum:GradationColorFilter.MultiplyLuminance",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationColorFilter-MultiplyLuminance-default",
+          "declarations": {
+            "gradation-color-filter": "multiply-luminance",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationColorFilter-MultiplyLuminance-extreme",
+          "declarations": {
+            "gradation-color-filter": "multiply-luminance",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationColorFilter-MultiplyLuminance-off",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        }
+      ],
+      "family": "GradationColorFilter",
+      "mode": "MultiplyLuminance",
+      "value": 5
+    },
+    {
+      "id": "GradationColorFilter-MultiplyAdditive",
+      "coverageId": "enum:GradationColorFilter.MultiplyAdditive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationColorFilter-MultiplyAdditive-default",
+          "declarations": {
+            "gradation-color-filter": "multiply-additive",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationColorFilter-MultiplyAdditive-extreme",
+          "declarations": {
+            "gradation-color-filter": "multiply-additive",
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationColorFilter-MultiplyAdditive-off",
+          "declarations": {
+            "gradation-color-filter": "none",
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3"
+          }
+        }
+      ],
+      "family": "GradationColorFilter",
+      "mode": "MultiplyAdditive",
+      "value": 6
+    },
+    {
+      "id": "SamplingFilter-None",
+      "coverageId": "enum:SamplingFilter.None",
+      "cost": "kernel 1 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-None-default",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-None-extreme",
+          "declarations": {
+            "sampling-filter": "none",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-None-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "SamplingFilter-BlurFast",
+      "coverageId": "enum:SamplingFilter.BlurFast",
+      "cost": "kernel 25 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-BlurFast-default",
+          "declarations": {
+            "sampling-filter": "blur-fast"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-BlurFast-extreme",
+          "declarations": {
+            "sampling-filter": "blur-fast",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-BlurFast-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "BlurFast",
+      "value": 1
+    },
+    {
+      "id": "SamplingFilter-BlurMedium",
+      "coverageId": "enum:SamplingFilter.BlurMedium",
+      "cost": "kernel 81 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-BlurMedium-default",
+          "declarations": {
+            "sampling-filter": "blur-medium"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-BlurMedium-extreme",
+          "declarations": {
+            "sampling-filter": "blur-medium",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-BlurMedium-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "BlurMedium",
+      "value": 2
+    },
+    {
+      "id": "SamplingFilter-BlurDetail",
+      "coverageId": "enum:SamplingFilter.BlurDetail",
+      "cost": "kernel 169 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-BlurDetail-default",
+          "declarations": {
+            "sampling-filter": "blur-detail"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-BlurDetail-extreme",
+          "declarations": {
+            "sampling-filter": "blur-detail",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-BlurDetail-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "BlurDetail",
+      "value": 3
+    },
+    {
+      "id": "SamplingFilter-Pixelation",
+      "coverageId": "enum:SamplingFilter.Pixelation",
+      "cost": "kernel 1 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-Pixelation-default",
+          "declarations": {
+            "sampling-filter": "pixelation"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-Pixelation-extreme",
+          "declarations": {
+            "sampling-filter": "pixelation",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-Pixelation-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "Pixelation",
+      "value": 4
+    },
+    {
+      "id": "SamplingFilter-RgbShift",
+      "coverageId": "enum:SamplingFilter.RgbShift",
+      "cost": "kernel 1 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-RgbShift-default",
+          "declarations": {
+            "sampling-filter": "rgb-shift"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-RgbShift-extreme",
+          "declarations": {
+            "sampling-filter": "rgb-shift",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-RgbShift-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "RgbShift",
+      "value": 5
+    },
+    {
+      "id": "SamplingFilter-EdgeLuminance",
+      "coverageId": "enum:SamplingFilter.EdgeLuminance",
+      "cost": "kernel 1 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-EdgeLuminance-default",
+          "declarations": {
+            "sampling-filter": "edge-luminance"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-EdgeLuminance-extreme",
+          "declarations": {
+            "sampling-filter": "edge-luminance",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-EdgeLuminance-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "EdgeLuminance",
+      "value": 6
+    },
+    {
+      "id": "SamplingFilter-EdgeAlpha",
+      "coverageId": "enum:SamplingFilter.EdgeAlpha",
+      "cost": "kernel 1 source samples; image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "SamplingFilter-EdgeAlpha-default",
+          "declarations": {
+            "sampling-filter": "edge-alpha"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "SamplingFilter-EdgeAlpha-extreme",
+          "declarations": {
+            "sampling-filter": "edge-alpha",
+            "sampling-intensity": "1",
+            "sampling-width": "10"
+          }
+        },
+        {
+          "name": "off",
+          "className": "SamplingFilter-EdgeAlpha-off",
+          "declarations": {
+            "sampling-filter": "none"
+          }
+        }
+      ],
+      "family": "SamplingFilter",
+      "mode": "EdgeAlpha",
+      "value": 7
+    },
+    {
+      "id": "TransitionFilter-None",
+      "coverageId": "enum:TransitionFilter.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-None-default",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-None-extreme",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-None-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "TransitionFilter-Fade",
+      "coverageId": "enum:TransitionFilter.Fade",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Fade-default",
+          "declarations": {
+            "transition-filter": "fade",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Fade-extreme",
+          "declarations": {
+            "transition-filter": "fade",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Fade-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Fade",
+      "value": 1
+    },
+    {
+      "id": "TransitionFilter-Cutoff",
+      "coverageId": "enum:TransitionFilter.Cutoff",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Cutoff-default",
+          "declarations": {
+            "transition-filter": "cutoff",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Cutoff-extreme",
+          "declarations": {
+            "transition-filter": "cutoff",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Cutoff-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Cutoff",
+      "value": 2
+    },
+    {
+      "id": "TransitionFilter-Dissolve",
+      "coverageId": "enum:TransitionFilter.Dissolve",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Dissolve-default",
+          "declarations": {
+            "transition-filter": "dissolve",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Dissolve-extreme",
+          "declarations": {
+            "transition-filter": "dissolve",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Dissolve-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Dissolve",
+      "value": 3
+    },
+    {
+      "id": "TransitionFilter-Shiny",
+      "coverageId": "enum:TransitionFilter.Shiny",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Shiny-default",
+          "declarations": {
+            "transition-filter": "shiny",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Shiny-extreme",
+          "declarations": {
+            "transition-filter": "shiny",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Shiny-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Shiny",
+      "value": 4
+    },
+    {
+      "id": "TransitionFilter-Mask",
+      "coverageId": "enum:TransitionFilter.Mask",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Mask-default",
+          "declarations": {
+            "transition-filter": "mask",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Mask-extreme",
+          "declarations": {
+            "transition-filter": "mask",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Mask-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Mask",
+      "value": 5
+    },
+    {
+      "id": "TransitionFilter-Melt",
+      "coverageId": "enum:TransitionFilter.Melt",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Melt-default",
+          "declarations": {
+            "transition-filter": "melt",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Melt-extreme",
+          "declarations": {
+            "transition-filter": "melt",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Melt-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Melt",
+      "value": 6
+    },
+    {
+      "id": "TransitionFilter-Burn",
+      "coverageId": "enum:TransitionFilter.Burn",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Burn-default",
+          "declarations": {
+            "transition-filter": "burn",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Burn-extreme",
+          "declarations": {
+            "transition-filter": "burn",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Burn-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Burn",
+      "value": 7
+    },
+    {
+      "id": "TransitionFilter-Pattern",
+      "coverageId": "enum:TransitionFilter.Pattern",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TransitionFilter-Pattern-default",
+          "declarations": {
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TransitionFilter-Pattern-extreme",
+          "declarations": {
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1",
+            "transition-width": "1",
+            "transition-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TransitionFilter-Pattern-off",
+          "declarations": {
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "TransitionFilter",
+      "mode": "Pattern",
+      "value": 8
+    },
+    {
+      "id": "BlendType-Custom",
+      "coverageId": "enum:BlendType.Custom",
+      "cost": "whole-node capture / final blend",
+      "states": [
+        {
+          "name": "default",
+          "className": "BlendType-Custom-default",
+          "declarations": {
+            "blend-type": "custom",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "BlendType-Custom-extreme",
+          "declarations": {
+            "blend-type": "custom",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one"
+          }
+        },
+        {
+          "name": "off",
+          "className": "BlendType-Custom-off",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        }
+      ],
+      "family": "BlendType",
+      "mode": "Custom",
+      "value": 0
+    },
+    {
+      "id": "BlendType-AlphaBlend",
+      "coverageId": "enum:BlendType.AlphaBlend",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "BlendType-AlphaBlend-default",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "BlendType-AlphaBlend-extreme",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one"
+          }
+        },
+        {
+          "name": "off",
+          "className": "BlendType-AlphaBlend-off",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        }
+      ],
+      "family": "BlendType",
+      "mode": "AlphaBlend",
+      "value": 1
+    },
+    {
+      "id": "BlendType-Multiply",
+      "coverageId": "enum:BlendType.Multiply",
+      "cost": "whole-node capture / final blend",
+      "states": [
+        {
+          "name": "default",
+          "className": "BlendType-Multiply-default",
+          "declarations": {
+            "blend-type": "multiply",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "BlendType-Multiply-extreme",
+          "declarations": {
+            "blend-type": "multiply",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one"
+          }
+        },
+        {
+          "name": "off",
+          "className": "BlendType-Multiply-off",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        }
+      ],
+      "family": "BlendType",
+      "mode": "Multiply",
+      "value": 2
+    },
+    {
+      "id": "BlendType-Additive",
+      "coverageId": "enum:BlendType.Additive",
+      "cost": "whole-node capture / final blend",
+      "states": [
+        {
+          "name": "default",
+          "className": "BlendType-Additive-default",
+          "declarations": {
+            "blend-type": "additive",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "BlendType-Additive-extreme",
+          "declarations": {
+            "blend-type": "additive",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one"
+          }
+        },
+        {
+          "name": "off",
+          "className": "BlendType-Additive-off",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        }
+      ],
+      "family": "BlendType",
+      "mode": "Additive",
+      "value": 3
+    },
+    {
+      "id": "BlendType-SoftAdditive",
+      "coverageId": "enum:BlendType.SoftAdditive",
+      "cost": "whole-node capture / final blend",
+      "states": [
+        {
+          "name": "default",
+          "className": "BlendType-SoftAdditive-default",
+          "declarations": {
+            "blend-type": "soft-additive",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "BlendType-SoftAdditive-extreme",
+          "declarations": {
+            "blend-type": "soft-additive",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one"
+          }
+        },
+        {
+          "name": "off",
+          "className": "BlendType-SoftAdditive-off",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        }
+      ],
+      "family": "BlendType",
+      "mode": "SoftAdditive",
+      "value": 4
+    },
+    {
+      "id": "BlendType-MultiplyAdditive",
+      "coverageId": "enum:BlendType.MultiplyAdditive",
+      "cost": "whole-node capture / final blend",
+      "states": [
+        {
+          "name": "default",
+          "className": "BlendType-MultiplyAdditive-default",
+          "declarations": {
+            "blend-type": "multiply-additive",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "BlendType-MultiplyAdditive-extreme",
+          "declarations": {
+            "blend-type": "multiply-additive",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one"
+          }
+        },
+        {
+          "name": "off",
+          "className": "BlendType-MultiplyAdditive-off",
+          "declarations": {
+            "blend-type": "alpha-blend",
+            "src-blend-mode": "one",
+            "dst-blend-mode": "one-minus-src-alpha"
+          }
+        }
+      ],
+      "family": "BlendType",
+      "mode": "MultiplyAdditive",
+      "value": 5
+    },
+    {
+      "id": "TargetMode-None",
+      "coverageId": "enum:TargetMode.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TargetMode-None-default",
+          "declarations": {
+            "target-mode": "none",
+            "tone-filter": "sepia",
+            "target-color": "#e6a040"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TargetMode-None-extreme",
+          "declarations": {
+            "target-mode": "none",
+            "tone-filter": "sepia",
+            "target-color": "#e6a040",
+            "target-range": "1",
+            "target-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TargetMode-None-off",
+          "declarations": {
+            "target-mode": "none",
+            "tone-filter": "none",
+            "target-color": "#e6a040"
+          }
+        }
+      ],
+      "family": "TargetMode",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "TargetMode-Hue",
+      "coverageId": "enum:TargetMode.Hue",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TargetMode-Hue-default",
+          "declarations": {
+            "target-mode": "hue",
+            "tone-filter": "sepia",
+            "target-color": "#e6a040"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TargetMode-Hue-extreme",
+          "declarations": {
+            "target-mode": "hue",
+            "tone-filter": "sepia",
+            "target-color": "#e6a040",
+            "target-range": "1",
+            "target-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TargetMode-Hue-off",
+          "declarations": {
+            "target-mode": "none",
+            "tone-filter": "none",
+            "target-color": "#e6a040"
+          }
+        }
+      ],
+      "family": "TargetMode",
+      "mode": "Hue",
+      "value": 1
+    },
+    {
+      "id": "TargetMode-Luminance",
+      "coverageId": "enum:TargetMode.Luminance",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "TargetMode-Luminance-default",
+          "declarations": {
+            "target-mode": "luminance",
+            "tone-filter": "sepia",
+            "target-color": "#e6a040"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "TargetMode-Luminance-extreme",
+          "declarations": {
+            "target-mode": "luminance",
+            "tone-filter": "sepia",
+            "target-color": "#e6a040",
+            "target-range": "1",
+            "target-softness": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "TargetMode-Luminance-off",
+          "declarations": {
+            "target-mode": "none",
+            "tone-filter": "none",
+            "target-color": "#e6a040"
+          }
+        }
+      ],
+      "family": "TargetMode",
+      "mode": "Luminance",
+      "value": 2
+    },
+    {
+      "id": "ShadowMode-None",
+      "coverageId": "enum:ShadowMode.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ShadowMode-None-default",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ShadowMode-None-extreme",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3",
+            "shadow-distance-x": "12",
+            "shadow-distance-y": "-12",
+            "shadow-iteration": "5",
+            "shadow-blur-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ShadowMode-None-off",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3"
+          }
+        }
+      ],
+      "family": "ShadowMode",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "ShadowMode-Shadow",
+      "coverageId": "enum:ShadowMode.Shadow",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ShadowMode-Shadow-default",
+          "declarations": {
+            "shadow-mode": "shadow",
+            "shadow-color": "#30c0ffb3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ShadowMode-Shadow-extreme",
+          "declarations": {
+            "shadow-mode": "shadow",
+            "shadow-color": "#30c0ffb3",
+            "shadow-distance-x": "12",
+            "shadow-distance-y": "-12",
+            "shadow-iteration": "5",
+            "shadow-blur-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ShadowMode-Shadow-off",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3"
+          }
+        }
+      ],
+      "family": "ShadowMode",
+      "mode": "Shadow",
+      "value": 1
+    },
+    {
+      "id": "ShadowMode-Shadow3",
+      "coverageId": "enum:ShadowMode.Shadow3",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ShadowMode-Shadow3-default",
+          "declarations": {
+            "shadow-mode": "shadow3",
+            "shadow-color": "#30c0ffb3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ShadowMode-Shadow3-extreme",
+          "declarations": {
+            "shadow-mode": "shadow3",
+            "shadow-color": "#30c0ffb3",
+            "shadow-distance-x": "12",
+            "shadow-distance-y": "-12",
+            "shadow-iteration": "5",
+            "shadow-blur-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ShadowMode-Shadow3-off",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3"
+          }
+        }
+      ],
+      "family": "ShadowMode",
+      "mode": "Shadow3",
+      "value": 2
+    },
+    {
+      "id": "ShadowMode-Outline",
+      "coverageId": "enum:ShadowMode.Outline",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ShadowMode-Outline-default",
+          "declarations": {
+            "shadow-mode": "outline",
+            "shadow-color": "#30c0ffb3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ShadowMode-Outline-extreme",
+          "declarations": {
+            "shadow-mode": "outline",
+            "shadow-color": "#30c0ffb3",
+            "shadow-distance-x": "12",
+            "shadow-distance-y": "-12",
+            "shadow-iteration": "5",
+            "shadow-blur-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ShadowMode-Outline-off",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3"
+          }
+        }
+      ],
+      "family": "ShadowMode",
+      "mode": "Outline",
+      "value": 3
+    },
+    {
+      "id": "ShadowMode-Outline8",
+      "coverageId": "enum:ShadowMode.Outline8",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ShadowMode-Outline8-default",
+          "declarations": {
+            "shadow-mode": "outline8",
+            "shadow-color": "#30c0ffb3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ShadowMode-Outline8-extreme",
+          "declarations": {
+            "shadow-mode": "outline8",
+            "shadow-color": "#30c0ffb3",
+            "shadow-distance-x": "12",
+            "shadow-distance-y": "-12",
+            "shadow-iteration": "5",
+            "shadow-blur-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ShadowMode-Outline8-off",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3"
+          }
+        }
+      ],
+      "family": "ShadowMode",
+      "mode": "Outline8",
+      "value": 4
+    },
+    {
+      "id": "ShadowMode-Mirror",
+      "coverageId": "enum:ShadowMode.Mirror",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "ShadowMode-Mirror-default",
+          "declarations": {
+            "shadow-mode": "mirror",
+            "shadow-color": "#30c0ffb3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "ShadowMode-Mirror-extreme",
+          "declarations": {
+            "shadow-mode": "mirror",
+            "shadow-color": "#30c0ffb3",
+            "shadow-distance-x": "12",
+            "shadow-distance-y": "-12",
+            "shadow-iteration": "5",
+            "shadow-blur-intensity": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "ShadowMode-Mirror-off",
+          "declarations": {
+            "shadow-mode": "none",
+            "shadow-color": "#30c0ffb3"
+          }
+        }
+      ],
+      "family": "ShadowMode",
+      "mode": "Mirror",
+      "value": 5
+    },
+    {
+      "id": "EdgeMode-None",
+      "coverageId": "enum:EdgeMode.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "EdgeMode-None-default",
+          "declarations": {
+            "edge-mode": "none",
+            "edge-color": "#30c0ff"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "EdgeMode-None-extreme",
+          "declarations": {
+            "edge-mode": "none",
+            "edge-color": "#30c0ff",
+            "edge-width": "1",
+            "edge-shiny-width": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "EdgeMode-None-off",
+          "declarations": {
+            "edge-mode": "none",
+            "edge-color": "#30c0ff"
+          }
+        }
+      ],
+      "family": "EdgeMode",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "EdgeMode-Plain",
+      "coverageId": "enum:EdgeMode.Plain",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "EdgeMode-Plain-default",
+          "declarations": {
+            "edge-mode": "plain",
+            "edge-color": "#30c0ff"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "EdgeMode-Plain-extreme",
+          "declarations": {
+            "edge-mode": "plain",
+            "edge-color": "#30c0ff",
+            "edge-width": "1",
+            "edge-shiny-width": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "EdgeMode-Plain-off",
+          "declarations": {
+            "edge-mode": "none",
+            "edge-color": "#30c0ff"
+          }
+        }
+      ],
+      "family": "EdgeMode",
+      "mode": "Plain",
+      "value": 1
+    },
+    {
+      "id": "EdgeMode-Shiny",
+      "coverageId": "enum:EdgeMode.Shiny",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "EdgeMode-Shiny-default",
+          "declarations": {
+            "edge-mode": "shiny",
+            "edge-color": "#30c0ff"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "EdgeMode-Shiny-extreme",
+          "declarations": {
+            "edge-mode": "shiny",
+            "edge-color": "#30c0ff",
+            "edge-width": "1",
+            "edge-shiny-width": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "EdgeMode-Shiny-off",
+          "declarations": {
+            "edge-mode": "none",
+            "edge-color": "#30c0ff"
+          }
+        }
+      ],
+      "family": "EdgeMode",
+      "mode": "Shiny",
+      "value": 2
+    },
+    {
+      "id": "PatternArea-All",
+      "coverageId": "enum:PatternArea.All",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "PatternArea-All-default",
+          "declarations": {
+            "pattern-area": "all",
+            "edge-mode": "plain",
+            "edge-width": ".4",
+            "edge-color": "#30c0ff",
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "PatternArea-All-extreme",
+          "declarations": {
+            "pattern-area": "all",
+            "edge-mode": "plain",
+            "edge-width": "1",
+            "edge-color": "#30c0ff",
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "PatternArea-All-off",
+          "declarations": {
+            "pattern-area": "all",
+            "edge-mode": "none",
+            "edge-width": ".4",
+            "edge-color": "#30c0ff",
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "PatternArea",
+      "mode": "All",
+      "value": 0
+    },
+    {
+      "id": "PatternArea-Inner",
+      "coverageId": "enum:PatternArea.Inner",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "PatternArea-Inner-default",
+          "declarations": {
+            "pattern-area": "inner",
+            "edge-mode": "plain",
+            "edge-width": ".4",
+            "edge-color": "#30c0ff",
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "PatternArea-Inner-extreme",
+          "declarations": {
+            "pattern-area": "inner",
+            "edge-mode": "plain",
+            "edge-width": "1",
+            "edge-color": "#30c0ff",
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "PatternArea-Inner-off",
+          "declarations": {
+            "pattern-area": "inner",
+            "edge-mode": "none",
+            "edge-width": ".4",
+            "edge-color": "#30c0ff",
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "PatternArea",
+      "mode": "Inner",
+      "value": 1
+    },
+    {
+      "id": "PatternArea-Edge",
+      "coverageId": "enum:PatternArea.Edge",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "PatternArea-Edge-default",
+          "declarations": {
+            "pattern-area": "edge",
+            "edge-mode": "plain",
+            "edge-width": ".4",
+            "edge-color": "#30c0ff",
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "PatternArea-Edge-extreme",
+          "declarations": {
+            "pattern-area": "edge",
+            "edge-mode": "plain",
+            "edge-width": "1",
+            "edge-color": "#30c0ff",
+            "transition-filter": "pattern",
+            "transition-texture": "url(\"pattern.png\")",
+            "transition-progress": "1"
+          }
+        },
+        {
+          "name": "off",
+          "className": "PatternArea-Edge-off",
+          "declarations": {
+            "pattern-area": "edge",
+            "edge-mode": "none",
+            "edge-width": ".4",
+            "edge-color": "#30c0ff",
+            "transition-filter": "none",
+            "transition-texture": "url(\"pattern.png\")"
+          }
+        }
+      ],
+      "family": "PatternArea",
+      "mode": "Edge",
+      "value": 2
+    },
+    {
+      "id": "GradationMode-None",
+      "coverageId": "enum:GradationMode.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-None-default",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-None-extreme",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-None-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "GradationMode-Horizontal",
+      "coverageId": "enum:GradationMode.Horizontal",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-Horizontal-default",
+          "declarations": {
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-Horizontal-extreme",
+          "declarations": {
+            "gradation-mode": "horizontal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-Horizontal-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "Horizontal",
+      "value": 1
+    },
+    {
+      "id": "GradationMode-HorizontalGradient",
+      "coverageId": "enum:GradationMode.HorizontalGradient",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-HorizontalGradient-default",
+          "declarations": {
+            "gradation-mode": "horizontal-gradient",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-HorizontalGradient-extreme",
+          "declarations": {
+            "gradation-mode": "horizontal-gradient",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-HorizontalGradient-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "HorizontalGradient",
+      "value": 2
+    },
+    {
+      "id": "GradationMode-Vertical",
+      "coverageId": "enum:GradationMode.Vertical",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-Vertical-default",
+          "declarations": {
+            "gradation-mode": "vertical",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-Vertical-extreme",
+          "declarations": {
+            "gradation-mode": "vertical",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-Vertical-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "Vertical",
+      "value": 3
+    },
+    {
+      "id": "GradationMode-VerticalGradient",
+      "coverageId": "enum:GradationMode.VerticalGradient",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-VerticalGradient-default",
+          "declarations": {
+            "gradation-mode": "vertical-gradient",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-VerticalGradient-extreme",
+          "declarations": {
+            "gradation-mode": "vertical-gradient",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-VerticalGradient-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "VerticalGradient",
+      "value": 4
+    },
+    {
+      "id": "GradationMode-RadialFast",
+      "coverageId": "enum:GradationMode.RadialFast",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-RadialFast-default",
+          "declarations": {
+            "gradation-mode": "radial-fast",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-RadialFast-extreme",
+          "declarations": {
+            "gradation-mode": "radial-fast",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-RadialFast-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "RadialFast",
+      "value": 5
+    },
+    {
+      "id": "GradationMode-RadialDetail",
+      "coverageId": "enum:GradationMode.RadialDetail",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-RadialDetail-default",
+          "declarations": {
+            "gradation-mode": "radial-detail",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-RadialDetail-extreme",
+          "declarations": {
+            "gradation-mode": "radial-detail",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-RadialDetail-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "RadialDetail",
+      "value": 6
+    },
+    {
+      "id": "GradationMode-Diagonal",
+      "coverageId": "enum:GradationMode.Diagonal",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-Diagonal-default",
+          "declarations": {
+            "gradation-mode": "diagonal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-Diagonal-extreme",
+          "declarations": {
+            "gradation-mode": "diagonal",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-Diagonal-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "Diagonal",
+      "value": 11
+    },
+    {
+      "id": "GradationMode-DiagonalToRightBottom",
+      "coverageId": "enum:GradationMode.DiagonalToRightBottom",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-DiagonalToRightBottom-default",
+          "declarations": {
+            "gradation-mode": "diagonal-to-right-bottom",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-DiagonalToRightBottom-extreme",
+          "declarations": {
+            "gradation-mode": "diagonal-to-right-bottom",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-DiagonalToRightBottom-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "DiagonalToRightBottom",
+      "value": 7
+    },
+    {
+      "id": "GradationMode-DiagonalToLeftBottom",
+      "coverageId": "enum:GradationMode.DiagonalToLeftBottom",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-DiagonalToLeftBottom-default",
+          "declarations": {
+            "gradation-mode": "diagonal-to-left-bottom",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-DiagonalToLeftBottom-extreme",
+          "declarations": {
+            "gradation-mode": "diagonal-to-left-bottom",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-DiagonalToLeftBottom-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "DiagonalToLeftBottom",
+      "value": 8
+    },
+    {
+      "id": "GradationMode-Angle",
+      "coverageId": "enum:GradationMode.Angle",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-Angle-default",
+          "declarations": {
+            "gradation-mode": "angle",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-Angle-extreme",
+          "declarations": {
+            "gradation-mode": "angle",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-Angle-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "Angle",
+      "value": 9
+    },
+    {
+      "id": "GradationMode-AngleGradient",
+      "coverageId": "enum:GradationMode.AngleGradient",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "GradationMode-AngleGradient-default",
+          "declarations": {
+            "gradation-mode": "angle-gradient",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "GradationMode-AngleGradient-extreme",
+          "declarations": {
+            "gradation-mode": "angle-gradient",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")",
+            "gradation-intensity": "1",
+            "gradation-scale": ".01",
+            "gradation-offset": "1",
+            "gradation-rotation": "360"
+          }
+        },
+        {
+          "name": "off",
+          "className": "GradationMode-AngleGradient-off",
+          "declarations": {
+            "gradation-mode": "none",
+            "gradation-color1": "#e61a33",
+            "gradation-color2": "#1acc4db3",
+            "gradation-color3": "#334de6",
+            "gradation-color4": "#e6b33366",
+            "gradation-gradient": "url(\"gradient-lut.png\")"
+          }
+        }
+      ],
+      "family": "GradationMode",
+      "mode": "AngleGradient",
+      "value": 10
+    },
+    {
+      "id": "DetailFilter-None",
+      "coverageId": "enum:DetailFilter.None",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "DetailFilter-None-default",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "DetailFilter-None-extreme",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3",
+            "detail-intensity": "1",
+            "detail-threshold-min": ".5",
+            "detail-threshold-max": ".5"
+          }
+        },
+        {
+          "name": "off",
+          "className": "DetailFilter-None-off",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        }
+      ],
+      "family": "DetailFilter",
+      "mode": "None",
+      "value": 0
+    },
+    {
+      "id": "DetailFilter-Masking",
+      "coverageId": "enum:DetailFilter.Masking",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "DetailFilter-Masking-default",
+          "declarations": {
+            "detail-filter": "masking",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "DetailFilter-Masking-extreme",
+          "declarations": {
+            "detail-filter": "masking",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3",
+            "detail-intensity": "1",
+            "detail-threshold-min": ".5",
+            "detail-threshold-max": ".5"
+          }
+        },
+        {
+          "name": "off",
+          "className": "DetailFilter-Masking-off",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        }
+      ],
+      "family": "DetailFilter",
+      "mode": "Masking",
+      "value": 1
+    },
+    {
+      "id": "DetailFilter-Multiply",
+      "coverageId": "enum:DetailFilter.Multiply",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "DetailFilter-Multiply-default",
+          "declarations": {
+            "detail-filter": "multiply",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "DetailFilter-Multiply-extreme",
+          "declarations": {
+            "detail-filter": "multiply",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3",
+            "detail-intensity": "1",
+            "detail-threshold-min": ".5",
+            "detail-threshold-max": ".5"
+          }
+        },
+        {
+          "name": "off",
+          "className": "DetailFilter-Multiply-off",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        }
+      ],
+      "family": "DetailFilter",
+      "mode": "Multiply",
+      "value": 2
+    },
+    {
+      "id": "DetailFilter-Additive",
+      "coverageId": "enum:DetailFilter.Additive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "DetailFilter-Additive-default",
+          "declarations": {
+            "detail-filter": "additive",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "DetailFilter-Additive-extreme",
+          "declarations": {
+            "detail-filter": "additive",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3",
+            "detail-intensity": "1",
+            "detail-threshold-min": ".5",
+            "detail-threshold-max": ".5"
+          }
+        },
+        {
+          "name": "off",
+          "className": "DetailFilter-Additive-off",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        }
+      ],
+      "family": "DetailFilter",
+      "mode": "Additive",
+      "value": 3
+    },
+    {
+      "id": "DetailFilter-Subtractive",
+      "coverageId": "enum:DetailFilter.Subtractive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "DetailFilter-Subtractive-default",
+          "declarations": {
+            "detail-filter": "subtractive",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "DetailFilter-Subtractive-extreme",
+          "declarations": {
+            "detail-filter": "subtractive",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3",
+            "detail-intensity": "1",
+            "detail-threshold-min": ".5",
+            "detail-threshold-max": ".5"
+          }
+        },
+        {
+          "name": "off",
+          "className": "DetailFilter-Subtractive-off",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        }
+      ],
+      "family": "DetailFilter",
+      "mode": "Subtractive",
+      "value": 6
+    },
+    {
+      "id": "DetailFilter-Replace",
+      "coverageId": "enum:DetailFilter.Replace",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "DetailFilter-Replace-default",
+          "declarations": {
+            "detail-filter": "replace",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "DetailFilter-Replace-extreme",
+          "declarations": {
+            "detail-filter": "replace",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3",
+            "detail-intensity": "1",
+            "detail-threshold-min": ".5",
+            "detail-threshold-max": ".5"
+          }
+        },
+        {
+          "name": "off",
+          "className": "DetailFilter-Replace-off",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        }
+      ],
+      "family": "DetailFilter",
+      "mode": "Replace",
+      "value": 4
+    },
+    {
+      "id": "DetailFilter-MultiplyAdditive",
+      "coverageId": "enum:DetailFilter.MultiplyAdditive",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "DetailFilter-MultiplyAdditive-default",
+          "declarations": {
+            "detail-filter": "multiply-additive",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "DetailFilter-MultiplyAdditive-extreme",
+          "declarations": {
+            "detail-filter": "multiply-additive",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3",
+            "detail-intensity": "1",
+            "detail-threshold-min": ".5",
+            "detail-threshold-max": ".5"
+          }
+        },
+        {
+          "name": "off",
+          "className": "DetailFilter-MultiplyAdditive-off",
+          "declarations": {
+            "detail-filter": "none",
+            "detail-texture": "url(\"pattern.png\")",
+            "detail-color": "#c85080b3"
+          }
+        }
+      ],
+      "family": "DetailFilter",
+      "mode": "MultiplyAdditive",
+      "value": 5
+    },
+    {
+      "id": "Flip-Horizontal",
+      "coverageId": "enum:Flip.Horizontal",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "Flip-Horizontal-default",
+          "declarations": {
+            "flip": "1"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "Flip-Horizontal-extreme",
+          "declarations": {
+            "flip": "15"
+          }
+        },
+        {
+          "name": "off",
+          "className": "Flip-Horizontal-off",
+          "declarations": {
+            "flip": "0"
+          }
+        }
+      ],
+      "family": "Flip",
+      "mode": "Horizontal",
+      "value": 1
+    },
+    {
+      "id": "Flip-Vertical",
+      "coverageId": "enum:Flip.Vertical",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "Flip-Vertical-default",
+          "declarations": {
+            "flip": "2"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "Flip-Vertical-extreme",
+          "declarations": {
+            "flip": "15"
+          }
+        },
+        {
+          "name": "off",
+          "className": "Flip-Vertical-off",
+          "declarations": {
+            "flip": "0"
+          }
+        }
+      ],
+      "family": "Flip",
+      "mode": "Vertical",
+      "value": 2
+    },
+    {
+      "id": "Flip-Effect",
+      "coverageId": "enum:Flip.Effect",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "Flip-Effect-default",
+          "declarations": {
+            "flip": "4"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "Flip-Effect-extreme",
+          "declarations": {
+            "flip": "15"
+          }
+        },
+        {
+          "name": "off",
+          "className": "Flip-Effect-off",
+          "declarations": {
+            "flip": "0"
+          }
+        }
+      ],
+      "family": "Flip",
+      "mode": "Effect",
+      "value": 4
+    },
+    {
+      "id": "Flip-Shadow",
+      "coverageId": "enum:Flip.Shadow",
+      "cost": "image: 0 extra RT; subtree: bounded capture",
+      "states": [
+        {
+          "name": "default",
+          "className": "Flip-Shadow-default",
+          "declarations": {
+            "flip": "8"
+          }
+        },
+        {
+          "name": "extreme",
+          "className": "Flip-Shadow-extreme",
+          "declarations": {
+            "flip": "15"
+          }
+        },
+        {
+          "name": "off",
+          "className": "Flip-Shadow-off",
+          "declarations": {
+            "flip": "0"
+          }
+        }
+      ],
+      "family": "Flip",
+      "mode": "Shadow",
+      "value": 8
+    }
+  ],
+  "controls": [
+    "C13",
+    "C14"
+  ],
+  "states": [
+    "default",
+    "extreme",
+    "off"
+  ]
+}

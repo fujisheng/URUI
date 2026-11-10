@@ -44,6 +44,7 @@ namespace URUI.Samples.GameFlow
         void OnEnable()
         {
             document = GetComponent<Document>();
+            if (!document.Surface) document.Surface = GetComponent<URUI.Hosting.Surface>() ?? gameObject.AddComponent<URUI.Hosting.Surface>();
             try
             {
                 startupError = "";
@@ -66,7 +67,7 @@ namespace URUI.Samples.GameFlow
                 assets = new GameFlowResources();
                 assets.Prepare();
                 document.Unload();
-                document.FontPath = assets.FontPath;
+                document.TextResources = assets.TextResources;
                 document.Images = assets.Images;
                 Navigate(GamePage.Loading);
             }
@@ -101,13 +102,13 @@ namespace URUI.Samples.GameFlow
                 pageLifetime = new CancellationTokenSource();
                 document.Unload();
                 document.Images = assets.Images;
-                document.LoadMarkup(assets.Page(next));
+                document.Load(assets.Page(next), assets.PageUrl(next));
                 DecorateArtwork();
-                document.Root.EnableInClassList("cyan", settings.accent == "Glacier");
-                document.Root.EnableInClassList("compact", settings.compactRows);
+                document.DocumentElement.EnableInClassList("cyan", settings.accent == "Glacier");
+                document.DocumentElement.EnableInClassList("compact", settings.compactRows);
                 backdropWidth = backdropHeight = 0;
                 entryTime = 0;
-                document.Root.Style.SetOpacity(0);
+                document.DocumentElement.Style.SetOpacity(0);
                 // A transformed ancestor requires native clip masks. Keep scrolling
                 // descendants on the supported scissor path, and slide one panel
                 // with relative layout offset rather than a transform matrix.
@@ -142,7 +143,7 @@ namespace URUI.Samples.GameFlow
                 entryTime += Time.unscaledDeltaTime;
                 float progress = Mathf.Clamp01(entryTime / .22f);
                 float eased = 1 - Mathf.Pow(1 - progress, 3);
-                document.Root.Style.SetOpacity(eased);
+                document.DocumentElement.Style.SetOpacity(eased);
                 if (entryPanel != null && entryPanel.IsValid)
                 {
                     entryPanel.Style.Top = 10 * (1 - eased);
@@ -263,7 +264,7 @@ namespace URUI.Samples.GameFlow
             requestedPage = null;
             ClosePage();
             if (document) document.Unload();
-            assets?.Dispose(); assets = null;
+            assets = null;
             service = null; initializationAttempted = false;
             if (ownedAudio) { ownedAudio.SetActive(false); Destroy(ownedAudio); ownedAudio = null; audioSource = null; }
             if (ownedCamera) { ownedCamera.gameObject.SetActive(false); Destroy(ownedCamera.gameObject); ownedCamera = null; }

@@ -1,0 +1,22 @@
+/* Shared browser/URUI defaults. Link this file explicitly from each document. */
+@font-face { font-family:"URUI Serif"; src:url("Fonts/LiberationSerif-Regular.ttf.bytes") format("truetype"); font-style:normal; font-weight:400; }
+@font-face { font-family:"URUI Serif"; src:url("Fonts/LiberationSerif-Italic.ttf.bytes") format("truetype"); font-style:italic; font-weight:400; }
+@font-face { font-family:"URUI Serif"; src:url("Fonts/LiberationSerif-Bold.ttf.bytes") format("truetype"); font-style:normal; font-weight:700; }
+@font-face { font-family:"URUI Serif"; src:url("Fonts/LiberationSerif-BoldItalic.ttf.bytes") format("truetype"); font-style:italic; font-weight:700; }
+@font-face { font-family:"URUI Sans"; src:url("Fonts/LiberationSans-Regular.ttf.bytes") format("truetype"); font-style:normal; font-weight:400; }
+@font-face { font-family:"URUI Sans"; src:url("Fonts/LiberationSans-Italic.ttf.bytes") format("truetype"); font-style:italic; font-weight:400; }
+@font-face { font-family:"URUI Sans"; src:url("Fonts/LiberationSans-Bold.ttf.bytes") format("truetype"); font-style:normal; font-weight:700; }
+@font-face { font-family:"URUI Sans"; src:url("Fonts/LiberationSans-BoldItalic.ttf.bytes") format("truetype"); font-style:italic; font-weight:700; }
+@font-face { font-family:"URUI Mono"; src:url("Fonts/LiberationMono-Regular.ttf.bytes") format("truetype"); font-style:normal; font-weight:400; }
+@font-face { font-family:"URUI Mono"; src:url("Fonts/LiberationMono-Italic.ttf.bytes") format("truetype"); font-style:italic; font-weight:400; }
+@font-face { font-family:"URUI Mono"; src:url("Fonts/LiberationMono-Bold.ttf.bytes") format("truetype"); font-style:normal; font-weight:700; }
+@font-face { font-family:"URUI Mono"; src:url("Fonts/LiberationMono-BoldItalic.ttf.bytes") format("truetype"); font-style:italic; font-weight:700; }
+
+html { font-family:"URUI Sans",sans-serif; font-size:16px; line-height:1.2; color:#000000; }
+body { margin:0; }
+* { box-sizing:border-box; }
+button, input, select, textarea { font:inherit; color:inherit; }
+pre, code, kbd, samp { font-family:"URUI Mono",monospace; }
+strong, b { font-weight:bold; }
+em, i { font-style:italic; }
+[hidden] { display:none; }

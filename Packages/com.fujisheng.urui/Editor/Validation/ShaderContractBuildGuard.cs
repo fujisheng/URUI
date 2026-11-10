@@ -5,7 +5,6 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine.SceneManagement;
-using URUI.Internal.Hosting;
 using URUI.Internal.Rendering.Shaders;
 
 namespace URUI.Editor.Validation
@@ -37,7 +36,7 @@ namespace URUI.Editor.Validation
                 || hash != ShaderPropertyContract.BuiltinHash
                 || contract.VerifiedSourceHash != hash)
             {
-                throw new BuildFailedException("Rml shader dependency contract changed: re-audit or remove the contract; unknown shaders require the legacy property path.");
+                throw new BuildFailedException("URUI builtin shader dependency contract changed: re-audit the packaged shader source.");
             }
         }
 
@@ -46,39 +45,10 @@ namespace URUI.Editor.Validation
         /// </summary>
         public void OnProcessScene(Scene scene, BuildReport report)
         {
-            foreach (var root in scene.GetRootGameObjects())
-            {
-                foreach (var host in root.GetComponentsInChildren<RenderHost>(true))
-                {
-                    Validate(host.propertyContract);
-                    if (host.parameterCapability && !host.parameterCapability.AuditEditor())
-                    {
-                        throw new BuildFailedException("Parameter shader capability requires re-audit");
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// 获取或创建内置 shader 的契约资产，并在返回前验证其有效性。
-        /// </summary>
-        /// <returns>位于 Assets/URUIGenerated、由项目持有的契约资产。</returns>
-        public static ShaderPropertyContract Prepare()
-        {
-            System.IO.Directory.CreateDirectory("Assets/URUIGenerated");
-            AssetDatabase.Refresh();
-            const string path = "Assets/URUIGenerated/BuiltinShaderPropertyContract.asset";
-            var contract = AssetDatabase.LoadAssetAtPath<ShaderPropertyContract>(path);
-            if (!contract)
-            {
-                contract = UnityEngine.ScriptableObject.CreateInstance<ShaderPropertyContract>();
-                contract.BindBuiltinForEditor(AssetDatabase.LoadAssetAtPath<UnityEngine.Shader>(ShaderPropertyContract.BuiltinPath));
-                AssetDatabase.CreateAsset(contract, path);
-                AssetDatabase.SaveAssets();
-            }
-
+            var contract = UnityEngine.Resources.Load<ShaderPropertyContract>("URUI/BuiltinShaderPropertyContract");
+            if (!contract) throw new BuildFailedException("URUI builtin shader contract resource is missing.");
             Validate(contract);
-            return contract;
         }
+
     }
 }

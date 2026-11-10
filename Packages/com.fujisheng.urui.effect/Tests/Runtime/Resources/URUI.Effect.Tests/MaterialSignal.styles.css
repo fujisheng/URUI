@@ -1,0 +1,11 @@
+body { width:100%; height:100%; }
+[hidden] { display:none; }
+#activation { position:absolute; width:100px; height:50px; }
+#activation.faded { opacity:.2; }
+#signal { position:absolute; width:0; height:0; visibility:hidden; opacity:0; }
+#signal.active { opacity:1; animation:1s linear 1 material-rate; }
+@keyframes material-rate { 
+  from { opacity:0; }
+  50% { opacity:0; }
+  to { opacity:1; }
+ }

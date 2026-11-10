@@ -6,24 +6,30 @@ namespace URUI.Elements
 {
     public partial class Element
     {
+        /// <summary>实例化作者子树；新根未挂载，由当前文档拥有，卸载文档后同时失效。</summary>
+        public Element Clone()
+        {
+            RequireValid();
+            return document.CloneElement(this);
+        }
         /// <summary>真实 DOM 父级；文档根和脱离层级的根节点返回 null。</summary>
         public Element Parent
         {
             get
             {
                 RequireValid();
-                return document.WrapElement(NativeMethods.urui_element_parent(token));
+                return document.WrapElement(NativeMethods.urui_element_parent(NativeHandle, token));
             }
         }
 
-        /// <summary>直接 DOM 子节点数量，不包括 RmlUi 的内部非 DOM 装饰节点。</summary>
+        /// <summary>直接 DOM 子节点数量，不包括 URUI 的内部非 DOM 装饰节点。</summary>
         public int ChildCount
         {
             get
             {
                 RequireValid();
                 if (!ReferenceEquals(ContentContainer, this)) return ContentContainer.ChildCount;
-                int count = NativeMethods.urui_element_child_count(token);
+                int count = NativeMethods.urui_element_child_count(NativeHandle, token);
                 if (count < 0)
                 {
                     throw new InvalidOperationException("URUI 无法读取子节点。");
@@ -44,7 +50,7 @@ namespace URUI.Elements
                     throw new ArgumentOutOfRangeException(nameof(index));
                 }
 
-                var child = document.WrapElement(NativeMethods.urui_element_child_at(token, index));
+                var child = document.WrapElement(NativeMethods.urui_element_child_at(NativeHandle, token, index));
                 return child ?? throw new InvalidOperationException("URUI 子节点身份不可用。");
             }
         }
@@ -75,7 +81,7 @@ namespace URUI.Elements
                 RequireClassName(className);
             }
 
-            return document.WrapElement(NativeMethods.urui_element_find(token, name, className));
+            return document.WrapElement(NativeMethods.urui_element_find(NativeHandle, token, name, className));
         }
 
         /// <summary>自身及 DOM 后代的深度优先有序快照；精确匹配名字/类名，不解析 CSS 或 UQuery 表达式。</summary>
@@ -92,7 +98,7 @@ namespace URUI.Elements
                 RequireClassName(className);
             }
 
-            int count = NativeMethods.urui_element_query(token, name, className, null, 0);
+            int count = NativeMethods.urui_element_query(NativeHandle, token, name, className, null, 0);
             if (count < 0)
             {
                 throw new InvalidOperationException("URUI 查询失败或超出元素引用预算。");
@@ -104,7 +110,7 @@ namespace URUI.Elements
             }
 
             var values = new ulong[count];
-            if (NativeMethods.urui_element_query(token, name, className, values, count) != count)
+            if (NativeMethods.urui_element_query(NativeHandle, token, name, className, values, count) != count)
             {
                 throw new InvalidOperationException("URUI 查询快照无效。");
             }
@@ -146,7 +152,7 @@ namespace URUI.Elements
             }
 
             child.RequireValid();
-            if (ReferenceEquals(child, document.Root))
+            if (ReferenceEquals(child, document.DocumentElement))
             {
                 throw new InvalidOperationException("不能移动文档根节点。");
             }
@@ -159,7 +165,7 @@ namespace URUI.Elements
                 }
             }
 
-            RequireSuccess(NativeMethods.urui_element_insert(token, child.token, index), "移动子节点");
+            RequireSuccess(NativeMethods.urui_element_insert(NativeHandle, token, child.token, index), "移动子节点");
             document.RefreshElements(false);
         }
 
@@ -184,7 +190,7 @@ namespace URUI.Elements
         public void RemoveFromHierarchy()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_detach(token), "移出层级");
+            RequireSuccess(NativeMethods.urui_element_detach(NativeHandle, token), "移出层级");
             document.RefreshElements(false);
         }
 
@@ -192,7 +198,7 @@ namespace URUI.Elements
         public void Clear()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_clear(ContentContainer.token), "清空层级");
+            RequireSuccess(NativeMethods.urui_element_clear(NativeHandle, ContentContainer.token), "清空层级");
             document.RefreshElements(false);
         }
 
@@ -200,7 +206,7 @@ namespace URUI.Elements
         public void Destroy()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_destroy(token), "销毁节点");
+            RequireSuccess(NativeMethods.urui_element_destroy(NativeHandle, token), "销毁节点");
             document.SweepInvalidElements();
         }
     }

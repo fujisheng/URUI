@@ -16,12 +16,12 @@ namespace URUI.Samples.GameFlow
         }
         readonly List<ArtGroup> artGroups = new List<ArtGroup>();
         // A bounded sample composition helper. Actual layout and all typography
-        // remain in the authored RML/RCSS. The renderer needs no new ABI feature.
+        // remain in the authored HTML/CSS. The renderer needs no new ABI feature.
         void DecorateArtwork()
         {
-            foreach (var panel in document.Root.Query(className: "nine-frame"))
+            foreach (var panel in document.DocumentElement.Query(className: "nine-frame"))
                 AddFrame(panel);
-            foreach (var action in document.Root.Query(className: "art-action"))
+            foreach (var action in document.DocumentElement.Query(className: "art-action"))
             {
                 artGroups.Add(new ArtGroup { owner = action, action = true, pieces = new[] {
                     AddArt(action, "action-left", "action-art action-left"),
@@ -42,7 +42,7 @@ namespace URUI.Samples.GameFlow
         Image AddArt(Element parent, string source, string classes)
         {
             var image = document.Create<Image>();
-            image.Source = "gameflow/" + source + ".png";
+            image.Source = "../Images/" + source + ".png";
             foreach (string value in classes.Split(' ')) image.AddToClassList(value);
             parent.Add(image);
             return image;

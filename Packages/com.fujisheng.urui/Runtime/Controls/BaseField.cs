@@ -33,7 +33,7 @@ namespace URUI.Controls
         /// <summary>读取原生初始值并启用焦点。</summary>
         protected override void OnInitialize()
         {
-            value = NormalizeValue(ParseValue(NativeMethods.ReadControl(Token)));
+            value = NormalizeValue(ParseValue(NativeMethods.ReadControl(NativeHandle, Token)));
             Focusable = true;
         }
         /// <summary>已提交值；输入法预览期间维持原来的已提交值。</summary>
@@ -57,12 +57,12 @@ namespace URUI.Controls
             writeDepth++;
             try
             {
-                if (NativeMethods.urui_control_value_write(Token, FormatValue(normalized)) != 1)
+                if (NativeMethods.urui_control_value_write(NativeHandle, Token, FormatValue(normalized)) != 1)
                 {
                     throw new InvalidOperationException("原生控件拒绝值写入。");
                 }
 
-                value = NormalizeValue(ParseValue(NativeMethods.ReadControl(Token)));
+                value = NormalizeValue(ParseValue(NativeMethods.ReadControl(NativeHandle, Token)));
             }
             finally
             {
@@ -72,6 +72,7 @@ namespace URUI.Controls
                     Document.FinishNativeCall();
                 }
             }
+            if (IsValid) OnValueSynchronized();
             if (notify && IsValid && !EqualityComparer<T>.Default.Equals(previous, value))
             {
                 SendEvent(new ChangeEvent<T> { PreviousValue = previous, NewValue = value });
@@ -83,7 +84,7 @@ namespace URUI.Controls
         {
             T previous = value;
             writeDepth++;
-            try { action(); value = ParseValue(NativeMethods.ReadControl(Token)); }
+            try { action(); value = ParseValue(NativeMethods.ReadControl(NativeHandle, Token)); }
             finally
             {
                 writeDepth--; if (writeDepth == 0)
@@ -91,6 +92,7 @@ namespace URUI.Controls
                     Document.FinishNativeCall();
                 }
             }
+            if (IsValid) OnValueSynchronized();
             if (IsValid && !EqualityComparer<T>.Default.Equals(previous, value))
             {
                 SendEvent(new ChangeEvent<T> { PreviousValue = previous, NewValue = value });
@@ -101,12 +103,13 @@ namespace URUI.Controls
         protected bool CommitInput()
         {
             T next;
-            try { next = NormalizeValue(ParseValue(NativeMethods.ReadControl(Token))); }
+            try { next = NormalizeValue(ParseValue(NativeMethods.ReadControl(NativeHandle, Token))); }
             catch (FormatException) { return false; }
             catch (OverflowException) { return false; }
             catch (ArgumentOutOfRangeException) { return false; }
             T previous = value;
             value = next;
+            OnValueSynchronized();
             if (!EqualityComparer<T>.Default.Equals(previous, next))
             {
                 SendEvent(new ChangeEvent<T> { PreviousValue = previous, NewValue = next });
@@ -114,6 +117,9 @@ namespace URUI.Controls
 
             return true;
         }
+
+        /// <summary>模型值已同步；静默写入仍更新呈现，此钩子不发送值变化事件。</summary>
+        protected virtual void OnValueSynchronized() { }
 
         /// <summary>消费原生值变化并转换成统一的托管值事件。</summary>
         protected override void OnEvent(EventBase evt)

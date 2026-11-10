@@ -1,0 +1,15 @@
+body { margin:0; width:100%; height:100%; }
+#reveal { position:absolute; left:0; top:0; width:400px; height:200px; transform:scale(1.25); transform-origin:0px 0px; }
+#viewport { position:absolute; left:30px; top:20px; width:200px; height:80px; overflow:hidden; }
+#entries { position:absolute; left:0; top:0; width:800px; height:80px; --urui-stagger-edge:right; --urui-stagger-span:.5; --urui-stagger-gap:.05; --urui-stagger-boundary:parent; }
+#entries > div { position:absolute; top:0; width:40px; height:30px; }
+#first { left:10px; }
+#second { left:70px; }
+#third { left:140px; }
+.prepared #entries > div { transform:translateX(var(--urui-stagger-distance,0px)); }
+@keyframes viewport-item-enter { 
+  from { transform:translateX(var(--urui-stagger-distance,0px)); }
+  to { transform:translateX(0px); }
+ }
+.active #entries > div.revealed { animation:.5s cubic-bezier(.3333333333,1.5671933333,.6666666667,1) viewport-item-enter; }
+.delayed #entries { --urui-stagger-delay:.3; }

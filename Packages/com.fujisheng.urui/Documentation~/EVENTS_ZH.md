@@ -1,63 +1,123 @@
 # 输入与事件
 
-事件在原生派发期间同步进入托管，随后 RmlUi 执行允许的默认行为。托管层在首条业务回调前固定实际目标到根的路径与全部订阅快照，再完成向下、目标、向上传播；不存在事后点击队列的第二条托管通知链路。
+输入入口是 **`document.Surface.Input`**，类型 `URUI.Hosting.SurfaceInput`。同一个 Surface 只分发一次原始输入，由实际层级、模态与焦点决定文档目标。事件类型位于 URUI.Events，全部声明见[接口参考](REFERENCE_ZH.md)。
+
+## 注册与解绑
+
+`element.RegisterCallback<TEvent>(Action<TEvent>, TrickleDown = NoTrickleDown)` 返回 IDisposable；`UnregisterCallback<TEvent>` 用相同委托和传播阶段解绑。订阅不能在每帧重复创建。
+
+```csharp
+using System;
+using URUI.Elements;
+using URUI.Events;
+using UnityEngine;
+
+public static class PointerExamples
+{
+    public static IDisposable Observe(Element panel)
+    {
+        return panel.RegisterCallback<PointerDownEvent>(evt =>
+        {
+            Debug.Log(evt.Target.Name);
+            evt.CurrentTarget.CapturePointer(evt.PointerId);
+        }, TrickleDown.TrickleDown);
+    }
+}
+```
+
+调用方在页面解绑时 Dispose。相同委托、事件类型和阶段的重复注册返回同一订阅。Button.Clicked 和输入控件 Submitted 为普通 C# 事件，用同一委托 -= 解绑；值控件 RegisterValueChangedCallback 的用法见[控件](CONTROLS_ZH.md)。
+
+## 事件及其数据
+
+| 事件 | 主要数据/用途 |
+| --- | --- |
+| `ClickEvent` | 激活目标 |
+| `PointerDown/Move/Up/Cancel/Enter/LeaveEvent` | PointerId、Position、LocalPosition、Button、PressedButtons、IsTouch、Modifiers |
+| `PointerCaptureOutEvent` | 捕获丢失 |
+| `WheelEvent` | 滚轮输入，含滚动量 |
+| `KeyDownEvent` / `KeyUpEvent` | Unity KeyCode、InputModifiers |
+| `TextInputEvent` | Unicode 已提交文字 |
+| `FocusEvent` / `BlurEvent` | 焦点变化，通知期间底层焦点提交可能仍在进行 |
+| `ScrollEvent` | 滚动变化 |
+| `ChangeEvent<T>` | PreviousValue、NewValue |
+| `GeometryChangedEvent` | 布局变化 |
+| `AttachToDocumentEvent` / `DetachFromDocumentEvent` | 挂载变化，脱离不等于销毁 |
+| `AnimationEndEvent` / `TransitionEndEvent` | 完成的动画/过渡数据，精确字段见接口参考 |
+
+`EventBase.Target` 是实际目标，可能无 id；CurrentTarget 是当前接收者；PropagationPhase 表示当前阶段。业务可派生 EventBase，并用 element.SendEvent 同步派发。布局/挂载只投递目标，普通业务和值事件可沿真实 DOM 祖先传播，包含组合控件内部内容区。
+
+## 传播与默认行为
+
+事件在原生派发期间同步进入托管。首条业务回调前固定目标到根的路径和订阅快照，依次执行向下、目标、向上传播，然后原生执行仍允许的默认行为。
+
+| 方法 | 作用 |
+| --- | --- |
+| `StopPropagation()` | 当前节点回调完成后停止后续托管路径 |
+| `StopImmediatePropagation()` | 同时停止当前节点余下回调 |
+| `PreventDefault()` | 请求取消可中断的原生默认行为，不停止托管传播 |
+
+PreventDefault 不能撤销已提交的值变化或焦点通知。当前快照中的解绑立即生效，新注册从下次派发生效；目标销毁、脱离或文档失效会停止分发，同文档重挂载沿本次固定路径完成。异常记录到 Unity Console，不穿越 native ABI。
+
+## SurfaceInput 接口
+
+默认 UseUnityInput=true，轮询 Input Manager (Old/Both)。使用新 Input System、平台键盘或其他来源时，先设为 false；切回内置输入时恢复 true。不要同时重复注入同一输入。
+
+```text
+SendPointer(PointerPhase phase, Vector2 position, int pointerId = 0,
+    bool isTouch = false, int button = 0, int pressedButtons = 0,
+    Vector2 delta = default, InputModifiers modifiers = None)
+SendKey(KeyCode key, bool pressed, InputModifiers modifiers = None)
+SendText(string text)
+SendComposition(string text)
+CommitComposition(string text)
+CancelComposition()
+Reset()
+CancelPointers(Element owner)
+```
+
+| 参数/方法 | 约束 |
+| --- | --- |
+| `phase` | Down、Move、Up、Cancel、Wheel |
+| `position` | 共享文档左上角坐标，不能直接传 Unity 屏幕左下角坐标 |
+| `pointerId` | 非负，接触期间稳定，多个触摸用不同编号 |
+| `isTouch` | 是否触摸 |
+| `button` / `pressedButtons` | 按钮编号 0..2 / 当前按住按钮的位掩码 |
+| `delta` | 移动或滚轮增量，按调用类型提供 |
+| `SendKey` | 按下/释放；字符输入另外用 SendText |
+| `Reset` | 清理共享输入状态，切换来源或失焦时使用 |
+| `CancelPointers(owner)` | 取消指定节点/子树拥有的手势 |
+
+输入需有已加载文档，必须在 Unity 主线程调用；不能在同步输入回调、加载事务或效果回调中重入分发。捕获/取消等特殊清理遵循内部允许的取消边界。
 
 ```csharp
 using URUI.Events;
+using URUI.Hosting;
+using UnityEngine;
 
-var subscription = panel.RegisterCallback<PointerDownEvent>(evt =>
+public static class InputExamples
 {
-    UnityEngine.Debug.Log(evt.Target.Name);
-    evt.CurrentTarget.CapturePointer(evt.PointerId);
-}, TrickleDown.TrickleDown);
-subscription.Dispose();
+    public static void Tap(Surface surface, Vector2 position, int pointerId)
+    {
+        var input = surface.Input;
+        input.UseUnityInput = false;
+        input.SendPointer(PointerPhase.Down, position, pointerId, true, pressedButtons: 1);
+        input.SendPointer(PointerPhase.Up, position, pointerId, true);
+    }
+}
 ```
 
-## 事件种类
+CapturePointer/ReleasePointer/HasPointerCapture 作用于具体 pointerId；捕获后越界移动/释放发给捕获节点，取消、失焦或禁用时清理。ScrollView 超过拖动阈值后阻止误点击；ListView 重绑行不会把旧按下转给新数据。
 
-- ClickEvent；PointerDown/Move/Up/Cancel/Enter/LeaveEvent；PointerCaptureOutEvent；WheelEvent。
-- KeyDownEvent、KeyUpEvent、TextInputEvent、FocusEvent、BlurEvent、ScrollEvent。
-- ChangeEvent<T>；GeometryChangedEvent；AttachToDocumentEvent、DetachFromDocumentEvent。
-- 派生 EventBase 的业务事件，通过 element.SendEvent 同步发送。
+## 焦点、键盘和组合串
 
-Target 是真实节点，可能没有名字；CurrentTarget 是当前接收者，PropagationPhase 表示当前阶段。指针事件提供 PointerId、Position、LocalPosition、Button、PressedButtons、IsTouch、Modifiers。键盘事件提供 Unity KeyCode 和 InputModifiers；文本使用托管 Unicode 字符串。
+Tab/Shift+Tab 按 TabIndex 与 DOM 顺序导航，跳过禁用、隐藏及无布局节点。macOS Command 编辑快捷键由内置适配器处理，剪贴板使用 GUIUtility.systemCopyBuffer。
 
-布局与挂载通知只投递目标。普通业务和值事件可沿 DOM 祖先传播，组合内容区也是实际路径的一部分。Focus/Blur 是 RmlUi 焦点变化通知，通知期间底层焦点提交仍可能进行中。
+SendText 插入已提交文字。SendComposition 更新预览；CommitComposition 提交并通知一次；CancelComposition 恢复原内容和选区。外部赋值或焦点切换会结束旧预览。Selection/SelectRange 按 Unicode 字符计数，不是 UTF-8 字节或 UTF-16 代码单元。
 
-## 控制传播与默认行为
+系统 IME 与移动软键盘的真实验收范围见[支持矩阵](LIMITATIONS_ZH.md)；注入组合串接口不等于完成操作系统输入法或设备验收。
 
-- StopPropagation 完成当前元素的回调后停止后续托管路径。
-- StopImmediatePropagation 同时停止当前元素余下的回调。
-- PreventDefault 独立请求取消原生默认行为；不停止托管传播。仅对 RmlUi 可中断的事件生效，不能用它撤销已经发生的值变化或焦点通知。
-- 相同委托、事件类型、传播阶段只注册一次，返回同一订阅。Dispose/UnregisterCallback 只解绑。
-- 解绑在当前快照中也生效；新增订阅从下一次事件生效。
-- 目标销毁、脱离或文档失效后停止分发；同文档重挂载沿本次已固定的路径完成。
-- 回调异常记录到 Unity Console；异常不穿越原生 ABI。
+## 回调内页面操作
 
-ClickEvent 从旧版只读 struct 升级为 EventBase 派生类，旧的 where TEvent:struct 扩展需要迁移。原有注册、解绑和订阅释放写法保留。
+回调中 Load/Unload 排队到当前原生调用返回后执行。需要同步创建页面、克隆片段或导航时使用 `document.RunAfterEvent(action)` / `surface.RunAfterEvent(action)`；它在当前分发返回后、本次输入方法返回前运行，空闲时立即执行，不等下一帧。延后前后都可能发生卸载，执行时重新检查节点有效性。
 
-## 指针与取消
-
-鼠标与触摸通过同一输入入口，触摸保留各自编号和捕获。CapturePointer 使越界后的移动/释放发送到捕获节点；释放、取消、失焦或禁用子树后会清理状态。滑块与触摸滚动区域分别管理自己的手势，不把并发手指当成同一鼠标按钮。
-
-输入来自外部系统时先设置 `document.Input.UseUnityInput = false`，然后调用：
-
-```csharp
-document.Input.SendPointer(PointerPhase.Down, position, pointerId: 1, isTouch: true);
-document.Input.SendPointer(PointerPhase.Move, nextPosition, pointerId: 1, isTouch: true);
-document.Input.SendPointer(PointerPhase.Up, nextPosition, pointerId: 1, isTouch: true);
-```
-
-ScrollView 触摸移动超过 4 像素后进入拖动；释放时阻止误点击。ListView 的行在重绑后不会把旧按下对应的点击选择到新数据。
-
-## 键盘、文本与输入法
-
-SendKey 使用 Unity KeyCode；Shift、Control、Alt、Command 使用 InputModifiers。Tab/Shift+Tab 按 TabIndex 与 DOM 顺序导航，并排除禁用、隐藏和无布局的元素。内置轮询支持按键重复、剪贴板与应用失焦清理；macOS Command 快捷键映射到原生编辑操作。
-
-SendText 插入已提交文本。SendComposition 更新预览，CommitComposition 提交并通知一次，CancelComposition 恢复原内容和选区。切换焦点或外部赋值会结束旧预览。Selection/SelectRange 采用 Unicode 字符索引，不是 UTF-8 字节或 UTF-16 代码单元索引。
-
-内置后端仍使用 Input Manager (Old)/Both；新 Input System 可通过公开输入入口接入，不自动增加该包依赖。系统 IME 与移动软键盘的人工/设备验证范围见支持矩阵，自动注入组合串不等于真实系统输入法验收。
-
-## 生命周期
-
-事件回调中请求 Load/Unload 会排队到当前原生调用返回后执行，避免销毁正在执行的 context；因此回调内部不会立刻得到新文档。Loaded/Unloaded 禁止重入加载。文档卸载使旧节点与订阅失效，业务仍应在 OnDisable 释放自己持有的订阅。
+PreventDefault 与传播控制仍在原事件回调中直接调用。绘制效果的 Prepare/Record 中不能修改 DOM 或安排页面变更。重载后重新查询和订阅，业务 OnDisable 释放自己持有的订阅。

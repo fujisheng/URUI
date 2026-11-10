@@ -1,0 +1,8 @@
+{
+  "name": "URUI.Effect.Gallery",
+  "references": [
+    "URUI.Runtime",
+    "URUI.Effect"
+  ],
+  "autoReferenced": true
+}

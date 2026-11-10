@@ -1,8 +1,12 @@
 using System.IO;
+using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using URUI.Documents;
+using URUI.Hosting;
+using URUI.Resources;
 
 namespace URUI.Editor.Menus
 {
@@ -27,9 +31,9 @@ namespace URUI.Editor.Menus
             Directory.CreateDirectory(folder);
             AssetDatabase.Refresh();
             // 文档和场景分别分配唯一路径，重复使用菜单时保留调用者已编辑的内容。
-            var documentPath = AssetDatabase.GenerateUniqueAssetPath(folder + "/Hello.txt");
+            var documentPath = AssetDatabase.GenerateUniqueAssetPath(folder + "/Hello.html");
             var scenePath = AssetDatabase.GenerateUniqueAssetPath(folder + "/Hello.unity");
-            File.WriteAllText(documentPath, "<rml><head><style>body { font-family:__URUI_FONT__; color:white; font-size:28px; }</style></head><body><div id='label'>Hello URUI</div></body></rml>");
+            File.WriteAllText(documentPath, "<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><style>body { color:white; font-size:28px; }</style></head><body><div id='label'>Hello URUI</div></body></html>");
             AssetDatabase.Refresh();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             var camera = Camera.main;
@@ -39,12 +43,35 @@ namespace URUI.Editor.Menus
                 camera.backgroundColor = Color.black;
             }
 
+            var surface = new GameObject("URUI Surface").AddComponent<Surface>();
             var document = new GameObject("URUI Document").AddComponent<Document>();
+            var resources = new List<TextResource> {
+                new TextResource("/urui/base.css", RequiredText("Runtime/Resources/URUI/base.css"))
+            };
+            foreach (var family in new[] { "Serif", "Sans", "Mono" })
+                foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
+                {
+                    var file = "Liberation" + family + "-" + face + ".ttf.bytes";
+                    resources.Add(new TextResource("/urui/Fonts/" + file, RequiredText("Runtime/Resources/URUI/Fonts/" + file)));
+                }
             var serialized = new SerializedObject(document);
+            serialized.FindProperty("surface").objectReferenceValue = surface;
+            serialized.FindProperty("sourceUrl").stringValue = documentPath;
             serialized.FindProperty("source").objectReferenceValue = AssetDatabase.LoadAssetAtPath<TextAsset>(documentPath);
+            var serializedResources = serialized.FindProperty("textResources");
+            serializedResources.arraySize = resources.Count;
+            for (var i = 0; i < resources.Count; i++)
+            {
+                var entry = serializedResources.GetArrayElementAtIndex(i);
+                entry.FindPropertyRelative("source").stringValue = resources[i].Source;
+                entry.FindPropertyRelative("asset").objectReferenceValue = resources[i].Asset;
+            }
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorSceneManager.SaveScene(scene, scenePath);
             Selection.activeObject = document;
         }
+
+        static TextAsset RequiredText(string path) => AssetDatabase.LoadAssetAtPath<TextAsset>("Packages/com.fujisheng.urui/" + path)
+            ?? throw new InvalidOperationException("URUI 包缺少作者依赖：" + path);
     }
 }

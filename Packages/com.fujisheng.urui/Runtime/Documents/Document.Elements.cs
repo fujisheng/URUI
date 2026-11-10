@@ -8,11 +8,14 @@ namespace URUI.Documents
 {
     public sealed partial class Document
     {
-        readonly Dictionary<ulong, Element> elements = new Dictionary<ulong, Element>();
+        Dictionary<ulong, Element> elements => content.Elements;
         readonly Dictionary<Type, ElementFactory> factories = new Dictionary<Type, ElementFactory>();
         readonly Dictionary<string, ElementFactory> tags = new Dictionary<string, ElementFactory>(StringComparer.Ordinal);
         bool factoriesInitialized;
-        internal uint LayoutVersion { get; private set; }
+        sealed class FragmentChange { internal bool Committed; }
+        FragmentChange fragmentChange;
+        bool changingFragment => fragmentChange != null;
+        internal uint LayoutVersion { get => content?.LayoutVersion ?? 0; private set => content.LayoutVersion = value; }
 
         internal sealed class ElementFactory
         {
@@ -49,6 +52,7 @@ namespace URUI.Documents
         /// <summary>注册自定义标签和类型工厂；现有标签与已经确定的节点类型不被替换。</summary>
         public void RegisterElementType<T>(string tag, Func<ElementContext, T> factory) where T : Element
         {
+            RequireEffectDomAccess();
             CheckThread();
             RequireName(tag, nameof(tag));
             if (factory == null)
@@ -66,7 +70,7 @@ namespace URUI.Documents
         }
 
         /// <summary>当前文档根；未加载时为 null，所有访问限主线程。</summary>
-        public Element Root
+        public Element DocumentElement
         {
             get
             {
@@ -76,13 +80,17 @@ namespace URUI.Documents
                     return null;
                 }
 
-                return WrapElement(NativeMethods.urui_element_root()) ?? throw new InvalidOperationException("URUI 文档根身份不可用。");
+                return WrapElement(NativeMethods.urui_document_root(NativeHandle)) ?? throw new InvalidOperationException("URUI 文档根身份不可用。");
             }
         }
+
+        /// <summary>当前文档的 body；未加载时为 null。</summary>
+        public Element Body { get { CheckThread(); return IsLoaded ? WrapElement(NativeMethods.urui_document_body(NativeHandle)) : null; } }
 
         /// <summary>创建当前文档拥有的有类型节点；脱离层级时仍有效，卸载时失效。</summary>
         public T Create<T>() where T : Element
         {
+            RequireEffectDomAccess();
             CheckThread();
             if (!IsLoaded)
             {
@@ -95,7 +103,7 @@ namespace URUI.Documents
                 throw new NotSupportedException("请先注册控件类型：" + typeof(T).FullName);
             }
 
-            ulong token = NativeMethods.urui_element_create(factory.Tag);
+            ulong token = NativeMethods.urui_element_create(NativeHandle, factory.Tag);
             if (token == 0)
             {
                 throw new InvalidOperationException("URUI 节点创建失败。");
@@ -103,12 +111,12 @@ namespace URUI.Documents
 
             try
             {
-                if (factory.InputType != null && NativeMethods.urui_element_write(token, 2, "type", factory.InputType) != 1)
+                if (factory.InputType != null && NativeMethods.urui_element_write(NativeHandle, token, 2, "type", factory.InputType) != 1)
                 {
                     throw new InvalidOperationException("无法设置输入控件类型。");
                 }
 
-                if (NativeMethods.urui_element_write(token, 2, "data-urui-type", factory.Type.FullName) != 1)
+                if (NativeMethods.urui_element_write(NativeHandle, token, 2, "data-urui-type", factory.Type.FullName) != 1)
                 {
                     throw new InvalidOperationException("无法设置控件身份。");
                 }
@@ -117,15 +125,16 @@ namespace URUI.Documents
             }
             catch
             {
-                NativeMethods.urui_element_destroy(token);
+                NativeMethods.urui_element_destroy(NativeHandle, token);
                 SweepInvalidElements();
                 throw;
             }
         }
 
-        /// <summary>按 RML 标签创建脱离层级的节点；文档负责其整个生命周期。</summary>
+        /// <summary>按 HTML 标签创建脱离层级的节点；文档负责其整个生命周期。</summary>
         public Element CreateElement(string tag = "div")
         {
+            RequireEffectDomAccess();
             CheckThread();
             RequireName(tag, nameof(tag));
             if (!IsLoaded)
@@ -133,25 +142,25 @@ namespace URUI.Documents
                 throw new InvalidOperationException("请先加载文档。");
             }
 
-            return WrapElement(NativeMethods.urui_element_create(tag)) ?? throw new InvalidOperationException("URUI 无法创建节点。");
+            return WrapElement(NativeMethods.urui_element_create(NativeHandle, tag)) ?? throw new InvalidOperationException("URUI 无法创建节点。");
         }
 
         /// <summary>在根及后代查询首个有类型节点。</summary>
-        public T Q<T>(string name = null, string className = null) where T : Element => Root?.Q<T>(name, className);
+        public T Q<T>(string name = null, string className = null) where T : Element => DocumentElement?.Q<T>(name, className);
         /// <summary>构造有类型查询；文档需已加载。</summary>
         public ElementQuery<T> Query<T>(string name = null, string className = null) where T : Element
-            => (Root ?? throw new InvalidOperationException("请先加载文档。")).Query<T>(name, className);
+            => (DocumentElement ?? throw new InvalidOperationException("请先加载文档。")).Query<T>(name, className);
         /// <summary>在根及后代查询首项；未加载时为 null。</summary>
         public Element Q(string name = null, string className = null)
         {
             CheckQuery(name, className);
-            return Root?.Q(name, className);
+            return DocumentElement?.Q(name, className);
         }
         /// <summary>当前根及后代的深度优先快照；保留原有非泛型查询契约。</summary>
         public IReadOnlyList<Element> Query(string name = null, string className = null)
         {
             CheckQuery(name, className);
-            return Root?.Query(name, className) ?? Array.Empty<Element>();
+            return DocumentElement?.Query(name, className) ?? Array.Empty<Element>();
         }
         void CheckQuery(string name, string className)
         {
@@ -179,18 +188,17 @@ namespace URUI.Documents
                 return null;
             }
 
-            if (!IsLoaded || NativeMethods.urui_element_ref_valid(token) != 1)
-            {
-                return null;
-            }
-
+            var handle = NativeMethods.urui_surface_element_owner(token);
+            var state = activeContent?.Handle == handle ? activeContent : candidateContent?.Handle == handle ? candidateContent : null;
+            if (state == null || state.Retired || NativeMethods.urui_element_ref_valid(handle, token) != 1) return null;
+            var elements = state.Elements;
             if (elements.TryGetValue(token, out var existing))
             {
                 return existing;
             }
 
             EnsureFactories();
-            string marker = NativeMethods.ReadElement(token, 3, "data-urui-type");
+            string marker = NativeMethods.ReadElement(handle, token, 3, "data-urui-type");
             ElementFactory factory = null;
             if (marker != null)
             {
@@ -200,16 +208,17 @@ namespace URUI.Documents
                 }
                 if (factory == null)
                 {
-                    throw new InvalidOperationException("RML 引用了未注册控件类型：" + marker);
+                    throw new InvalidOperationException("HTML 引用了未注册控件类型：" + marker);
                 }
             }
             if (factory == null)
             {
-                string tag = NativeMethods.ReadElement(token, 1);
-                string input = tag == "input" ? NativeMethods.ReadElement(token, 3, "type") ?? "text" : null;
+                string tag = NativeMethods.ReadElement(handle, token, 1);
+                string input = tag == "input" ? NativeMethods.ReadElement(handle, token, 3, "type") ?? "text" : null;
+                if (input != null) input = input.ToLowerInvariant();
                 tags.TryGetValue(input == null ? tag : tag + ":" + input, out factory);
             }
-            var context = new ElementContext(this, generation, token);
+            var context = new ElementContext(this, state.Generation, token, handle);
             var value = factory == null ? new Element(context) : factory.Construct(context);
             if (value == null || value.Token != token || !ReferenceEquals(value.Document, this))
             {
@@ -217,16 +226,22 @@ namespace URUI.Documents
             }
 
             elements.Add(token, value);
+            state.ElementSnapshot = null;
             try { value.Initialize(); }
-            catch { elements.Remove(token); value.Invalidate(); throw; }
+            catch { elements.Remove(token); state.ElementSnapshot = null; value.Invalidate(); throw; }
             return value;
         }
 
         internal void InitializeElements()
         {
             LayoutVersion = 0;
+            InitializeSubtree(DocumentElement);
+        }
+
+        internal void InitializeSubtree(Element root)
+        {
             var pending = new Stack<Element>();
-            pending.Push(Root);
+            pending.Push(root);
             while (pending.Count > 0)
             {
                 var current = pending.Pop();
@@ -237,8 +252,40 @@ namespace URUI.Documents
             }
         }
 
+        internal void ReplaceInnerHtml(Element target, string html, string sourceUrl)
+        {
+            if (changingFragment) { EnqueueDeferred(() => target.SetInnerHtml(html, sourceUrl), true); return; }
+            var previousChangingContent = changingContent;
+            var change = fragmentChange = new FragmentChange();
+            changingContent = true;
+            surface.BeginTransaction();
+            var began = false;
+            try
+            {
+                Element.RequireSuccess(NativeMethods.urui_element_begin_inner_html(NativeHandle, target.Token, html, sourceUrl), "准备 HTML 内容");
+                began = true;
+                InitializeSubtree(target);
+                Element.RequireSuccess(NativeMethods.urui_element_end_inner_html(NativeHandle, target.Token, 1), "提交 HTML 内容");
+                began = false;
+                change.Committed = true;
+            }
+            catch
+            {
+                if (began) Element.RequireSuccess(NativeMethods.urui_element_end_inner_html(NativeHandle, target.Token, 0), "回滚 HTML 内容");
+                throw;
+            }
+            finally
+            {
+                SweepInvalidElements();
+                fragmentChange = null; changingContent = previousChangingContent;
+                surface.EndTransaction();
+                FinishNativeCall();
+            }
+        }
+
         internal void RefreshElements(bool layout)
         {
+            using var profile = URUI.Internal.Hosting.RenderHost.ElementRefreshPhase.Auto();
             if (!IsLoaded)
             {
                 return;
@@ -249,34 +296,49 @@ namespace URUI.Documents
                 LayoutVersion++;
             }
 
-            foreach (var value in new List<Element>(elements.Values))
+            var selected = content;
+            foreach (var value in selected.GetElements())
             {
-                if (!IsLoaded)
+                if (!IsLoaded || !ReferenceEquals(content, selected))
                 {
                     break;
                 }
 
-                if (value.IsValid)
-                {
-                    value.Refresh(layout);
-                }
+                value.Refresh(layout);
             }
             SweepInvalidElements();
         }
 
+        internal void NotifyLayoutUpdated()
+        {
+            if (IsLoaded && layoutUpdated != null)
+            {
+                var callbacks = layoutCallbacks ??= layoutUpdated.GetInvocationList();
+                BeginControlUpdate();
+                try
+                {
+                    foreach (Action<Document> callback in callbacks)
+                    {
+                        if (!IsLoaded || HasPendingInvalidation) { break; }
+                        callback(this);
+                    }
+                }
+                finally { EndControlUpdate(); }
+            }
+        }
+
         internal void SweepInvalidElements()
         {
-            var removed = new List<ulong>();
-            foreach (var pair in elements)
+            var selected = content;
+            if (selected == null) { return; }
+            foreach (var value in selected.GetElements())
             {
-                if (!pair.Value.IsValid)
+                if (!value.IsValid)
                 {
-                    removed.Add(pair.Key);
+                    selected.Elements.Remove(value.Token);
+                    selected.EffectLayouts.Remove(value.Token);
+                    selected.ElementSnapshot = null;
                 }
-            }
-            foreach (var token in removed)
-            {
-                elements.Remove(token);
             }
         }
     }

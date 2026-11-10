@@ -57,7 +57,7 @@ namespace URUI.Elements
         public void CapturePointer(int pointerId)
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_pointer_capture(pointerId, token), "捕获指针");
+            RequireSuccess(NativeMethods.urui_pointer_capture(NativeHandle, pointerId, token), "捕获指针");
             document.FinishNativeCall();
         }
 
@@ -65,9 +65,9 @@ namespace URUI.Elements
         public void ReleasePointer(int pointerId)
         {
             document.CheckThread();
-            if (IsValid && NativeMethods.urui_pointer_captured(pointerId) == token)
+            if (IsValid && NativeMethods.urui_pointer_captured(NativeHandle, pointerId) == token)
             {
-                RequireSuccess(NativeMethods.urui_pointer_capture(pointerId, 0), "释放指针");
+                RequireSuccess(NativeMethods.urui_pointer_capture(NativeHandle, pointerId, 0), "释放指针");
                 document.FinishNativeCall();
             }
         }
@@ -76,7 +76,7 @@ namespace URUI.Elements
         public bool HasPointerCapture(int pointerId)
         {
             RequireValid();
-            return NativeMethods.urui_pointer_captured(pointerId) == token;
+            return NativeMethods.urui_pointer_captured(NativeHandle, pointerId) == token;
         }
 
         /// <summary>控件事件钩子；在本元素普通回调之后执行。</summary>

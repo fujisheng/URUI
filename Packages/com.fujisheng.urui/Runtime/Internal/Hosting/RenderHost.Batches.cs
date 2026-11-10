@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 using URUI.Internal.Interop;
@@ -5,351 +6,109 @@ using URUI.Internal.Rendering.Meshes;
 
 namespace URUI.Internal.Hosting
 {
-    // 按原有命令顺序组合兼容几何，保留裁剪、变换与混合顺序的判定边界。
     internal sealed partial class RenderHost
     {
-        Bounds GeometryBounds(Mesh mesh, ref PhaseFrame phase)
-        {
-#if URUI_DEBUG
-            long t = DetailBegin(ref phase.boundsApiMs, ref phase);
-#endif
-            var b = mesh.bounds;
-#if URUI_DEBUG
-            DetailEnd(t, ref phase.boundsApiMs);
-            if (phaseDiagnostics)
-            {
-                phase.boundsReads++;
-            }
-#endif
-            return b;
-        }
-
-        void ClearFrameScratch()
-        {
-            frameUsedGeometry.Clear();
-            frameUsedGeometry.TrimExcess();
-            frameStaleGeometry.Clear();
-            frameStaleGeometry.TrimExcess();
-        }
-
+        int batchVertexCount,batchIndexCount;
+        const int TextureBindingBudget=8;
+        readonly ulong[] batchTextures=new ulong[TextureBindingBudget];
+        int batchTextureCount;
+        void ClearFrameScratch(){frameUsedGeometry.Clear();frameStaleGeometry.Clear();}
         void ClearBatches()
         {
-            foreach (var b in batches.Values)
-            {
-                if (b.mesh)
-                {
-                    Destroy(b.mesh);
-                }
-            }
-
-            batches.Clear();
-            batchGroup.Clear();
-            previousBatchKeys.Clear();
-            currentBatchKeys.Clear();
-            staleBatchKeys.Clear();
+            foreach(var batch in batches)if(batch.mesh)Destroy(batch.mesh);
+            batches.Clear();batchGroup.Clear();batchVertexCount=batchIndexCount=batchTextureCount=0;
+            pendingGeometry.Clear();segmentPlans.Clear();
         }
-
-        static void Mix(ref ulong hash, ulong value)
+        static bool SameCommand(CommandNative a,CommandNative b)=>a.geometry==b.geometry&&a.texture==b.texture&&a.tx==b.tx&&a.ty==b.ty&&
+            a.flags==b.flags&&a.clip_x==b.clip_x&&a.clip_y==b.clip_y&&a.clip_w==b.clip_w&&a.clip_h==b.clip_h;
+        bool CanJoin(BatchItem item,ref PhaseFrame phase)
         {
-            unchecked
-            {
-                hash ^= value;
-                hash *= 1099511628211UL;
-            }
+            if(batchGroup.Count==0)return true;
+            var first=batchGroup[0];var a=first.command;var b=item.command;
+            if(a.flags!=b.flags||a.clip_x!=b.clip_x||a.clip_y!=b.clip_y||a.clip_w!=b.clip_w||a.clip_h!=b.clip_h||
+                !BatchRules.EquivalentAffine2D(first.transform,item.transform)||batchVertexCount+item.geometry.vertexCount>100000||batchIndexCount+item.geometry.indexCount>300000)return false;
+            if(a.texture!=b.texture&&(LoadTexture(a.texture) is RenderTexture)!=(LoadTexture(b.texture) is RenderTexture))return false;
+            return TextureSlot(b.texture)>=0||batchTextureCount<TextureBindingBudget;
         }
-
-        ulong GroupHash()
+        int TextureSlot(ulong texture)
         {
-            ulong hash = 1469598103934665603UL;
-            foreach (var item in batchGroup)
-            {
-                var c = item.command;
-                Mix(ref hash, c.geometry);
-                Mix(ref hash, c.texture);
-                Mix(ref hash, (uint)c.tx.GetHashCode());
-                Mix(ref hash, (uint)c.ty.GetHashCode());
-                Mix(ref hash, (uint)c.clip_enabled);
-                Mix(ref hash, (uint)c.clip_x);
-                Mix(ref hash, (uint)c.clip_y);
-                Mix(ref hash, (uint)c.clip_w);
-                Mix(ref hash, (uint)c.clip_h);
-            }
-
-            return hash;
+            for(var index=0;index<batchTextureCount;index++)if(batchTextures[index]==texture)return index;
+            return -1;
         }
-
-        static bool SameCommand(CommandNative a, CommandNative b) => a.geometry == b.geometry
-            && a.texture == b.texture
-            && a.tx == b.tx
-            && a.ty == b.ty
-            && a.clip_enabled == b.clip_enabled
-            && a.clip_x == b.clip_x
-            && a.clip_y == b.clip_y
-            && a.clip_w == b.clip_w
-            && a.clip_h == b.clip_h;
-
-        bool SameBatch(BatchCache cache)
+        void AddToBatch(BatchItem item)
         {
-            if (cache.items.Length != batchGroup.Count)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < cache.items.Length; i++)
-            {
-                if (!SameCommand(cache.items[i].command, batchGroup[i].command))
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            if(TextureSlot(item.command.texture)<0)batchTextures[batchTextureCount++]=item.command.texture;
+            batchGroup.Add(item);batchVertexCount+=item.geometry.vertexCount;batchIndexCount+=item.geometry.indexCount;
         }
-
-        bool CanJoin(BatchItem next, ref PhaseFrame phase)
+        static void SetDrawBounds(ref BatchItem item)
         {
-#if URUI_DEBUG
-            long t = DetailBegin(ref phase.canJoinMs, ref phase);
-#endif
-            bool result = CanJoinCore(next, ref phase);
-#if URUI_DEBUG
-            DetailEnd(t, ref phase.canJoinMs);
-#endif
-            return result;
+            var bounds=item.geometry.bounds;var offset=new Vector3(item.command.tx,item.command.ty,0);
+            var a=item.transform.MultiplyPoint3x4(new Vector3(bounds.min.x,bounds.min.y,0)+offset);
+            var b=item.transform.MultiplyPoint3x4(new Vector3(bounds.max.x,bounds.min.y,0)+offset);
+            var c=item.transform.MultiplyPoint3x4(new Vector3(bounds.min.x,bounds.max.y,0)+offset);
+            var d=item.transform.MultiplyPoint3x4(new Vector3(bounds.max.x,bounds.max.y,0)+offset);
+            item.x0=Mathf.Min(Mathf.Min(a.x,b.x),Mathf.Min(c.x,d.x));item.x1=Mathf.Max(Mathf.Max(a.x,b.x),Mathf.Max(c.x,d.x));
+            item.y0=Mathf.Min(Mathf.Min(a.y,b.y),Mathf.Min(c.y,d.y));item.y1=Mathf.Max(Mathf.Max(a.y,b.y),Mathf.Max(c.y,d.y));
         }
-
-        bool CanJoinCore(BatchItem next, ref PhaseFrame phase)
+        bool FullyClipped(BatchItem item)
         {
-            if (batchGroup.Count == 0)
-            {
-                return true;
-            }
-
-            var a = batchGroup[0].command;
-            var b = next.command;
-            if (a.texture != b.texture)
-            {
-#if URUI_DEBUG
-                if (phaseDiagnostics)
-                {
-                    phase.breakTexture++;
-                }
-#endif
-                return false;
-            }
-
-            if (a.clip_enabled != b.clip_enabled
-                || a.clip_x != b.clip_x
-                || a.clip_y != b.clip_y
-                || a.clip_w != b.clip_w
-                || a.clip_h != b.clip_h)
-            {
-#if URUI_DEBUG
-                if (phaseDiagnostics)
-                {
-                    phase.breakClip++;
-                }
-#endif
-                return false;
-            }
-
-            if (!BatchRules.EquivalentAffine2D(batchGroup[0].transform, next.transform))
-            {
-#if URUI_DEBUG
-                if (phaseDiagnostics)
-                {
-                    phase.breakTransform++;
-                }
-#endif
-                return false;
-            }
-
-            if (!batchOrderedOverlap)
-            {
-                foreach (var prior in batchGroup)
-                {
-                    if (!BatchRules.Disjoint(prior.x0, prior.y0, prior.x1, prior.y1, next.x0, next.y0, next.x1, next.y1))
-                    {
-#if URUI_DEBUG
-                        if (phaseDiagnostics)
-                        {
-                            phase.breakOverlap++;
-                        }
-#endif
-                        return false;
-                    }
-                }
-            }
-
-            return true;
+            // 滤镜源图层可延伸到主视口外；离屏源仍可能投射屏内阴影或光晕。
+            var region=Region(activeLayer);
+            if(item.x1<region.xMin||item.y1<region.yMin||item.x0>region.xMax||item.y0>region.yMax)return true;
+            var clip=item.command;
+            return clip.ClipEnabled&&(clip.clip_w<=0||clip.clip_h<=0||item.x1<clip.clip_x||item.x0>clip.clip_x+clip.clip_w||
+                item.y1<clip.clip_y||item.y0>clip.clip_y+clip.clip_h);
         }
-
-        Mesh BuildBatchMesh(ref PhaseFrame phase)
+        static Mesh UploadMesh(string name,Vector3[] positions,Vector2[] uv,Color32[] colors,int[] indices,int vertices,int count,Vector2[] sourceSlots)
         {
-#if URUI_DEBUG
-            long start = phaseDiagnostics ? Now() : 0;
-#endif
-            int vertices = 0;
-            int indices = 0;
-            foreach (var item in batchGroup)
-            {
-                if (item.geometry.positions == null)
-                {
-                    return null;
-                }
-
-                vertices += item.geometry.positions.Length;
-                indices += item.geometry.indices.Length;
-            }
-
-            if (vertices == 0 || indices == 0 || vertices > 100000 || indices > 300000)
-            {
-#if URUI_DEBUG
-                if (phaseDiagnostics)
-                {
-                    phase.vertexLimitGroups++;
-                }
-#endif
-                return null;
-            }
-
-            var positions = new Vector3[vertices];
-            var uv = new Vector2[vertices];
-            var colors = new Color32[vertices];
-            var ids = new int[indices];
-            int vo = 0;
-            int io = 0;
-            foreach (var item in batchGroup)
-            {
-                var g = item.geometry;
-                var c = item.command;
-                for (int i = 0; i < g.positions.Length; i++)
-                {
-                    var p = g.positions[i];
-                    positions[vo + i] = new Vector3(p.x + c.tx, p.y + c.ty, p.z);
-                    uv[vo + i] = g.uv[i];
-                    colors[vo + i] = g.colors[i];
-                }
-
-                for (int i = 0; i < g.indices.Length; i++)
-                {
-                    ids[io + i] = vo + g.indices[i];
-                }
-
-                vo += g.positions.Length;
-                io += g.indices.Length;
-            }
-#if URUI_DEBUG
-            long unityStart = phaseDiagnostics ? Now() : 0;
-#endif
-            var mesh = new Mesh
-            {
-                name = "DisjointBatch"
-            };
-            if (vertices > 65535)
-            {
-                mesh.indexFormat = IndexFormat.UInt32;
-            }
-
-            mesh.vertices = positions;
-            mesh.uv = uv;
-            mesh.colors32 = colors;
-            mesh.triangles = ids;
-            mesh.RecalculateBounds();
-#if URUI_DEBUG
-            if (phaseDiagnostics)
-            {
-                phase.batchUnityMeshApiMs += Millis(Now() - unityStart);
-                phase.batchMeshBuildMs += Millis(Now() - start);
-            }
-#endif
+            var mesh=new Mesh{name=name,indexFormat=vertices>65535?IndexFormat.UInt32:IndexFormat.UInt16};
+            mesh.SetVertices(positions,0,vertices);mesh.SetUVs(0,uv,0,vertices);mesh.SetColors(colors,0,vertices);
+            mesh.SetUVs(1,sourceSlots,0,vertices);
+            mesh.SetIndices(indices,0,count,MeshTopology.Triangles,0,true);
             return mesh;
         }
-
-        void FlushGroup(ref PhaseFrame phase)
+        void SubmitBatch(ref PhaseFrame phase)
         {
-#if URUI_DEBUG
-            using var marker = flushMarker.Auto();
-            long t = DetailBegin(ref phase.flushGroupMs, ref phase);
-#endif
-            FlushGroupCore(ref phase);
-#if URUI_DEBUG
-            DetailEnd(t, ref phase.flushGroupMs);
-#endif
-        }
-
-        // 仅合并顺序与混合结果均可证明等价的组；无法合并时按原始顺序逐条提交。
-        void FlushGroupCore(ref PhaseFrame phase)
-        {
-            if (batchGroup.Count == 0)
+            if(batchGroup.Count==0)return;
+            if(batchGroup.Count==1)
             {
-                return;
+                DrawOne(batchGroup[0],ref phase);batchGroup.Clear();batchVertexCount=batchIndexCount=batchTextureCount=0;return;
             }
-#if URUI_DEBUG
-            if (phaseDiagnostics)
+            if(batchCursor==batches.Count)batches.Add(new BatchCache());
+            var cached=batches[batchCursor++];
+            var unchanged=cached.mesh&&cached.count==batchGroup.Count;
+            for(var index=0;unchanged&&index<batchGroup.Count;index++)unchanged=SameCommand(cached.items[index],batchGroup[index].command);
+            if(!unchanged)
             {
-                phase.batchGroups++;
-            }
-#endif
-            if (batchGroup.Count == 1)
-            {
-                DrawOne(batchGroup[0], ref phase);
-                batchGroup.Clear();
-                return;
-            }
-
-            ulong hash = GroupHash();
-            currentBatchKeys.Add(hash);
-            if (batches.TryGetValue(hash, out var cached) && !cached.mesh)
-            {
-                batches.Remove(hash);
-                cached = null;
-                recordingWarmupPending = true;
-            }
-
-            if (cached != null)
-            {
-                if (SameBatch(cached))
+                if(cached.positions.Length<batchVertexCount)
                 {
-                    DrawBatch(cached, ref phase);
-                    batchGroup.Clear();
-                    return;
+                    var capacity=Math.Max(batchVertexCount,cached.positions.Length*2+16);
+                    cached.positions=new Vector3[capacity];cached.uv=new Vector2[capacity];cached.colors=new Color32[capacity];cached.sourceSlots=new Vector2[capacity];
                 }
-                // Hash collision remains the original ordered fallback.
-            }
-            else if (previousBatchKeys.Contains(hash))
-            {
-                var mesh = BuildBatchMesh(ref phase);
-                if (mesh)
+                if(cached.indices.Length<batchIndexCount)cached.indices=new int[Math.Max(batchIndexCount,cached.indices.Length*2+24)];
+                if(cached.items.Length<batchGroup.Count)cached.items=new CommandNative[Math.Max(batchGroup.Count,cached.items.Length*2+16)];
+                var vertex=0;var triangle=0;
+                foreach(var item in batchGroup)
                 {
-                    cached = new BatchCache
+                    var geometry=item.geometry;var command=item.command;
+                    var slot=TextureSlot(command.texture);
+                    if(slot<0)throw new InvalidOperationException("URUI 批次缺少纹理绑定。");
+                    for(var index=0;index<geometry.vertexCount;index++)
                     {
-                        mesh = mesh,
-                        items = batchGroup.ToArray()
-                    };
-                    batches.Add(hash, cached);
-                    DrawBatch(cached, ref phase);
-                    batchGroup.Clear();
-                    return;
+                        var point=geometry.positions[index];point.x+=command.tx;point.y+=command.ty;
+                        cached.positions[vertex+index]=point;cached.uv[vertex+index]=geometry.uv[index];cached.colors[vertex+index]=geometry.colors[index];
+                        cached.sourceSlots[vertex+index]=new Vector2(slot,0);
+                    }
+                    for(var index=0;index<geometry.indexCount;index++)cached.indices[triangle+index]=vertex+geometry.indices[index];
+                    vertex+=geometry.vertexCount;triangle+=geometry.indexCount;
                 }
+                // 每个GPU版本保持不可变；更新只复用CPU staging，避免改写已排队但尚未Submit的Mesh。
+                var replacement=UploadMesh("URUI batch",cached.positions,cached.uv,cached.colors,cached.indices,batchVertexCount,batchIndexCount,cached.sourceSlots);
+                if(cached.mesh)Destroy(cached.mesh);cached.mesh=replacement;
+                for(var index=0;index<batchGroup.Count;index++)cached.items[index]=batchGroup[index].command;
+                cached.count=batchGroup.Count;
             }
-            else
-            {
-                recordingWarmupPending = true;
-                // Do not freeze first-frame unbatched warmup.
-            }
-#if URUI_DEBUG
-            if (phaseDiagnostics)
-            {
-                phase.fallbackExtraSubmissions += batchGroup.Count - 1;
-            }
-#endif
-            foreach (var item in batchGroup)
-            {
-                DrawOne(item, ref phase);
-            }
-
-            batchGroup.Clear();
+            DrawBatch(cached,ref phase);batchGroup.Clear();batchVertexCount=batchIndexCount=batchTextureCount=0;
         }
     }
 }

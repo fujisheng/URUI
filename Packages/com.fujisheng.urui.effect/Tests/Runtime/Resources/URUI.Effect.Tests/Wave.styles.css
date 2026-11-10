@@ -1,0 +1,4 @@
+body { width:100%; height:100%; }
+#clip { position:absolute; left:20px; top:20px; width:100px; height:100px; overflow:hidden; opacity:.5; }
+#wave { position:absolute; left:0; top:0; width:100px; height:100px; --urui-image-effect:ui-wave; --urui-wave-time-offset:0; --urui-wave-fixed-edge:center; --urui-wave-displacement:vertical; --urui-wave-amplitude:20px; --urui-wave-frequency:4; --urui-wave-speed:1; --urui-wave-fixed-part:.2; --urui-wave-secondary:.5; --urui-wave-cross-influence:0; --urui-wave-cross-scale:.01; --urui-wave-columns:24; --urui-wave-rows:8; }
+#clip.layered { --urui-mask-image:shader(feather-mask); }

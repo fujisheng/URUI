@@ -8,6 +8,25 @@ namespace URUI.Controls
     /// <summary>原生 select 下拉控件，Value 对应 option 的 value 属性。</summary>
     public class Dropdown : BaseField<string>
     {
+        internal event Action PresentationChanged;
+        /// <summary>同步普通、静默和原生选择写入后的作者皮肤。</summary>
+        protected override void OnValueSynchronized()
+        {
+            base.OnValueSynchronized();
+            PresentationChanged?.Invoke();
+        }
+        /// <summary>启用状态改变时同步独立的作者触发按钮。</summary>
+        protected override void OnAttributeChanged(string name)
+        {
+            base.OnAttributeChanged(name);
+            if (name == "disabled") PresentationChanged?.Invoke();
+        }
+        /// <summary>失效节点不保留作者呈现订阅。</summary>
+        protected override void OnInvalidated()
+        {
+            PresentationChanged = null;
+            base.OnInvalidated();
+        }
         /// <summary>文档工厂构造入口。</summary>
         protected internal Dropdown(ElementContext context) : base(context) { }
         /// <summary>读取原生选择值。</summary>
@@ -19,7 +38,7 @@ namespace URUI.Controls
         {
             get
             {
-                int count = NativeMethods.urui_select_option_count(CheckedToken());
+                int count = NativeMethods.urui_select_option_count(NativeHandle, CheckedToken());
                 if (count < 0)
                 {
                     throw new InvalidOperationException("无法读取原生选项。");
@@ -28,7 +47,7 @@ namespace URUI.Controls
                 var result = new List<string>();
                 for (int i = 0; i < count; i++)
                 {
-                    result.Add(NativeMethods.ReadOption(Token, i));
+                    result.Add(NativeMethods.ReadOption(NativeHandle, Token, i));
                 }
 
                 return result;
@@ -49,7 +68,7 @@ namespace URUI.Controls
                 ChangeStructure(() =>
                                 {
                                     string previous = Value;
-                                    if (NativeMethods.urui_select_options_clear(Token) != 1)
+                                    if (NativeMethods.urui_select_options_clear(NativeHandle, Token) != 1)
                                     {
                                         throw new InvalidOperationException("无法清空选项。");
                                     }
@@ -57,7 +76,7 @@ namespace URUI.Controls
                                     Document.SweepInvalidElements();
                                     foreach (string item in copy)
                                     {
-                                        if (NativeMethods.urui_select_option_add(Token, item) != 1)
+                                        if (NativeMethods.urui_select_option_add(NativeHandle, Token, item) != 1)
                                         {
                                             throw new InvalidOperationException("无法添加选项。");
                                         }
@@ -73,7 +92,7 @@ namespace URUI.Controls
             get
             {
                 RequireValid();
-                return NativeMethods.urui_select_selection(Token, -1);
+                return NativeMethods.urui_select_selection(NativeHandle, Token, -1);
             }
             set
             {
@@ -85,7 +104,7 @@ namespace URUI.Controls
 
                 ChangeStructure(() =>
                                 {
-                                    if (NativeMethods.urui_select_selection(Token, value) < 0)
+                                    if (NativeMethods.urui_select_selection(NativeHandle, Token, value) < 0)
                                     {
                                         throw new InvalidOperationException("无法选择选项。");
                                     }

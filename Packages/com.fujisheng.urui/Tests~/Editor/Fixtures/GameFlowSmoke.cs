@@ -66,11 +66,11 @@ namespace URUI.Tests
                 Need(doc.Images.Length == 40, "default sample registers all forty independent borrowed images");
                 Need(Array.TrueForAll(doc.Images, image => image.Texture && !image.Texture.isReadable), "default sample runs with every image non-readable");
                 Need(doc.Q<Label>("greeting").Text.Contains("Rhea"), "profile rendered");
-                Need(doc.Q("player-hud").Layout.width > 200, "game HUD external RCSS loaded");
+                Need(doc.Q("player-hud").Layout.width > 200, "game HUD external CSS loaded");
                 Need(doc.Q("open-expedition").Layout.width > 200, "real layout available");
                 VerifyFrameBounds();
                 var actor = doc.Q<URUI.Controls.Image>(className: "operator-art");
-                Need(actor != null && actor.Source == "gameflow/operator.png" && actor.WorldBound.height > Screen.height * .7f,
+                Need(actor != null && actor.Source == "../Images/operator.png" && actor.WorldBound.height > Screen.height * .7f,
                     "approved home uses a separate full-height original operator sprite");
                 Click("open-expedition"); await Task.Delay(80);
                 Need(!doc.Q<Button>("open-inventory").Focus(), "adventure modal gates background focus");
@@ -83,12 +83,12 @@ namespace URUI.Tests
                 var hover = doc.Q<Button>("open-inventory");
                 string normalColor = hover.ResolvedStyle.Get("background-color");
                 var point = hover.WorldBound.center;
-                doc.Input.SendPointer(PointerPhase.Move, point); await Task.Delay(180);
+                doc.Surface.Input.SendPointer(PointerPhase.Move, point); await Task.Delay(180);
                 Need(hover.ResolvedStyle.Get("background-color") != normalColor, "real hover transition feedback");
                 float normalTop = hover.WorldBound.yMin;
-                doc.Input.SendPointer(PointerPhase.Down, point, pressedButtons: 1); await Task.Delay(160);
+                doc.Surface.Input.SendPointer(PointerPhase.Down, point, pressedButtons: 1); await Task.Delay(160);
                 Need(hover.WorldBound.yMin > normalTop + 1, "real press offset feedback");
-                doc.Input.SendPointer(PointerPhase.Cancel, point); await Task.Delay(160);
+                doc.Surface.Input.SendPointer(PointerPhase.Cancel, point); await Task.Delay(160);
                 int power = app.Service.CurrentPlayer.power;
                 Click("open-inventory"); await Page(GamePage.Inventory);
                 var grid = doc.Q("item-grid");
@@ -97,21 +97,21 @@ namespace URUI.Tests
                     "inventory keeps the approved grid and fixed detail proportions");
                 var secondItem = app.Service.Inventory[1]; var firstItem = app.Service.Inventory[0];
                 var touchPoint = doc.Q<Button>("item-" + secondItem.id).WorldBound.center;
-                doc.Input.SendPointer(PointerPhase.Down, touchPoint, 7, true, pressedButtons: 1);
-                doc.Input.SendPointer(PointerPhase.Up, touchPoint, 7, true);
+                doc.Surface.Input.SendPointer(PointerPhase.Down, touchPoint, 7, true, pressedButtons: 1);
+                doc.Surface.Input.SendPointer(PointerPhase.Up, touchPoint, 7, true);
                 Need(doc.Q<Label>("detail-name").Text == secondItem.name, "touch selects an item slot");
                 var scroll = doc.Q<ScrollView>("item-scroll"); var drag = scroll.WorldBound.center;
                 // End an uncaptured touch just beyond the edge, below the drag threshold.
                 // A different pointer must still be able to begin the next gesture.
                 var edge = new Vector2(scroll.WorldBound.xMin + 1, scroll.WorldBound.yMin + 2);
-                doc.Input.SendPointer(PointerPhase.Down, edge, 9, true, pressedButtons: 1);
-                doc.Input.SendPointer(PointerPhase.Move, edge - new Vector2(2, 0), 9, true, pressedButtons: 1);
-                doc.Input.SendPointer(PointerPhase.Up, edge - new Vector2(2, 0), 9, true);
+                doc.Surface.Input.SendPointer(PointerPhase.Down, edge, 9, true, pressedButtons: 1);
+                doc.Surface.Input.SendPointer(PointerPhase.Move, edge - new Vector2(2, 0), 9, true, pressedButtons: 1);
+                doc.Surface.Input.SendPointer(PointerPhase.Up, edge - new Vector2(2, 0), 9, true);
                 doc.Q<TextField>("search").Focus();
-                doc.Input.SendPointer(PointerPhase.Down, drag, 8, true, pressedButtons: 1);
-                doc.Input.SendPointer(PointerPhase.Move, drag + new Vector2(0,-100), 8, true, pressedButtons: 1);
+                doc.Surface.Input.SendPointer(PointerPhase.Down, drag, 8, true, pressedButtons: 1);
+                doc.Surface.Input.SendPointer(PointerPhase.Move, drag + new Vector2(0,-100), 8, true, pressedButtons: 1);
                 await Task.Delay(80);
-                doc.Input.SendPointer(PointerPhase.Up, drag + new Vector2(0,-100), 8, true);
+                doc.Surface.Input.SendPointer(PointerPhase.Up, drag + new Vector2(0,-100), 8, true);
                 await Task.Delay(80);
                 Need(scroll.ScrollOffset.y > 0, "new touch scrolls after a below-threshold touch leaves the viewport");
                 Need(doc.Q<Label>("detail-name").Text == secondItem.name, "drag does not choose another item");
@@ -156,7 +156,7 @@ namespace URUI.Tests
                 await Task.Delay(450); Need(Screen.width == 680, "narrow window applied"); Capture("08-home-narrow");
                 Click("open-inventory"); await Page(GamePage.Inventory); Capture("09-inventory-narrow");
                 Need(doc.Q("item-detail").Layout.width > 100, "narrow detail remains usable");
-                var old = doc.Root; app.enabled = false; Need(!doc.IsLoaded && !old.IsValid, "disable unloads and invalidates old elements");
+                var old = doc.DocumentElement; app.enabled = false; Need(!doc.IsLoaded && !old.IsValid, "disable unloads and invalidates old elements");
                 app.enabled = true;
                 await Until(() => doc.IsLoaded && !app.IsBusy, "reenable startup"); if (app.CurrentPage == GamePage.Loading) Click("retry");
                 await Page(GamePage.Login); Need(Camera.main != null && FindFirstObjectByType<AudioListener>() != null, "same-frame reenable retains camera and audio listener"); Need(errors.Count == 0, "no unexpected runtime errors");
@@ -187,7 +187,7 @@ namespace URUI.Tests
         {
             int checkedParts = 0;
             bool contained = true;
-            foreach (var part in doc.Root.Query(className: "frame-part"))
+            foreach (var part in doc.Query(className: "frame-part"))
             {
                 if (!part.HasLayout || part.Layout.width <= 0 || part.Layout.height <= 0) continue;
                 checkedParts++;
@@ -205,12 +205,14 @@ namespace URUI.Tests
         async Task Page(GamePage page)
         {
             await Until(() => app.CurrentPage == page && doc.IsLoaded && !app.IsBusy, "page " + page);
-            doc.Input.UseUnityInput = false; await Task.Delay(300);
+            doc.Surface.Input.UseUnityInput = false; await Task.Delay(300);
         }
         void Click(string name)
         {
+            // 异步请求结束不代表样式已重算；在自动输入前明确同步布局。
+            doc.SynchronizeLayout();
             var button = doc.Q<Button>(name); Need(button != null && button.Focus(), "focus button " + name);
-            doc.Input.UseUnityInput = false; doc.Input.SendKey(KeyCode.Return, true); doc.Input.SendKey(KeyCode.Return, false);
+            doc.Surface.Input.UseUnityInput = false; doc.Surface.Input.SendKey(KeyCode.Return, true); doc.Surface.Input.SendKey(KeyCode.Return, false);
         }
         void Log(string message, string trace, LogType type) { if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert) errors.Add(message); }
         void Capture(string name)

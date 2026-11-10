@@ -24,20 +24,20 @@ namespace URUI.Tests
 
         Document document;
         readonly Result result = new Result();
-        const string Markup = @"<rml><head><style>
-body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
+        const string Markup = @"<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'><style>
+body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
 #panel{display:block;position:absolute;left:20px;top:20px;width:200px;height:200px;}
 #hit{display:block;width:100px;height:40px;background-color:red;}
 #save{display:block;width:100px;height:40px;}
-</style></head><body><div id='panel'><div id='hit'/><button id='save'>Save</button><input id='name' type='text' value='old'/><input id='enabled' type='checkbox'/></div></body></rml>";
+</style></head><body><div id='panel'><div id='hit'></div><button id='save'>Save</button><input id='name' type='text' value='old'/><input id='enabled' type='checkbox'/></div></body></html>";
 
         IEnumerator Start()
         {
-            document = gameObject.AddComponent<Document>();
-            document.Input.UseUnityInput = false;
+            document = AcceptanceDocuments.Create(gameObject);
+            document.Surface.Input.UseUnityInput = false;
             try
             {
-                document.LoadMarkup(Markup);
+                document.LoadHtml(Markup, "ui/acceptance.html");
             }
             catch (Exception error)
             {
@@ -76,8 +76,8 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             try
             {
                 CheckReload();
-                document.RegisterElementType("late-loader", context => new LateLoader(context));
-                document.Root.SetInnerMarkup("<late-loader style='position:absolute;left:0;top:0;width:100px;height:100px;display:block;'/>");
+                document.RegisterElementType("urui-late-loader", context => new LateLoader(context));
+                document.Body.SetInnerHtml("<urui-late-loader style='position:absolute;left:0;top:0;width:100px;height:100px;display:block;'></urui-late-loader>", "ui/fragment.html");
             }
             catch (Exception error)
             {
@@ -88,9 +88,9 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             yield return null;
             try
             {
-                document.Input.SendPointer(PointerPhase.Down, new Vector2(10, 10));
+                document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(10, 10));
                 Require(document.Q<Label>("late-loaded") != null, "lazy factory initialization defers reload until native callback returns");
-                document.LoadMarkup("<rml><body><input id='focus-reloader' type='text'/></body></rml>");
+                document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><input id='focus-reloader' type='text'/></body></html>", "ui/acceptance.html");
             }
             catch (Exception error) { Finish(error); yield break; }
             yield return null;
@@ -98,7 +98,7 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             try
             {
                 var field = document.Q<TextField>("focus-reloader");
-                field.RegisterCallback<FocusEvent>(evt => document.LoadMarkup("<rml><body><label id='focus-loaded'>ready</label></body></rml>"));
+                field.RegisterCallback<FocusEvent>(evt => document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><label id='focus-loaded'>ready</label></body></html>", "ui/acceptance.html"));
                 field.Focus();
                 Require(!field.IsValid && document.Q<Label>("focus-loaded") != null, "programmatic focus finishes deferred reload before returning");
                 result.passed = true;
@@ -118,13 +118,13 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
 
         void CheckElements()
         {
-            var button = document.Root.Q<Button>("save");
-            Require(button != null && ReferenceEquals(button, document.Q("save")), "RML typed identity");
-            Require(document.Root.Q<TextField>("name").Value == "old", "RML typed field value");
+            var button = document.Q<Button>("save");
+            Require(button != null && ReferenceEquals(button, document.Q("save")), "HTML typed identity");
+            Require(document.Q<TextField>("name").Value == "old", "HTML typed field value");
             var panel = document.Q("panel");
             Require(panel.Query<Button>().First() == button, "typed query order");
             Require(panel.Query<Element>().Where(value => value.Name == "hit").ToList().Count == 1, "query predicate");
-            document.RegisterElementType("card", context => new Card(context));
+            document.RegisterElementType("urui-card", context => new Card(context));
             var card = document.Create<Card>();
             var label = document.Create<Label>();
             label.Text = "content";
@@ -150,7 +150,7 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             try { typed.RemoveAttribute("type"); }
             catch (InvalidOperationException) { rejectedTypeRemoval = true; }
             Require(rejectedTypeRemoval, "removing type cannot silently change a typed native control");
-            document.RegisterElementType("invalidation-probe", context => new InvalidationProbe(context));
+            document.RegisterElementType("urui-invalidation-probe", context => new InvalidationProbe(context));
             var probe = document.Create<InvalidationProbe>();
             Application.LogCallback diagnostic = (message, trace, type) =>
             {
@@ -177,15 +177,15 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             var capture = panel.RegisterCallback<PointerDownEvent>(evt => order.Add("capture"), TrickleDown.TrickleDown);
             var target = hit.RegisterCallback<PointerDownEvent>(evt => order.Add("target"));
             var bubble = panel.RegisterCallback<PointerDownEvent>(evt => order.Add("bubble"));
-            document.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25));
-            document.Input.SendPointer(PointerPhase.Up, new Vector2(25, 25));
+            document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25));
+            document.Surface.Input.SendPointer(PointerPhase.Up, new Vector2(25, 25));
             Require(string.Join(",", order) == "capture,target,bubble", "event propagation order");
             capture.Dispose(); target.Dispose(); bubble.Dispose();
             int reached = 0;
             capture = panel.RegisterCallback<PointerDownEvent>(evt => evt.StopImmediatePropagation(), TrickleDown.TrickleDown);
             target = hit.RegisterCallback<PointerDownEvent>(evt => reached++);
-            document.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25));
-            document.Input.SendPointer(PointerPhase.Cancel, new Vector2(25, 25));
+            document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25));
+            document.Surface.Input.SendPointer(PointerPhase.Cancel, new Vector2(25, 25));
             Require(reached == 0, "stop propagation reaches native dispatch");
             capture.Dispose(); target.Dispose();
             hit.Name = "";
@@ -193,10 +193,10 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             using (hit.RegisterCallback<PointerDownEvent>(evt => hit.CapturePointer(evt.PointerId)))
             using (hit.RegisterCallback<PointerMoveEvent>(evt => moves++))
             {
-                document.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25), 11, true);
-                document.Input.SendPointer(PointerPhase.Move, new Vector2(600, 400), 11, true);
+                document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25), 11, true);
+                document.Surface.Input.SendPointer(PointerPhase.Move, new Vector2(600, 400), 11, true);
                 Require(hit.HasPointerCapture(11) && moves == 1, "anonymous captured target outside bounds");
-                document.Input.SendPointer(PointerPhase.Cancel, new Vector2(600, 400), 11, true);
+                document.Surface.Input.SendPointer(PointerPhase.Cancel, new Vector2(600, 400), 11, true);
                 Require(!hit.HasPointerCapture(11), "cancel releases capture");
             }
             hit.Name = "hit";
@@ -221,17 +221,17 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             var text = document.Q<TextField>("name");
             text.SetValueWithoutNotify("");
             text.Focus();
-            document.Input.SendText("中文🎮");
+            document.Surface.Input.SendText("中文🎮");
             Require(text.Value == "中文🎮", "committed Unicode input");
             int textChanges = 0;
             text.RegisterValueChangedCallback(evt => textChanges++);
-            document.Input.SendComposition("拼音");
-            document.Input.CancelComposition();
+            document.Surface.Input.SendComposition("拼音");
+            document.Surface.Input.CancelComposition();
             Require(text.Value == "中文🎮" && textChanges == 0, "IME preview cancellation is silent");
-            document.Input.SendComposition("测试");
-            document.Input.CommitComposition("测试");
+            document.Surface.Input.SendComposition("测试");
+            document.Surface.Input.CommitComposition("测试");
             Require(text.Value == "中文🎮测试" && textChanges == 1, "IME commits once");
-            document.Input.SendKey(KeyCode.Backspace, true);
+            document.Surface.Input.SendKey(KeyCode.Backspace, true);
             Require(text.Value == "中文🎮测", "IME caret follows Unicode commit");
             var slider = document.Create<Slider>();
             slider.LowValue = 0; slider.HighValue = 10; slider.Value = 100;
@@ -239,12 +239,12 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             var a = document.Create<RadioButton>();
             var b = document.Create<RadioButton>();
             a.GroupName = "test"; b.GroupName = "test";
-            document.Root.Add(a); document.Root.Add(b);
+            document.DocumentElement.Add(a); document.DocumentElement.Add(b);
             a.Value = true; b.Value = true;
             Require(!a.Value && b.Value, "radio exclusivity");
             var foldout = document.Create<Foldout>();
             var child = document.Create<Label>();
-            document.Root.Add(foldout); foldout.Add(child);
+            document.DocumentElement.Add(foldout); foldout.Add(child);
             foldout.Text = "Group";
             Require(child.IsValid && foldout.ChildCount == 1, "composite text preserves children");
             sized = document.Create<Element>();
@@ -261,7 +261,7 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
                 value.Style.Left = 20;
                 value.Style.Width = 100;
                 value.Style.Height = 20;
-                document.Root.Add(value);
+                document.DocumentElement.Add(value);
             }
             firstSlider.Style.Top = 260;
             secondSlider.Style.Top = 300;
@@ -282,7 +282,7 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             list.BindItem = (element, index) => { binds++; element.Text = items[index]; };
             list.UnbindItem = (element, index) => unbinds++;
             list.ItemsSource = items;
-            document.Root.Add(list);
+            document.DocumentElement.Add(list);
         }
 
         void CheckLayoutAndList()
@@ -305,25 +305,25 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             Require(list.RealizedItemCount == 2, "shrinking data retires surplus rows");
             var one = firstSlider.WorldBound.center;
             var two = secondSlider.WorldBound.center;
-            document.Input.SendPointer(PointerPhase.Down, one, 21, true);
-            document.Input.SendPointer(PointerPhase.Down, two, 22, true);
-            document.Input.SendPointer(PointerPhase.Move, one + new Vector2(40, 0), 21, true);
-            document.Input.SendPointer(PointerPhase.Move, two - new Vector2(40, 0), 22, true);
+            document.Surface.Input.SendPointer(PointerPhase.Down, one, 21, true);
+            document.Surface.Input.SendPointer(PointerPhase.Down, two, 22, true);
+            document.Surface.Input.SendPointer(PointerPhase.Move, one + new Vector2(40, 0), 21, true);
+            document.Surface.Input.SendPointer(PointerPhase.Move, two - new Vector2(40, 0), 22, true);
             Require(firstSlider.Value > 80 && secondSlider.Value < 20, "two sliders drag independently");
-            document.Input.SendPointer(PointerPhase.Cancel, one, 21, true);
-            document.Input.SendPointer(PointerPhase.Cancel, two, 22, true);
-            document.Input.SendPointer(PointerPhase.Down, one, 31, true);
+            document.Surface.Input.SendPointer(PointerPhase.Cancel, one, 21, true);
+            document.Surface.Input.SendPointer(PointerPhase.Cancel, two, 22, true);
+            document.Surface.Input.SendPointer(PointerPhase.Down, one, 31, true);
             firstSlider.SetEnabled(false);
             Require(!firstSlider.HasPointerCapture(31), "disabling slider releases active capture");
             firstSlider.SetEnabled(true);
-            document.Input.SendPointer(PointerPhase.Down, one, 32, true);
-            document.Input.SendPointer(PointerPhase.Move, one + new Vector2(40, 0), 32, true);
-            document.Input.SendPointer(PointerPhase.Up, one + new Vector2(40, 0), 32, true);
+            document.Surface.Input.SendPointer(PointerPhase.Down, one, 32, true);
+            document.Surface.Input.SendPointer(PointerPhase.Move, one + new Vector2(40, 0), 32, true);
+            document.Surface.Input.SendPointer(PointerPhase.Up, one + new Vector2(40, 0), 32, true);
             Require(firstSlider.Value > 80, "slider accepts new drag after reenable");
             firstSlider.TabIndex = 200;
             secondSlider.TabIndex = 100;
             secondSlider.Focus();
-            document.Input.SendKey(KeyCode.Tab, true);
+            document.Surface.Input.SendKey(KeyCode.Tab, true);
             Require(firstSlider.Focused, "tab follows configured order");
             var panel = document.Q("panel");
             document.Q<TextField>("name").Focus();
@@ -358,7 +358,7 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             int clicked = 0;
             button.Clicked += () => clicked++;
             button.Focus();
-            document.Input.SendKey(KeyCode.Return, true);
+            document.Surface.Input.SendKey(KeyCode.Return, true);
             Require(clicked == 1, "button keyboard activation once");
             var toggle = document.Q<Toggle>("enabled");
             toggle.SetValueWithoutNotify(false);
@@ -369,8 +369,8 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
             }))
             {
                 var rect = toggle.WorldBound;
-                document.Input.SendPointer(PointerPhase.Down, rect.center);
-                document.Input.SendPointer(PointerPhase.Up, rect.center);
+                document.Surface.Input.SendPointer(PointerPhase.Down, rect.center);
+                document.Surface.Input.SendPointer(PointerPhase.Up, rect.center);
             }
             Require(toggle.Value, "stop propagation preserves default checkbox behavior");
             button.SetEnabled(true);
@@ -378,12 +378,12 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
 
         void CheckReload()
         {
-            var old = document.Root;
+            var old = document.DocumentElement;
             int expectedUnbinds = unbinds + list.RealizedItemCount;
             var button = document.Q<Button>("save");
-            button.RegisterCallback<ClickEvent>(evt => document.LoadMarkup("<rml><body><label id='new'>new</label></body></rml>"));
-            document.Input.SendPointer(PointerPhase.Down, new Vector2(30, 70));
-            document.Input.SendPointer(PointerPhase.Up, new Vector2(30, 70));
+            button.RegisterCallback<ClickEvent>(evt => document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><label id='new'>new</label></body></html>", "ui/acceptance.html"));
+            document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(30, 70));
+            document.Surface.Input.SendPointer(PointerPhase.Up, new Vector2(30, 70));
             Require(!old.IsValid && document.Q<Label>("new") != null, "reload inside native callback is deferred safely");
             Require(unbinds == expectedUnbinds, "document reload unbinds all realized rows");
         }
@@ -433,7 +433,7 @@ body{margin:0;font-family:__URUI_FONT__;color:white;font-size:18px;}
         sealed class LateLoader : Element
         {
             public LateLoader(ElementContext context) : base(context) { }
-            protected override void OnInitialize() => Document.LoadMarkup("<rml><body><label id='late-loaded'>ready</label></body></rml>");
+            protected override void OnInitialize() => Document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><label id='late-loaded'>ready</label></body></html>", "ui/acceptance.html");
         }
     }
 }

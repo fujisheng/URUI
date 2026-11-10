@@ -15,7 +15,7 @@
       "power": 140,
       "count": 1,
       "description": "Calibrated for coastal relay surveys.",
-      "icon": "gameflow/item-01.png",
+      "icon": "../Images/item-01.png",
       "equipped": false
     },
     {
@@ -26,7 +26,7 @@
       "power": 220,
       "count": 1,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-02.png",
+      "icon": "../Images/item-02.png",
       "equipped": false
     },
     {
@@ -37,7 +37,7 @@
       "power": 180,
       "count": 1,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-03.png",
+      "icon": "../Images/item-03.png",
       "equipped": false
     },
     {
@@ -48,7 +48,7 @@
       "power": 90,
       "count": 1,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-04.png",
+      "icon": "../Images/item-04.png",
       "equipped": false
     },
     {
@@ -59,7 +59,7 @@
       "power": 0,
       "count": 7,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-05.png",
+      "icon": "../Images/item-05.png",
       "equipped": false
     },
     {
@@ -70,7 +70,7 @@
       "power": 0,
       "count": 8,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-06.png",
+      "icon": "../Images/item-06.png",
       "equipped": false
     },
     {
@@ -81,7 +81,7 @@
       "power": 0,
       "count": 9,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-07.png",
+      "icon": "../Images/item-07.png",
       "equipped": false
     },
     {
@@ -92,7 +92,7 @@
       "power": 0,
       "count": 10,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-08.png",
+      "icon": "../Images/item-08.png",
       "equipped": false
     },
     {
@@ -103,7 +103,7 @@
       "power": 0,
       "count": 11,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-09.png",
+      "icon": "../Images/item-09.png",
       "equipped": false
     },
     {
@@ -114,7 +114,7 @@
       "power": 0,
       "count": 12,
       "description": "Original field equipment for the coastal relay team.",
-      "icon": "gameflow/item-10.png",
+      "icon": "../Images/item-10.png",
       "equipped": false
     }
   ],

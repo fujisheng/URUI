@@ -1,12 +1,38 @@
+#include "Engine/Source/Core/HtmlBuilder.h"
+#include "Engine/Source/Core/DocumentFontContext.h"
+#include "Engine/Source/Core/HtmlParser.h"
+#include "Engine/Source/Core/CssParser.h"
 #include "urui.h"
+#include "style_properties.h"
+namespace urui_elements {
+    URUI::ElementDocument* Document(UruiDocumentHandle owner);
+    URUI::Element* Get(UruiDocumentHandle owner, uint64_t token);
+    int ReplaceHtml(URUI::Element&, const char*);
+}
 #include "element_references.h"
+#include "document_registry.h"
+#include "resource_store.h"
+#include "resource_files.h"
 #include "render_plan.h"
 #include "prepared_batch.h"
 #include "core_frame.h"
 #include "native_frame.h"
-#include <RmlUi/Core.h>
-#include <RmlUi/Core/ElementText.h>
-#include <RmlUi/Core/Transform.h>
+#include <URUI/Core.h>
+#include <URUI/Core/ElementText.h>
+#include <URUI/Core/RenderManager.h>
+#include <URUI/Core/Texture.h>
+#include <URUI/Core/URL.h>
+#include <URUI/Core/ElementInstancer.h>
+#include <URUI/Core/Elements/ElementFormControl.h>
+#include <URUI/Core/Elements/ElementFormControlInput.h>
+#include <URUI/Core/Transform.h>
+#include <URUI/Core/StyleSheetContainer.h>
+#include <URUI/Core/StreamMemory.h>
+#include <URUI/Core/StyleSheetSpecification.h>
+#include "image_geometry.h"
+#include <URUI/Core/PropertyDefinition.h>
+#include "Engine/Source/Core/ElementStyle.h"
+#include "Engine/Source/Core/DirectColorFilters.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -23,28 +49,59 @@
 using namespace urui_debug;
 #endif
 
+namespace urui_interaction
+{
+    extern int callback_depth;
+}
 namespace
 {
+    // URUI leaves the HTML-like button tag generic. Register a form control so
+    // authored and dynamic disabled attributes drive :disabled and native focus.
+    class ButtonElement final : public URUI::ElementFormControl
+    {
+    public:
+        explicit ButtonElement(const URUI::String& tag) : ElementFormControl(tag) {}
+        URUI::String GetValue() const override { return GetAttribute<URUI::String>("value", ""); }
+        void SetValue(const URUI::String& value) override { SetAttribute("value", value); }
+        bool IsSubmitted() override { return false; }
+    };
+    URUI::ElementInstancerGeneric<ButtonElement> button_instancer;
+
+    struct ImageCallbackScope
+    {
+        ImageCallbackScope() { ++urui_interaction::callback_depth; }
+        ~ImageCallbackScope() { --urui_interaction::callback_depth; }
+    };
     static_assert(sizeof(UruiVertex) == 20, "UruiVertex ABI changed");
     static_assert(sizeof(UruiCommand) == 48, "UruiCommand ABI changed");
+    static_assert(sizeof(UruiLayerCommand) == 56, "UruiLayerCommand ABI changed");
     struct Geometry
     {
         std::vector<UruiVertex> vertices;
         std::vector<int> indices;
+        URUI::TextureSampling texture_sampling = URUI::TextureSampling::Clamp;
     };
     struct Texture
     {
         int width = 0, height = 0;
         bool borrowed = false;
+        bool resolved = false;
         size_t aliases = 0;
-        Rml::TextureHandle render_handle = 0;
+        size_t loads = 0;
+        bool scoped = false;
+        URUI::TextureHandle render_handle = 0;
         std::vector<unsigned char> pixels;
     };
     constexpr uint64_t borrowed_texture_bit = uint64_t{1} << 63;
     std::string error_message;
+    void ReportBridgeFailure(const char* message) noexcept
+    {
+        try { error_message = message; } catch (...) {}
+    }
+
     template <typename Handle> uint64_t AllocateTextureId(uint64_t& next)
     {
-        // RmlUi uses uintptr_t handles, including on 32-bit WebGL. Public IDs
+        // URUI uses uintptr_t handles, including on 32-bit WebGL. Public IDs
         // remain uint64_t, with the entire high-bit domain reserved for borrowing.
         constexpr uint64_t limit = std::numeric_limits<Handle>::max() < borrowed_texture_bit
                                        ? std::numeric_limits<Handle>::max()
@@ -56,8 +113,7 @@ namespace
         }
         return next++;
     }
-    std::deque<Rml::ObserverPtr<Rml::Element>> clicks;
-    std::unordered_map<uint64_t, Rml::Vector2f> active_touches;
+    std::deque<URUI::ObserverPtr<URUI::Element>> clicks;
     RenderSerial render_serial;
     std::thread::id context_thread;
     // Sessions retain immutable CPU payloads until their last lease is released.
@@ -66,51 +122,90 @@ namespace
     std::unordered_map<uint64_t, std::unique_ptr<urui_frame::Session>> frame_sessions;
     std::mutex frame_sessions_mutex;
     std::thread::id frame_context_owner;
-    class Renderer : public Rml::RenderInterface
+    class Renderer : public URUI::RenderInterface
     {
     public:
         RenderPlan plan{render_serial};
         std::unordered_map<uint64_t, Geometry> meshes;
         std::unordered_map<uint64_t, Texture> textures;
-        std::unordered_map<std::string, uint64_t> named_textures;
-        std::unordered_map<Rml::TextureHandle, uint64_t> borrowed_texture_handles;
+        std::unordered_map<URUI::TextureHandle, uint64_t> borrowed_texture_handles;
+        UruiImageResolver image_resolver = nullptr;
+        UruiImageRelease image_release = nullptr;
+        void ReleaseResolved(uint64_t id)
+        {
+            if (image_release)
+            {
+                ImageCallbackScope scope;
+                try { image_release(id); }
+                catch (...) { error_message = "Image release callback failed"; }
+            }
+        }
         std::vector<UruiCommand> commands;
+        struct PaintShader
+        {
+            std::string name;
+            URUI::ObserverPtr<URUI::Element> element;
+            int kind = 0;
+            std::vector<UruiColorFilter> color_filters;
+        };
+        struct PaintEntry { uint64_t shader; int command_index; };
+        std::unordered_map<uint64_t, PaintShader> paint_shaders;
+        std::vector<PaintEntry> paint_commands;
+        std::unordered_map<int,std::array<float,4>> effect_ink_bounds;
+        struct EffectRootReference {
+            URUI::ObserverPtr<URUI::Element> element, root;
+            URUI::String name;
+            uint64_t structure = 0;
+        };
+        std::unordered_map<uint64_t, EffectRootReference> effect_roots;
+        static bool EffectAttached(URUI::Element* element) {
+            if (!element) return false;
+            auto* document=element->GetOwnerDocument();
+            for (auto* current=element;current;current=current->GetParentNode()) if (current==document) return true;
+            return false;
+        }
+        void PruneEffectRoots() {
+            for (auto iterator=effect_roots.begin();iterator!=effect_roots.end();)
+                if (!EffectAttached(iterator->second.element.get())) iterator=effect_roots.erase(iterator); else ++iterator;
+        }
+        uint64_t next_paint_shader = 1;
+        std::vector<UruiLayerCommand> layer_commands;
+        std::vector<uint64_t> layer_stack = {0};
+        std::unordered_map<uint64_t, uint64_t> mask_filters;
+        struct Filter { std::string name; UruiFilter data{}; uint64_t document = 0; URUI::ObserverPtr<URUI::Element> element; std::array<float,4> expansion{}; std::vector<std::array<float,16>> coverage_transforms; };
+        std::unordered_map<uint64_t, Filter> filters;
+        uint64_t next_layer_resource = 1, next_mask_filter = 1;
+        bool layer_valid = true;
+        void LayerCommand(int kind, uint64_t source, uint64_t target, uint64_t mask = 0, int blend = 0)
+        {
+            UruiLayerCommand command{};
+            command.command_index = static_cast<int>(commands.size()); command.kind = kind;
+            command.source = source; command.target = target; command.mask = mask; command.blend = blend;
+            command.flags = clipped ? 1 : 0;
+            if (clipped) { command.clip_x = clip.Left(); command.clip_y = clip.Top(); command.clip_w = clip.Width(); command.clip_h = clip.Height(); }
+            layer_commands.push_back(command);
+        }
         std::vector<std::array<float, 16>> command_transforms;
-        Rml::Matrix4f active_transform = Rml::Matrix4f::Identity();
+        URUI::Matrix4f active_transform = URUI::Matrix4f::Identity();
         uint64_t next_mesh = 1, next_texture = 1;
         bool clipped = false;
-        Rml::Rectanglei clip = {};
+        URUI::Rectanglei clip = {};
         uint64_t AllocateTextureHandle()
         {
-            uint64_t id = AllocateTextureId<Rml::TextureHandle>(next_texture);
-            if (id && (textures.count(id) || borrowed_texture_handles.count(static_cast<Rml::TextureHandle>(id))))
+            uint64_t id = AllocateTextureId<URUI::TextureHandle>(next_texture);
+            if (id && (textures.count(id) || borrowed_texture_handles.count(static_cast<URUI::TextureHandle>(id))))
             {
                 error_message = "Texture handle collision";
                 return 0;
             }
             return id;
         }
-        uint64_t LogicalTextureId(Rml::TextureHandle handle) const
+        uint64_t LogicalTextureId(URUI::TextureHandle handle) const
         {
             auto found = borrowed_texture_handles.find(handle);
             return found == borrowed_texture_handles.end() ? static_cast<uint64_t>(handle) : found->second;
         }
-        void ReleaseNamedTexture(const std::string& source)
-        {
-            auto alias = named_textures.find(source);
-            if (alias == named_textures.end())
-                return;
-            Rml::ReleaseTexture(source, this);
-            auto texture = textures.find(alias->second);
-            if (texture != textures.end() && texture->second.aliases && --texture->second.aliases == 0)
-            {
-                if (texture->second.borrowed)
-                    borrowed_texture_handles.erase(texture->second.render_handle);
-                textures.erase(texture);
-            }
-            named_textures.erase(alias);
-        }
-        Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vs, Rml::Span<const int> ids) override
+        URUI::CompiledGeometryHandle CompileGeometry(URUI::Span<const URUI::Vertex> vs, URUI::Span<const int> ids) override
         {
             URUI_DEBUG_CODE(ProfileScope timer(profile.geometry_compile_ns);)
             URUI_DEBUG_CODE(++profile.geometry_compiles;)
@@ -125,16 +220,26 @@ namespace
             g.indices.assign(ids.begin(), ids.end());
             meshes.emplace(handle, std::move(g));
             plan.ResourceChanged();
-            return static_cast<Rml::CompiledGeometryHandle>(handle);
+            return static_cast<URUI::CompiledGeometryHandle>(handle);
         }
-        void RenderGeometry(Rml::CompiledGeometryHandle geo, Rml::Vector2f move, Rml::TextureHandle tex) override
+        void SetGeometryTextureSampling(URUI::CompiledGeometryHandle geometry, URUI::TextureSampling sampling) override
+        {
+            auto found = meshes.find(static_cast<uint64_t>(geometry));
+            if (found != meshes.end() && found->second.texture_sampling != sampling) {
+                found->second.texture_sampling = sampling;
+                plan.ResourceChanged();
+            }
+        }
+        void RenderGeometry(URUI::CompiledGeometryHandle geo, URUI::Vector2f move, URUI::TextureHandle tex) override
         {
             UruiCommand c{};
             c.geometry = static_cast<uint64_t>(geo);
             c.texture = LogicalTextureId(tex);
             c.tx = move.x;
             c.ty = move.y;
-            c.clip_enabled = clipped ? 1 : 0;
+            const auto geometry = meshes.find(c.geometry);
+            const auto sampling = geometry == meshes.end() ? URUI::TextureSampling::Clamp : geometry->second.texture_sampling;
+            c.flags = (clipped ? 1 : 0) | (int(sampling) << 1);
             if (clipped)
             {
                 c.clip_x = clip.Left();
@@ -149,31 +254,119 @@ namespace
                     matrix[col * 4 + row] = active_transform[col][row];
             command_transforms.push_back(matrix);
         }
-        void ReleaseGeometry(Rml::CompiledGeometryHandle h) override
+        void ReleaseGeometry(URUI::CompiledGeometryHandle h) override
         {
             if (meshes.erase(static_cast<uint64_t>(h)))
                 plan.ResourceChanged();
         }
-        Rml::TextureHandle LoadTexture(Rml::Vector2i& dims, const Rml::String& source) override
+        void CollectTexture(uint64_t id)
         {
-            auto found = named_textures.find(source);
-            if (found == named_textures.end())
-            {
-                dims = {0, 0};
-                error_message = "Texture not registered: " + source;
-                return 0;
-            }
-            auto texture = textures.find(found->second);
-            if (texture == textures.end())
-            {
-                dims = {0, 0};
-                error_message = "Registered texture missing: " + source;
-                return 0;
-            }
-            dims = {texture->second.width, texture->second.height};
-            return texture->second.render_handle;
+            auto found = textures.find(id);
+            if (found == textures.end() || found->second.aliases || found->second.loads) return;
+            const bool resolved = found->second.resolved;
+            if (found->second.borrowed) borrowed_texture_handles.erase(found->second.render_handle);
+            textures.erase(found); plan.ResourceChanged();
+            if (resolved) ReleaseResolved(id);
         }
-        Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> pixels, Rml::Vector2i dims) override
+        void ReleaseAlias(uint64_t id)
+        {
+            const auto found = textures.find(id);
+            if (found == textures.end() || !found->second.aliases) return;
+            --found->second.aliases; CollectTexture(id);
+        }
+        uint64_t RegisterScopedImage(const std::shared_ptr<URUI::Bridge::DocumentResources>& resources,
+            const std::string& source, int width, int height, const uint8_t* pixels, size_t length, uint64_t external = 0)
+        {
+            // The URI claim identifies real source content, independently of
+            // native cache indices and per-resolver-call lease identities.
+            std::vector<uint8_t> identity;
+            for (uint64_t value : {uint64_t(width), uint64_t(height), external})
+                for (int byte = 0; byte < 8; ++byte) identity.push_back(uint8_t(value >> (8 * byte)));
+            if (!external) identity.insert(identity.end(), pixels, pixels + length);
+            auto claim = resources->ClaimImage(source, identity.data(), identity.size(), external ? "external-image" : "rgba-image");
+            // 来源身份保留原始字节，原生拥有的像素统一按纹理协议预乘透明度。
+            std::vector<uint8_t> premultiplied;
+            if (!external) {
+                premultiplied.resize(length);
+                for (size_t index = 0; index < length; index += 4) {
+                    const auto alpha = pixels[index + 3];
+                    for (size_t channel = 0; channel < 3; ++channel)
+                        premultiplied[index + channel] = uint8_t((int(pixels[index + channel]) * alpha + 127) / 255);
+                    premultiplied[index + 3] = alpha;
+                }
+            }
+            uint64_t id = external;
+            if (!external) {
+                for (const auto& item : textures) {
+                    const auto& texture = item.second;
+                    if (texture.scoped && !texture.borrowed && texture.width == width && texture.height == height &&
+                        texture.pixels == premultiplied) { id = item.first; break; }
+                }
+            }
+            auto found = textures.find(id);
+            if (found != textures.end() && (found->second.borrowed != bool(external) || found->second.resolved ||
+                found->second.width != width || found->second.height != height)) throw std::invalid_argument("Texture ID kind or dimensions conflict: " + source);
+            if (found == textures.end()) {
+                const auto handle = AllocateTextureHandle();
+                if (!handle) throw std::length_error("Texture handle space exhausted");
+                if (!id) id = handle;
+                Texture texture; texture.width = width; texture.height = height; texture.scoped = true;
+                texture.borrowed = external != 0; texture.render_handle = URUI::TextureHandle(handle);
+                if (!external) texture.pixels = std::move(premultiplied);
+                textures.emplace(id, std::move(texture));
+                if (external) borrowed_texture_handles.emplace(URUI::TextureHandle(handle), id);
+            }
+            auto& texture = textures.at(id);
+            if (texture.aliases == SIZE_MAX) throw std::length_error("Texture alias limit reached");
+            ++texture.aliases;
+            try { resources->BindImage(source, id, std::move(claim), [this, id] { ReleaseAlias(id); }); }
+            catch (...) { ReleaseAlias(id); throw; }
+            plan.ResourceChanged(); return id;
+        }
+        URUI::TextureHandle LoadTexture(URUI::Vector2i& dims, const URUI::String& source, const URUI::SharedPtr<URUI::ResourceContext>& resources = {}) override
+        {
+            dims = {};
+            auto owned = std::dynamic_pointer_cast<URUI::Bridge::DocumentResources>(resources);
+            if (!owned) { error_message = "Image resolution requires a document owner"; return 0; }
+            if (const auto id = owned->FindImage(source)) {
+                const auto found = textures.find(id);
+                if (found != textures.end()) {
+                    dims = {found->second.width, found->second.height};
+                    ++found->second.loads; return found->second.render_handle;
+                }
+            }
+            if (!image_resolver) { owned->ImageFailed(source); error_message = "Texture not registered: " + source; return 0; }
+            uint64_t id = 0, source_identity = 0;
+            int width = 0, height = 0, ok = 0;
+            ImageCallbackScope scope;
+            try { ok = image_resolver(owned->GetOwner(), source.c_str(), &id, &source_identity, &width, &height); }
+            catch (...) { error_message = "Image resolver callback failed"; owned->ImageFailed(source); return 0; }
+            if (ok == 1) {
+                try {
+                    if (!source_identity) throw std::invalid_argument("Resolved image source identity is zero");
+                    std::array<uint64_t, 3> descriptor{{source_identity, uint64_t(width), uint64_t(height)}};
+                    auto claim = owned->ClaimImage(source, reinterpret_cast<const uint8_t*>(descriptor.data()), sizeof(descriptor), "resolved-image");
+                    if (!(id & borrowed_texture_bit) || textures.count(id) || width <= 0 || height <= 0 || width > 8192 || height > 8192)
+                        throw std::invalid_argument("Invalid resolved texture metadata or reused resource ID");
+                    const auto handle = AllocateTextureHandle();
+                    if (!handle) throw std::length_error("Texture handle space exhausted");
+                    Texture texture; texture.width = width; texture.height = height; texture.borrowed = texture.resolved = texture.scoped = true;
+                    texture.render_handle = URUI::TextureHandle(handle); texture.aliases = 1;
+                    textures.emplace(id, std::move(texture));
+                    borrowed_texture_handles.emplace(URUI::TextureHandle(handle), id);
+                    try { owned->BindImage(source, id, std::move(claim), [this, id] { ReleaseAlias(id); }); }
+                    catch (...) { ReleaseAlias(id); id = 0; throw; }
+                    ++textures.at(id).loads; dims = {width, height}; plan.ResourceChanged(); return URUI::TextureHandle(handle);
+                } catch (const std::exception& error) {
+                    if (id && !textures.count(id)) ReleaseResolved(id);
+                    owned->ImageFailed(source); error_message = error.what(); return 0;
+                }
+            }
+            owned->ImageFailed(source);
+            error_message = "Texture not registered: " + source;
+            return 0;
+        }
+        URUI::TextureHandle GenerateTexture(URUI::Span<const URUI::byte> pixels, URUI::Vector2i dims) override
         {
             if (dims.x <= 0 || dims.y <= 0)
                 return 0;
@@ -183,107 +376,191 @@ namespace
             Texture t;
             t.width = dims.x;
             t.height = dims.y;
-            t.render_handle = static_cast<Rml::TextureHandle>(id);
+            t.render_handle = static_cast<URUI::TextureHandle>(id);
             t.pixels.assign(pixels.begin(), pixels.end());
             textures.emplace(id, std::move(t));
             plan.ResourceChanged();
-            return static_cast<Rml::TextureHandle>(id);
+            return static_cast<URUI::TextureHandle>(id);
         }
-        void ReleaseTexture(Rml::TextureHandle id) override
+        void ReleaseTexture(URUI::TextureHandle id) override
         {
             auto found = textures.find(LogicalTextureId(id));
+            if (found != textures.end() && found->second.scoped) {
+                if (found->second.loads) --found->second.loads;
+                CollectTexture(found->first); return;
+            }
             if (found != textures.end() && !found->second.aliases)
             {
+                const bool resolved = found->second.resolved;
+                const auto logical = found->first;
+                if (found->second.borrowed) borrowed_texture_handles.erase(found->second.render_handle);
                 textures.erase(found);
                 plan.ResourceChanged();
+                if (resolved) ReleaseResolved(logical);
             }
         }
         void EnableClipMask(bool enable) override
         {
             if (enable)
                 plan.Unsupported();
-            Rml::RenderInterface::EnableClipMask(enable);
+            URUI::RenderInterface::EnableClipMask(enable);
         }
-        void RenderToClipMask(Rml::ClipMaskOperation op, Rml::CompiledGeometryHandle g, Rml::Vector2f t) override
+        void RenderToClipMask(URUI::ClipMaskOperation op, URUI::CompiledGeometryHandle g, URUI::Vector2f t) override
         {
             plan.Unsupported();
-            Rml::RenderInterface::RenderToClipMask(op, g, t);
+            URUI::RenderInterface::RenderToClipMask(op, g, t);
         }
-        Rml::LayerHandle PushLayer() override
+        URUI::LayerHandle PushLayer() override
         {
             plan.Unsupported();
-            return Rml::RenderInterface::PushLayer();
+            const auto id = next_layer_resource++;
+            if (!id) { layer_valid = false; return 0; }
+            layer_stack.push_back(id); LayerCommand(1, 0, id);
+            return static_cast<URUI::LayerHandle>(id);
         }
-        void CompositeLayers(Rml::LayerHandle a, Rml::LayerHandle b, Rml::BlendMode mode,
-                             Rml::Span<const Rml::CompiledFilterHandle> filters) override
+        void CompositeLayers(URUI::LayerHandle a, URUI::LayerHandle b, URUI::BlendMode mode,
+                             URUI::Span<const URUI::CompiledFilterHandle> filters) override
         {
             plan.Unsupported();
-            Rml::RenderInterface::CompositeLayers(a, b, mode, filters);
+            for (auto handle : filters)
+            {
+                const auto mask = mask_filters.find(static_cast<uint64_t>(handle));
+                if (mask != mask_filters.end()) LayerCommand(6, static_cast<uint64_t>(a), static_cast<uint64_t>(a), mask->second, 1);
+                else if (this->filters.count(static_cast<uint64_t>(handle)))
+                    LayerCommand(6, static_cast<uint64_t>(a), static_cast<uint64_t>(a), static_cast<uint64_t>(handle));
+                else { layer_valid = false; return; }
+            }
+            if (std::find(layer_stack.begin(), layer_stack.end(), static_cast<uint64_t>(a)) == layer_stack.end() ||
+                std::find(layer_stack.begin(), layer_stack.end(), static_cast<uint64_t>(b)) == layer_stack.end())
+            { layer_valid = false; return; }
+            if (a != b) LayerCommand(4, static_cast<uint64_t>(a), static_cast<uint64_t>(b), 0, static_cast<int>(mode));
         }
         void PopLayer() override
         {
             plan.Unsupported();
-            Rml::RenderInterface::PopLayer();
+            if (layer_stack.size() <= 1) { layer_valid = false; return; }
+            const auto previous = layer_stack.back(); layer_stack.pop_back();
+            LayerCommand(2, previous, layer_stack.back());
         }
-        Rml::TextureHandle SaveLayerAsTexture() override
+        URUI::TextureHandle SaveLayerAsTexture() override
         {
             plan.Unsupported();
-            return Rml::RenderInterface::SaveLayerAsTexture();
+            return URUI::RenderInterface::SaveLayerAsTexture();
         }
-        Rml::CompiledFilterHandle SaveLayerAsMaskImage() override
+        URUI::CompiledFilterHandle SaveLayerAsMaskImage() override
         {
             plan.Unsupported();
-            return Rml::RenderInterface::SaveLayerAsMaskImage();
+            if (layer_stack.size() <= 1 || !next_mask_filter || !next_layer_resource) { layer_valid = false; return 0; }
+            const auto resource = next_layer_resource++, filter = next_mask_filter++;
+            // 两次分配都成功后才发布句柄，失败帧不会留下无法归还的遮罩身份。
+            LayerCommand(3, layer_stack.back(), resource); mask_filters.emplace(filter, resource);
+            return static_cast<URUI::CompiledFilterHandle>(filter);
         }
-        Rml::CompiledFilterHandle CompileFilter(const Rml::String& name, const Rml::Dictionary& p) override
+        URUI::CompiledFilterHandle CompileFilter(const URUI::String& name, const URUI::Dictionary& p, const URUI::SharedPtr<URUI::ResourceContext>& resources = {}) override
         {
             plan.Unsupported();
-            return Rml::RenderInterface::CompileFilter(name, p);
+            if (!next_mask_filter || next_mask_filter == std::numeric_limits<uint64_t>::max()) { layer_valid=false; return 0; }
+            const auto id=next_mask_filter++;
+            Filter filter; filter.name=name; filter.data.handle=id; filter.document=resources ? resources->GetOwner() : 0;
+            if (name == "--urui-effect") {
+                const auto value = p.find("value"), owner = p.find("element");
+                auto* element = owner == p.end() ? nullptr : static_cast<URUI::Element*>(owner->second.Get<void*>());
+                if (value == p.end() || !element) { layer_valid=false; return 0; }
+                filter.name = value->second.Get<URUI::String>();
+                filter.element = element->GetObserverPtr();
+                this->filters.emplace(id, std::move(filter));
+                return static_cast<URUI::CompiledFilterHandle>(id);
+            }
+            const auto value=p.find("value"); if(value!=p.end()) filter.data.value=value->second.Get<float>();
+            const auto sigma=p.find("sigma"); if(sigma!=p.end()) filter.data.sigma=sigma->second.Get<float>();
+            const auto offset=p.find("offset"); if(offset!=p.end()) { auto v=offset->second.Get<URUI::Vector2f>();filter.data.offset_x=v.x;filter.data.offset_y=v.y; }
+            const auto color=p.find("color"); if(color!=p.end()) { auto c=color->second.Get<URUI::Colourb>();filter.data.red=c.red/255.f;filter.data.green=c.green/255.f;filter.data.blue=c.blue/255.f;filter.data.alpha=c.alpha/255.f; }
+            this->filters.emplace(id,std::move(filter)); return static_cast<URUI::CompiledFilterHandle>(id);
         }
-        void ReleaseFilter(Rml::CompiledFilterHandle h) override
+        void ReleaseFilter(URUI::CompiledFilterHandle h) override
+        {
+            const auto found = mask_filters.find(static_cast<uint64_t>(h));
+            if (found != mask_filters.end())
+            {
+                // CompiledFilter 的 noexcept 析构也会进入这里；内存不足时撤销整帧，仍归还句柄。
+                try { LayerCommand(5, found->second, 0); }
+                catch (...) { layer_valid = false; ReportBridgeFailure("Cannot record URUI mask release"); }
+                mask_filters.erase(found); return;
+            }
+            plan.Unsupported();
+            if (filters.erase(static_cast<uint64_t>(h))) return;
+            URUI::RenderInterface::ReleaseFilter(h);
+        }
+        URUI::CompiledShaderHandle CompileShader(const URUI::String& name, const URUI::Dictionary& p) override
         {
             plan.Unsupported();
-            Rml::RenderInterface::ReleaseFilter(h);
+            const auto value = p.find("value"), owner = p.find("element");
+            if ((name == "shader" || name == "--urui-image-effect" || name == "--urui-css-color") && value != p.end() && owner != p.end())
+            {
+                auto* element = static_cast<URUI::Element*>(owner->second.Get<void*>());
+                auto key = value->second.Get<URUI::String>();
+                if (element && !key.empty() && next_paint_shader != std::numeric_limits<uint64_t>::max())
+                {
+                    const auto handle = next_paint_shader++;
+                    PaintShader shader{std::move(key), element->GetObserverPtr(), name == "--urui-image-effect" ? 1 : name == "--urui-css-color" ? 2 : 0, {}};
+                    if (shader.kind == 2) {
+                        const auto list = URUI::DirectColorFilters(element);
+                        if (!list) return 0;
+                        for (const auto& declaration : list->list) {
+                            const auto* parameter = declaration.properties.GetProperty(declaration.instancer->GetPropertySpecification().GetPropertyId("value"));
+                            const auto& type = declaration.type;
+                            shader.color_filters.push_back({type == "grayscale" ? 0 : type == "saturate" ? 1 : type == "brightness" ? 2 : type == "contrast" ? 3 : 4,
+                                parameter->Get<float>() * (parameter->unit == URUI::Unit::PERCENT ? .01f : 1.f)});
+                        }
+                    }
+                    paint_shaders.emplace(handle, std::move(shader));
+                    return static_cast<URUI::CompiledShaderHandle>(handle);
+                }
+            }
+            return URUI::RenderInterface::CompileShader(name, p);
         }
-        Rml::CompiledShaderHandle CompileShader(const Rml::String& name, const Rml::Dictionary& p) override
+        void RenderShader(URUI::CompiledShaderHandle s, URUI::CompiledGeometryHandle g, URUI::Vector2f t,
+                          URUI::TextureHandle tex) override
         {
             plan.Unsupported();
-            return Rml::RenderInterface::CompileShader(name, p);
+            const auto found = paint_shaders.find(static_cast<uint64_t>(s));
+            if (found != paint_shaders.end() && found->second.element)
+            {
+                paint_commands.push_back({static_cast<uint64_t>(s), static_cast<int>(commands.size())});
+                RenderGeometry(g, t, tex);
+                return;
+            }
+            URUI::RenderInterface::RenderShader(s, g, t, tex);
         }
-        void RenderShader(Rml::CompiledShaderHandle s, Rml::CompiledGeometryHandle g, Rml::Vector2f t,
-                          Rml::TextureHandle tex) override
+        void ReleaseShader(URUI::CompiledShaderHandle h) override
         {
             plan.Unsupported();
-            Rml::RenderInterface::RenderShader(s, g, t, tex);
-        }
-        void ReleaseShader(Rml::CompiledShaderHandle h) override
-        {
-            plan.Unsupported();
-            Rml::RenderInterface::ReleaseShader(h);
+            if (paint_shaders.erase(static_cast<uint64_t>(h))) return;
+            URUI::RenderInterface::ReleaseShader(h);
         }
         void EnableScissorRegion(bool value) override
         {
             clipped = value;
         }
-        void SetScissorRegion(Rml::Rectanglei value) override
+        void SetScissorRegion(URUI::Rectanglei value) override
         {
             clip = value;
         }
-        void SetTransform(const Rml::Matrix4f* matrix) override
+        void SetTransform(const URUI::Matrix4f* matrix) override
         {
-            active_transform = matrix ? *matrix : Rml::Matrix4f::Identity();
+            active_transform = matrix ? *matrix : URUI::Matrix4f::Identity();
         }
     };
-    class Listener : public Rml::EventListener
+    class Listener : public URUI::EventListener
     {
-        void ProcessEvent(Rml::Event& event) override
+        void ProcessEvent(URUI::Event& event) override
         {
             auto* target = event.GetTargetElement();
             if (target && clicks.size() < 4096)
                 clicks.push_back(target->GetObserverPtr());
         }
     };
-    Rml::String ClickId(const Rml::ObserverPtr<Rml::Element>& value)
+    URUI::String ClickId(const URUI::ObserverPtr<URUI::Element>& value)
     {
         for (auto* el = value.get(); el; el = el->GetParentNode())
             if (!el->GetId().empty())
@@ -292,11 +569,14 @@ namespace
     }
     std::unique_ptr<Renderer> render;
     std::unique_ptr<Listener> listener;
-    Rml::Context* context = nullptr;
-    Rml::ElementDocument* document = nullptr;
+    std::unique_ptr<ResourceFiles> resource_files;
+    URUI::Context* context = nullptr;
     bool started = false;
     ElementReferences element_references;
-    int count_elements(Rml::Element* root)
+    std::unique_ptr<URUI::Bridge::DocumentRegistry> document_registry;
+    std::unique_ptr<URUI::Bridge::FileResourceCache> file_resource_cache;
+    uint64_t next_resource_scope = 1;
+    int count_elements(URUI::Element* root)
     {
         if (!root)
             return 0;
@@ -305,7 +585,7 @@ namespace
             n += count_elements(root->GetChild(i));
         return n;
     }
-    std::string safe_rml(const char* src)
+    std::string safe_html(const char* src)
     {
         std::string out;
         if (!src)
@@ -334,17 +614,17 @@ namespace
 #include "Debug/typed_transform.inl"
 #endif
 
-    inline int ApplyTypedTransform(Rml::Element* el, float x, float y, float sx, float sy)
+    inline int ApplyTypedTransform(URUI::Element* el, float x, float y, float sx, float sy)
     {
         // Production keeps the property temporary scoped to SetProperty.
         URUI_DEBUG_CODE(if (typed_probe_mode == 1) return ApplyTypedTransformTimed(el, x, y, sx, sy);)
-        Rml::Transform::PrimitiveList primitives;
+        URUI::Transform::PrimitiveList primitives;
         primitives.reserve(2);
-        primitives.emplace_back(Rml::Transforms::Translate2D(x, y, Rml::Unit::PX));
-        primitives.emplace_back(Rml::Transforms::Scale2D(sx, sy));
-        if (!el->SetProperty(Rml::PropertyId::Transform, Rml::Transform::MakeProperty(std::move(primitives))))
+        primitives.emplace_back(URUI::Transforms::Translate2D(x, y, URUI::Unit::PX));
+        primitives.emplace_back(URUI::Transforms::Scale2D(sx, sy));
+        if (!el->SetProperty(URUI::PropertyId::Transform, URUI::Transform::MakeProperty(std::move(primitives))))
         {
-            error_message = "RmlUi rejected typed transform";
+            error_message = "URUI rejected typed transform";
             return -2;
         }
         error_message.clear();
@@ -355,21 +635,54 @@ namespace
 namespace urui_interaction
 {
     extern int callback_depth;
-    extern bool pending_destroy, pending_unload;
+    extern bool pending_destroy;
     void Reset();
     void Install();
+    void ResetClock();
+    void CancelDocumentInput(URUI::ElementDocument* document) noexcept;
+    void CancelBlockedDocumentInput() noexcept;
+    void RetireDocument(URUI::ElementDocument* document) noexcept;
+    void FlushCandidateEvents();
 }
 extern "C"
 {
     int urui_bridge_abi_version(void)
     {
-        return 3;
+        return 8;
     }
+    int urui_command_protocol_version(void) { return 2; }
+    int urui_surface_set_default_font_face(int family, const uint8_t* bytes, int length, int face_index, int style, int weight)
+    try
+    {
+        if (family < 0 || family > 2 || !bytes || length <= 0 || length > 64 * 1024 * 1024 || face_index < 0 ||
+            style < 0 || style > 1 || weight < 1 || weight > 1000) return -1;
+        if (!context || !document_registry) return -2;
+        if (context_thread != std::this_thread::get_id()) return -3;
+        if (urui_interaction::callback_depth || document_registry->Count() != 0 || context->GetNumDocuments() != 0) return -5;
+        if (!URUI::DocumentFontContext::LoadDefaultFace(family, {bytes, size_t(length)},
+            static_cast<URUI::Style::FontStyle>(style), static_cast<URUI::Style::FontWeight>(weight), face_index)) {
+            error_message = "Cannot install the default font face: invalid source or a different face already occupies the slot";
+            return -2;
+        }
+        error_message.clear();
+        return 1;
+    }
+    catch (...) { try { error_message = "Default font bootstrap failed"; } catch (...) {} return -8; }
     int urui_texture_protocol_version(void)
     {
         return 1;
     }
-    int urui_create(int w, int h, const char* font)
+    int urui_image_resolver_version(void) { return 2; }
+    int urui_set_image_resolver(UruiImageResolver resolve, UruiImageRelease release)
+    {
+        if (!render || context_thread != std::this_thread::get_id() || urui_interaction::callback_depth || bool(resolve) != bool(release)) return -1;
+        if (context && context->GetNumDocuments() != 0) return -2;
+        for (const auto& entry : render->textures) if (entry.second.resolved) return -2;
+        render->image_resolver = resolve;
+        render->image_release = release;
+        return 1;
+    }
+    int urui_create(int w, int h) try
     {
         if (started)
             return 0;
@@ -382,45 +695,83 @@ extern "C"
         error_message.clear();
         render = std::make_unique<Renderer>();
         listener = std::make_unique<Listener>();
-        Rml::SetRenderInterface(render.get());
+        URUI::SetRenderInterface(render.get());
+        urui_interaction::ResetClock();
         urui_interaction::Install();
-        if (!Rml::Initialise())
+        if (!URUI::Initialise())
         {
-            error_message = "RmlUi Initialise failed";
+            error_message = "URUI Initialise failed";
             listener.reset();
             render.reset();
             return 0;
         }
         started = true;
-        if (font && *font && !Rml::LoadFontFace(font))
-            error_message = "Cannot load font file";
-        context = Rml::CreateContext("urui", {std::max(1, w), std::max(1, h)});
+        URUI::DirectColorFilterRenderingEnabled = false;
+        URUI::Factory::RegisterElementInstancer("button", &button_instancer);
+        urui_image::RegisterStyles();
+        URUI::StyleSheetSpecification::RegisterProperty("--urui-caret-width", "1px", false, true).AddParser("length");
+        URUI::StyleSheetSpecification::RegisterProperty("--urui-caret-blink-rate", "0.85", false).AddParser("number");
+        // Preserve the platform file interface created by Initialise; install
+        // the resource overlay before loading document resources.
+        resource_files = std::make_unique<ResourceFiles>(URUI::GetFileInterface());
+        URUI::SetFileInterface(resource_files.get());
+        context = URUI::CreateContext("urui", {std::max(1, w), std::max(1, h)});
         if (!context)
         {
-            error_message = "Cannot create RmlUi context";
+            error_message = "Cannot create URUI context";
             urui_destroy();
             return 0;
         }
         element_references.Begin();
+        try {
+            file_resource_cache = std::make_unique<URUI::Bridge::FileResourceCache>();
+            document_registry = std::make_unique<URUI::Bridge::DocumentRegistry>(*context, element_references, urui_interaction::RetireDocument);
+        }
+        catch (...) { error_message = "Cannot create document registry"; urui_destroy(); return 0; }
+        urui_styles::Begin(urui_elements::Get);
         return 1;
+    }
+    catch (...)
+    {
+        urui_destroy();
+        // Reporting an allocation failure must not allocate across the C ABI.
+        try { error_message = "Cannot initialize URUI Surface"; } catch (...) {}
+        return 0;
     }
     void urui_destroy(void)
     {
+        // Surface 只由创建线程销毁；后台帧租约仍可按自身线程约定归还。
+        if (context_thread != std::thread::id{} && context_thread != std::this_thread::get_id()) return;
         if (urui_interaction::callback_depth) { urui_interaction::pending_destroy = true; return; }
-        urui_unload_document();
+        if (document_registry) document_registry->Clear();
+        document_registry.reset();
+        urui_interaction::Reset();
+        element_references.Clear();
+        if (render) render->plan.NewDocument();
+        urui_styles::End();
         if (context)
         {
-            Rml::RemoveContext("urui");
+            URUI::RemoveContext("urui");
             context = nullptr;
         }
+        file_resource_cache.reset();
         if (started)
         {
-            Rml::Shutdown();
+            if (resource_files)
+            {
+                URUI::SetFileInterface(resource_files->Original());
+                resource_files.reset();
+            }
+            URUI::Shutdown();
             started = false;
         }
         clicks.clear();
         listener.reset();
+        // Initialise 失败时核心会恢复调用前的接口；不要留下即将销毁的 Renderer 指针。
+        URUI::SetRenderInterface(nullptr);
         render.reset();
+        // teardown 中 release 回调的新请求仍属于已结束的 context，不能污染下一世代。
+        urui_interaction::pending_destroy = false;
         URUI_DEBUG_CODE(typed_probe = {}; typed_probe_mode = 0;)
 #if defined(URUI_DEBUG)
         urui_lookup::inline_enabled = false;
@@ -429,254 +780,54 @@ extern "C"
         urui_lookup::profile = {};
 #endif
     }
-    void urui_unload_document(void)
+    int urui_document_add_stylesheet(UruiDocumentHandle document_handle, const char* css, const char* source_url, int before_author)
+    try
     {
-        if (urui_interaction::callback_depth) { urui_interaction::pending_unload = true; return; }
-        urui_interaction::Reset();
-        element_references.Clear();
-        URUI_DEBUG_CODE(typed_probe = {};)
-        if (render)
-            render->plan.NewDocument();
-        if (context && !active_touches.empty())
-        {
-            context->ProcessMouseLeave();
-            for (const auto& entry : active_touches)
-            {
-                Rml::TouchList cancelled{{static_cast<Rml::TouchId>(entry.first), entry.second}};
-                context->ProcessTouchCancel(cancelled);
-            }
-        }
-        active_touches.clear();
-        if (document)
-        {
-            document->Close();
-            document = nullptr;
-        }
-        if (render)
-            render->commands.clear();
-        if (render)
-            render->command_transforms.clear();
-        clicks.clear();
-    }
-    int urui_load_document(const char* rml)
-    {
-        if (!context || !rml)
-            return 0;
-        urui_unload_document();
-        document = context->LoadDocumentFromMemory(rml, "demo.rml");
-        if (!document)
-        {
-            error_message = "LoadDocumentFromMemory failed";
-            return 0;
-        }
-        document->AddEventListener("click", listener.get());
-        document->Show();
-        element_references.DocumentLoaded();
-        return 1;
-    }
-    int urui_register_rgba_texture(const char* source, int width, int height, const uint8_t* rgba, int byte_count,
-                                   uint64_t* handle)
-    {
-        if (!render || !source || !*source || !rgba || !handle || width <= 0 || height <= 0 || width > 8192 ||
-            height > 8192 || static_cast<int64_t>(width) * height * 4 != byte_count)
-        {
-            error_message = "Invalid RGBA texture registration";
+        auto* document = urui_elements::Document(document_handle);
+        if (!document || !css || !*css || !source_url || !*source_url || (before_author != 0 && before_author != 1) ||
+            !element_references.Owner() || urui_interaction::callback_depth)
             return -1;
-        }
-        if (document)
+        auto sheet = URUI::MakeShared<URUI::StyleSheetContainer>();
+        URUI::StreamMemory css_stream(reinterpret_cast<const URUI::byte*>(css), std::strlen(css));
+        css_stream.SetSourceURL(source_url);
+        if (!sheet->LoadStyleSheetContainer(&css_stream, 1, document))
         {
-            error_message = "Unload the document before registering textures";
+            error_message = sheet->GetResourceError().empty() ? "CSS resource could not be parsed" : sheet->GetResourceError();
             return -2;
         }
-        Rml::String normalized;
-        Rml::GetSystemInterface()->JoinPath(normalized, "demo.rml", source);
-        if (normalized.empty())
-        {
-            error_message = "Invalid texture source";
-            return -1;
-        }
-        uint64_t id = render->AllocateTextureHandle();
-        if (!id)
-            return -1;
-        Texture t;
-        t.width = width;
-        t.height = height;
-        t.aliases = 1;
-        t.render_handle = static_cast<Rml::TextureHandle>(id);
-        t.pixels.resize(static_cast<size_t>(byte_count));
-        for (int i = 0; i < byte_count; i += 4)
-        {
-            uint8_t a = rgba[i + 3];
-            t.pixels[i] = static_cast<uint8_t>((static_cast<int>(rgba[i]) * a + 127) / 255);
-            t.pixels[i + 1] = static_cast<uint8_t>((static_cast<int>(rgba[i + 1]) * a + 127) / 255);
-            t.pixels[i + 2] = static_cast<uint8_t>((static_cast<int>(rgba[i + 2]) * a + 127) / 255);
-            t.pixels[i + 3] = a;
-        }
-        render->textures.emplace(id, std::move(t));
-        render->ReleaseNamedTexture(normalized);
-        render->named_textures[normalized] = id;
-        render->plan.ResourceChanged();
-        *handle = id;
-        error_message.clear();
+        if (const auto* current = document->GetStyleSheetContainer())
+            sheet = before_author ? sheet->CombineStyleSheetContainer(*current) : current->CombineStyleSheetContainer(*sheet);
+        if (!sheet)
+            return -2;
+        document->SetStyleSheetContainer(std::move(sheet));
         return 1;
     }
-    int urui_register_external_texture(const char* source, int width, int height, uint64_t resource_id)
+    catch (...)
     {
-        if (!render || !source || !*source || width <= 0 || height <= 0 || width > 8192 || height > 8192 ||
-            !(resource_id & borrowed_texture_bit))
-        {
-            error_message = "Invalid external texture registration";
-            return -1;
-        }
-        if (document)
-        {
-            error_message = "Unload the document before registering textures";
-            return -2;
-        }
-        Rml::String normalized;
-        Rml::GetSystemInterface()->JoinPath(normalized, "demo.rml", source);
-        if (normalized.empty())
-        {
-            error_message = "Invalid texture source";
-            return -1;
-        }
-        auto existing = render->textures.find(resource_id);
-        if (existing != render->textures.end() &&
-            (!existing->second.borrowed || existing->second.width != width || existing->second.height != height))
-        {
-            error_message = "External texture ID kind or dimensions conflict";
-            return -1;
-        }
-        auto alias = render->named_textures.find(normalized);
-        if (alias != render->named_textures.end() && alias->second == resource_id)
-        {
-            error_message.clear();
-            return 1;
-        }
-        if (existing != render->textures.end() && existing->second.aliases == std::numeric_limits<size_t>::max())
-        {
-            error_message = "Texture alias count exhausted";
-            return -1;
-        }
-        if (existing == render->textures.end())
-        {
-            uint64_t handle = render->AllocateTextureHandle();
-            if (!handle)
-                return -1;
-            Texture t;
-            t.width = width;
-            t.height = height;
-            t.borrowed = true;
-            t.render_handle = static_cast<Rml::TextureHandle>(handle);
-            render->textures.emplace(resource_id, std::move(t));
-            render->borrowed_texture_handles.emplace(static_cast<Rml::TextureHandle>(handle), resource_id);
-        }
-        render->ReleaseNamedTexture(normalized);
-        ++render->textures.at(resource_id).aliases;
-        render->named_textures[normalized] = resource_id;
-        render->plan.ResourceChanged();
-        error_message.clear();
-        return 1;
-    }
-    int urui_unregister_texture(const char* source)
-    {
-        if (!render || !source || !*source)
-        {
-            error_message = "Invalid texture source";
-            return -1;
-        }
-        if (document)
-        {
-            error_message = "Unload the document before unregistering textures";
-            return -2;
-        }
-        Rml::String normalized;
-        Rml::GetSystemInterface()->JoinPath(normalized, "demo.rml", source);
-        auto found = render->named_textures.find(normalized);
-        if (found == render->named_textures.end())
-        {
-            error_message = "Texture not registered";
-            return 0;
-        }
-        render->ReleaseNamedTexture(normalized);
-        render->plan.ResourceChanged();
-        error_message.clear();
-        return 1;
+        try { error_message = "Native stylesheet resource failed"; } catch (...) {}
+        return -2;
     }
 
     void urui_resize(int w, int h)
+    try
     {
         if (context)
             context->SetDimensions({std::max(1, w), std::max(1, h)});
     }
-    void urui_mouse_move(int x, int y)
+    catch (...)
     {
-        if (context)
-            context->ProcessMouseMove(x, y, 0);
+        ReportBridgeFailure("urui_resize failed");
     }
-    void urui_mouse_button(int b, int down)
+    int urui_hit_test_id(UruiDocumentHandle document_handle, float x, float y, char* out, int capacity)
+    try
     {
-        if (context)
-        {
-            if (down)
-                context->ProcessMouseButtonDown(b, 0);
-            else
-                context->ProcessMouseButtonUp(b, 0);
-        }
-    }
-    void urui_mouse_wheel(float d)
-    {
-        if (context)
-            context->ProcessMouseWheel(Rml::Vector2f(0.f, d), 0);
-    }
-    int urui_touch_event(int phase, uint64_t pointer_id, float x, float y)
-    {
-        if (!context || !document || phase < 0 || phase > 3 || !std::isfinite(x) || !std::isfinite(y) ||
-            pointer_id > static_cast<uint64_t>(UINTPTR_MAX))
-            return -1;
-        Rml::Touch touch{static_cast<Rml::TouchId>(pointer_id), {x, y}};
-        Rml::TouchList list{touch};
-        if (phase == 0)
-        {
-            if (active_touches.count(pointer_id))
-                return 0;
-            // RmlUi 6.3 maps all touches onto one mouse button. Reject concurrent
-            // fingers instead of producing cross-finger clicks or invalid active chains.
-            if (!active_touches.empty())
-                return -2;
-            active_touches.emplace(pointer_id, touch.position);
-            context->ProcessTouchStart(list, 0);
-            return 1;
-        }
-        auto found = active_touches.find(pointer_id);
-        if (found == active_touches.end())
-            return 0;
-        if (phase == 1)
-        {
-            found->second = touch.position;
-            context->ProcessTouchMove(list, 0);
-            return 1;
-        }
-        if (phase == 2)
-        {
-            context->ProcessTouchEnd(list, 0);
-            active_touches.erase(found);
-            return 1;
-        }
-        // RmlUi 6.3 implements cancel via mouse-button-up. Clear hover first so
-        // cancelling a finger cannot dispatch Click to the previously active target.
-        context->ProcessMouseLeave();
-        context->ProcessTouchCancel(list);
-        active_touches.erase(found);
-        return 1;
-    }
-    int urui_hit_test_id(float x, float y, char* out, int capacity)
-    {
+        auto* document = urui_elements::Document(document_handle);
         if (!context || !document || !std::isfinite(x) || !std::isfinite(y) || capacity < 0)
             return -1;
         if (out && capacity > 0)
             out[0] = 0;
         auto* el = context->GetElementAtPoint({x, y});
+        if (el && el->GetOwnerDocument() != document) return 0;
         while (el && el->GetId().empty())
             el = el->GetParentNode();
         if (!el)
@@ -687,21 +838,33 @@ extern "C"
         std::memcpy(out, id.c_str(), id.size() + 1);
         return static_cast<int>(id.size());
     }
-    int urui_element_exists(const char* id)
+    catch (...)
     {
+        ReportBridgeFailure("urui_hit_test_id failed"); return -8;
+    }
+    int urui_element_exists(UruiDocumentHandle document_handle, const char* id)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!document || !id || !*id)
             return 0;
         return document->GetElementById(id) ? 1 : 0;
     }
-    int urui_get_element_box(const char* id, float* out_six)
+    catch (...)
     {
+        ReportBridgeFailure("urui_element_exists failed"); return -8;
+    }
+    int urui_get_element_box(UruiDocumentHandle document_handle, const char* id, float* out_six)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!document || !id || !*id || !out_six)
             return -1;
         auto* el = document->GetElementById(id);
         if (!el)
             return 0;
-        auto offset = el->GetAbsoluteOffset(Rml::BoxArea::Border);
-        auto size = el->GetBox().GetSize(Rml::BoxArea::Border);
+        auto offset = el->GetAbsoluteOffset(URUI::BoxArea::Border);
+        auto size = el->GetBox().GetSize(URUI::BoxArea::Border);
         out_six[0] = offset.x;
         out_six[1] = offset.y;
         out_six[2] = size.x;
@@ -710,8 +873,14 @@ extern "C"
         out_six[5] = el->GetScrollWidth();
         return 1;
     }
-    int urui_set_attribute(const char* id, const char* name, const char* value)
+    catch (...)
     {
+        ReportBridgeFailure("urui_get_element_box failed"); return -8;
+    }
+    int urui_set_attribute(UruiDocumentHandle document_handle, const char* id, const char* name, const char* value)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         URUI_DEBUG_CODE(ProfileScope timer(api_profile.attribute_ns, api_profile_enabled);)
         URUI_DEBUG_CODE(if (api_profile_enabled)++ api_profile.attribute_calls;)
         if (!id || !*id || !name || !*name || !value)
@@ -724,12 +893,18 @@ extern "C"
         auto* el = document->GetElementById(id);
         if (!el)
             return 0;
-        el->SetAttribute(name, Rml::String(value));
+        el->SetAttribute(name, URUI::String(value));
         error_message.clear();
         return 1;
     }
-    int urui_set_style(const char* id, const char* name, const char* value)
+    catch (...)
     {
+        ReportBridgeFailure("urui_set_attribute failed"); return -8;
+    }
+    int urui_set_style(UruiDocumentHandle document_handle, const char* id, const char* name, const char* value)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
 #if defined(URUI_DEBUG)
         urui_lookup::StyleScope lookup_style;
 #endif
@@ -746,7 +921,7 @@ extern "C"
         auto* sample = urui_style_probe::mode ? &urui_style_probe::total : nullptr;
         if (sample)
             ++sample->calls;
-        Rml::Element* el = nullptr;
+        URUI::Element* el = nullptr;
         {
             urui_style_probe::Scope lookup(sample ? &sample->lookup_ns : nullptr);
             el = document->GetElementById(id);
@@ -772,14 +947,20 @@ extern "C"
 #endif
         if (!el->SetProperty(name, value))
         {
-            error_message = "RmlUi rejected property: " + std::string(name);
+            error_message = "URUI rejected property: " + std::string(name);
             return -2;
         }
         error_message.clear();
         return 1;
     }
-    int urui_set_translate_scale_2d(const char* id, float x, float y, float sx, float sy)
+    catch (...)
     {
+        ReportBridgeFailure("urui_set_style failed"); return -8;
+    }
+    int urui_set_translate_scale_2d(UruiDocumentHandle document_handle, const char* id, float x, float y, float sx, float sy)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
 #if defined(URUI_DEBUG)
         urui_lookup::StyleScope lookup_style;
 #endif
@@ -800,7 +981,7 @@ extern "C"
         }
         if (!document)
             return 0;
-        Rml::Element* el;
+        URUI::Element* el;
         {
             URUI_DEBUG_CODE(ProfileScope scope(typed_probe.lookup_ns, measure);)
             URUI_DEBUG_CODE(if (measure)++ typed_probe.clock_pairs;)
@@ -813,27 +994,45 @@ extern "C"
         }
         return ApplyTypedTransform(el, x, y, sx, sy);
     }
-
-    uint64_t urui_element_ref_acquire(const char* id)
+    catch (...)
     {
+        ReportBridgeFailure("urui_set_translate_scale_2d failed"); return -8;
+    }
+
+    uint64_t urui_element_ref_acquire(UruiDocumentHandle document_handle, const char* id)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         return element_references.Acquire(document, id);
     }
-    int urui_element_ref_valid(uint64_t token)
+    catch (...)
     {
+        ReportBridgeFailure("urui_element_ref_acquire failed"); return 0;
+    }
+    int urui_element_ref_valid(UruiDocumentHandle document_handle, uint64_t token)
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!element_references.Owner())
             return -3;
         return element_references.Resolve(token, document) ? 1 : 0;
     }
-    int urui_element_ref_release(uint64_t token)
+    int urui_element_ref_release(UruiDocumentHandle document_handle, uint64_t token)
     {
+        if (!element_references.Owner()) return -3;
+        auto* owner = urui_elements::Document(document_handle);
+        if (!owner) return -2;
+        if (element_references.OwnerDocument(token) != owner) return -1;
         return element_references.Release(token);
     }
-    int urui_element_ref_count(void)
+    int urui_element_ref_count(UruiDocumentHandle document_handle)
     {
-        return element_references.Count();
+        auto* owner = urui_elements::Document(document_handle);
+        return owner ? element_references.Count(owner) : -2;
     }
-    int urui_element_ref_set_translate_scale_2d(uint64_t token, float x, float y, float sx, float sy)
+    int urui_element_ref_set_translate_scale_2d(UruiDocumentHandle document_handle, uint64_t token, float x, float y, float sx, float sy)
+    try
     {
+        auto* document = urui_elements::Document(document_handle);
         if (!element_references.Owner())
             return -3;
         URUI_DEBUG_CODE(ProfileScope api(api_profile.style_ns, api_profile_enabled);)
@@ -852,7 +1051,7 @@ extern "C"
             return -1;
         }
         // Resolve validates weak-reference lifetime and the owning context thread.
-        Rml::Element* el;
+        URUI::Element* el;
         {
             URUI_DEBUG_CODE(ProfileScope scope(typed_probe.lookup_ns, measure);)
             URUI_DEBUG_CODE(if (measure)++ typed_probe.clock_pairs;)
@@ -865,25 +1064,28 @@ extern "C"
         }
         return ApplyTypedTransform(el, x, y, sx, sy);
     }
-
-    int urui_set_inner_rml(const char* id, const char* markup)
+    catch (...)
     {
-        if (!id || !*id || !markup)
-        {
-            error_message = "Invalid inner RML mutation";
-            return -1;
-        }
-        if (!document)
-            return 0;
-        auto* el = document->GetElementById(id);
-        if (!el)
-            return 0;
-        el->SetInnerRML(markup);
-        error_message.clear();
-        return 1;
+        ReportBridgeFailure("urui_element_ref_set_translate_scale_2d failed"); return -8;
     }
-    int urui_append_element(const char* parent_id, const char* tag, const char* id)
+
+    int urui_set_inner_html(UruiDocumentHandle document_handle, const char* id, const char* markup)
+    try
     {
+        auto* document = urui_elements::Document(document_handle);
+        if (!id || !*id || !markup || !element_references.Owner() || urui_interaction::callback_depth) return -1;
+        if (!document) return 0;
+        auto* el = document->GetElementById(id);
+        if (!el) return 0;
+        const int result = urui_elements::ReplaceHtml(*el, markup);
+        if (result == 1) element_references.Prune();
+        return result;
+    }
+    catch (...) { return -2; }
+    int urui_append_element(UruiDocumentHandle document_handle, const char* parent_id, const char* tag, const char* id)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!parent_id || !*parent_id || !tag || !*tag || !id)
         {
             error_message = "Invalid append";
@@ -897,30 +1099,42 @@ extern "C"
         auto child = document->CreateElement(tag);
         if (!child)
         {
-            error_message = "RmlUi rejected element tag";
+            error_message = "URUI rejected element tag";
             return -2;
         }
         if (*id)
             child->SetId(id);
         if (!parent->AppendChild(std::move(child)))
         {
-            error_message = "RmlUi rejected append";
+            error_message = "URUI rejected append";
             return -2;
         }
         error_message.clear();
         return 1;
     }
-    // General DOM sibling ordering API used by atomic UI and ordinary managed clients.
-    // Ownership stays in RmlUi; moving the same Element preserves its observer identity.
-    int urui_get_child_count(const char* id)
+    catch (...)
     {
+        ReportBridgeFailure("urui_append_element failed"); return -8;
+    }
+    // General DOM sibling ordering API used by atomic UI and ordinary managed clients.
+    // Ownership stays in URUI; moving the same Element preserves its observer identity.
+    int urui_get_child_count(UruiDocumentHandle document_handle, const char* id)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!document || !id || !*id)
             return -1;
         auto* el = document->GetElementById(id);
         return el ? el->GetNumChildren() : -1;
     }
-    int urui_get_child_id_utf8(const char* id, int index, char* out, int capacity)
+    catch (...)
     {
+        ReportBridgeFailure("urui_get_child_count failed"); return -8;
+    }
+    int urui_get_child_id_utf8(UruiDocumentHandle document_handle, const char* id, int index, char* out, int capacity)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!document || !id || !*id || index < 0 || capacity < 0)
             return -1;
         auto* el = document->GetElementById(id);
@@ -934,8 +1148,14 @@ extern "C"
         std::memcpy(out, name.c_str(), name.size() + 1);
         return int(name.size());
     }
-    int urui_reorder_element_to_end(const char* id)
+    catch (...)
     {
+        ReportBridgeFailure("urui_get_child_id_utf8 failed"); return -8;
+    }
+    int urui_reorder_element_to_end(UruiDocumentHandle document_handle, const char* id)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!id || !*id)
         {
             error_message = "Invalid reorder";
@@ -960,19 +1180,25 @@ extern "C"
         auto owned = parent->RemoveChild(el);
         if (!owned)
         {
-            error_message = "RmlUi rejected reorder detach";
+            error_message = "URUI rejected reorder detach";
             return -2;
         }
         if (!parent->AppendChild(std::move(owned)))
         {
-            error_message = "RmlUi rejected reorder append";
+            error_message = "URUI rejected reorder append";
             return -2;
         }
         error_message.clear();
         return 1;
     }
-    int urui_remove_element(const char* id)
+    catch (...)
     {
+        ReportBridgeFailure("urui_reorder_element_to_end failed"); return -8;
+    }
+    int urui_remove_element(UruiDocumentHandle document_handle, const char* id)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!id || !*id)
         {
             error_message = "Invalid remove";
@@ -992,38 +1218,55 @@ extern "C"
         auto detached = parent->RemoveChild(el);
         if (!detached)
         {
-            error_message = "RmlUi rejected remove";
+            error_message = "URUI rejected remove";
             return -2;
         }
         error_message.clear();
         return 1;
     }
-    void urui_update(void)
+    catch (...)
     {
-        URUI_DEBUG_CODE(ProfileScope timer(profile.update_ns);)
-        if (context)
-            context->Update();
+        ReportBridgeFailure("urui_remove_element failed"); return -8;
     }
-    void urui_render(void)
+    void urui_update(void)
+    try
     {
+        if (urui_interaction::callback_depth) return;
+        URUI_DEBUG_CODE(ProfileScope timer(profile.update_ns);)
+        if (context) { urui_interaction::FlushCandidateEvents(); context->Update(); urui_styles::Prune(); }
+    }
+    catch (...) { try { error_message = "URUI update failed"; } catch (...) {} }
+    void urui_render(void)
+    try
+    {
+        if (urui_interaction::callback_depth) return;
         URUI_DEBUG_CODE(ProfileScope timer(profile.render_ns);)
         if (!context || !render)
             return;
         render->plan.Begin(render->commands, render->command_transforms);
+        render->paint_commands.clear();render->effect_ink_bounds.clear();
+        render->PruneEffectRoots();
+        render->layer_commands.clear(); render->layer_stack.assign(1, 0); render->next_layer_resource = 1;
+        render->layer_valid = render->mask_filters.empty();
         render->clipped = false;
-        render->active_transform = Rml::Matrix4f::Identity();
+        render->active_transform = URUI::Matrix4f::Identity();
         context->Render();
+        render->layer_valid = render->layer_valid && render->layer_stack.size() == 1 && render->mask_filters.empty();
         render->plan.Finish(render->commands, render->command_transforms);
+    }
+    catch (...)
+    {
+        if (render) {
+            render->commands.clear(); render->command_transforms.clear();
+            render->paint_commands.clear(); render->layer_commands.clear();
+            render->layer_stack.clear(); render->layer_valid = false;
+            render->plan.NewDocument();
+        }
+
+        ReportBridgeFailure("urui_render failed");
     }
     int urui_render_plan_version()
     {
-        return 1;
-    }
-    int urui_render_plan_enable(int enabled)
-    {
-        if (!render || (enabled != 0 && enabled != 1))
-            return 0;
-        render->plan.Enable(enabled != 0);
         return 1;
     }
     int urui_render_plan_stamp(UruiFrameStamp* out)
@@ -1051,8 +1294,10 @@ extern "C"
             std::memcpy(out + i * 16, render->command_transforms[i].data(), 16 * sizeof(float));
         return static_cast<int>(count);
     }
-    int urui_get_attribute_utf8(const char* id, const char* name, char* out, int capacity, int* required)
+    int urui_get_attribute_utf8(UruiDocumentHandle document_handle, const char* id, const char* name, char* out, int capacity, int* required)
+    try
     {
+        auto* document = urui_elements::Document(document_handle);
         if (!id || !*id || !name || !*name || capacity < 0 || !required || (!out && capacity > 0))
             return -1;
         *required = 0;
@@ -1061,7 +1306,7 @@ extern "C"
         auto* el = document->GetElementById(id);
         if (!el || !el->HasAttribute(name))
             return 0;
-        const auto value = el->GetAttribute<Rml::String>(name, "");
+        const auto value = el->GetAttribute<URUI::String>(name, "");
         if (value.size() >= size_t(INT32_MAX))
             return -1;
         *required = int(value.size() + 1);
@@ -1070,8 +1315,14 @@ extern "C"
         std::memcpy(out, value.c_str(), value.size() + 1);
         return 1;
     }
-    int urui_get_text_utf8(const char* id, char* out, int capacity, int* required)
+    catch (...)
     {
+        ReportBridgeFailure("urui_get_attribute_utf8 failed"); return -8;
+    }
+    int urui_get_text_utf8(UruiDocumentHandle document_handle, const char* id, char* out, int capacity, int* required)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!id || !*id || capacity < 0 || !required || (!out && capacity > 0))
             return -1;
         *required = 0;
@@ -1080,9 +1331,9 @@ extern "C"
         auto* el = document->GetElementById(id);
         if (!el)
             return 0;
-        Rml::String value;
+        URUI::String value;
         if (el->GetNumChildren() == 1 && el->GetChild(0)->GetTagName() == "#text")
-            value = static_cast<Rml::ElementText*>(el->GetChild(0))->GetText();
+            value = static_cast<URUI::ElementText*>(el->GetChild(0))->GetText();
         else if (el->GetNumChildren() != 0)
             return -2;
         if (value.size() >= static_cast<size_t>(INT32_MAX))
@@ -1093,87 +1344,60 @@ extern "C"
         std::memcpy(out, value.c_str(), value.size() + 1);
         return 1;
     }
-    void urui_set_text(const char* id, const char* value)
+    catch (...)
     {
-        URUI_DEBUG_CODE(ProfileScope timer(profile.text_ns);)
-        URUI_DEBUG_CODE(++profile.text_calls;)
-        if (!document || !id)
-            return;
-        Rml::Element* el;
-        {
-            URUI_DEBUG_CODE(ProfileScope lookup(profile.text_lookup_ns);)
-            URUI_DEBUG_CODE(++profile.text_lookups;)
-            el = document->GetElementById(id);
-        }
-        if (!el)
-            return;
-        if (!value || !*value)
-        {
-            URUI_DEBUG_CODE(ProfileScope operation(profile.text_setinnerrml_ns);)
-            URUI_DEBUG_CODE(++profile.text_fallback_calls;)
-            el->SetInnerRML("");
-            return;
-        }
-        // Keep the original parser path for entities, markup-like text, data
-        // expressions, whitespace-only values, and non-ASCII input. This preserves
-        // translation and entity-decoding behavior for arbitrary documents.
-        bool plain = false, has_content = false;
-        for (const unsigned char* p = reinterpret_cast<const unsigned char*>(value); *p; ++p)
-        {
-            if (*p >= 128 || std::strchr("&<>{}\r\n\t", *p))
-            {
-                plain = false;
-                break;
-            }
-            if (*p != ' ')
-                has_content = true;
-            plain = true;
-        }
-        if (!plain || !has_content)
-        {
-            URUI_DEBUG_CODE(ProfileScope operation(profile.text_setinnerrml_ns);)
-            URUI_DEBUG_CODE(++profile.text_fallback_calls;)
-            el->SetInnerRML(safe_rml(value));
-            return;
-        }
-        // SetInnerRML destroys and recreates the text child on every update. Reuse it
-        // when the target contains exactly one plain text node; retain the markup path
-        // for mixed or structured content.
-        if (el->GetNumChildren() == 1)
-        {
-            auto* child = el->GetChild(0);
-            if (child && child->GetTagName() == "#text")
-            {
-                URUI_DEBUG_CODE(ProfileScope operation(profile.text_settext_ns);)
-                URUI_DEBUG_CODE(++profile.text_fast_calls;)
-                static_cast<Rml::ElementText*>(child)->SetText(value);
-                return;
-            }
-        }
-        {
-            URUI_DEBUG_CODE(ProfileScope operation(profile.text_setinnerrml_ns);)
-            URUI_DEBUG_CODE(++profile.text_fallback_calls;)
-            el->SetInnerRML(safe_rml(value));
-        }
+        ReportBridgeFailure("urui_get_text_utf8 failed"); return -8;
     }
-    float urui_get_scroll_top(const char* id)
+    void urui_set_text(UruiDocumentHandle document_handle, const char* id, const char* value)
+    try
     {
+        auto* document = urui_elements::Document(document_handle);
+        if (!document || !id || !element_references.Owner() || urui_interaction::callback_depth) return;
+        auto* el = document->GetElementById(id);
+        if (!el) return;
+        const char* text = value ? value : "";
+        if (el->GetNumChildren() == 1 && el->GetChild(0)->GetTagName() == "#text") {
+            static_cast<URUI::ElementText*>(el->GetChild(0))->SetText(text);
+            return;
+        }
+        auto node = document->CreateTextNode(text);
+        if (!node) return;
+        while (auto* child = el->GetFirstChild()) el->RemoveChild(child);
+        if (*text) el->AppendChild(std::move(node));
+        element_references.Prune();
+    }
+    catch (...) {}
+    float urui_get_scroll_top(UruiDocumentHandle document_handle, const char* id)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!document || !id)
             return -1.f;
         if (auto* el = document->GetElementById(id))
             return el->GetScrollTop();
         return -1.f;
     }
-    int urui_set_pixel_style(const char* id, const char* property, float pixels)
+    catch (...)
     {
+        ReportBridgeFailure("urui_get_scroll_top failed"); return 0;
+    }
+    int urui_set_pixel_style(UruiDocumentHandle document_handle, const char* id, const char* property, float pixels)
+    try
+    {
+        auto* document = urui_elements::Document(document_handle);
         if (!document || !id || !property || !std::isfinite(pixels))
             return 0;
         if (auto* el = document->GetElementById(id))
             return el->SetProperty(property, std::to_string(pixels) + "px") ? 1 : 0;
         return 0;
     }
-    int urui_element_count(void)
+    catch (...)
     {
+        ReportBridgeFailure("urui_set_pixel_style failed"); return -8;
+    }
+    int urui_element_count(UruiDocumentHandle document_handle)
+    {
+        auto* document = urui_elements::Document(document_handle);
         return count_elements(document);
     }
     int urui_command_count(void)
@@ -1188,6 +1412,63 @@ extern "C"
         int n = std::min(cap, (int)render->commands.size());
         std::copy_n(render->commands.begin(), n, out);
         return n;
+    }
+    int urui_get_paint_commands(UruiPaintCommand* out, int capacity)
+    {
+        if (context_thread != std::this_thread::get_id() || urui_interaction::callback_depth || capacity < 0 || (!out && capacity))
+            return -1;
+        if (!render) return 0;
+        if (!out) return static_cast<int>(render->paint_commands.size());
+        int count = 0;
+        for (const auto& command : render->paint_commands)
+        {
+            if (count == capacity) break;
+            const auto shader = render->paint_shaders.find(command.shader);
+            if (shader == render->paint_shaders.end() || !shader->second.element) continue;
+            const auto token = element_references.Track(shader->second.element.get(), shader->second.element->GetOwnerDocument());
+            if (token) out[count++] = {command.shader, token, command.command_index, shader->second.kind};
+        }
+        return count;
+    }
+    int urui_paint_color_filters(uint64_t shader, UruiColorFilter* out, int capacity)
+    {
+        if (context_thread != std::this_thread::get_id() || urui_interaction::callback_depth || capacity < 0 || (!out && capacity) || !render) return -1;
+        const auto found = render->paint_shaders.find(shader);
+        if (found == render->paint_shaders.end() || found->second.kind != 2 || !found->second.element ||
+            !document_registry || !document_registry->HandleOf(found->second.element->GetOwnerDocument())) return -2;
+        const auto& filters = found->second.color_filters;
+        if (!out) return static_cast<int>(filters.size());
+        if (capacity < static_cast<int>(filters.size())) return -3;
+        std::copy(filters.begin(), filters.end(), out); return static_cast<int>(filters.size());
+    }
+    int urui_set_direct_color_filters(int enabled)
+    {
+        if (enabled < 0 || enabled > 1 || context_thread != std::this_thread::get_id() || urui_interaction::callback_depth) return -1;
+        if (!context || !document_registry) return -2;
+        if (document_registry->Count() != 0) return -5;
+        URUI::DirectColorFilterRenderingEnabled = enabled != 0; return 1;
+    }
+    int urui_get_layer_commands(UruiLayerCommand* out, int capacity)
+    {
+        if (context_thread != std::this_thread::get_id() || urui_interaction::callback_depth || capacity < 0 || (!out && capacity)) return -1;
+        if (!render) return 0;
+        if (!render->layer_valid) { error_message = "Invalid or unsupported layer/filter command stream"; return -2; }
+        if (!out) return static_cast<int>(render->layer_commands.size());
+        const int count = std::min(capacity, static_cast<int>(render->layer_commands.size()));
+        std::copy_n(render->layer_commands.begin(), count, out); return count;
+    }
+    int urui_paint_shader_name(uint64_t shader, char* out, int capacity)
+    {
+        if (context_thread != std::this_thread::get_id() || urui_interaction::callback_depth || capacity < 0 || (!out && capacity))
+            return -1;
+        if (out && capacity) out[0] = '\0';
+        if (!render) return 0;
+        const auto found = render->paint_shaders.find(shader);
+        if (found == render->paint_shaders.end() || !found->second.element) return 0;
+        const auto& name = found->second.name;
+        const int required = static_cast<int>(name.size() + 1);
+        if (out && capacity >= required) std::memcpy(out, name.c_str(), required);
+        return required;
     }
     int urui_geometry_exists(uint64_t id)
     {
@@ -1258,18 +1539,24 @@ extern "C"
         std::copy(p.begin(), p.end(), out);
         return 1;
     }
-    int urui_pop_event(char* out, int cap)
+    int urui_pop_event(UruiDocumentHandle document_handle, char* out, int cap)
+    try
     {
-        if (clicks.empty() || !out)
-            return 0;
-        auto value = ClickId(clicks.front());
-        if (cap < (int)value.size() + 1)
-            return -(int)value.size() - 1;
-        std::memcpy(out, value.c_str(), value.size() + 1);
-        int n = (int)value.size();
-        clicks.pop_front();
-        return n;
+        auto* document = urui_elements::Document(document_handle);
+        if (!document || !out) return 0;
+        for (auto it = clicks.begin(); it != clicks.end();)
+        {
+            if (!*it) { it = clicks.erase(it); continue; }
+            if ((*it)->GetOwnerDocument() != document) { ++it; continue; }
+            auto value = ClickId(*it);
+            if (cap < (int)value.size() + 1) return -(int)value.size() - 1;
+            std::memcpy(out, value.c_str(), value.size() + 1);
+            clicks.erase(it);
+            return (int)value.size();
+        }
+        return 0;
     }
+    catch (...) { ReportBridgeFailure("urui_pop_event failed"); return -8; }
     const char* urui_last_error(void)
     {
         return error_message.c_str();
@@ -1638,3 +1925,10 @@ extern "C"
 #include "elements.inl"
 #include "element_runtime.inl"
 #include "element_events.inl"
+#include "documents.inl"
+
+
+#include "effect_layers.inl"
+#include "effect_layout.inl"
+
+#include "authoring.inl"

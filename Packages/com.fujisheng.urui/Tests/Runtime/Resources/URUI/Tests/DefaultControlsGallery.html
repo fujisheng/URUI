@@ -1,0 +1,46 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/urui/base.css"><link rel="stylesheet" href="/urui/controls.css"><style>
+body { margin:0; width:1280px; height:720px; background-color:#eeeeee; }
+h1 { position:absolute; left:32px; top:18px; margin:0; font-size:26px; font-weight:normal; }
+.caption { position:absolute; left:32px; top:66px; }
+.panel { position:absolute; top:110px; width:370px; height:530px; background-color:white; border:1px solid #cccccc; }
+#buttons { left:32px; } #fields { left:450px; } #other { left:868px; }
+.label { position:absolute; left:20px; top:16px; }
+.control { position:absolute; left:20px; }
+#normal { top:48px; } #disabled { top:96px; } #image { top:144px; width:160px; height:50px; }
+#image img { width:50px; height:50px; } #graphic { position:absolute; left:0; top:0; } #decoration { position:absolute; left:70px; top:0; }
+#toggle { top:220px; } #toggle-label { top:222px; left:52px; }
+#radio { top:268px; } #radio-label { top:270px; left:52px; }
+#range { top:322px; }
+#slider { top:370px; }
+#field { top:48px; } #placeholder { top:100px; } #readonly { top:152px; }
+#number { top:204px; } #area { top:256px; }
+#dropdown { top:368px; }
+#scroll { top:48px; width:300px; height:200px; }
+.scroll-row { height:42px; padding:10px; }
+#progress { top:280px; } #foldout { top:340px; width:300px; }
+</style></head><body>
+<h1>URUI default controls</h1><span class="caption">Shared HTML/CSS · neutral skin · explicit graphic feedback</span>
+<div id="buttons" class="panel"><span class="label">Buttons, toggles and sliders</span>
+<button id="normal" class="control">Button</button><button id="disabled" class="control" disabled>Disabled button</button>
+<button id="image" class="control" data-urui-skin="image"><img id="graphic" src="input.png" data-urui-graphic><img id="decoration" src="input.png"></button>
+<input id="toggle" class="control" type="checkbox" checked><label for="toggle" id="toggle-label" class="control">Toggle enabled</label>
+<input id="radio" class="control" type="radio" checked><label for="radio" id="radio-label" class="control">Radio selected</label>
+<input id="range" class="control" type="range" value="50">
+<urui-slider id="slider" class="control"><input type="range" value="50"><div class="urui-slider-track"></div><div class="urui-slider-fill"></div><div class="urui-slider-thumb"></div></urui-slider>
+</div>
+<div id="fields" class="panel"><span class="label">Text and dropdown</span>
+<input id="field" class="control" type="text" value="Player gypq">
+<input id="placeholder" class="control" type="text" placeholder="Enter a name">
+<input id="readonly" class="control" type="text" value="Read only" readonly>
+<input id="number" class="control" type="number" value="12">
+<textarea id="area" class="control">First line
+Second line</textarea>
+<urui-select id="dropdown" class="control"><select><option selected>Normal</option><option>Selected item</option><option>Another item</option></select><button class="urui-select-trigger" type="button"><span class="urui-select-value"></span><span class="urui-select-arrow"></span></button><button class="urui-select-option" type="button" hidden></button><div class="urui-select-options" hidden></div></urui-select>
+</div>
+<div id="other" class="panel"><span class="label">Scroll, progress and foldout</span>
+<urui-scroll id="scroll" class="control"><urui-scroll-view id="viewport"><div class="urui-scroll-content"><div class="scroll-row">First row</div><div class="scroll-row">Second row</div><div class="scroll-row">Third row</div><div class="scroll-row">Fourth row</div><div class="scroll-row">Fifth row</div><div class="scroll-row">Sixth row</div><div class="scroll-row">Seventh row</div></div></urui-scroll-view><div class="urui-scrollbar" role="scrollbar" tabindex="0" aria-controls="viewport"><div class="urui-scrollbar-thumb"></div></div></urui-scroll>
+<urui-progress-bar id="progress" class="control" role="progressbar" aria-valuenow="50"><div class="urui-progress-fill" style="width:50%;"></div><span class="urui-progress-title">50%</span><div class="urui-progress-content"></div></urui-progress-bar>
+<urui-foldout id="foldout" class="control" data-urui-label="Advanced" data-urui-expanded="true"><button class="urui-foldout-header" type="button"><span class="urui-foldout-label">Advanced</span></button><div class="urui-foldout-content">Foldout content</div></urui-foldout>
+</div>
+</body></html>

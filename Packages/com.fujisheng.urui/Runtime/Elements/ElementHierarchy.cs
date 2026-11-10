@@ -14,7 +14,7 @@ namespace URUI.Elements
         {
             get
             {
-                int count = NativeMethods.urui_element_child_count(owner.CheckedToken());
+                int count = NativeMethods.urui_element_child_count(owner.NativeHandle, owner.CheckedToken());
                 return count >= 0 ? count : throw new InvalidOperationException("无法读取层级。");
             }
         }
@@ -25,7 +25,7 @@ namespace URUI.Elements
             var tokens = new ulong[count];
             for (int i = 0; i < count; i++)
             {
-                tokens[i] = NativeMethods.urui_element_child_at(owner.Token, i);
+                tokens[i] = NativeMethods.urui_element_child_at(owner.NativeHandle, owner.Token, i);
             }
 
             var result = new Element[count];
@@ -36,6 +36,8 @@ namespace URUI.Elements
 
             return result;
         }
+        internal Element ChildAt(int index) => owner.Document.WrapElement(
+            NativeMethods.urui_element_child_at(owner.NativeHandle, owner.CheckedToken(), index));
         /// <summary>挂载到真实 DOM 子节点末尾。</summary>
         public void Add(Element child) => owner.MoveChild(child, -1);
         /// <summary>插入真实 DOM 子节点索引。</summary>
@@ -51,7 +53,7 @@ namespace URUI.Elements
         /// <summary>脱离全部真实 DOM 子节点；节点仍由文档拥有。</summary>
         public void Clear()
         {
-            if (NativeMethods.urui_element_clear(owner.CheckedToken()) != 1)
+            if (NativeMethods.urui_element_clear(owner.NativeHandle, owner.CheckedToken()) != 1)
             {
                 throw new InvalidOperationException("无法清空层级。");
             }

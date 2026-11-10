@@ -1,45 +1,29 @@
 # 代码组织
 
-运行时程序集为 `URUI.Runtime`，编辑器程序集为 `URUI.Editor`。程序集按运行环境区分，文件夹与命名空间按职责区分。
+主包位于 Packages/com.fujisheng.urui，可选效果包位于 Packages/com.fujisheng.urui.effect。命名空间按职责组织，程序集区分 Runtime 与 Editor。
 
-## 公开接口
+## Core
 
-| 目录 | 命名空间 | 职责 |
-| --- | --- | --- |
-| `Runtime/Documents/` | `URUI.Documents` | Document 配置、加载、生命周期、节点缓存与点击分发 |
-| `Runtime/Elements/` | `URUI.Elements` | 元素身份、层级、查询、属性、样式及事件订阅 |
-| `Runtime/Controls/` | `URUI.Controls` | 常用控件、值协议、组合容器与虚拟列表 |
-| `Runtime/Events/` | `URUI.Events` | 传给业务回调的事件数据 |
-| `Runtime/Resources/Images/` | `URUI.Resources` | 调用者持有的图片映射 |
-
-`Document.cs` 保留组件声明、状态与生命周期事件；配置、加载、资源释放、线程检查和元素操作位于各自的 partial 文件。`Element` 的层级和事件实现也分别组织，使用者不需要了解原生句柄。
-
-## 内部实现
-
-以下目录均位于 `Runtime/Internal/`。内部类型不作为业务扩展接口。
-
-| 目录 / 命名空间后缀 | 职责与入口 |
+| 相对主包的目录 | 职责 |
 | --- | --- |
-| `Hosting` | `RenderHost` 协调 Unity 组件生命周期、输入、文档、绘制与资源释放；各职责使用明确的 partial 文件 |
-| `Input` | 指针阶段与输入数据，不持有 Unity 或原生资源 |
-| `Resources` | 宿主使用的图片绑定记录 |
-| `Interop` | C ABI 声明、原生库名、顶点/命令/版本戳结构；布局必须匹配原生定义 |
-| `Rendering/Parameters` | 参数计划、资源缓存、批次、录制、提交与退役；`ParameterTableRenderer` 按这些阶段拆分 |
-| `Rendering/Frames` | 同步借用的原生帧、帧录制及 GPU 资源退役 |
-| `Rendering/Retention` | 保留记录的状态、键、资源独占约束与计划稳定性 |
-| `Rendering/Meshes` | 网格批处理规则与临时缓冲 |
-| `Rendering/Shaders` | Shader 查找、属性契约及能力校验 |
+| Runtime/Hosting | Surface、共享输入与提交 |
+| Runtime/Documents | Document 配置、加载、节点工厂、事件及生命周期 |
+| Runtime/Elements | 节点身份、查询、层级、样式与坐标 |
+| Runtime/Controls | 类型化控件和作者控件组合 |
+| Runtime/Events | 同步传播及输入/值/布局事件 |
+| Runtime/Resources | TextResource、图片、租约和 GPU 退役帮助接口 |
+| Runtime/Styles、Runtime/Animation | 计算样式、命名动画、时钟与通用行为 |
+| Runtime/Media、Runtime/Rendering | 视频输出与公开绘制/效果扩展 |
+| Runtime/Internal | RenderHost、互操作、几何、批次、图层与资源实现 |
+| Runtime/Debug | 由 URUI_DEBUG 控制的诊断实现 |
+| Runtime/Resources/URUI、Runtime/Plugins | 共享 CSS/Shader/字体与七平台原生插件 |
+| Editor | 导入、菜单及作者/资源校验 |
+| Native~/Engine、Native~/ThirdParty | 原生引擎和固定第三方源码 |
 
-命名空间对应 `URUI.Internal.Hosting`、`URUI.Internal.Interop`、`URUI.Internal.Rendering.Parameters` 等目录职责。private 嵌套数据类型保留所属类型的访问边界，不为拆文件而扩大可见性。
+## Effect
 
-partial 文件共享一个对象和同一套所有权规则。主声明集中保留原有字段的初始化顺序；拆分方法不能改变加载顺序、异常回滚、借用窗口或 GPU fence 判断。
+Runtime 根目录提供 EffectModule、EffectController、EffectPreset、EffectPlayback 和参数；Runtime/Elements 提供声明式粒子节点；Runtime/Rendering 提供纹理/表面及内部效果实现；Editor 提供资产与预览工具。
 
-## 诊断、编辑器与资产
+两个包的 Documentation~ 为使用事实源，Samples~ 为可导入样例，Tests/ 与 Tests~/ 为相应测试入口。完整 API 清单见 [Core 接口参考](../Packages/com.fujisheng.urui/Documentation~/REFERENCE_ZH.md)和 [Effect 接口参考](../Packages/com.fujisheng.urui.effect/Documentation~/REFERENCE_ZH.md)。
 
-- `Runtime/Debug/` 独立保存诊断实现，并按宿主、互操作与渲染职责分类；`URUI_DEBUG` 默认关闭。诊断 partial 与对应正式类型使用同一个命名空间，独立诊断帮助类位于 `URUI.Internal.Diagnostics`。
-- `Editor/Menus/` 使用 `URUI.Editor.Menus`，提供场景创建菜单；`Editor/Validation/` 使用 `URUI.Editor.Validation`，保存资产与构建校验。
-- `Runtime/Resources/URUI/` 保存随包加载的 shader；`Runtime/Plugins/` 保存各平台原生插件。
-- `Samples~/` 和 `Tests~/` 需要显式导入；样例展示公开接口，验证夹具可以检查内部协议。
-- `Native~/` 保存原生桥、契约测试与第三方源码，其 C ABI 和固定布局与托管目录组织相互独立。
-
-移动 Unity 脚本、资源和目录时应同时移动对应 `.meta`；已有组件脚本保留 GUID、类名、程序集与序列化字段。新增 partial 文件使用新的 GUID，不替换组件脚本的身份。
+移动脚本、资源及目录时同时处理对应 .meta，保留已有组件身份。partial 文件共享同一对象的状态和所有权，不应因拆分改变初始化、通知或退役顺序。格式与 XML 注释要求见[代码约定](../Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)。

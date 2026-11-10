@@ -1,10 +1,10 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using UnityEngine;
 using URUI.Documents;
+using URUI.Hosting;
 using URUI.Elements;
 using URUI.Events;
 using URUI.Resources;
@@ -16,14 +16,9 @@ namespace URUI.Tests
     /// </summary>
     public sealed class ApiSmoke : MonoBehaviour
     {
-        const string Markup = "<rml><head><style>body{font-family:__URUI_FONT__;font-size:20px;color:white;margin:0;}#panel{position:absolute;left:0;top:0;width:200px;height:100px;background-color:red;}#action{position:absolute;left:0;top:110px;width:150px;height:80px;background-color:blue;}</style></head><body><div id='root'><div id='panel'><span id='label'>Hello</span></div><div id='action'>Click</div><img id='image' src='tile.png' style='position:absolute;left:250px;top:0;width:40px;height:40px;'/></div></body></rml>";
+        const string Markup = "<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'><style>body{font-family:'URUI Sans';font-size:20px;color:white;margin:0;}#panel{position:absolute;left:0;top:0;width:200px;height:100px;background-color:red;}#action{position:absolute;left:0;top:110px;width:150px;height:80px;background-color:blue;}</style></head><body><div id='root'><div id='panel'><span id='label'>Hello</span></div><div id='action'>Click</div><img id='image' src='tile.png' style='position:absolute;left:250px;top:0;width:40px;height:40px;'/></div></body></html>";
 
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_move(int x, int y);
-
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_button(int button, int down);
-
+        Surface surface;
         Document document;
         Element panel;
         Element label;
@@ -77,6 +72,9 @@ namespace URUI.Tests
 
         void OnEnable()
         {
+            surface = gameObject.AddComponent<Surface>();
+            surface.Viewport = new Vector2Int(640, 480);
+            surface.Input.UseUnityInput = false;
             Application.logMessageReceived += Log;
         }
 
@@ -96,14 +94,13 @@ namespace URUI.Tests
 
         void Click()
         {
-            urui_mouse_move(30, 130);
-            urui_mouse_button(0, 1);
-            urui_mouse_button(0, 0);
+            surface.Input.SendPointer(PointerPhase.Down, new Vector2(30, 130));
+            surface.Input.SendPointer(PointerPhase.Up, new Vector2(30, 130));
         }
 
         void CheckInvalidLoadAndDisableCallback()
         {
-            var check = new GameObject("Lifecycle edge test").AddComponent<Document>();
+            var check = AcceptanceDocuments.Create(new GameObject("Lifecycle edge test"), surface);
             var issues = "";
             var inactiveObject = new GameObject("Inactive configuration");
             inactiveObject.SetActive(false);
@@ -112,7 +109,7 @@ namespace URUI.Tests
             {
                 inactive.Source = null;
                 inactive.Images = Array.Empty<ImageAsset>();
-                inactive.FontPath = "";
+                inactive.SourceUrl = "ui/inactive.html";
             }
             catch (InvalidOperationException)
             {
@@ -122,7 +119,7 @@ namespace URUI.Tests
             Destroy(inactiveObject);
             try
             {
-                check.LoadMarkup("<rml><body>before NUL</body></rml>\0ignored");
+                check.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body>before NUL</body></html>\0ignored", "ui/acceptance.html");
                 issues += "NUL was accepted; ";
             }
             catch (ArgumentException)
@@ -132,19 +129,19 @@ namespace URUI.Tests
             check.Unload();
             try
             {
-                check.FontPath = "font\0ignored.ttf";
-                issues += "NUL font path accepted; ";
+                check.SourceUrl = "ui/invalid\0ignored.html";
+                issues += "NUL source URL accepted; ";
             }
             catch (ArgumentException)
             {
             }
 
-            check.FontPath = "";
-            check.LoadMarkup("<rml><body>old</body></rml>");
+            check.SourceUrl = "ui/lifecycle.html";
+            check.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body>old</body></html>", "ui/acceptance.html");
             check.Unloaded += value => value.enabled = false;
             try
             {
-                check.LoadMarkup("<rml><body>new</body></rml>");
+                check.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body>new</body></html>", "ui/acceptance.html");
             }
             catch (InvalidOperationException)
             {
@@ -174,9 +171,9 @@ namespace URUI.Tests
                 {
                     CheckInvalidLoadAndDisableCallback();
                     // 在 Start 前显式卸载，后续帧检查 Start 不会再次加载已取消的请求。
-                    explicitlyUnloaded = new GameObject("Explicit unload before Start").AddComponent<Document>();
-                    callerMarkup = new TextAsset("<rml><body>TextAsset owned by caller</body></rml>");
-                    explicitlyUnloaded.Load(callerMarkup);
+                    explicitlyUnloaded = AcceptanceDocuments.Create(new GameObject("Explicit unload before Start"), surface);
+                    callerMarkup = new TextAsset("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body>TextAsset owned by caller</body></html>");
+                    explicitlyUnloaded.Load(callerMarkup, "ui/caller.html");
                     explicitlyUnloaded.Unload();
                 }
 
@@ -186,18 +183,18 @@ namespace URUI.Tests
                     Need(callerMarkup, "caller TextAsset was destroyed");
                     Destroy(explicitlyUnloaded.gameObject);
                     Destroy(callerMarkup);
-                    document = new GameObject("URUI Document").AddComponent<Document>();
+                    document = AcceptanceDocuments.Create(new GameObject("URUI Document"), surface);
                     document.Loaded += value => loaded++;
                     document.Unloaded += value => unloaded++;
                     Need(document.Q("panel") == null, "query before load");
-                    Throws<ArgumentException>(() => document.LoadMarkup(" "));
+                    Throws<ArgumentException>(() => document.LoadHtml(" ", "ui/acceptance.html"));
                     image = new Texture2D(1, 1);
                     image.SetPixel(0, 0, Color.yellow);
                     image.Apply();
                     document.Images = new[] {
                         new ImageAsset("tile.png", image)
                     };
-                    document.LoadMarkup(Markup);
+                    document.LoadHtml(Markup, "ui/acceptance.html");
                     Need(document.IsLoaded && loaded == 1, "synchronous load and notification");
                     Need(document.Q("missing") == null, "missing query returns null");
                     panel = document.Q("panel");
@@ -231,8 +228,11 @@ namespace URUI.Tests
                     subscription = action.RegisterCallback<ClickEvent>(handler);
                     Need(ReferenceEquals(subscription, action.RegisterCallback<ClickEvent>(handler)), "duplicate callback registration");
                     panel.RegisterCallback<ClickEvent>(value => filtered++);
-                    var other = new GameObject("Other").AddComponent<Document>();
-                    Throws<InvalidOperationException>(() => other.LoadMarkup(Markup));
+                    var other = AcceptanceDocuments.Create(new GameObject("Other"), surface);
+                    other.Images = new[] { new ImageAsset("tile.png", image) };
+                    other.LoadHtml(Markup, "ui/acceptance.html");
+                    Need(other.IsLoaded && document.IsLoaded && other.Q("panel") != panel, "independent documents share one Surface");
+                    other.Unload();
                     Destroy(other.gameObject);
                 }
 
@@ -269,7 +269,7 @@ namespace URUI.Tests
                     subscription.Dispose();
                     subscription.Dispose();
                     Click();
-                    panel.SetInnerMarkup("<span id='label'>New label</span>");
+                    panel.SetInnerHtml("<span id='label'>New label</span>", "ui/fragment.html");
                     Need(!label.IsValid, "inner markup invalidates old object");
                     Throws<InvalidOperationException>(() => label.Text = "stale");
                     Need(document.Q("label").IsValid, "same id gets fresh object");
@@ -298,7 +298,7 @@ namespace URUI.Tests
                     document.enabled = true;
                     Need(document.IsLoaded && loaded == 2, "enable restores requested markup");
                     action = document.Q("action");
-                    action.RegisterCallback<ClickEvent>(value => document.LoadMarkup(Markup));
+                    action.RegisterCallback<ClickEvent>(value => document.LoadHtml(Markup, "ui/acceptance.html"));
                     action.RegisterCallback<ClickEvent>(value => skipped++);
                 }
                 // 新 context 需要下一次 Update 计算命中区域，加载完成不等于布局完成。
@@ -313,7 +313,7 @@ namespace URUI.Tests
                     document.Unload();
                     document.Unload();
                     Need(!document.IsLoaded && unloaded == 3 && image, "unload preserves caller texture");
-                    document.LoadMarkup(Markup);
+                    document.LoadHtml(Markup, "ui/acceptance.html");
                     Need(document.IsLoaded && loaded == 4, "reload after explicit unload releases context synchronously");
                     Destroy(document.gameObject);
                 }

@@ -166,8 +166,8 @@ namespace URUI.Samples.GameFlow
             {
                 settings = draft.Clone(); service.IsOffline = settings.offline;
                 PlayerPrefs.SetString(SettingsKey, JsonUtility.ToJson(settings)); PlayerPrefs.Save();
-                document.Root.EnableInClassList("cyan", settings.accent == "Glacier");
-                document.Root.EnableInClassList("compact", settings.compactRows);
+                document.DocumentElement.EnableInClassList("cyan", settings.accent == "Glacier");
+                document.DocumentElement.EnableInClassList("compact", settings.compactRows);
                 Text("status", "Preferences saved locally. Audio and appearance affect this sample only.");
             });
         }
@@ -196,7 +196,7 @@ namespace URUI.Samples.GameFlow
             {
                 row.EnableInClassList("first-rank", index == 0); row.EnableInClassList("second-rank", index == 1); row.EnableInClassList("third-rank", index == 2);
                 row.Q<Label>("position").Text = (index + 1).ToString();
-                row.Q<URUI.Controls.Image>().Source = "gameflow/rank-avatar-" + (index % 6 + 1) + ".png";
+                row.Q<URUI.Controls.Image>().Source = "../Images/rank-avatar-" + (index % 6 + 1) + ".png";
                 row.Q<Label>("pilot").Text = entries[index].name;
                 row.Q<Label>("score").Text = entries[index].score.ToString("N0") + " PTS";
             };

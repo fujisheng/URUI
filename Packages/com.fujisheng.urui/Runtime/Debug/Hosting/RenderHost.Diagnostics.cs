@@ -3,15 +3,12 @@ using System;
 using Unity.Profiling;
 using URUI.Internal.Diagnostics;
 using URUI.Internal.Interop;
-using URUI.Internal.Rendering.Frames;
-using URUI.Internal.Rendering.Retention;
 
 namespace URUI.Internal.Hosting
 {
     // Explicitly opt-in diagnostics. Editor and development builds are quiet by default.
     internal sealed partial class RenderHost
     {
-        public bool useInlineLookupQueue;
         [NonSerialized]
         public int detailedHostMode;
         public bool measureBridge;
@@ -39,22 +36,6 @@ namespace URUI.Internal.Hosting
         double frameTextMilliseconds;
         int textCalls;
 
-        public bool SetInlineLookupQueue(bool enabled)
-        {
-            if (!active)
-            {
-                return false;
-            }
-
-            if (NativeMethods.urui_lookup_inline_enable(enabled ? 1 : 0) != 1)
-            {
-                return false;
-            }
-
-            useInlineLookupQueue = enabled;
-            return true;
-        }
-
         public int PropertyCalls
         {
             get;
@@ -80,14 +61,7 @@ namespace URUI.Internal.Hosting
             get;
             private set;
         }
-        public RecordingStats LastRecording
-        {
-            get;
-            private set;
-        }
-
         int recordCallsThisFrame;
-        int retainedDraws;
         static readonly ProfilerMarker propertyApiMarker = new ProfilerMarker("URUI.PropertyAPI");
         static readonly ProfilerMarker hostMarker = new ProfilerMarker("URUI.Host");
         static readonly ProfilerMarker inputMarker = new ProfilerMarker("URUI.Input");
@@ -103,25 +77,7 @@ namespace URUI.Internal.Hosting
         static readonly ProfilerMarker drawMarker = new ProfilerMarker("URUI.DrawFrame");
         static readonly ProfilerMarker setupMarker = new ProfilerMarker("URUI.UnitySetup");
         static readonly ProfilerMarker cleanupMarker = new ProfilerMarker("URUI.Cleanup");
-        static readonly ProfilerMarker retainedResourceMarker = new ProfilerMarker("URUI.RetainedResourceValidation");
-        static readonly ProfilerMarker dependencyCaptureMarker = new ProfilerMarker("URUI.RetainedDependencyCapture");
-        static readonly ProfilerMarker parameterMarker = new ProfilerMarker("URUI.HostParameterCamera");
 
-        public bool BorrowedNativeFrameActive
-        {
-            get;
-            private set;
-        }
-
-        static void NativeHostClearProbe(string at)
-        {
-            NativeFrameRoot.faultForProbe?.Invoke(at);
-        }
-
-        long parameterPreparationBytes;
-        long parameterPreparationTextureBytes;
-        int parameterPreparedSourceFrame;
-        bool parameterPreparationReported;
     }
 }
 #endif

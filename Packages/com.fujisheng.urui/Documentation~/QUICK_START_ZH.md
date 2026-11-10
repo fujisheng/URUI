@@ -1,91 +1,123 @@
 # 快速开始
 
-按[安装指南](INSTALL_ZH.md)准备 Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal 工程、MainCamera 和 Input Manager (Old) 或 Both。
+对应 Core `0.7.1-preview.1`。先按[安装](INSTALL_ZH.md)准备 Unity 6000.3.22f1、MainCamera、配套原生插件与 Input Manager (Old/Both)。
 
-## 默认示例：Game Flow
+## 先运行 Game Flow
 
-1. 在 Package Manager 选择已安装的 URUI，在 Samples 中点击 **Game Flow** 的 Import。
-2. 打开 Unity 实际导入目录中的 `GameFlow.unity`。标准目录为 `Assets/Samples/URUI/<包版本>/Game Flow`。
-3. 进入 Play Mode，使用任意 2–18 字符呼号与公开演示码 **demo**，体验完整六页面流程。登录、离线和排名均为本地 mock。
+Package Manager → URUI → Samples → Game Flow → Import，打开导入目录的 `GameFlow.unity` 后进入 Play Mode。输入 2–18 字符呼号与公开演示码 **demo**，体验六页面流程。登录、离线及排名均为本地 mock。
 
-菜单 **Tools > URUI > Open Game Flow Sample** 可执行同样的标准导入并打开场景。样例源码只维护在包内 `Samples~/Game Flow`；`Assets/Samples` 是项目副本，不要求开发工作区或 Artifacts。完整资源和生命周期说明见 [Game Flow README](../Samples~/Game%20Flow/README.md)。Unity 不会在安装包时自动导入 Samples。
+菜单 Tools → URUI → Open Game Flow Sample 也可导入和打开。标准目录为 `Assets/Samples/URUI/<包版本>/Game Flow`，以 Unity 实际路径为准；包内 Samples~ 是样例源码，Assets 是副本。完整资源随包提供，见 [Game Flow README](../Samples~/Game%20Flow/README.md)。
 
-## 从最小文档学习 API（可选）
+## 创建最小作者文件
 
-创建 TextAsset，例如 `Panel.rml.txt`，将它指定给 Document.Source：
+创建 `Panel.html`：
 
-```xml
-<rml><head><style>
-body { margin:24px; color:white; font-family:__URUI_FONT__; font-size:24px; }
-div { display:block; }
-#panel { width:360px; padding:20px; background-color:#204080; }
-#action { width:220px; height:48px; margin-top:20px; background-color:#4070b0; }
-</style></head><body>
-<div id="panel"><div id="label">Hello URUI</div><div id="action">Click</div></div>
-</body></rml>
+```html
+<!doctype html>
+<html><head>
+<link rel="stylesheet" href="/urui/base.css">
+<link rel="stylesheet" href="/urui/controls.css">
+<link rel="stylesheet" href="panel.css">
+</head><body>
+<div id="panel">
+  <label id="caption">Hello URUI</label>
+  <button id="action" type="button">Click</button>
+</div>
+</body></html>
 ```
 
-默认字体约定及图片资源见[生命周期与资源](LIFECYCLE_ZH.md)。
+创建 `panel.css`：
 
-## 业务控制器
+```css
+body { margin: 24px; color: white; font-family: sans-serif; font-size: 24px; }
+#panel { display: block; width: 360px; padding: 20px; background-color: #204080; }
+#caption { display: block; }
+#action { width: 220px; height: 48px; margin-top: 20px; }
+```
 
-Source 由 Document 在启用时自动加载。业务组件订阅 Loaded，并处理已经加载的情况；不依赖不同组件的 OnEnable 顺序。
+文件使用标准 HTML/CSS 的受支持子集，普通非空元素显式闭合。浏览器打开 Panel.html 可检查布局；精确字体对照须提供同一份字体字节。
+
+## 完整宿主组件
+
+场景已有启用的 Surface 和 MainCamera。创建普通 GameObject，挂下面组件，并在 Inspector 配置 Surface、HTML TextAsset 与 CSS TextAsset。文件名与类名均为 PanelController。
 
 ```csharp
 using System;
+using URUI.Controls;
 using URUI.Documents;
-using URUI.Elements;
-using URUI.Events;
+using URUI.Hosting;
 using URUI.Resources;
 using UnityEngine;
 
-[RequireComponent(typeof(Document))]
 public sealed class PanelController : MonoBehaviour
 {
+    [SerializeField] Surface surface;
+    [SerializeField] TextAsset html;
+    [SerializeField] TextAsset css;
     Document document;
-    IDisposable click;
+    Button button;
+    Action clicked;
 
     void OnEnable()
     {
-        document = GetComponent<Document>();
-        document.Loaded += Bind;
-        if (document.IsLoaded) Bind(document);
+        if (!surface || !html || !css)
+            throw new InvalidOperationException("请配置 Surface、HTML 与 CSS。");
+        var page = new GameObject("Panel Document");
+        page.SetActive(false);
+        page.transform.SetParent(transform, false);
+        document = page.AddComponent<Document>();
+        try
+        {
+            document.Surface = surface;
+            document.TextResources = new[] { new TextResource("/demo/panel.css", css) };
+            document.Loaded += Bind;
+            document.Unloaded += Unbind;
+            page.SetActive(true);
+            document.Load(html, "/demo/panel.html");
+        }
+        catch
+        {
+            ReleasePage();
+            throw;
+        }
     }
 
     void Bind(Document loaded)
     {
-        click?.Dispose();
-        var panel = loaded.Root.Q("panel");
-        var label = panel.Q("label");
-        label.Text = "Ready";
-        click = panel.Q("action").RegisterCallback<ClickEvent>(evt =>
-        {
-            label.Text = "Clicked " + evt.CurrentTarget.Name;
-            panel.EnableInClassList("active", true);
-        });
+        Unbind(loaded);
+        var caption = loaded.Q<Label>("caption");
+        button = loaded.Q<Button>("action");
+        clicked = () => caption.Text = "Clicked";
+        button.Clicked += clicked;
     }
 
-    void OnDisable()
+    void Unbind(Document owner)
     {
-        click?.Dispose();
-        click = null;
-        if (document) document.Loaded -= Bind;
+        if (button != null && button.IsValid) button.Clicked -= clicked;
+        button = null;
+        clicked = null;
+    }
+
+    void OnDisable() => ReleasePage();
+
+    void ReleasePage()
+    {
+        var previous = document;
+        document = null;
+        if (!previous) return;
+        Unbind(previous);
+        previous.Loaded -= Bind;
+        previous.Unloaded -= Unbind;
+        try { previous.Unload(); }
+        finally { Destroy(previous.gameObject); }
     }
 }
 ```
 
-## 动态节点
+此例由组件创建并拥有 Document，禁用时卸载和销毁。若使用 Inspector 配置的 Document.Source 自动加载，应在订阅 Loaded 后检查 IsLoaded，并在已加载时立即绑定；不要依赖不同组件 OnEnable 的先后顺序。
 
-```csharp
-var panel = document.Root.Q("panel");
-var caption = document.CreateElement("span");
-caption.Name = "caption";
-caption.Text = "New node";
-caption.Style.SetWidth(200);
-panel.Add(caption);
-caption.RemoveFromHierarchy(); // 有效，但暂不显示/接收输入
-panel.Insert(0, caption);       // 同一个对象重新挂载
-caption.Destroy();             // 明确销毁
-```
+## 动态节点和输入
 
-Name/Class 查询是局部、精确匹配，Query 返回快照。类型化控件可通过 `document.Q<Button>("action")` 或 `document.Create<Button>()` 获取；使用 `URUI.Controls` 命名空间。综合设置、表单和虚拟列表见 Runtime Controls 样例，基础节点操作见 Element Playground。继续阅读 [API](API_ZH.md)、[事件](EVENTS_ZH.md)和[支持范围](LIMITATIONS_ZH.md)。
+通过 `document.Create<Label>()` 创建后，再 `document.Body.Add(label)` 挂载。RemoveFromHierarchy 保留身份和订阅，重新 Add 可恢复；Destroy 则永久销毁。`Q<Button>("action")` 使用 id，不带 `#`；查询不解析 CSS 选择器。
+
+外部输入入口为 `document.Surface.Input`，先设置 UseUnityInput=false 再发送，见[输入与事件](EVENTS_ZH.md)。资源映射和字体加载见[生命周期](LIFECYCLE_ZH.md)，值控件与虚拟列表见[控件](CONTROLS_ZH.md)，完整节点接口见 [API](API_ZH.md)。

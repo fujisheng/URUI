@@ -10,7 +10,9 @@ namespace URUI.Internal.Interop
         public ulong texture;
         public float tx;
         public float ty;
-        public int clip_enabled;
+        public int flags;
+        public bool ClipEnabled => (flags & 1) != 0;
+        public int TextureSampling => (flags >> 1) & 3;
         public int clip_x;
         public int clip_y;
         public int clip_w;

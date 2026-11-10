@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><link rel='stylesheet' href='/urui/base.css'><style>
+@property --probe-progress { syntax:"<number>"; inherits:false; initial-value:0; }
+body { margin:0; }
+img { display:block; --urui-image-effect:probe; }
+#a { width:120px; height:60px; --probe-progress:.2; --urui-image-slice-top:8px; --urui-image-slice-right:8px; --urui-image-slice-bottom:8px; --urui-image-slice-left:8px; }
+#b { width:240px; height:120px; --probe-progress:.8; --urui-image-fill-mode:radial360; --urui-image-fill-amount:.6; }
+.hidden { display:none; }
+.lazy {width:40px;height:20px;--probe-progress:.4;}
+.plain { --urui-image-effect:none; }
+.unknown { --urui-image-effect:missing-probe; }
+.failing { --urui-image-effect:failing-probe; }
+</style></head><body><img id="a" src="probe.png"/><img id="b" src="probe.png"/><div id="prototype" class="hidden"><img class="lazy" src="probe.png"/></div></body></html>

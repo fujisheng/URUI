@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using URUI.Samples;
 using URUI.Documents;
@@ -9,19 +8,10 @@ using URUI.Elements;
 
 namespace URUI.Tests
 {
-    /// <summary>操作实际 Playground 场景的按钮，验证序列化 RML 与导入的控制器使用当前包。</summary>
+    /// <summary>操作实际 Playground 场景的按钮，验证序列化 HTML 与导入的控制器使用当前包。</summary>
     [DefaultExecutionOrder(-10000)]
     public sealed class PlaygroundSmoke : MonoBehaviour
     {
-        [DllImport("URUIBridge")]
-        static extern int urui_get_element_box(string id, [Out] float[] box);
-
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_move(int x, int y);
-
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_button(int button, int pressed);
-
         Document document;
         Element first;
         Element second;
@@ -55,13 +45,14 @@ namespace URUI.Tests
             }
         }
 
-        static void Click(string name)
+        void Click(string name)
         {
-            var box = new float[6];
-            Need(urui_get_element_box(name, box) == 1 && box[2] > 0 && box[3] > 0, "button layout: " + name);
-            urui_mouse_move((int)(box[0] + box[2] / 2), (int)(box[1] + box[3] / 2));
-            urui_mouse_button(0, 1);
-            urui_mouse_button(0, 0);
+            var element = document.Q(name);
+            Need(element != null && element.HasLayout, "button layout: " + name);
+            var point = element.WorldBound.center;
+            document.Surface.Input.UseUnityInput = false;
+            document.Surface.Input.SendPointer(URUI.Events.PointerPhase.Down, point);
+            document.Surface.Input.SendPointer(URUI.Events.PointerPhase.Up, point);
         }
 
         static void Capture()
@@ -107,28 +98,28 @@ namespace URUI.Tests
 
                 if (frames == 6)
                 {
-                    first = document.Root.Q("item-1");
+                    first = document.Q("item-1");
                     Need(first != null && first.IsAttached, "create by real button");
                     Click("add");
                 }
 
                 if (frames == 9)
                 {
-                    second = document.Root.Q("item-2");
-                    Need(second != null && second.ClassListContains("selected") && document.Root.Q("items").ChildCount == 2, "selection class and DOM count");
+                    second = document.Q("item-2");
+                    Need(second != null && second.ClassListContains("selected") && document.Q("items").ChildCount == 2, "selection class and DOM count");
                     Capture();
                     Click("detach");
                 }
 
                 if (frames == 12)
                 {
-                    Need(second.IsValid && !second.IsAttached && document.Root.Q("items").ChildCount == 1, "detach retains identity");
+                    Need(second.IsValid && !second.IsAttached && document.Q("items").ChildCount == 1, "detach retains identity");
                     Click("attach");
                 }
 
                 if (frames == 15)
                 {
-                    Need(document.Root.Q("items")[0] == second, "attach at index zero");
+                    Need(document.Q("items")[0] == second, "attach at index zero");
                     Click("destroy");
                 }
 
@@ -140,7 +131,7 @@ namespace URUI.Tests
 
                 if (frames == 21)
                 {
-                    Need(document.Root.Q("items").ChildCount == 0 && first.IsValid && !first.IsAttached, "clear retains detached nodes");
+                    Need(document.Q("items").ChildCount == 0 && first.IsValid && !first.IsAttached, "clear retains detached nodes");
                     document.Unload();
                     Need(!first.IsValid, "unload releases detached nodes");
                 }

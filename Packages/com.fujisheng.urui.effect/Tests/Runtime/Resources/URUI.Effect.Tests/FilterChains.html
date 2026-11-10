@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><link rel="stylesheet" href="/urui/base.css"><style>body { margin:0; }
+.box { position:absolute; top:20px; width:50px; height:50px; }
+.fill,.white,.inner-mask { display:block; }
+.fill { width:100%; height:100%; background-color:#808080; }
+.white { width:100%; height:100%; background-color:white; }
+#reference { left:20px; }
+#first { left:100px; filter:brightness(.5) contrast(.5); }
+#second { left:180px; filter:contrast(.5) brightness(.5); }
+#half { left:260px; opacity:.5; filter:brightness(1); }
+#hdr { left:340px; filter:brightness(4); }
+#mask { position:absolute; left:20px; top:90px; width:50px; height:40px; mask-image:url(half-mask.png); filter:brightness(.5) contrast(1); }
+.inner-mask { width:100%; height:100%; mask-image:url(half-mask.png); }
+#clip { position:absolute; left:20px; top:150px; width:30px; height:30px; overflow:hidden; }
+#blur { position:absolute; left:30px; top:5px; width:8px; height:20px; background-color:white; filter:blur(3px); }
+#overflow { position:absolute; left:20px; top:210px; width:20px; height:30px; filter:grayscale(1); }
+#overflow-child { position:absolute; left:-20px; top:0; width:60px; height:30px; background-color:red; transform:translate(10px,0px); }
+#desaturate { position:absolute; left:20px; top:260px; width:20px; height:20px; background-color:red; filter:saturate(0); }
+#shadow { position:absolute; left:70px; top:260px; width:20px; height:20px; background-color:white; filter:drop-shadow(#ff0000 8px 0px 0px); }
+</style></head><body>
+<div id="reference" class="box"><div class="fill"></div></div>
+<div id="first" class="box"><div class="fill"></div></div>
+<div id="second" class="box"><div class="fill"></div></div>
+<div id="half" class="box"><div class="white"></div></div>
+<div id="hdr" class="box"><div class="white"></div></div>
+<div id="mask"><div class="inner-mask"><div class="white"></div></div></div>
+<div id="clip"><div id="blur"></div></div>
+<div id="overflow"><div id="overflow-child"></div></div>
+<div id="desaturate"></div><div id="shadow"></div>
+</body></html>

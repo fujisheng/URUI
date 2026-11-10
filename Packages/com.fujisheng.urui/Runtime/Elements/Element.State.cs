@@ -17,7 +17,7 @@ namespace URUI.Elements
 
         /// <summary>供派生控件使用的构造入口；上下文只能由 Document 工厂提供。</summary>
         protected internal Element(ElementContext context) : this(
-            (context ?? throw new ArgumentNullException(nameof(context))).Document, context.Generation, context.Token)
+            (context ?? throw new ArgumentNullException(nameof(context))).Document, context.Generation, context.Token, context.NativeHandle)
         { }
 
         internal ulong Token => token;
@@ -60,7 +60,7 @@ namespace URUI.Elements
 
             if (!value)
             {
-                document.Input.CancelPointers(this);
+                document.Surface.Input.CancelPointers(this);
             }
 
             if (!IsValid)
@@ -75,38 +75,36 @@ namespace URUI.Elements
             }
         }
         /// <summary>是否绘制；隐藏时保留布局。</summary>
+        public bool IsVisibleInHierarchy=>NativeMethods.urui_element_visible_in_hierarchy(NativeHandle, CheckedToken())==1;
         public bool Visible
         {
-            get => NativeMethods.ReadStyle(CheckedToken(), "visibility", false) != "hidden";
+            get => ReadStyle("visibility", false) != "hidden";
             set => Style.Set("visibility", value ? "visible" : "hidden");
         }
         /// <summary>是否可获得键盘焦点。</summary>
         public bool Focusable
         {
-            get => NativeMethods.ReadStyle(CheckedToken(), "tab-index", false) != "none";
-            set => Style.Set("tab-index", value ? "auto" : "none");
-        }
-        /// <summary>焦点导航顺序；按非负值排序，相同值按 DOM 顺序。</summary>
-        public int TabIndex
-        {
-            get => int.TryParse(GetAttribute("data-urui-tab-index"), out var value) ? value : 0;
+            get => HasAttribute("tabindex") || ReadStyle("--urui-tab-index", false) != "none";
             set
             {
-                if (value < 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value));
-                }
-
-                SetAttribute("data-urui-tab-index", value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                if (!value) RemoveAttribute("tabindex");
+                Style.Set("--urui-tab-index", value ? "auto" : "none");
             }
         }
+        /// <summary>HTML tabindex；负数保留程序焦点并退出顺序导航，正数优先于零。</summary>
+        public int TabIndex
+        {
+            get => int.TryParse(GetAttribute("tabindex"), System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : Focusable ? 0 : -1;
+            set => SetAttribute("tabindex", value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
         /// <summary>是否为当前文档焦点节点。</summary>
-        public bool Focused => NativeMethods.urui_focused_element() == CheckedToken();
+        public bool Focused => NativeMethods.urui_focused_element(NativeHandle) == CheckedToken();
         /// <summary>请求焦点，禁用或未挂载时返回 false。</summary>
         public bool Focus()
         {
             RequireValid();
-            bool focused = EnabledInHierarchy && IsAttached && NativeMethods.urui_element_focus(token, 1) == 1;
+            bool focused = Focusable && EnabledInHierarchy && IsAttached && NativeMethods.urui_element_focus(NativeHandle, token, 1) == 1;
             document.FinishNativeCall();
             return focused;
         }
@@ -114,13 +112,13 @@ namespace URUI.Elements
         public void Blur()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_focus(token, 0), "释放焦点");
+            RequireSuccess(NativeMethods.urui_element_focus(NativeHandle, token, 0), "释放焦点");
             document.FinishNativeCall();
         }
         /// <summary>节点自身的指针命中策略。</summary>
         public PickingMode PickingMode
         {
-            get => NativeMethods.ReadStyle(CheckedToken(), "pointer-events", false) == "none" ? PickingMode.Ignore : PickingMode.Position;
+            get => ReadStyle("pointer-events", false) == "none" ? PickingMode.Ignore : PickingMode.Position;
             set => Style.Set("pointer-events", value == PickingMode.Ignore ? "none" : "auto");
         }
         /// <summary>包装完成后的初始化钩子，此时可创建子节点和注册回调。</summary>
@@ -143,22 +141,31 @@ namespace URUI.Elements
         }
         internal void Refresh(bool layout)
         {
-            bool attached = IsAttached;
+            if(invalid)return;
+            if(!document.IsCurrent(generation)){Invalidate();return;}
+            var state=NativeMethods.urui_element_refresh_state(NativeHandle,token,out var current,4);
+            if(state<0)throw new InvalidOperationException("元素刷新状态读取失败："+NativeMethods.LastError());
+            if((state&1)==0){Invalidate();return;}
+            bool attached = (state&2)!=0;
+            var delivered=false;
             if (attached != observedAttached)
             {
                 observedAttached = attached;
                 SendEvent(attached ? (EventBase)new AttachToDocumentEvent() : new DetachFromDocumentEvent());
+                delivered=true;
             }
             if (layout && attached)
             {
-                Rect current = Layout;
+                // 挂载回调可同步修改/重载节点；保持回调之后读取布局的原有时序。
+                if(delivered||document.LayoutVersion<=createdLayoutVersion)current=Layout;
                 if (!observedLayout.HasValue || observedLayout.Value != current)
                 {
                     var previous = observedLayout ?? default;
                     observedLayout = current;
                     SendEvent(new GeometryChangedEvent { OldRect = previous, NewRect = current });
+                    delivered=true;
                 }
-                if (IsValid)
+                if (!delivered || IsValid)
                 {
                     OnUpdate();
                 }
@@ -168,6 +175,12 @@ namespace URUI.Elements
         {
             RequireValid();
             return token;
+        }
+        // 只由原生绘制记录确认：新包装句柄对应的节点已经参与本次布局，不发布额外布局事件。
+        internal void AcceptRenderedLayout()
+        {
+            if(document.LayoutVersion==0)throw new InvalidOperationException("原生绘制发生在布局完成之前。");
+            if(createdLayoutVersion==document.LayoutVersion)createdLayoutVersion=document.LayoutVersion-1;
         }
         /// <summary>节点已经参与至少一次完成的文档布局。</summary>
         public bool HasLayout => IsValid && IsAttached && document.LayoutVersion > createdLayoutVersion;

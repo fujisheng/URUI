@@ -77,12 +77,12 @@ namespace URUI.Tests
 
         static void CheckInteractions(Document document)
         {
-            document.Input.UseUnityInput = false;
+            document.Surface.Input.UseUnityInput = false;
             document.Q<Dropdown>("quality").Value = "High";
             document.Q<TextField>("player-name").Value = "Preview";
             document.Q<Button>("apply").Focus();
-            document.Input.SendKey(KeyCode.Return, true);
-            document.Input.SendKey(KeyCode.Return, false);
+            document.Surface.Input.SendKey(KeyCode.Return, true);
+            document.Surface.Input.SendKey(KeyCode.Return, false);
             if (document.Q<Label>("status").Text != "Saved Preview / High")
             {
                 throw new Exception("Sample profile did not save through keyboard activation");
@@ -99,8 +99,8 @@ namespace URUI.Tests
             if (row.Layout.width < list.ViewportRect.width - 1)
                 throw new Exception("Sample row does not fill viewport: " + row.Layout + " / " + list.ContentRect + " / content " + list.ContentContainer.Layout);
             var point = row.WorldBound.center;
-            document.Input.SendPointer(PointerPhase.Down, point);
-            document.Input.SendPointer(PointerPhase.Up, point);
+            document.Surface.Input.SendPointer(PointerPhase.Down, point);
+            document.Surface.Input.SendPointer(PointerPhase.Up, point);
             if (document.Q<ListView>("items").SelectedIndex != 0)
             {
                 throw new Exception("Sample row selection did not receive pointer input");

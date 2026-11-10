@@ -2,7 +2,7 @@
 #if defined(URUI_DEBUG)
 #include "../urui.h"
 #include <chrono>
-#include <RmlUi/Core/Element.h>
+#include <URUI/Core/Element.h>
 namespace urui_lookup
 {
     extern thread_local bool inline_enabled;
@@ -64,10 +64,10 @@ namespace urui_lookup
     };
     // Per-call 2 KiB FIFO. This is not an element/ID cache or a DOM size limit.
     // Preserve breadth-first order; spill remaining queue before current children.
-    inline Rml::Element* InlineFind(Rml::Element* root, const Rml::String& id, Scope& scope)
+    inline URUI::Element* InlineFind(URUI::Element* root, const URUI::String& id, Scope& scope)
     {
         constexpr unsigned capacity = 256, mask = capacity - 1;
-        Rml::Element* fifo[capacity];
+        URUI::Element* fifo[capacity];
         unsigned head = 0, count = 1;
         fifo[0] = root;
         if (scope.mode > 1)
@@ -85,7 +85,7 @@ namespace urui_lookup
             {
                 if (scope.mode > 1)
                     ++profile.overflow_calls;
-                Rml::Queue<Rml::Element*> pending;
+                URUI::Queue<URUI::Element*> pending;
                 for (unsigned i = 0; i < count; i++)
                     pending.push(fifo[(head + i) & mask]);
                 for (int i = 0; i < children; i++)

@@ -32,7 +32,7 @@ namespace URUI.Controls
 
                 if (value && Focused)
                 {
-                    Document.Input.CancelComposition();
+                    Document.Surface.Input.CancelComposition();
                 }
             }
         }
@@ -69,7 +69,7 @@ namespace URUI.Controls
             remove { Document.CheckThread(); submitted -= value; }
         }
         /// <summary>当前编辑文本，赋值必须能解析成有效值。</summary>
-        public override string Text { get => NativeMethods.ReadControl(CheckedToken()); set { RequireText(value, nameof(value)); Value = ParseValue(value); } }
+        public override string Text { get => NativeMethods.ReadControl(NativeHandle, CheckedToken()); set { RequireText(value, nameof(value)); Value = ParseValue(value); } }
         /// <summary>空值提示文字。</summary>
         public string Placeholder { get => GetAttribute("placeholder") ?? ""; set => SetAttribute("placeholder", value); }
         /// <summary>最大 Unicode 字符数，0 表示不限制。</summary>
@@ -91,6 +91,32 @@ namespace URUI.Controls
                 {
                     SetAttribute("maxlength", value.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 }
+            }
+        }
+        /// <summary>完整闪烁周期的每秒次数；0 表示持续显示。作者也可在 CSS 设置 --urui-caret-blink-rate。</summary>
+        public float CaretBlinkRate
+        {
+            get => float.TryParse(ReadStyle("--urui-caret-blink-rate", false), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : throw new InvalidOperationException("原生样式缺少 --urui-caret-blink-rate。");
+            set
+            {
+                if (!float.IsFinite(value) || value < 0) { throw new ArgumentOutOfRangeException(nameof(value)); }
+                Style.SetNumber("--urui-caret-blink-rate", value);
+            }
+        }
+        /// <summary>光标宽度，单位为参考像素；作者也可设置 --urui-caret-width。</summary>
+        public int CaretWidth
+        {
+            get
+            {
+                var text = ReadStyle("--urui-caret-width", false);
+                return float.TryParse(text?.TrimEnd('p', 'x', 'd'), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var value) ? Mathf.RoundToInt(value) : throw new InvalidOperationException("原生样式缺少 --urui-caret-width。");
+            }
+            set
+            {
+                if (value < 1) { throw new ArgumentOutOfRangeException(nameof(value)); }
+                Style.SetDensityPixels("--urui-caret-width", value);
             }
         }
         /// <summary>按 Unicode 字符索引选取区间，自动请求焦点。</summary>
@@ -149,7 +175,7 @@ namespace URUI.Controls
         protected void ReplaceEditingText(string text)
         {
             RequireValid();
-            if (NativeMethods.urui_control_value_write(Token, text) != 1)
+            if (NativeMethods.urui_control_value_write(NativeHandle, Token, text) != 1)
             {
                 throw new InvalidOperationException("无法更新编辑文本。");
             }
@@ -165,7 +191,7 @@ namespace URUI.Controls
                 submitPressed = false;
                 if (Focused)
                 {
-                    Document.Input.CancelComposition();
+                    Document.Surface.Input.CancelComposition();
                 }
 
                 CommitValue();

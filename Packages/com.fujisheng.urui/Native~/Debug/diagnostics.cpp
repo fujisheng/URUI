@@ -2,7 +2,7 @@
 #include "diagnostics.h"
 
 // One strong definition provides consistent TLS access from the bridge and
-// the generated RmlUi instrumentation translation units.
+// the generated URUI instrumentation translation units.
 namespace urui_lookup
 {
     thread_local bool inline_enabled = false;

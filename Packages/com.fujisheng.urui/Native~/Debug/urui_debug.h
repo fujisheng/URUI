@@ -8,11 +8,11 @@ extern "C"
 {
 #endif
     // Nanoseconds accumulated on the Unity main thread since the previous take.
-    // geometry_compile_ns is nested in render_ns when RmlUi compiles while rendering.
+    // geometry_compile_ns is nested in render_ns when URUI compiles while rendering.
     typedef struct
     {
         uint64_t text_ns, update_ns, render_ns, geometry_compile_ns, command_copy_ns, geometry_copy_ns;
-        uint64_t text_settext_ns, text_setinnerrml_ns, text_lookup_ns;
+        uint64_t text_settext_ns, text_setinnerhtml_ns, text_lookup_ns;
         uint32_t text_calls, geometry_compiles, geometry_vertices, geometry_indices, text_fast_calls,
             text_fallback_calls, text_lookups;
     } UruiProfile;

@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using URUI.Samples;
 using URUI.Documents;
@@ -12,17 +11,9 @@ namespace URUI.Tests
     /// <summary>
     /// 验证菜单生成文档和样例点击、禁用恢复，并保存实际渲染截图。
     /// </summary>
+    [DefaultExecutionOrder(-20000)]
     public sealed class UsabilitySmoke : MonoBehaviour
     {
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_move(int x, int y);
-
-        [DllImport("URUIBridge")]
-        static extern void urui_mouse_button(int button, int down);
-
-        [DllImport("URUIBridge")]
-        static extern int urui_get_element_box(string id, [Out] float[] values);
-
         public Document generatedDocument;
         public TextAsset generatedSource;
         HelloUrui sample;
@@ -59,17 +50,16 @@ namespace URUI.Tests
             }
         }
 
-        static void Click()
+        void Click()
         {
-            var box = new float[6];
-            Need(urui_get_element_box("action", box) == 1 && box[2] > 0 && box[3] > 0, "sample button has layout bounds");
-            Need(Mathf.Abs(box[2] - 220) < .1f && Mathf.Abs(box[3] - 50) < .1f, "sample button uses documented block size " + string.Join(",", box));
-            var x = (int)(box[0] + box[2] * .5f);
-            var y = (int)(box[1] + box[3] * .5f);
-            Debug.Log("URUI_SAMPLE_BUTTON_BOX " + string.Join(",", box));
-            urui_mouse_move(x, y);
-            urui_mouse_button(0, 1);
-            urui_mouse_button(0, 0);
+            var document = sample.GetComponent<Document>();
+            var element = document.Q("action");
+            Need(element != null && element.HasLayout, "sample button has layout bounds");
+            var box = element.WorldBound;
+            Need(Mathf.Abs(box.width - 220) < .1f && Mathf.Abs(box.height - 50) < .1f, "sample button uses documented block size " + box);
+            document.Surface.Input.UseUnityInput = false;
+            document.Surface.Input.SendPointer(PointerPhase.Down, box.center);
+            document.Surface.Input.SendPointer(PointerPhase.Up, box.center);
         }
 
         void Update()
@@ -90,8 +80,12 @@ namespace URUI.Tests
                     generatedDocument.enabled = true;
                     Need(generatedDocument.IsLoaded && generatedDocument.Source == generatedSource, "serialized source survives enable cycle");
                     generatedDocument.Unload();
+                    var surface = generatedDocument.Surface;
+                    surface.Viewport = new Vector2Int(640, 480);
                     Destroy(generatedDocument.gameObject);
-                    sample = new GameObject("Hello URUI").AddComponent<HelloUrui>();
+                    var sampleObject = new GameObject("Hello URUI");
+                    sampleObject.AddComponent<Document>().Surface = surface;
+                    sample = sampleObject.AddComponent<HelloUrui>();
                 }
 
                 if (frames == 6)
@@ -105,6 +99,8 @@ namespace URUI.Tests
                 if (frames == 9)
                 {
                     Need(clicks == 1, "sample native click");
+                    var document = sample.GetComponent<Document>();
+                    Need(document.Q("label").Text == "Clicks: 1", "sample controller handled one click: " + document.Q("label").Text);
                     var target = Camera.main;
                     var previous = RenderTexture.active;
                     var rt = new RenderTexture(640, 480, 24);
@@ -116,9 +112,10 @@ namespace URUI.Tests
                         RenderTexture.active = rt;
                         pixels.ReadPixels(new Rect(0, 0, 640, 480), 0, 0);
                         pixels.Apply();
-                        var box = new float[6];
-                        Need(urui_get_element_box("panel", box) == 1, "sample panel bounds");
-                        var color = pixels.GetPixel((int)box[0] + 5, 479 - (int)box[1] - 5);
+                        var panel = sample.GetComponent<Document>().Q("panel");
+                        Need(panel.HasLayout, "sample panel bounds");
+                        var box = panel.WorldBound;
+                        var color = pixels.GetPixel((int)box.x + 5, 479 - (int)box.y - 5);
                         Need(color.g > .35f && color.b < .4f, "sample click changed green background " + color);
                         File.WriteAllBytes("Evidence/hello-urui.png", pixels.EncodeToPNG());
                     }

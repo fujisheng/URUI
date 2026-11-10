@@ -1,0 +1,2418 @@
+{
+  "schemaVersion": 1,
+  "seed": 20261109,
+  "families": [
+    "ToneFilter",
+    "ColorFilter",
+    "GradationColorFilter",
+    "SamplingFilter",
+    "TransitionFilter",
+    "BlendType",
+    "TargetMode",
+    "ShadowMode",
+    "EdgeMode",
+    "PatternArea",
+    "GradationMode",
+    "DetailFilter",
+    "Flip"
+  ],
+  "pairs": 3135,
+  "coveredPairs": 3135,
+  "cases": [
+    {
+      "id": "Pairwise.000",
+      "values": [
+        3,
+        4,
+        1,
+        4,
+        3,
+        4,
+        2,
+        0,
+        2,
+        0,
+        5,
+        3,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:additive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.001",
+      "values": [
+        3,
+        8,
+        0,
+        2,
+        5,
+        2,
+        0,
+        2,
+        0,
+        1,
+        10,
+        1,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:mask;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:masking;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.002",
+      "values": [
+        1,
+        0,
+        6,
+        6,
+        8,
+        2,
+        1,
+        1,
+        2,
+        2,
+        9,
+        4,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:replace;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.003",
+      "values": [
+        0,
+        0,
+        4,
+        5,
+        4,
+        0,
+        0,
+        3,
+        1,
+        0,
+        1,
+        6,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:subtractive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.004",
+      "values": [
+        2,
+        7,
+        2,
+        4,
+        6,
+        1,
+        2,
+        4,
+        0,
+        2,
+        1,
+        2,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:melt;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:multiply;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.005",
+      "values": [
+        5,
+        2,
+        2,
+        7,
+        7,
+        5,
+        1,
+        5,
+        1,
+        1,
+        0,
+        5,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:burn;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.006",
+      "values": [
+        4,
+        5,
+        3,
+        1,
+        2,
+        3,
+        1,
+        2,
+        2,
+        1,
+        1,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.007",
+      "values": [
+        5,
+        6,
+        5,
+        3,
+        2,
+        0,
+        2,
+        1,
+        0,
+        0,
+        11,
+        5,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.008",
+      "values": [
+        4,
+        4,
+        5,
+        0,
+        7,
+        5,
+        0,
+        0,
+        0,
+        2,
+        2,
+        4,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:burn;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:replace;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.009",
+      "values": [
+        5,
+        3,
+        0,
+        1,
+        0,
+        4,
+        0,
+        4,
+        1,
+        2,
+        7,
+        3,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:none;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.010",
+      "values": [
+        2,
+        1,
+        5,
+        0,
+        1,
+        4,
+        1,
+        5,
+        2,
+        0,
+        10,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:fade;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.011",
+      "values": [
+        0,
+        4,
+        6,
+        3,
+        8,
+        1,
+        2,
+        0,
+        1,
+        1,
+        6,
+        0,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:none;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.012",
+      "values": [
+        1,
+        3,
+        4,
+        7,
+        5,
+        3,
+        2,
+        3,
+        2,
+        0,
+        2,
+        2,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:mask;--urui-fx-blend-type:additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:multiply;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.013",
+      "values": [
+        0,
+        7,
+        1,
+        5,
+        0,
+        3,
+        1,
+        5,
+        0,
+        2,
+        6,
+        1,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:none;--urui-fx-blend-type:additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:masking;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.014",
+      "values": [
+        1,
+        2,
+        1,
+        2,
+        1,
+        1,
+        0,
+        4,
+        2,
+        1,
+        8,
+        5,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:fade;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.015",
+      "values": [
+        2,
+        1,
+        3,
+        6,
+        3,
+        5,
+        0,
+        3,
+        0,
+        1,
+        3,
+        0,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:none;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.016",
+      "values": [
+        3,
+        8,
+        3,
+        3,
+        4,
+        0,
+        1,
+        4,
+        2,
+        2,
+        4,
+        0,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:custom;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:none;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.017",
+      "values": [
+        4,
+        3,
+        0,
+        6,
+        1,
+        5,
+        2,
+        1,
+        1,
+        0,
+        4,
+        1,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:fade;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:masking;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.018",
+      "values": [
+        0,
+        5,
+        3,
+        0,
+        6,
+        2,
+        2,
+        2,
+        1,
+        0,
+        8,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:melt;--urui-fx-blend-type:multiply;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.019",
+      "values": [
+        2,
+        5,
+        6,
+        7,
+        4,
+        4,
+        0,
+        1,
+        0,
+        1,
+        0,
+        3,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.020",
+      "values": [
+        3,
+        6,
+        2,
+        2,
+        2,
+        3,
+        0,
+        3,
+        1,
+        2,
+        9,
+        6,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:subtractive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.021",
+      "values": [
+        4,
+        8,
+        4,
+        1,
+        0,
+        1,
+        2,
+        3,
+        0,
+        0,
+        0,
+        4,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:none;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:replace;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.022",
+      "values": [
+        1,
+        2,
+        5,
+        4,
+        0,
+        0,
+        0,
+        2,
+        1,
+        1,
+        4,
+        2,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:none;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:multiply;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.023",
+      "values": [
+        5,
+        5,
+        4,
+        4,
+        3,
+        1,
+        1,
+        3,
+        2,
+        2,
+        8,
+        1,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:masking;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.024",
+      "values": [
+        4,
+        6,
+        1,
+        5,
+        5,
+        5,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:mask;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:additive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.025",
+      "values": [
+        4,
+        7,
+        4,
+        2,
+        6,
+        4,
+        0,
+        5,
+        2,
+        1,
+        11,
+        4,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:melt;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:replace;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.026",
+      "values": [
+        5,
+        4,
+        2,
+        6,
+        4,
+        2,
+        1,
+        0,
+        2,
+        0,
+        7,
+        2,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:multiply;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.027",
+      "values": [
+        5,
+        8,
+        1,
+        0,
+        8,
+        3,
+        0,
+        1,
+        1,
+        1,
+        5,
+        6,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:subtractive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.028",
+      "values": [
+        4,
+        1,
+        6,
+        1,
+        3,
+        0,
+        2,
+        5,
+        1,
+        2,
+        10,
+        5,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.029",
+      "values": [
+        1,
+        6,
+        3,
+        5,
+        7,
+        4,
+        2,
+        0,
+        0,
+        1,
+        7,
+        1,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:burn;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:masking;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.030",
+      "values": [
+        2,
+        5,
+        0,
+        2,
+        8,
+        0,
+        2,
+        0,
+        1,
+        0,
+        3,
+        5,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.031",
+      "values": [
+        0,
+        1,
+        0,
+        7,
+        4,
+        3,
+        1,
+        4,
+        2,
+        2,
+        5,
+        4,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:replace;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.032",
+      "values": [
+        3,
+        1,
+        3,
+        4,
+        5,
+        1,
+        2,
+        5,
+        0,
+        1,
+        9,
+        6,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:mask;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:subtractive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.033",
+      "values": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        3,
+        2,
+        4,
+        2,
+        0,
+        10,
+        3,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:burn;--urui-fx-blend-type:additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.034",
+      "values": [
+        3,
+        7,
+        6,
+        1,
+        6,
+        5,
+        1,
+        1,
+        1,
+        0,
+        2,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:melt;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.035",
+      "values": [
+        2,
+        0,
+        0,
+        4,
+        7,
+        1,
+        2,
+        1,
+        0,
+        0,
+        11,
+        0,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:burn;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:none;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.036",
+      "values": [
+        0,
+        6,
+        2,
+        1,
+        1,
+        2,
+        0,
+        1,
+        2,
+        0,
+        6,
+        2,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:fade;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:multiply;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.037",
+      "values": [
+        3,
+        3,
+        5,
+        7,
+        8,
+        1,
+        2,
+        2,
+        0,
+        1,
+        7,
+        6,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:subtractive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.038",
+      "values": [
+        1,
+        1,
+        2,
+        3,
+        8,
+        2,
+        1,
+        5,
+        1,
+        2,
+        11,
+        3,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.039",
+      "values": [
+        2,
+        4,
+        4,
+        5,
+        2,
+        2,
+        0,
+        1,
+        0,
+        0,
+        4,
+        5,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.040",
+      "values": [
+        0,
+        8,
+        6,
+        4,
+        2,
+        5,
+        0,
+        5,
+        0,
+        0,
+        8,
+        2,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:multiply;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.041",
+      "values": [
+        1,
+        6,
+        0,
+        0,
+        3,
+        2,
+        1,
+        4,
+        2,
+        2,
+        0,
+        6,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:subtractive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.042",
+      "values": [
+        2,
+        0,
+        2,
+        3,
+        5,
+        4,
+        0,
+        2,
+        1,
+        1,
+        2,
+        5,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:mask;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.043",
+      "values": [
+        1,
+        7,
+        5,
+        2,
+        6,
+        2,
+        1,
+        3,
+        0,
+        0,
+        5,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:melt;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.044",
+      "values": [
+        4,
+        3,
+        1,
+        3,
+        7,
+        0,
+        1,
+        3,
+        1,
+        0,
+        9,
+        2,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:burn;--urui-fx-blend-type:custom;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:multiply;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.045",
+      "values": [
+        4,
+        2,
+        1,
+        7,
+        1,
+        2,
+        0,
+        0,
+        0,
+        2,
+        1,
+        0,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:fade;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:none;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.046",
+      "values": [
+        4,
+        0,
+        5,
+        0,
+        2,
+        5,
+        1,
+        4,
+        1,
+        2,
+        6,
+        3,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.047",
+      "values": [
+        3,
+        4,
+        2,
+        0,
+        0,
+        0,
+        2,
+        4,
+        2,
+        1,
+        3,
+        1,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:none;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:masking;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.048",
+      "values": [
+        5,
+        1,
+        6,
+        2,
+        7,
+        5,
+        0,
+        2,
+        0,
+        1,
+        1,
+        1,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:burn;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:masking;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.049",
+      "values": [
+        3,
+        5,
+        4,
+        5,
+        8,
+        5,
+        1,
+        4,
+        0,
+        0,
+        5,
+        2,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:multiply;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.050",
+      "values": [
+        5,
+        0,
+        3,
+        2,
+        1,
+        0,
+        1,
+        1,
+        0,
+        2,
+        2,
+        3,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:fade;--urui-fx-blend-type:custom;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:additive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.051",
+      "values": [
+        3,
+        4,
+        3,
+        7,
+        1,
+        3,
+        1,
+        3,
+        0,
+        0,
+        11,
+        5,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:fade;--urui-fx-blend-type:additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.052",
+      "values": [
+        2,
+        6,
+        1,
+        6,
+        4,
+        1,
+        2,
+        5,
+        0,
+        1,
+        2,
+        0,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:none;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.053",
+      "values": [
+        5,
+        3,
+        2,
+        5,
+        2,
+        1,
+        1,
+        0,
+        2,
+        1,
+        10,
+        4,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:replace;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.054",
+      "values": [
+        2,
+        2,
+        5,
+        1,
+        5,
+        3,
+        1,
+        0,
+        2,
+        0,
+        8,
+        1,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:mask;--urui-fx-blend-type:additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:masking;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.055",
+      "values": [
+        3,
+        2,
+        0,
+        6,
+        2,
+        4,
+        1,
+        3,
+        0,
+        2,
+        6,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.056",
+      "values": [
+        0,
+        7,
+        5,
+        0,
+        4,
+        5,
+        2,
+        2,
+        2,
+        1,
+        9,
+        5,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.057",
+      "values": [
+        3,
+        0,
+        1,
+        3,
+        6,
+        3,
+        2,
+        0,
+        2,
+        0,
+        0,
+        1,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:melt;--urui-fx-blend-type:additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:masking;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.058",
+      "values": [
+        0,
+        8,
+        2,
+        5,
+        3,
+        4,
+        2,
+        1,
+        0,
+        1,
+        8,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.059",
+      "values": [
+        1,
+        8,
+        5,
+        6,
+        6,
+        0,
+        2,
+        2,
+        1,
+        2,
+        6,
+        5,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:melt;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.060",
+      "values": [
+        1,
+        5,
+        4,
+        3,
+        0,
+        5,
+        1,
+        0,
+        2,
+        2,
+        11,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:none;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.061",
+      "values": [
+        4,
+        5,
+        1,
+        4,
+        1,
+        3,
+        0,
+        5,
+        0,
+        2,
+        7,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:fade;--urui-fx-blend-type:additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.062",
+      "values": [
+        1,
+        7,
+        3,
+        4,
+        8,
+        4,
+        0,
+        3,
+        2,
+        1,
+        10,
+        2,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:multiply;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.063",
+      "values": [
+        0,
+        2,
+        6,
+        0,
+        5,
+        0,
+        2,
+        4,
+        0,
+        2,
+        11,
+        4,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:mask;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:replace;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.064",
+      "values": [
+        5,
+        7,
+        0,
+        7,
+        6,
+        0,
+        2,
+        0,
+        2,
+        2,
+        8,
+        3,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:melt;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.065",
+      "values": [
+        0,
+        3,
+        1,
+        2,
+        3,
+        2,
+        0,
+        2,
+        1,
+        0,
+        11,
+        2,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:multiply;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.066",
+      "values": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        0,
+        1,
+        2,
+        1,
+        6,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.067",
+      "values": [
+        1,
+        4,
+        0,
+        1,
+        8,
+        4,
+        2,
+        5,
+        1,
+        1,
+        1,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.068",
+      "values": [
+        2,
+        3,
+        6,
+        3,
+        0,
+        0,
+        2,
+        5,
+        2,
+        2,
+        5,
+        5,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:none;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.069",
+      "values": [
+        0,
+        6,
+        6,
+        7,
+        8,
+        3,
+        0,
+        3,
+        2,
+        0,
+        4,
+        1,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:masking;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.070",
+      "values": [
+        0,
+        1,
+        1,
+        5,
+        2,
+        2,
+        0,
+        4,
+        0,
+        0,
+        2,
+        1,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:masking;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.071",
+      "values": [
+        4,
+        0,
+        2,
+        1,
+        4,
+        4,
+        0,
+        5,
+        2,
+        2,
+        3,
+        2,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:multiply;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.072",
+      "values": [
+        5,
+        3,
+        4,
+        0,
+        5,
+        1,
+        1,
+        1,
+        2,
+        0,
+        3,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:mask;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.073",
+      "values": [
+        5,
+        5,
+        2,
+        6,
+        5,
+        1,
+        2,
+        5,
+        0,
+        0,
+        4,
+        3,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:mask;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.074",
+      "values": [
+        4,
+        3,
+        3,
+        4,
+        4,
+        2,
+        2,
+        2,
+        1,
+        0,
+        8,
+        6,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:multiply;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:subtractive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.075",
+      "values": [
+        3,
+        6,
+        5,
+        6,
+        0,
+        2,
+        1,
+        1,
+        0,
+        2,
+        1,
+        4,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:none;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:replace;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.076",
+      "values": [
+        3,
+        7,
+        1,
+        1,
+        7,
+        4,
+        2,
+        0,
+        1,
+        0,
+        4,
+        6,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:burn;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:subtractive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.077",
+      "values": [
+        2,
+        8,
+        4,
+        7,
+        1,
+        4,
+        0,
+        2,
+        0,
+        0,
+        9,
+        3,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:fade;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.078",
+      "values": [
+        5,
+        7,
+        5,
+        0,
+        3,
+        0,
+        0,
+        3,
+        1,
+        2,
+        1,
+        3,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:additive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.079",
+      "values": [
+        0,
+        1,
+        4,
+        2,
+        0,
+        5,
+        1,
+        1,
+        1,
+        1,
+        7,
+        0,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:none;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:none;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.080",
+      "values": [
+        3,
+        0,
+        1,
+        7,
+        3,
+        5,
+        0,
+        3,
+        2,
+        2,
+        4,
+        4,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:replace;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.081",
+      "values": [
+        4,
+        0,
+        1,
+        7,
+        0,
+        5,
+        1,
+        1,
+        1,
+        1,
+        10,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:none;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.082",
+      "values": [
+        1,
+        2,
+        6,
+        5,
+        4,
+        3,
+        0,
+        4,
+        2,
+        2,
+        3,
+        1,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:masking;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.083",
+      "values": [
+        2,
+        7,
+        6,
+        3,
+        1,
+        0,
+        0,
+        3,
+        2,
+        0,
+        7,
+        5,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:fade;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.084",
+      "values": [
+        1,
+        4,
+        1,
+        2,
+        4,
+        0,
+        0,
+        2,
+        0,
+        0,
+        10,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.085",
+      "values": [
+        0,
+        1,
+        0,
+        5,
+        1,
+        0,
+        2,
+        2,
+        1,
+        2,
+        0,
+        2,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:fade;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:multiply;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.086",
+      "values": [
+        0,
+        8,
+        5,
+        7,
+        7,
+        2,
+        1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:burn;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:replace;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.087",
+      "values": [
+        4,
+        2,
+        3,
+        6,
+        8,
+        1,
+        2,
+        2,
+        0,
+        0,
+        5,
+        1,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:masking;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.088",
+      "values": [
+        1,
+        8,
+        2,
+        0,
+        2,
+        0,
+        2,
+        4,
+        0,
+        2,
+        7,
+        2,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:multiply;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.089",
+      "values": [
+        3,
+        6,
+        4,
+        4,
+        6,
+        4,
+        2,
+        5,
+        2,
+        2,
+        10,
+        5,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:melt;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.090",
+      "values": [
+        0,
+        2,
+        5,
+        5,
+        6,
+        3,
+        1,
+        1,
+        2,
+        2,
+        7,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:melt;--urui-fx-blend-type:additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.091",
+      "values": [
+        3,
+        4,
+        0,
+        3,
+        7,
+        0,
+        1,
+        3,
+        0,
+        2,
+        8,
+        3,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:burn;--urui-fx-blend-type:custom;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:additive;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.092",
+      "values": [
+        4,
+        4,
+        5,
+        4,
+        5,
+        5,
+        2,
+        5,
+        0,
+        2,
+        0,
+        0,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:mask;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:none;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.093",
+      "values": [
+        3,
+        5,
+        0,
+        4,
+        3,
+        3,
+        2,
+        4,
+        0,
+        1,
+        2,
+        5,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.094",
+      "values": [
+        5,
+        3,
+        0,
+        1,
+        6,
+        0,
+        2,
+        0,
+        1,
+        2,
+        9,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:melt;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.095",
+      "values": [
+        3,
+        8,
+        2,
+        3,
+        5,
+        0,
+        2,
+        2,
+        0,
+        1,
+        1,
+        5,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:mask;--urui-fx-blend-type:custom;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.096",
+      "values": [
+        3,
+        7,
+        3,
+        2,
+        2,
+        3,
+        1,
+        0,
+        2,
+        1,
+        0,
+        4,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:replace;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.097",
+      "values": [
+        4,
+        0,
+        2,
+        1,
+        7,
+        4,
+        0,
+        0,
+        1,
+        1,
+        5,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:burn;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.098",
+      "values": [
+        5,
+        2,
+        3,
+        5,
+        0,
+        0,
+        1,
+        4,
+        0,
+        1,
+        9,
+        1,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:none;--urui-fx-blend-type:custom;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:masking;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.099",
+      "values": [
+        5,
+        1,
+        3,
+        6,
+        8,
+        1,
+        2,
+        0,
+        0,
+        1,
+        8,
+        2,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:multiply;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.100",
+      "values": [
+        2,
+        3,
+        3,
+        6,
+        8,
+        1,
+        1,
+        5,
+        2,
+        0,
+        0,
+        6,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:none;--urui-fx-detail-filter:subtractive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.101",
+      "values": [
+        5,
+        5,
+        5,
+        1,
+        3,
+        0,
+        0,
+        3,
+        0,
+        0,
+        9,
+        2,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:multiply;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.102",
+      "values": [
+        4,
+        8,
+        4,
+        5,
+        4,
+        0,
+        1,
+        4,
+        0,
+        1,
+        11,
+        1,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:rgb-shift;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:custom;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:masking;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.103",
+      "values": [
+        5,
+        5,
+        4,
+        7,
+        7,
+        5,
+        2,
+        2,
+        2,
+        1,
+        6,
+        4,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:burn;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:replace;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.104",
+      "values": [
+        0,
+        8,
+        1,
+        3,
+        8,
+        3,
+        2,
+        2,
+        1,
+        1,
+        2,
+        2,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:contrast;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:multiply;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.105",
+      "values": [
+        2,
+        7,
+        2,
+        7,
+        2,
+        1,
+        2,
+        5,
+        1,
+        2,
+        3,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.106",
+      "values": [
+        5,
+        4,
+        2,
+        2,
+        6,
+        4,
+        2,
+        4,
+        0,
+        1,
+        4,
+        0,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:melt;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:none;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.107",
+      "values": [
+        4,
+        5,
+        3,
+        3,
+        8,
+        5,
+        2,
+        5,
+        2,
+        0,
+        10,
+        0,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:pattern;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle-gradient;--urui-fx-detail-filter:none;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.108",
+      "values": [
+        5,
+        1,
+        5,
+        1,
+        6,
+        5,
+        2,
+        5,
+        2,
+        1,
+        11,
+        1,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:melt;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:masking;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.109",
+      "values": [
+        0,
+        6,
+        6,
+        3,
+        0,
+        1,
+        1,
+        2,
+        1,
+        0,
+        8,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:none;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.110",
+      "values": [
+        0,
+        2,
+        1,
+        7,
+        0,
+        5,
+        1,
+        0,
+        0,
+        2,
+        2,
+        0,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:none;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:none;--urui-fx-edge-mode:none;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-detail-filter:none;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.111",
+      "values": [
+        0,
+        7,
+        5,
+        4,
+        5,
+        2,
+        2,
+        3,
+        2,
+        0,
+        6,
+        5,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:mask;--urui-fx-blend-type:multiply;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.112",
+      "values": [
+        3,
+        4,
+        0,
+        4,
+        1,
+        5,
+        2,
+        3,
+        1,
+        1,
+        3,
+        6,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:none;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:fade;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:subtractive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.113",
+      "values": [
+        4,
+        6,
+        6,
+        4,
+        5,
+        3,
+        2,
+        5,
+        2,
+        2,
+        5,
+        0,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:multiply-additive;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:pixelation;--urui-fx-transition-filter:mask;--urui-fx-blend-type:additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:none;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.114",
+      "values": [
+        4,
+        7,
+        1,
+        6,
+        2,
+        0,
+        0,
+        3,
+        2,
+        1,
+        5,
+        6,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:hsv-modifier;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:cutoff;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:subtractive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.115",
+      "values": [
+        4,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        5,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:blur-fast;--urui-fx-transition-filter:fade;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:radial-fast;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.116",
+      "values": [
+        4,
+        0,
+        1,
+        7,
+        3,
+        4,
+        2,
+        2,
+        2,
+        2,
+        7,
+        1,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:multiply;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:masking;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.117",
+      "values": [
+        0,
+        3,
+        2,
+        2,
+        4,
+        2,
+        0,
+        2,
+        1,
+        0,
+        6,
+        6,
+        4
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-medium;--urui-fx-transition-filter:shiny;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow3;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:subtractive;--urui-fx-flip:4;"
+    },
+    {
+      "id": "Pairwise.118",
+      "values": [
+        1,
+        3,
+        4,
+        0,
+        7,
+        2,
+        0,
+        4,
+        1,
+        0,
+        1,
+        5,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:grayscale;--urui-fx-color-filter:subtractive;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:burn;--urui-fx-blend-type:multiply;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:horizontal;--urui-fx-detail-filter:multiply-additive;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.119",
+      "values": [
+        0,
+        5,
+        5,
+        3,
+        6,
+        1,
+        0,
+        5,
+        2,
+        0,
+        3,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:multiply-luminance;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:melt;--urui-fx-blend-type:alpha-blend;--urui-fx-target-mode:none;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:vertical;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.120",
+      "values": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        4,
+        0,
+        1,
+        2,
+        1,
+        11,
+        2,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:none;--urui-fx-color-filter:additive;--urui-fx-gradation-color-filter:subtractive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:burn;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:none;--urui-fx-shadow-mode:shadow;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:diagonal;--urui-fx-detail-filter:multiply;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.121",
+      "values": [
+        4,
+        1,
+        4,
+        0,
+        3,
+        2,
+        1,
+        3,
+        1,
+        2,
+        4,
+        6,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:replace;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:dissolve;--urui-fx-blend-type:multiply;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:vertical-gradient;--urui-fx-detail-filter:subtractive;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.122",
+      "values": [
+        5,
+        1,
+        2,
+        6,
+        5,
+        4,
+        2,
+        3,
+        1,
+        0,
+        7,
+        0,
+        1
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:posterize;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:edge-luminance;--urui-fx-transition-filter:mask;--urui-fx-blend-type:soft-additive;--urui-fx-target-mode:luminance;--urui-fx-shadow-mode:outline;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:diagonal-to-right-bottom;--urui-fx-detail-filter:none;--urui-fx-flip:1;"
+    },
+    {
+      "id": "Pairwise.123",
+      "values": [
+        4,
+        0,
+        2,
+        3,
+        5,
+        0,
+        0,
+        4,
+        2,
+        2,
+        8,
+        0,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:retro;--urui-fx-color-filter:none;--urui-fx-gradation-color-filter:additive;--urui-fx-sampling-filter:blur-detail;--urui-fx-transition-filter:mask;--urui-fx-blend-type:custom;--urui-fx-target-mode:none;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:shiny;--urui-fx-pattern-area:edge;--urui-fx-gradation-mode:diagonal-to-left-bottom;--urui-fx-detail-filter:none;--urui-fx-flip:2;"
+    },
+    {
+      "id": "Pairwise.124",
+      "values": [
+        2,
+        1,
+        6,
+        7,
+        7,
+        5,
+        1,
+        5,
+        1,
+        1,
+        6,
+        2,
+        8
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:sepia;--urui-fx-color-filter:multiply;--urui-fx-gradation-color-filter:multiply-additive;--urui-fx-sampling-filter:edge-alpha;--urui-fx-transition-filter:burn;--urui-fx-blend-type:multiply-additive;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:mirror;--urui-fx-edge-mode:plain;--urui-fx-pattern-area:inner;--urui-fx-gradation-mode:radial-detail;--urui-fx-detail-filter:multiply;--urui-fx-flip:8;"
+    },
+    {
+      "id": "Pairwise.125",
+      "values": [
+        3,
+        4,
+        5,
+        0,
+        0,
+        0,
+        1,
+        4,
+        0,
+        0,
+        9,
+        4,
+        2
+      ],
+      "css": "--urui-fx-transition-texture:url('pattern.png');--urui-fx-detail-texture:url('pattern.png');--urui-fx-gradation-gradient:url('gradient-lut.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;--urui-fx-detail-intensity:.5;--urui-fx-sampling-intensity:.5;--urui-fx-tone-intensity:.5;--urui-fx-color-intensity:.5;--urui-fx-color:#b33366cc;--urui-fx-edge-shiny-auto-play-speed:0;--urui-fx-transition-auto-play-speed:0;--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;--urui-fx-tone-filter:negative;--urui-fx-color-filter:replace;--urui-fx-gradation-color-filter:multiply-luminance;--urui-fx-sampling-filter:none;--urui-fx-transition-filter:none;--urui-fx-blend-type:custom;--urui-fx-target-mode:hue;--urui-fx-shadow-mode:outline8;--urui-fx-edge-mode:none;--urui-fx-pattern-area:all;--urui-fx-gradation-mode:angle;--urui-fx-detail-filter:replace;--urui-fx-flip:2;"
+    }
+  ],
+  "oracle": "leaf versus captured subtree at frozen tolerance; source single modes and mandatory combinations checked separately; whole-node blend uses URUI contract"
+}

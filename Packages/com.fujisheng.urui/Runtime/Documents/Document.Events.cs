@@ -11,50 +11,44 @@ namespace URUI.Documents
     public sealed partial class Document
     {
         static readonly NativeMethods.ElementEventCallback eventCallback = ReceiveNativeEvent;
-        static Document eventDocument;
-        readonly Queue<(Action action, bool invalidates)> deferred = new Queue<(Action, bool)>();
+        internal static NativeMethods.ElementEventCallback NativeEventCallback => eventCallback;
         int invalidatingRequests;
         internal bool HasPendingInvalidation => invalidatingRequests > 0;
         int eventDepth;
         int nativeDepth;
-        bool flushingDeferred;
+        int imageCallbackDepth;
+        internal void BeginImageCallback() { nativeDepth++; imageCallbackDepth++; surface.BeginDispatch(); }
+        internal void EndImageCallback() { imageCallbackDepth--; nativeDepth--; surface.EndDispatch(); }
 
         internal void StartEvents()
         {
-            if (NativeMethods.urui_element_api_version() != 1)
+            if (NativeMethods.urui_animation_api_version()!=1)throw new NotSupportedException("需要 URUI 命名动画协议 v1。");
+            if (NativeMethods.urui_element_api_version() != 2 || Marshal.SizeOf<ElementEventNative>() != 80)
             {
-                throw new InvalidOperationException("URUI 原生插件需要元素协议版本 1。");
+                throw new InvalidOperationException("URUI 原生插件需要元素协议版本 2 和 80 字节事件包。");
             }
 
-            eventDocument = this;
-            if (NativeMethods.urui_set_event_callback(eventCallback) != 1 || NativeMethods.urui_document_listen() != 1)
+            if (NativeMethods.urui_document_listen(NativeHandle) != 1)
             {
                 throw new InvalidOperationException("URUI 同步事件初始化失败。");
-            }
-        }
-
-        internal void StopEvents()
-        {
-            if (ReferenceEquals(eventDocument, this))
-            {
-                NativeMethods.urui_set_event_callback(null);
-                eventDocument = null;
             }
         }
 
         [AOT.MonoPInvokeCallback(typeof(NativeMethods.ElementEventCallback))]
         static int ReceiveNativeEvent(ref ElementEventNative native)
         {
-            var owner = eventDocument;
+            var owner = URUI.Hosting.Surface.FindDocument(native.document);
             if (ReferenceEquals(owner, null))
             {
                 return 2;
             }
+            if (owner.changingFragment) return 0;
 
+            owner.surface.BeginDispatch();
             owner.nativeDepth++;
             try
             {
-                if (!owner || !owner.isActiveAndEnabled || !owner.IsLoaded || owner.HasPendingInvalidation)
+                if (!owner || !owner.isActiveAndEnabled || !owner.IsLoaded || owner.NativeHandle != native.document || owner.HasPendingInvalidation)
                 {
                     return 2;
                 }
@@ -65,7 +59,7 @@ namespace URUI.Documents
                     return 2;
                 }
 
-                if (!target.EnabledInHierarchy && native.type != 5 && native.type != 12 && native.type != 15 && native.type != 16)
+                if (!target.EnabledInHierarchy && native.type != 5 && native.type != 12 && native.type != 15 && native.type != 16 && native.type != 17 && native.type != 18 && native.type != 19)
                 {
                     return 2;
                 }
@@ -87,16 +81,26 @@ namespace URUI.Documents
 
                 if (value is KeyboardEventBase key)
                 {
-                    key.KeyCode = DocumentInput.FromNativeKey(native.key);
+                    key.KeyCode = URUI.Hosting.SurfaceInput.FromNativeKey(native.key);
                     key.Modifiers = (InputModifiers)native.modifiers;
                 }
                 if (value is TextInputEvent text)
                 {
                     text.Text = Marshal.PtrToStringUTF8(native.text) ?? "";
                 }
+                if(value is AnimationEndEvent||value is AnimationCreatedEvent)
+                {
+                    var bytes=new byte[128];var read=NativeMethods.urui_animation_current_event(native.document, bytes,bytes.Length,out var identity,out var iterations);
+                    if(read<0&&-read>bytes.Length){bytes=new byte[-read];read=NativeMethods.urui_animation_current_event(native.document, bytes,bytes.Length,out identity,out iterations);}
+                    if(read<=0)throw new InvalidOperationException("原生命名动画事件无效。");
+                    var animationName=System.Text.Encoding.UTF8.GetString(bytes,0,read-1);var property=Marshal.PtrToStringUTF8(native.text)??"";
+                    if(value is AnimationEndEvent animation){animation.PropertyName=property;animation.AnimationName=animationName;animation.Identity=identity;}
+                    if(value is AnimationCreatedEvent created){created.PropertyName=property;created.AnimationName=animationName;created.Identity=identity;created.Iterations=iterations;}
+                }
+                if (value is TransitionEndEvent transition) { transition.PropertyName = Marshal.PtrToStringUTF8(native.text) ?? ""; }
 
                 owner.DispatchEvent(target, value);
-                // Managed propagation has already completed. Let RmlUi execute its default
+                // Managed propagation has already completed. Let URUI execute its default
                 // action unless explicitly cancelled, preserving StopPropagation semantics.
                 return value.IsDefaultPrevented || owner.HasPendingInvalidation || !owner.IsLoaded ? 2 : 0;
             }
@@ -108,6 +112,7 @@ namespace URUI.Documents
             finally
             {
                 owner.nativeDepth--;
+                owner.surface.EndDispatch();
             }
         }
 
@@ -138,6 +143,7 @@ namespace URUI.Documents
             uint version = generation;
             bool wasAttached = target.IsAttached;
             eventDepth++;
+            surface.BeginDispatch();
             try
             {
                 for (int i = path.Count - 1; i >= 0; i--)
@@ -182,58 +188,70 @@ namespace URUI.Documents
             finally
             {
                 eventDepth--;
+                surface.EndDispatch();
                 value.Dispatching = false;
             }
             bool CanDeliver() => IsCurrent(version) && target.IsValid && (!wasAttached || target.IsAttached)
                 && !HasPendingInvalidation && !value.IsImmediatePropagationStopped;
         }
 
-        internal bool Defer(Action action, bool invalidates = true)
+        internal bool Defer(Action action, bool invalidates = true, bool catchExceptions = false)
         {
-            if (eventDepth == 0 && nativeDepth == 0)
-            {
-                return false;
-            }
-
-            deferred.Enqueue((action, invalidates));
-            if (invalidates)
-            {
-                invalidatingRequests++;
-            }
-
-            return true;
+            if (effectCallbackDepth != 0 || surface && surface.IsEffectCallback) throw new InvalidOperationException("Effect Prepare/Record 中禁止修改 DOM 或文档。请使用不可变 EffectFrame。");
+            if (eventDepth == 0 && nativeDepth == 0 && (ReferenceEquals(surface, null) || !surface.IsDispatching)) return false;
+            EnqueueDeferred(action, invalidates, catchExceptions); return true;
         }
 
-        internal void BeginControlUpdate() { CheckThread(); eventDepth++; }
-        internal void EndControlUpdate() { eventDepth--; FinishNativeCall(); }
+        bool DeferLifecycle(Action action)
+        {
+            if (!changingContent) return Defer(action);
+            EnqueueDeferred(action, true); return true;
+        }
+
+        internal readonly struct DeferredAction
+        {
+            readonly Document owner;
+            readonly Action action;
+            readonly FragmentChange fragment;
+            readonly bool invalidates,catchExceptions;
+            internal DeferredAction(Document owner,Action action,bool invalidates,bool catchExceptions)
+            {
+                this.owner=owner;this.action=action;fragment=owner?.fragmentChange;
+                this.invalidates=invalidates;this.catchExceptions=catchExceptions;
+            }
+            internal void Invoke()
+            {
+                if(!ReferenceEquals(owner,null)&&invalidates)owner.invalidatingRequests--;
+                if(fragment!=null&&!fragment.Committed)return;
+                if(!catchExceptions){action();return;}
+                try{action();}catch(Exception error){Debug.LogException(error);}
+            }
+        }
+
+        internal void EnqueueDeferred(Action action, bool invalidates, bool catchExceptions = false)
+        {
+            if (ReferenceEquals(surface, null)) throw new InvalidOperationException("文档回调缺少所属 Surface。");
+            if (invalidates) invalidatingRequests++;
+            surface.Enqueue(new DeferredAction(this,action,invalidates,catchExceptions));
+        }
+
+        /// <summary>在当前同步事件和原生回调返回后执行；空闲时立即执行，不等待下一帧。</summary>
+        /// <remarks>适合需要同步创建/克隆节点的应用操作。调度本身不停止当前事件传播；延后操作的异常与事件回调一样记录。</remarks>
+        public void RunAfterEvent(Action action)
+        {
+            CheckThread();
+            if (action == null) { throw new ArgumentNullException(nameof(action)); }
+            if (Defer(action, false, true)) { return; }
+            action();
+        }
+
+        internal void BeginControlUpdate() { CheckThread(); eventDepth++; surface.BeginDispatch(); }
+        internal void EndControlUpdate() { eventDepth--; surface.EndDispatch(); FinishNativeCall(); }
 
         internal void FinishNativeCall()
         {
-            if (eventDepth != 0 || nativeDepth != 0 || flushingDeferred)
-            {
-                return;
-            }
-
-            flushingDeferred = true;
-            try
-            {
-                if (host && host.Ready)
-                {
-                    NativeMethods.urui_process_deferred_operations();
-                }
-
-                while (deferred.Count > 0)
-                {
-                    var next = deferred.Dequeue();
-                    if (next.invalidates)
-                    {
-                        invalidatingRequests--;
-                    }
-
-                    next.action();
-                }
-            }
-            finally { flushingDeferred = false; }
+            if (eventDepth != 0 || nativeDepth != 0 || changingContent) return;
+            if (!ReferenceEquals(surface, null)) surface.FinishNativeCall();
         }
     }
 }

@@ -1,8 +1,12 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using URUI.Documents;
 using URUI.Events;
+using URUI.Hosting;
+using URUI.Resources;
+using UnityResources = UnityEngine.Resources;
 
 namespace URUI.Samples
 {
@@ -12,12 +16,6 @@ namespace URUI.Samples
     [RequireComponent(typeof(Document))]
     public sealed class HelloUrui : MonoBehaviour
     {
-        const string Markup = @"<rml><head><style>
-body { display:block; font-family:__URUI_FONT__; color:white; font-size:24px; margin:24px; }
-div { display:block; }
-#panel { width:360px; height:180px; padding:20px; background-color:#204080; }
-#action { width:220px; height:50px; margin-top:24px; background-color:#4070b0; }
-</style></head><body><div id='panel'><div id='label'>Hello URUI</div><div id='action'>Click to count</div></div></body></rml>";
         Document document;
         Camera ownedCamera;
         IDisposable clickSubscription;
@@ -35,6 +33,10 @@ div { display:block; }
             }
 
             document = GetComponent<Document>();
+            if (!document.Surface)
+            {
+                document.Surface = GetComponent<Surface>() ?? gameObject.AddComponent<Surface>();
+            }
             document.Loaded += OnLoaded;
             if (document.IsLoaded)
             {
@@ -58,13 +60,27 @@ div { display:block; }
                 yield break;
             }
 
-            if (document.Source)
+            var source = document.Source ? document.Source : UnityResources.Load<TextAsset>("URUI/Samples/Hello");
+            if (!source)
             {
-                document.Load(document.Source);
+                throw new InvalidOperationException("请同时导入 Hello URUI 样例中的 HTML 资源。");
             }
-            else
+            var files = new List<TextResource>(document.TextResources);
+            AddFile("/urui/base.css", "URUI/base");
+            foreach (var family in new[] { "Serif", "Sans", "Mono" })
+                foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
+                {
+                    var name = "Liberation" + family + "-" + face + ".ttf";
+                    AddFile("/urui/Fonts/" + name + ".bytes", "URUI/Fonts/" + name);
+                }
+            document.TextResources = files.ToArray();
+            document.Load(source, document.Source ? document.SourceUrl : "samples/hello/Hello.html");
+
+            void AddFile(string uri, string resource)
             {
-                document.LoadMarkup(Markup);
+                if (files.Exists(file => file.Source == uri)) return;
+                files.Add(new TextResource(uri, UnityResources.Load<TextAsset>(resource)
+                    ?? throw new InvalidOperationException("样例缺少作者依赖：" + resource)));
             }
         }
 
@@ -72,15 +88,17 @@ div { display:block; }
         {
             // 重载会替换节点树；每次 Loaded 都重新查询，并释放上一轮订阅。
             clickSubscription?.Dispose();
-            loadedDocument.Root.Q("label").Text = "Hello URUI · " + count;
-            clickSubscription = loadedDocument.Root.Q("action").RegisterCallback<ClickEvent>(OnClicked);
+            loadedDocument.Q("label").Text = "Hello URUI · " + count;
+            clickSubscription = loadedDocument.Q("action").RegisterCallback<ClickEvent>(OnClicked);
         }
 
         void OnClicked(ClickEvent notification)
         {
             count++;
-            document.Root.Q("label").Text = "Clicks: " + count;
-            document.Root.Q("panel").Style.SetBackgroundColor(count % 2 == 0 ? new Color(.12f, .25f, .5f) : new Color(.12f, .4f, .3f));
+            document.Q("label").Text = "Clicks: " + count;
+            var color = count % 2 == 0 ? new Color(.12f, .25f, .5f) : new Color(.12f, .4f, .3f);
+            // 原生事件返回后再写动态颜色，沿用文档提供的安全调度入口。
+            document.RunAfterEvent(() => document.Q("panel").Style.SetBackgroundColor(color));
         }
 
         void OnDisable()

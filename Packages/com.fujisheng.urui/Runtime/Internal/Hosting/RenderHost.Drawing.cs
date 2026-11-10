@@ -1,519 +1,160 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
 using URUI.Internal.Interop;
 using URUI.Internal.Rendering.Meshes;
-using URUI.Internal.Rendering.Retention;
 
 namespace URUI.Internal.Hosting
 {
-    // 逐帧录制绘制命令；先处理安全退役和路径选择，再按文档命令顺序提交。
     internal sealed partial class RenderHost
     {
-        // A partial recording is never reusable. Preserve this invalidation even when
-        // debug instrumentation is compiled out or a resource upload throws.
-        void DrawFrame(ref PhaseFrame phase)
+        bool DrawFrame(ref PhaseFrame phase)
         {
-            bool completed = false;
-            try
-            {
-                DrawFrameCore(ref phase);
-                completed = true;
-            }
+            if(!RestoreSceneCamera())return false;
+            var completed=false;
+            effectSubmitted.Clear();
+            OwnerSurface.BeginDispatch();
+            try{DrawFrameCore(ref phase);completed=true;}
             finally
             {
-                if (!completed)
-                {
-                    InvalidateRecording(true);
-                }
+                if(!completed)InvalidateRecording(true);
+                OwnerSurface.EndDispatch();OwnerSurface.FinishNativeCall();
             }
+            return true;
         }
 
-        /// <summary>
-        /// 优先尝试满足资源/相机约定的记录路径，其余情况重新读取原生有序命令。
-        /// 快路径失败后，只有明确取得回退许可才能重绘，避免一次帧内重复提交。
-        /// </summary>
         void DrawFrameCore(ref PhaseFrame phase)
         {
+            using var profile = recordingPhase.Auto();
+            RequireRecordingReady();
+            RecordedGeometryDraws=0;
+            RecordedRasterResolves=0;
+            borrowedTextures.Validate();shaderPropertyState.Reset();
+            ShaderContractActive=propertyContract&&propertyContract.Supports(material);
 #if URUI_DEBUG
-            using var drawScope = drawMarker.Auto();
-            ResetParameterRootMetrics();
+            PropertyCalls=PropertyWriteCalls=PropertyReuseHits=0;recordCallsThisFrame=0;
 #endif
-            RequireNativeStopPermission();
-            borrowedTextures.Validate();
-            shaderPropertyState.Reset();
+            foreach(var owner in OwnerSurface.DocumentsSnapshot())if(owner&&owner.IsLoaded)owner.UpdateEffectParameters();
+            using(nativeRenderPhase.Auto()){NativeMethods.urui_render();}
+            var count=NativeMethods.urui_command_count();
+            if(count<0)throw new InvalidOperationException("URUI 绘制命令数量无效。");
+            var unchanged=OrdinaryCommandsUnchanged(count);
+            if(commands.Length<count)commands=new CommandNative[Math.Max(count,commands.Length*2+16)];
+            if(commandTransforms.Length<count*16)commandTransforms=new float[Math.Max(count*16,commandTransforms.Length*2+256)];
+            var read=unchanged?count:NativeMethods.urui_get_commands(commands,count);
+            if(read!=count)throw new InvalidOperationException("URUI 绘制命令数量变化。");
+            ReadPaintCommands();
+            foreach(var owner in OwnerSurface.DocumentsSnapshot())if(owner&&owner.IsLoaded)owner.FreezeEffectParameters();
+            PrepareImageEffects();ReadLayerCommands();
+            if(!unchanged&&NativeMethods.urui_get_command_transforms(commandTransforms,commandTransforms.Length)!=read)
+                throw new InvalidOperationException("URUI 绘制变换数量变化。");
 #if URUI_DEBUG
-            PropertyCalls = PropertyWriteCalls = PropertyReuseHits = 0;
-            recordCallsThisFrame = 0;
+            DrawCommands=read;
 #endif
-            recordingWarmupPending = false;
-            recordingFinite = true;
-#if URUI_DEBUG
-            LastRecording = default;
-#endif
-            if (retentionSchedule.HasValue && retentionSchedule.Value != deferRetainedStateCapture)
+            buffer.Clear();
+            PrepareLayerCache(read);BeginLayers();batchCursor=0;
+            batchGroup.Clear();batchVertexCount=batchIndexCount=batchTextureCount=0;
+            pendingGeometry.Clear();segmentCursor=0;
+            if(submissionTarget.HasValue){buffer.SetRenderTarget(submissionTarget.Value);buffer.SetViewport(submissionViewport);}
+            RetireReleasedTextures(ref phase);
+            buffer.SetViewProjectionMatrices(Matrix4x4.identity,Matrix4x4.Ortho(0,UiWidth,UiHeight,0,-1,1));
+            if(ReplayOrdinaryGeometry(read,ref phase))return;
+            var used=frameUsedGeometry;used.Clear();
+            using(commandPhase.Auto())
             {
-                InvalidateRecording(false);
-            }
-
-            retentionSchedule = deferRetainedStateCapture;
-            bool requested = retainUnchangedCommands && recordingOwnership == RecordingOwnership.HostExclusive;
-            RecordingKey recordingKey = default;
-            bool eligible = !deferRetainedStateCapture
-                && requested
-                && RecordingKey.TryCapture(this, material, targetCamera, recordedPassName, out recordingKey);
-            bool parameterRequested = ParameterRootEligible();
-            if (!parameterRequested)
+            for(var index=0;index<read;index++)
             {
-                StopParameterRoot();
-                RequireNativeStopPermission();
-            }
-
-            bool tracking = ConfigureNativeRetention(parameterRequested || (deferRetainedStateCapture ? requested : eligible));
-            if (!tracking)
-            {
-                retainedRecording.Invalidate();
-                planStability.Reset();
-            }
-
-            ShaderContractActive = reuseEquivalentPropertyState && propertyContract && propertyContract.Supports(material);
-#if URUI_DEBUG
-            if (propertyDependencyDiagnostics)
-            {
-                propertyDependencies.Reset();
-            }
-#endif
-            if (meshBatchMode.HasValue && meshBatchMode.Value != batchDisjointCommands)
-            {
-                ClearBatches();
-                foreach (var geometry in meshes.Values)
+                ApplyLayers(index,ref phase);
+                var command=LayerInputClip(commands[index]);
+                if(reuseLayerContents&&activeLayer!=0){if(command.geometry!=0)used.Add(command.geometry);continue;}
+                var transform=new Matrix4x4();
+                for(var component=0;component<16;component++)transform[component]=commandTransforms[index*16+component];
+                if(paintCommands.TryGetValue(index,out var paint)&&paint.reserved==0)
                 {
-                    if (geometry.mesh)
-                    {
-                        Destroy(geometry.mesh);
-                    }
+                    DrawPaint(paint,command,transform,ref phase);continue;
                 }
-
-                meshes.Clear();
-            }
-
-            meshBatchMode = batchDisjointCommands;
-#if URUI_DEBUG
-            long t = phaseDiagnostics ? Now() : 0;
-            using (renderMarker.Auto())
-#endif
-            {
-                NativeMethods.urui_render();
-            }
-#if URUI_DEBUG
-            if (phaseDiagnostics)
-            {
-                phase.nativeRenderMs = Millis(Now() - t);
-                phase.nativeCalls++;
-                t = Now();
-            }
-#endif
-            parameterPrepared = false;
-            if (parameterRequested && tracking && PrepareParameterRoot(ref phase))
-            {
-                return;
-            }
-
-            RequireNativeStopPermission();
-            UruiFrameStampNative stamp = default;
-            if (tracking)
-            {
-                if (NativeMethods.urui_render_plan_stamp(out stamp) != 1)
+                if(command.geometry==0)continue;
+                var geometry=ReadGeometry(command.geometry);
+                if(geometry==null)continue;
+                used.Add(command.geometry);
+                if(paintCommands.TryGetValue(index,out var direct)&&direct.reserved==2)
                 {
-                    retainedRecording.Invalidate();
+                    FlushGroup(ref phase);DrawDirectColorFilter(direct,command,transform,SourceMesh(geometry),ref phase);continue;
                 }
-#if URUI_DEBUG
-                if (phaseDiagnostics)
+                if(paintCommands.TryGetValue(index,out var effect)&&effect.reserved==1)
                 {
-                    phase.nativeCalls++;
+                    if(DrawImageEffect(effect,command,transform,SourceMesh(geometry),ref phase))continue;
                 }
-#endif
-                bool repeated = planStability.Observe(stamp);
-                if (deferRetainedStateCapture)
+                var affine=BatchRules.EquivalentAffine2D(transform,transform)&&float.IsFinite(command.tx)&&float.IsFinite(command.ty);
+                var item=new BatchItem{command=command,geometry=geometry,transform=transform,transformed=!affine};
+                if(ShaderContractActive&&affine)
                 {
-                    eligible = repeated && RecordingKey.TryCapture(this, material, targetCamera, recordedPassName, out recordingKey);
+                    SetDrawBounds(ref item);
+                    if(FullyClipped(item))continue;
+                    pendingGeometry.Add(item);
+                    if(pendingGeometry.Count==4096)FlushGroup(ref phase);
                 }
-#if URUI_DEBUG
-                LastRecording = new RecordingStats
+                else
                 {
-                    capability = eligible && stamp.flags == 1,
-                    nativeCommands = (int)stamp.count,
-                    nativeExtraBytes = stamp.retained_bytes,
-                    compareBytes = stamp.compare_bytes
-                };
-#endif
-                if (eligible && retainedRecording.CanReuse(stamp, recordingKey) && RetainedResourcesAlive())
-                {
-#if URUI_DEBUG
-                    DrawCommands = (int)stamp.count;
-                    LastRecording = new RecordingStats
-                    {
-                        reused = true,
-                        capability = true,
-                        nativeCommands = DrawCommands,
-                        recordCalls = 0,
-                        retainedDraws = retainedDraws,
-                        nativeExtraBytes = stamp.retained_bytes,
-                        compareBytes = stamp.compare_bytes
-                    };
-#endif
-                    return;
+                    FlushGroup(ref phase);DrawOne(item,ref phase);
                 }
             }
-
-            retainedRecording.Invalidate();
-            retainedTextures.Clear();
-            int count;
-            int read;
-#if URUI_DEBUG
-            using (readMarker.Auto())
-#endif
-            {
-                count = NativeMethods.urui_command_count();
-#if URUI_DEBUG
-                DrawCommands = count;
-#endif
-                if (commands.Length < count)
-                {
-                    commands = new CommandNative[Math.Max(count, commands.Length * 2 + 16)];
-                }
-
-                if (commandTransforms.Length < count * 16)
-                {
-                    commandTransforms = new float[Math.Max(count * 16, commandTransforms.Length * 2 + 256)];
-                }
-
-                read = NativeMethods.urui_get_commands(commands, count);
-                int transformRead = NativeMethods.urui_get_command_transforms(commandTransforms, commandTransforms.Length);
-                if (transformRead != read)
-                {
-                    throw new Exception("URUI command transform count mismatch: " + transformRead + " / " + read);
-                }
-#if URUI_DEBUG
-                if (phaseDiagnostics)
-                {
-                    phase.commandCopyMs = Millis(Now() - t);
-                    phase.commandCopyBytes = read * System.Runtime.InteropServices.Marshal.SizeOf(typeof(CommandNative));
-                    phase.matrixCopyBytes = read * 16 * sizeof(float);
-                    phase.totalCommandCopyBytes = phase.commandCopyBytes + phase.matrixCopyBytes;
-                    phase.nativeCalls += 3;
-                    phase.commandsRead = read;
-                }
-#endif
             }
-#if URUI_DEBUG
-            long unitySetup = phaseDiagnostics ? Now() : 0;
-            using (setupMarker.Auto())
-#endif
+            FinishLayers(read,ref phase);FlushGroup(ref phase);EndEncodedRaster();
+            for(var index=batches.Count-1;index>=batchCursor;index--)
             {
-                buffer.Clear();
-                // The prior recording is detached before retiring Host-owned Unity textures.
-                // Native existence, not this frame's visibility, is the lifetime authority.
-                RetireReleasedTextures(ref phase);
-                // Construct a screen-space projection; RmlUi has top-left UI coordinates.
-                Matrix4x4 projection = Matrix4x4.Ortho(0, UiWidth, UiHeight, 0, -1, 1);
-                buffer.SetViewProjectionMatrices(Matrix4x4.identity, projection);
-#if URUI_DEBUG
-                if (phaseDiagnostics)
+                if(batches[index].mesh)Destroy(batches[index].mesh);
+                batches.RemoveAt(index);
+            }
+            if(segmentPlans.Count>segmentCursor)segmentPlans.RemoveRange(segmentCursor,segmentPlans.Count-segmentCursor);
+            frameStaleGeometry.Clear();
+            foreach(var pair in meshes)
+                if(!used.Contains(pair.Key)&&NativeMethods.urui_geometry_exists(pair.Key)==0)frameStaleGeometry.Add(pair.Key);
+            foreach(var id in frameStaleGeometry){RecycleGeometry(meshes[id]);meshes.Remove(id);}
+            CompleteOrdinaryGeometry(read);
+        }
+
+        MeshCache ReadGeometry(ulong id)
+        {
+            if(meshes.TryGetValue(id,out var existing))return existing;
+            if(NativeMethods.urui_get_geometry_info(id,out var vertices,out var indices)==0||vertices<=0||indices<=0)return null;
+            MeshCache value=null;
+            for(var index=idleGeometry.Count-1;index>=0;index--)
+                if(idleGeometry[index].positions.Length>=vertices&&idleGeometry[index].indices.Length>=indices)
                 {
-                    phase.commandSetupMs += Millis(Now() - unitySetup);
+                    value=idleGeometry[index];idleGeometry.RemoveAt(index);pooledGeometryBytes-=value.CapacityBytes;break;
                 }
-#endif
-            }
-
-            var used = useFrameScratchCollections ? frameUsedGeometry : new HashSet<ulong>();
-            used.Clear();
-#if URUI_DEBUG
-            using (loopMarker.Auto())
-#endif
+            value??=new MeshCache{positions=new Vector3[vertices],uv=new Vector2[vertices],colors=new Color32[vertices],indices=new int[indices]};
+            if(vertexScratch.Length<vertices)vertexScratch=new VertexNative[Math.Max(vertices,vertexScratch.Length*2+16)];
+            if(NativeMethods.urui_copy_geometry(id,vertexScratch,vertices,value.indices,indices)==0){RecycleGeometry(value);return null;}
+            value.vertexCount=vertices;value.indexCount=indices;
+            var minimum=new Vector3(float.PositiveInfinity,float.PositiveInfinity,0);
+            var maximum=new Vector3(float.NegativeInfinity,float.NegativeInfinity,0);
+            for(var index=0;index<vertices;index++)
             {
-                for (int c = 0; c < read; c++)
-                {
-                    var cmd = commands[c];
-#if URUI_DEBUG
-                    long detail = DetailBegin(ref phase.matrixDecodeMs, ref phase);
-#endif
-                    var transform = new Matrix4x4();
-                    bool transformed = false;
-                    for (int col = 0; col < 4; col++)
-                    {
-                        for (int row = 0; row < 4; row++)
-                        {
-                            float value = commandTransforms[c * 16 + col * 4 + row];
-                            transform[row, col] = value;
-                            if (float.IsNaN(value) || float.IsInfinity(value))
-                            {
-                                recordingFinite = false;
-                            }
-
-                            if (Mathf.Abs(value - (row == col ? 1f : 0f)) > 0.000001f)
-                            {
-                                transformed = true;
-                            }
-                        }
-                    }
-#if URUI_DEBUG
-                    DetailEnd(detail, ref phase.matrixDecodeMs);
-#endif
-                    if (float.IsNaN(cmd.tx) || float.IsInfinity(cmd.tx) || float.IsNaN(cmd.ty) || float.IsInfinity(cmd.ty))
-                    {
-                        recordingFinite = false;
-                    }
-
-                    if (cmd.geometry == 0)
-                    {
-                        continue;
-                    }
-#if URUI_DEBUG
-                    detail = DetailBegin(ref phase.geometryLookupMs, ref phase);
-#endif
-                    bool found = meshes.TryGetValue(cmd.geometry, out var entry);
-                    if (found && !entry.mesh)
-                    {
-                        meshes.Remove(cmd.geometry);
-                        found = false;
-                    }
-#if URUI_DEBUG
-                    DetailEnd(detail, ref phase.geometryLookupMs);
-#endif
-                    if (!found)
-                    {
-#if URUI_DEBUG
-                        using var geometryScope = geometryMarker.Auto();
-                        t = phaseDiagnostics ? Now() : 0;
-#endif
-                        if (NativeMethods.urui_get_geometry_info(cmd.geometry, out int nv, out int ni) == 0)
-                        {
-                            continue;
-                        }
-
-                        if (nv == 0 || ni == 0)
-                        {
-                            continue;
-                        }
-
-                        var vs = new VertexNative[nv];
-                        var ids = new int[ni];
-                        if (NativeMethods.urui_copy_geometry(cmd.geometry, vs, nv, ids, ni) == 0)
-                        {
-                            continue;
-                        }
-#if URUI_DEBUG
-                        if (phaseDiagnostics)
-                        {
-                            phase.geometryCopyMs += Millis(Now() - t);
-                            phase.nativeCalls += 2;
-                            phase.geometryCopyBytes += nv * 20 + ni * 4;
-                            t = Now();
-                        }
-
-                        long convertStart = phaseDiagnostics ? Now() : 0;
-#endif
-                        var positions = new Vector3[nv];
-                        var uv = new Vector2[nv];
-                        var colors = new Color32[nv];
-                        for (int v = 0; v < nv; v++)
-                        {
-                            positions[v] = new Vector3(vs[v].x, vs[v].y, 0);
-                            uv[v] = new Vector2(vs[v].u, vs[v].v);
-                            colors[v] = new Color32(vs[v].r, vs[v].g, vs[v].b, vs[v].a);
-                        }
-#if URUI_DEBUG
-                        if (phaseDiagnostics)
-                        {
-                            phase.meshConversionMs += Millis(Now() - convertStart);
-                        }
-
-                        long unityMeshStart = phaseDiagnostics ? Now() : 0;
-#endif
-                        var mesh = new Mesh
-                        {
-                            name = "Geometry"
-                        };
-                        if (nv > 65535)
-                        {
-                            mesh.indexFormat = IndexFormat.UInt32;
-                        }
-
-                        mesh.vertices = positions;
-                        mesh.uv = uv;
-                        mesh.colors32 = colors;
-                        mesh.triangles = ids;
-                        mesh.RecalculateBounds();
-#if URUI_DEBUG
-                        if (phaseDiagnostics)
-                        {
-                            phase.unityMeshApiMs += Millis(Now() - unityMeshStart);
-                            phase.meshBuildMs += Millis(Now() - t);
-                            phase.meshesCreated++;
-                        }
-#endif
-                        entry = new MeshCache
-                        {
-                            mesh = mesh,
-                            positions = batchDisjointCommands ? positions : null,
-                            uv = batchDisjointCommands ? uv : null,
-                            colors = batchDisjointCommands ? colors : null,
-                            indices = batchDisjointCommands ? ids : null
-                        };
-                        meshes.Add(cmd.geometry, entry);
-                    }
-#if URUI_DEBUG
-                    detail = DetailBegin(ref phase.entryTrackMs, ref phase);
-#endif
-                    entry.lastFrame = Time.frameCount;
-                    used.Add(cmd.geometry);
-#if URUI_DEBUG
-                    DetailEnd(detail, ref phase.entryTrackMs);
-#endif
-                    if (!transformed && cmd.clip_enabled != 0 && cmd.clip_w >= 0 && cmd.clip_h >= 0)
-                    {
-                        var bounds = GeometryBounds(entry.mesh, ref phase);
-                        float minX = bounds.min.x + cmd.tx;
-                        float maxX = bounds.max.x + cmd.tx;
-                        float minY = bounds.min.y + cmd.ty;
-                        float maxY = bounds.max.y + cmd.ty;
-                        bool outside = maxX < cmd.clip_x || minX > cmd.clip_x + cmd.clip_w || maxY < cmd.clip_y || minY > cmd.clip_y + cmd.clip_h;
-                        if (outside)
-                        {
-#if URUI_DEBUG
-                            if (phaseDiagnostics)
-                            {
-                                phase.fullyClippedCandidates++;
-                            }
-#endif
-                            if (cullFullyClipped)
-                            {
-                                continue;
-                            }
-                        }
-                    }
-
-                    var renderBounds = GeometryBounds(entry.mesh, ref phase);
-                    var item = new BatchItem
-                    {
-                        command = cmd,
-                        geometry = entry,
-                        transform = transform,
-                        transformed = transformed,
-                        x0 = renderBounds.min.x + cmd.tx,
-                        y0 = renderBounds.min.y + cmd.ty,
-                        x1 = renderBounds.max.x + cmd.tx,
-                        y1 = renderBounds.max.y + cmd.ty
-                    };
-                    if (batchDisjointCommands
-                        && (!transformed || (batchEquivalentTransforms
-                        && BatchRules.EquivalentAffine2D(transform, transform))))
-                    {
-                        if (!CanJoin(item, ref phase))
-                        {
-                            FlushGroup(ref phase);
-                        }
-
-                        batchGroup.Add(item);
-                    }
-                    else
-                    {
-                        if (batchDisjointCommands)
-                        {
-                            FlushGroup(ref phase);
-                        }
-#if URUI_DEBUG
-                        if (phaseDiagnostics)
-                        {
-                            phase.batchGroups++;
-                            if (batchDisjointCommands)
-                            {
-                                phase.breakTransform++;
-                            }
-                        }
-#endif
-                        DrawOne(item, ref phase);
-                    }
-                }
+                var source=vertexScratch[index];var position=new Vector3(source.x,source.y,0);
+                value.positions[index]=position;value.uv[index]=new Vector2(source.u,source.v);
+                value.colors[index]=new Color32(source.r,source.g,source.b,source.a);
+                minimum=Vector3.Min(minimum,position);maximum=Vector3.Max(maximum,position);
             }
+            value.bounds=new Bounds((minimum+maximum)*.5f,maximum-minimum);
+            meshes.Add(id,value);return value;
+        }
 
-            if (batchDisjointCommands)
+        void RecycleGeometry(MeshCache value)
+        {
+            if(value.mesh)Destroy(value.mesh);value.mesh=null;
+            // 只复用私有CPU数组；已进入GPU命令的Mesh与公开效果几何均不改写。
+            if(idleGeometry.Count>=2048||pooledGeometryBytes+value.CapacityBytes>16*1024*1024)return;
+            idleGeometry.Add(value);pooledGeometryBytes+=value.CapacityBytes;
+        }
+        Mesh SourceMesh(MeshCache value)
+        {
+            if(!value.mesh)
             {
-                FlushGroup(ref phase);
-#if URUI_DEBUG
-                long maintenance = DetailBegin(ref phase.batchMaintenanceMs, ref phase);
-#endif
-                staleBatchKeys.Clear();
-                foreach (var pair in batches)
-                {
-                    if (!currentBatchKeys.Contains(pair.Key))
-                    {
-                        staleBatchKeys.Add(pair.Key);
-                    }
-                }
-
-                foreach (var key in staleBatchKeys)
-                {
-                    Destroy(batches[key].mesh);
-                    batches.Remove(key);
-                }
-
-                var swap = previousBatchKeys;
-                previousBatchKeys = currentBatchKeys;
-                currentBatchKeys = swap;
-                currentBatchKeys.Clear();
-#if URUI_DEBUG
-                DetailEnd(maintenance, ref phase.batchMaintenanceMs);
-#endif
+                if(zeroTextureSlots.Length<value.vertexCount)zeroTextureSlots=new Vector2[Math.Max(value.vertexCount,zeroTextureSlots.Length*2+16)];
+                value.mesh=UploadMesh("URUI geometry",value.positions,value.uv,value.colors,value.indices,value.vertexCount,value.indexCount,zeroTextureSlots);
             }
-#if URUI_DEBUG
-            using var cleanupScope = cleanupMarker.Auto();
-#endif
-            // Avoid leaking meshes invalidated by RmlUi.
-#if URUI_DEBUG
-            t = phaseDiagnostics ? Now() : 0;
-#endif
-            var stale = useFrameScratchCollections ? frameStaleGeometry : new List<ulong>();
-            stale.Clear();
-            foreach (var pair in meshes)
-            {
-                if (!pair.Value.mesh || (!used.Contains(pair.Key) && NativeMethods.urui_geometry_exists(pair.Key) == 0))
-                {
-                    stale.Add(pair.Key);
-                }
-            }
-
-            foreach (var id in stale)
-            {
-                Destroy(meshes[id].mesh);
-                meshes.Remove(id);
-            }
-#if URUI_DEBUG
-            if (phaseDiagnostics)
-            {
-                phase.cleanupMs = Millis(Now() - t);
-                phase.nativeCalls += stale.Count;
-            }
-
-            retainedDraws = recordCallsThisFrame;
-            LastRecording = new RecordingStats
-            {
-                capability = eligible && tracking && stamp.flags == 1,
-                nativeCommands = read,
-                recordCalls = recordCallsThisFrame,
-                retainedDraws = recordCallsThisFrame,
-                nativeExtraBytes = stamp.retained_bytes,
-                compareBytes = stamp.compare_bytes
-            };
-#endif
-            if (eligible && tracking && stamp.flags == 1 && !recordingWarmupPending && recordingFinite)
-            {
-                CaptureTextureDependencies();
-                retainedBufferBytes = buffer.sizeInBytes;
-                retainedRecording.Commit(stamp, recordingKey);
-            }
+            return value.mesh;
         }
     }
 }

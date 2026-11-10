@@ -1,55 +1,115 @@
 # 生命周期与资源
 
-## 文档加载
+## Surface 与独立文档
 
-`Document` 启用时加载 Inspector 中的 `Source`，或恢复最近一次 `LoadMarkup` 请求。`Load` / `LoadMarkup` 同步完成文档解析，成功后触发 `Loaded`，此时可以查询、更新与注册点击。布局、绘制和输入命中在后续 Unity 更新中完成。
+一个活动 `Surface` 拥有共享原生上下文、视口、UI 时钟、原始输入和绘制。多个 `Document` 显式关联它，各自拥有 DOM、样式、事件与资源命名空间。所有操作限 Unity 主线程；异步读取完成后先切回主线程。
 
-重载依次使旧元素与订阅失效、释放原生 context 和渲染资源、触发 `Unloaded`，然后创建新文档并触发 `Loaded`。禁用组件会释放内容，重新启用会恢复最近的文档请求。显式 `Unload()` 会取消自动恢复，直到再次加载或设置 `Source`。
+完整作者文件使用真实 HTML/CSS。`Load(TextAsset asset, string sourceUrl)` 和 `LoadHtml(string html, string sourceUrl)` 验证并构建候选，成功后发布；失败保留原文档、元素身份与资源。SourceUrl 是资源基址，不按 URL 后缀切换解析器。完整文档包含 doctype、html/head/body，非空元素必须显式闭合；片段按目标元素上下文解析。
 
-销毁组件会释放文档资源并清空生命周期委托。`Loaded` 和 `Unloaded` 中不能重入加载或卸载。若 `Unloaded` 回调禁用了组件，正在进行的加载会取消。
+候选更新、监听器和退役存储在发布前准备。发布后的通知异常单独处理，不把已提交的新页面报告为加载失败；暂时无法完成的呈现焦点会在后续更新中重试。焦点及祖先链先统一提交，回调内重新聚焦不会由外层旧事件覆盖。
 
-当前只支持一个活动原生 context，即一个活动 `Document`。所有操作均需在 Unity 主线程执行；异步读取文件后，应切回主线程再调用 URUI。
+启用 Document 时加载配置的 Source/SourceUrl，或恢复最近请求。禁用后保留恢复请求；显式 `Unload()` 取消自动恢复。关闭 A 只使 A 的元素、事件和动画失效，不卸载 B；最后页面关闭后 Surface 仍可供新页面使用。禁用 Surface 暂停所有页面，重新启用按各自请求恢复。Surface 的 UiClock 只能在没有已加载页面时更换。
+
+Loaded/Unloaded、点击、图片与动画回调中的生命周期变更进入共享队列，在当前原生调用返回后执行。需要同步创建节点的业务操作可用 `RunAfterEvent`。绘制效果的 Prepare/Record 只能消费不可变帧，不能在其中修改 DOM 或安排页面变更。
 
 ## 元素身份
 
-节点由 Document 拥有，Element 包装表示稳定的原生对象身份。Name 变化不会改换对象，查询、Parent 和索引返回同一包装。节点预算为每个 context 65536 个被跟踪的活节点；没有无限引用保证。
+`DocumentElement` 表示 html，`Body` 表示 body。节点携带所属文档和代际；同 ID 可存在于不同文档，查询不跨页。跨文档 Add/Insert、循环层级或移除文档根会被拒绝。每个上下文仍限制 65536 个被跟踪的活节点。
 
-CreateElement 产生脱离层级的节点，Add/Insert 后才显示并接收输入。RemoveFromHierarchy、Remove(child)、Clear 会保留子树、身份与回调，之后可以重新挂载。长期不再使用时调用 Destroy，或由 Unload 统一释放；不能把脱离层级当作释放资源。
+`Create<T>()` / `CreateElement(tag)` 创建所属文档的脱离节点。Remove/Clear 保留子树、身份和订阅，可再次挂载；不用时调用 Destroy。成功的 Text/SetInnerHtml 结构替换、Destroy、卸载或重载使对应旧身份失效，同名新节点不会复活。`Text` 只处理纯文本；`SetInnerHtml(html, sourceUrl)` 严格解析并事务替换，失败保留原子树。HTML template 惰性保存，Clone 直接复制结构。
 
-Destroy、Text/SetInnerMarkup 替换子结构、文档重载或卸载会让对应旧包装失效，即使同名节点再次出现也不会复活。Element 本身不实现 IDisposable；IDisposable 订阅只用于解绑。Name 可以重复，Q 取局部首项，Query 取全部；样式和外部 ID 使用仍由应用维护命名约定。
+Element 不实现 IDisposable；返回的订阅 IDisposable 负责解绑。文档卸载统一释放附着及脱离节点。节点名称可重复，Q 返回所属根下首项，Query 返回有序快照。
 
 ## 资产所有权
 
-| 资源 | 持有者 | URUI 的处理 |
-| --- | --- | --- |
-| Inspector 或 `Load` 的 `TextAsset` | 应用 | 读取内容，不销毁原资产 |
-| `LoadMarkup` 的内部 `TextAsset` | `Document` | 卸载、重载或销毁时释放 |
-| `Images` 中的 `Texture2D` | 应用 | 直接借用同一 GPU 纹理，不读像素、不销毁原图；无需 Read/Write |
-| 字体等生成纹理的自有上传副本、Unity mesh/material/command buffer | URUI | 文档释放时清理 |
-| 附着及脱离的节点、点击订阅 | `Document` / `Element` | Destroy、结构替换或文档卸载时清理 |
-| 字体文件 | 应用或平台 | 应用保证文件路径和所需字形可用 |
+| 资源 | 所有者与释放规则 |
+| --- | --- |
+| Source、TextResources 中的 TextAsset | 应用持有；URUI 不销毁原资产，原生按文档资源代际保留所需内容 |
+| Images 中的 Texture2D | 直接借用原 GPU 对象；不要求 Read/Write，不销毁原图 |
+| ImageResolver 返回的 ImageLease | URUI 持有；原生与 GPU 引用均结束后归还租约 |
+| 字体字节、字形与自有纹理 | 按真实来源共享，规则匹配仍属于文档；Surface 和 GPU 引用决定缓存/退役边界 |
+| 附着/脱离节点与订阅 | Document/Element 拥有，结构销毁和卸载时清理 |
+| mesh/material/command buffer、合成中间目标 | 宿主管理；已经提交的资源须等 fence 退役 |
 
-## 字体与图片
+## 字体、CSS 与图片
 
-加载前配置资源，修改已经加载的文档配置前先卸载：
+在所属文档卸载后配置资源；A 活动时可配置 B。相对地址按作者文件的规范 URL 解析。外部 CSS、字体和 HTML 原样注册：
 
 ```csharp
 document.Unload();
-document.FontPath = absoluteFontPath;
+document.TextResources = new[] {
+    new TextResource("/ui/panel.css", cssAsset),
+    new TextResource("/ui/fonts/panel.ttf", fontBytesAsset)
+};
 document.Images = new[] { new ImageAsset("icons/coin.png", texture) };
-document.Load(markupAsset);
+document.Load(panelHtmlAsset, "/ui/panel.html");
 ```
 
-图片 `Source` 必须唯一，并与 RML/RCSS 中引用的相对路径一致，例如 `<img src="icons/coin.png" />`。无需开启 **Read/Write**。同一 Texture2D 的多个路径共享一个资源记录及原 GPU 对象；原生侧只保存路径、尺寸、逻辑 ID，不持有该图片 RGBA。当前没有远程图片自动下载或异步资源提供接口；入门文档将 RCSS 内联在 RML 的 `<style>` 中。
+HTML 使用 `<link rel="stylesheet" href="panel.css">`；CSS 使用标准 `@font-face` 和 `url("fonts/panel.ttf")`。默认通用字体来自随包资源；精确对照需让浏览器与 URUI 使用同一份授权字体字节。字体族、字重、样式和回退逐文档匹配；字号保留小数并以 26.6 像素精度缓存。中文等文字须有相应字形。
 
-借用期间，应用不得 `Destroy`、`Resources.UnloadAsset` 或重建纹理的尺寸/格式。正常修改像素并 `Apply` 会直接反映到 UI；修改配置或重建纹理前先 `Unload`。URUI 撤销注册后，已有绘制计划会保留所需引用直到 GPU 退役；原图的最终释放仍由应用安排。只保留 C# 引用不能阻止应用主动销毁 Unity 对象，违反约束会明确报错，不会偷偷生成替代副本。`Unload` 保留 `Images` 配置供重载，应用不再需要时可清空它。
+TextResource 的资产类型是 TextAsset，不能直接传 Unity Font 对象。可将授权字体的原始文件以 `.bytes` TextAsset 提供，资源 URL 仍登记成 CSS 引用的 `/ui/fonts/panel.ttf`；不要将二进制字体转换成字符串。
 
-UI 图片沿用 bilinear/clamp/base-mip0 采样：shader 在四个原 texel 上预乘后插值，处理上下方向；不改变原纹理的 filter/wrap/aniso/mipmap 设置。sRGB 图片保持原有字节预乘效果；linear 图片按 linear 数据解释，修正旧路径统一标记 sRGB 的问题。要求完整常驻 mip0：不支持启用纹理流送或 active mipmap limit 的源图，会明确拒绝。这里支持颜色 Texture2D；法线、整数/深度等非颜色数据和 HDR 输出保真不在验证范围。
+图片路径须与 HTML/CSS 一致。同一 Texture2D 的多个路径共享资源记录；原生只保留借用图片的元数据。应用可更新像素并 Apply；借用和在途 GPU 引用期间不得 Destroy、UnloadAsset 或重建尺寸/格式。URUI 不自动远程下载或解码图片；应用负责得到 Texture2D 后注册。
 
-字体/程序生成纹理没有调用者现成 GPU 原图，仍走 URUI 自有上传、缓存和释放路径。减少重复副本不等于整条加载链零拷贝，也不会自动删除应用因 Read/Write 保留的 CPU 数据。磁盘/网络图片仍由应用加载成 Texture2D 后注册；URUI 不会自己下载或解码 RML 图片地址。
+颜色 Texture2D 使用 bilinear/clamp/mip0，不修改原图的 sampler 配置；要求完整常驻 mip0，不接受启用纹理流送或 active mipmap limit 的源图。Linear 下标准 UI 按浏览器 sRGB source-over 合成；游戏 RenderTexture 扩展保持 Unity 线性语义。非颜色数据、法线/深度与 HDR 保真不在这项标准 UI 对照范围。
 
-原生桥保留 ABI3 布局，同时要求 texture protocol v1；新包与旧插件混用会明确报错。更新插件后重启 Editor。
+## 同步按需图片与提交
 
-`FontPath` 使用可读取的字体文件绝对路径。为空时使用平台默认路径；macOS 默认路径为 `/System/Library/Fonts/Supplemental/Arial.ttf`。示例中的 `__URUI_FONT__` 按默认字体约定替换，不是任意字体的自动 family 检测器；使用自定义字体时，在 RCSS 中填写该字体真实的 `font-family`。
+```csharp
+document.ImageResolver = source => {
+    var texture = ResolveApplicationTexture(source);
+    return texture ? new ImageLease(texture) : null;
+};
+```
 
-应用需要自行分发有使用授权的字体，并在运行时获得实际路径。系统默认路径不代表字体会随 Player 打包。中文等内容需要字体包含对应字形。
+静态 Images 优先。回调主线程同步返回独立租约；null 是本代际失败缓存，不是异步 pending。归还资源可传 `new ImageLease(texture, release)`，交给 URUI 后不要自行 Dispose；共享 Resources 资产不能随意 UnloadAsset。可释放图片要求 GPU fence，无 fence 的设备应提供由应用长期持有的借用图片。
+
+关闭页面先退役所属命名空间；其他页面和已提交 GPU 帧仍需使用的图片、字体或效果继续保留。关闭页面不等于所有共享缓存立即销毁，也不能按固定帧数猜测资源已安全释放。
+
+SRP 通过 `Surface.SubmitRendering(context, target, viewport)` 每个 Surface 提交一次；Document 的入口提交同一共享 UI。方法排列命令与 fence，由管线在帧末 Submit。viewport 须有限且宽高为正。无效默认 context 在记录/固定资源前拒绝；真正提交结果不确定时保留租约并停止后续提交。正常在途记录上限为 8。
+
+RenderCommandBuffer 仅在宿主没有需安全退役的资源时允许借用；可释放图片、图层以及 Linear 标准合成必须使用受控 SubmitRendering。更新原生动态库前停止相应 Editor/Player，重新启动后才能使用新的配套 ABI8 插件。
+
+## 资源接口速查
+
+| 接口 | 参数和使用顺序 |
+| --- | --- |
+| `TextResource(string source, TextAsset asset)` | source 是规范资源 URL，asset.bytes 保留 CSS/字体文件内容；先登记，再加载引用它的 HTML |
+| `ImageAsset(string source, Texture2D texture)` | 借用原图片，同文档路径不能重复 |
+| `ImageAsset(string source, Texture2D texture, SpriteRegion[] sprites)` | 同时登记命名区域；复制区域数组，不复制像素 |
+| `SpriteRegion(string name, Rect region, float displayScale = 1)` | region 是左上角源像素区域；Image.SpriteName 按名称选择 |
+| `ImageLease(Texture texture, Action release = null)` | 独立资源引用；交给 URUI 后由其归还；不能手动销毁仍在使用的纹理 |
+| `ImageLeaseSource(Texture texture, Action release)` | 为同一纹理发布多个独立租约的所有权源 |
+| `ImageLeaseSource.Acquire()` | 取得独立 ImageLease，交给一个消费者 |
+| `ImageLeaseSource.Dispose()` | 归还源自身所有权；仍被获取的租约有效，最后引用结束后调用 release |
+| `Document.TryLoadImage(string source, out Vector2Int dimensions)` | 已加载文档中同步预加载图片并读取尺寸；无图片返回 false，非法调用可抛异常 |
+| `Document.ReleaseImage(string source)` | 退役该页路径的图片缓存；仍引用该路径的节点会再次解析，不影响其他文档 |
+| `Document.AddStyleSheet(TextAsset asset, string sourceUrl, bool beforeAuthor = false)` | 文档已加载后追加已有 CSS；beforeAuthor=true 放在作者规则之前 |
+
+ReleaseImage 不是停止媒体生产者的替代品。先移除/换掉相关节点，再释放缓存及自己的媒体引用；可释放图片仍等待 GPU 完成。ImageResolver 返回 null 后本代际会缓存失败，需要有明确的重新加载/释放缓存流程，不能把 null 当作异步 pending。
+
+## 命名图片区域示例
+
+```csharp
+using URUI.Documents;
+using URUI.Resources;
+using UnityEngine;
+
+public static class AtlasExamples
+{
+    public static void Configure(Document document, Texture2D atlas)
+    {
+        document.Unload();
+        document.Images = new[] {
+            new ImageAsset("atlas.png", atlas, new[] {
+                new SpriteRegion("coin", new Rect(0, 0, 32, 32)),
+                new SpriteRegion("gem", new Rect(32, 0, 32, 32))
+            })
+        };
+    }
+}
+```
+
+随后加载作者文档，图片使用 atlas.png，并通过 Image.SpriteName 选择 coin 或 gem。区域必须位于原图内；图集纹理仍由调用方保持有效。不要与效果 Wave 的完整纹理支持范围混为一谈。
+
+全部资源类型、公开声明及重载见[接口参考](REFERENCE_ZH.md)，视频接口见[渲染扩展与媒体](RENDERING_ZH.md)。

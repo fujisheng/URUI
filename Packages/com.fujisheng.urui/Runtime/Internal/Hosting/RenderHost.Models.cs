@@ -27,7 +27,9 @@ namespace URUI.Internal.Hosting
             public Vector2[] uv;
             public Color32[] colors;
             public int[] indices;
-            public int lastFrame;
+            public int vertexCount, indexCount;
+            public Bounds bounds;
+            public int CapacityBytes => positions.Length * 24 + indices.Length * 4;
         }
 
         struct BatchItem
@@ -45,7 +47,13 @@ namespace URUI.Internal.Hosting
         sealed class BatchCache
         {
             public Mesh mesh;
-            public BatchItem[] items;
+            public CommandNative[] items = System.Array.Empty<CommandNative>();
+            public int count;
+            public Vector3[] positions = System.Array.Empty<Vector3>();
+            public Vector2[] uv = System.Array.Empty<Vector2>();
+            public Vector2[] sourceSlots = System.Array.Empty<Vector2>();
+            public Color32[] colors = System.Array.Empty<Color32>();
+            public int[] indices = System.Array.Empty<int>();
         }
     }
 }

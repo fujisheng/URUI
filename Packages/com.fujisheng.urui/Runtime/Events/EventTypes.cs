@@ -4,7 +4,7 @@ namespace URUI.Events
 {
     internal static class EventTypes
     {
-        static readonly Type[] nativeTypes = { null, typeof(ClickEvent), typeof(PointerDownEvent), typeof(PointerMoveEvent), typeof(PointerUpEvent), typeof(PointerCancelEvent), typeof(PointerEnterEvent), typeof(PointerLeaveEvent), typeof(WheelEvent), typeof(KeyDownEvent), typeof(KeyUpEvent), typeof(FocusEvent), typeof(BlurEvent), typeof(NativeValueChangedEvent), typeof(TextInputEvent), typeof(ScrollEvent), typeof(PointerCaptureOutEvent) };
+        static readonly Type[] nativeTypes = { null, typeof(ClickEvent), typeof(PointerDownEvent), typeof(PointerMoveEvent), typeof(PointerUpEvent), typeof(PointerCancelEvent), typeof(PointerEnterEvent), typeof(PointerLeaveEvent), typeof(WheelEvent), typeof(KeyDownEvent), typeof(KeyUpEvent), typeof(FocusEvent), typeof(BlurEvent), typeof(NativeValueChangedEvent), typeof(TextInputEvent), typeof(ScrollEvent), typeof(PointerCaptureOutEvent), typeof(AnimationEndEvent), typeof(TransitionEndEvent), typeof(AnimationCreatedEvent) };
 
         internal static int NativeId(Type type) => Math.Max(0, Array.IndexOf(nativeTypes, type));
 
@@ -28,6 +28,9 @@ namespace URUI.Events
                 case 14: return new TextInputEvent();
                 case 15: return new ScrollEvent();
                 case 16: return new PointerCaptureOutEvent();
+                case 17: return new AnimationEndEvent();
+                case 18: return new TransitionEndEvent();
+                case 19: return new AnimationCreatedEvent();
                 default: throw new NotSupportedException("未知 URUI 原生事件。");
             }
         }

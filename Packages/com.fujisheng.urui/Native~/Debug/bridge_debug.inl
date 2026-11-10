@@ -1,6 +1,24 @@
 #if defined(URUI_DEBUG)
 // Private diagnostic entry points. Selftests mutate the isolated test document.
 // Call selftests only after create and before loading application documents.
+namespace
+{
+    // 自检拥有显式文档身份，不占用或切换应用页面。
+    struct DiagnosticDocument
+    {
+        UruiDocumentHandle owner = 0;
+        ~DiagnosticDocument() { Close(); }
+        bool Create() { Close(); return urui_document_create(&owner) == 1; }
+        bool Load(const char* html)
+        {
+            if (!owner && !Create()) return false;
+            return urui_document_load_html(owner, html, "/urui-debug/fixture.html") == 1 &&
+                urui_document_set_presentation(owner, 0, 0, 1, 0) == 1;
+        }
+        URUI::ElementDocument* Element() const { return urui_elements::Document(owner); }
+        void Close() { if (owner) urui_document_close(owner); owner = 0; }
+    };
+}
 extern "C"
 {
     int urui_profile_take(UruiProfile* out)
@@ -113,197 +131,176 @@ extern "C"
 
     int urui_texture_lifecycle_selftest(void)
     {
+        DiagnosticDocument fixture;
+        if (!fixture.Create()) return 0;
         int pass = 0;
         uint64_t handle = 0;
+        const char* source = "/urui-debug/image.png";
+        const char* html = "<!doctype html><html><head></head><body><img src='/urui-debug/image.png' style='width:40px;height:40px;'></body></html>";
         const uint8_t pixels[] = {255, 0, 0, 128, 0, 255, 0, 255};
-        if (urui_register_rgba_texture("test/image.png", 2, 1, pixels, 8, &handle) == 1 && handle != 0)
-        {
-            int w = 0, h = 0, bytes = 0;
-            uint8_t copy[8] = {};
-            if (urui_get_texture_info(handle, &w, &h, &bytes) == 1 && w == 2 && h == 1 && bytes == 8 &&
-                urui_copy_texture(handle, copy, 8) == 1 && copy[0] == 128 && copy[3] == 128 && copy[5] == 255)
-                pass |= 1;
-            if (urui_load_document(
-                    "<rml><body><img src='test/image.png' style='width:40px;height:40px;' /></body></rml>"))
-            {
-                urui_update();
-                urui_render();
-                for (const auto& command : render->commands)
-                    if (command.texture == handle)
-                    {
-                        pass |= 2;
-                        break;
-                    }
-                if (urui_unregister_texture("test/image.png") < 0)
-                    pass |= 4;
-                urui_unload_document();
-            }
-            if (urui_unregister_texture("test/image.png") == 1 && urui_texture_exists(handle) == 0)
-                pass |= 8;
-        }
-        if (urui_register_rgba_texture("test/bad.png", 2, 1, pixels, 7, &handle) < 0)
-            pass |= 16;
-        uint64_t first = 0, replacement = 0;
-        if (urui_register_rgba_texture("test/replaced.png", 2, 1, pixels, 8, &first) == 1 &&
-            urui_register_rgba_texture("test/replaced.png", 2, 1, pixels, 8, &replacement) == 1 &&
-            first != replacement && urui_texture_exists(first) == 0 && urui_texture_exists(replacement) == 1 &&
-            urui_unregister_texture("test/replaced.png") == 1)
-            pass |= 32;
         const uint8_t updated[] = {0, 0, 255, 255, 0, 255, 0, 255};
-        uint64_t reloaded = 0;
-        if (urui_register_rgba_texture("test/image.png", 2, 1, updated, 8, &reloaded) == 1 && reloaded != handle &&
-            urui_load_document("<rml><body><img src='test/image.png' style='width:40px;height:40px;' /></body></rml>"))
+        auto Draws = [](uint64_t texture) {
+            urui_update(); urui_render();
+            for (const auto& command : render->commands) if (command.texture == texture) return true;
+            return false;
+        };
+        if (urui_document_register_rgba_texture(fixture.owner, source, 2, 1, pixels, 8, &handle) == 1 && handle)
         {
-            urui_update();
-            urui_render();
-            bool new_handle = false;
-            for (const auto& command : render->commands)
-                if (command.texture == reloaded)
-                    new_handle = true;
+            int width = 0, height = 0, bytes = 0;
             uint8_t copy[8] = {};
-            if (new_handle && urui_copy_texture(reloaded, copy, 8) == 1 && copy[2] == 255 && copy[3] == 255)
-                pass |= 64;
-            urui_unload_document();
-            urui_unregister_texture("test/image.png");
-        }
-        uint64_t before = 0, after = 0;
-        if (urui_register_rgba_texture("test/swap.png", 2, 1, pixels, 8, &before) == 1 &&
-            urui_load_document("<rml><body><img src='test/swap.png' style='width:40px;height:40px;' /></body></rml>"))
-        {
-            urui_update();
-            urui_render();
-            urui_unload_document();
-            if (urui_register_rgba_texture("test/swap.png", 2, 1, updated, 8, &after) == 1 && before != after &&
-                urui_texture_exists(before) == 0 &&
-                urui_load_document(
-                    "<rml><body><img src='test/swap.png' style='width:40px;height:40px;' /></body></rml>"))
+            if (urui_get_texture_info(handle, &width, &height, &bytes) == 1 && width == 2 && height == 1 && bytes == 8 &&
+                urui_copy_texture(handle, copy, 8) == 1 && copy[0] == 128 && copy[3] == 128 && copy[5] == 255) pass |= 1;
+            if (fixture.Load(html))
             {
-                urui_update();
-                urui_render();
-                for (const auto& command : render->commands)
-                    if (command.texture == after)
-                        pass |= 128;
-                urui_unload_document();
+                if (Draws(handle)) pass |= 2;
+                // 资源修改只进入候选集合，不能破坏仍在使用的页面。
+                if (urui_document_unregister_texture(fixture.owner, source) == 1 && Draws(handle)) pass |= 4;
             }
-            urui_unregister_texture("test/swap.png");
+            fixture.Close();
+            if (!urui_texture_exists(handle)) pass |= 8;
+        }
+        if (!fixture.Create()) return pass;
+        uint64_t invalid = 0;
+        if (urui_document_register_rgba_texture(fixture.owner, source, 2, 1, pixels, 7, &invalid) < 0) pass |= 16;
+        uint64_t reloaded = 0;
+        if (urui_document_register_rgba_texture(fixture.owner, source, 2, 1, updated, 8, &reloaded) == 1 &&
+            reloaded && reloaded != handle && !urui_texture_exists(handle)) pass |= 32;
+        if (fixture.Load(html) && Draws(reloaded))
+        {
+            uint8_t copy[8] = {};
+            if (urui_copy_texture(reloaded, copy, 8) == 1 && copy[2] == 255 && copy[3] == 255) pass |= 64;
+            uint64_t replacement = 0;
+            if (urui_document_register_rgba_texture(fixture.owner, source, 2, 1, pixels, 8, &replacement) == 1 &&
+                replacement != reloaded && Draws(reloaded) && fixture.Load(html) && Draws(replacement) &&
+                !urui_texture_exists(reloaded)) pass |= 128;
         }
         return pass;
     }
 
     int urui_touch_selftest(void)
     {
+        DiagnosticDocument fixture;
         int pass = 0;
         char id[40] = {};
-        if (!urui_load_document("<rml><body style='margin:0;'><div id='act-a' "
+        auto touch = [](int phase, int pointer, float x, float y) {
+            return urui_pointer_event(pointer, 1, phase, x, y, 0, phase < 2 ? 1 : 0, 0, 0, 0);
+        };
+        if (!fixture.Load("<!doctype html><html><head></head><body style='margin:0;'><div id='act-a' "
                                 "style='position:absolute;left:0;top:0;width:90px;height:90px;background-color:#fff;'><"
                                 "/div><div id='act-b' "
                                 "style='position:absolute;left:100px;top:0;width:90px;height:90px;background-color:#"
-                                "fff;'></div></body></rml>"))
+                                "fff;'></div></body></html>"))
             return pass;
         urui_update();
-        if (urui_hit_test_id(25, 25, id, sizeof(id)) == 5 && std::strcmp(id, "act-a") == 0)
+        if (urui_hit_test_id(fixture.owner, 25, 25, id, sizeof(id)) == 5 && std::strcmp(id, "act-a") == 0)
             pass |= 1;
-        urui_touch_event(0, 11, 25, 25);
-        urui_touch_event(2, 11, 25, 25);
+        touch(0, 11, 25, 25);
+        touch(2, 11, 25, 25);
         if (!clicks.empty() && ClickId(clicks.back()) == "act-a")
             pass |= 2;
         clicks.clear();
-        urui_touch_event(0, 12, 25, 25);
-        urui_touch_event(3, 12, 25, 25);
+        touch(0, 12, 25, 25);
+        touch(3, 12, 25, 25);
         if (clicks.empty())
             pass |= 4;
-        if (urui_touch_event(1, 999, 25, 25) == 0 && urui_touch_event(3, 999, 25, 25) == 0)
+        if (touch(2, 999, 25, 25) == 1 && touch(3, 999, 25, 25) == 1 && clicks.empty())
             pass |= 8;
-        urui_touch_event(0, 13, 25, 25);
-        urui_touch_event(1, 13, 125, 25);
-        if (urui_hit_test_id(125, 25, id, sizeof(id)) == 5 && std::strcmp(id, "act-b") == 0)
+        touch(0, 13, 25, 25);
+        touch(1, 13, 125, 25);
+        if (urui_hit_test_id(fixture.owner, 125, 25, id, sizeof(id)) == 5 && std::strcmp(id, "act-b") == 0)
             pass |= 16;
-        urui_touch_event(2, 13, 125, 25);
-        urui_unload_document();
-        if (urui_load_document("<rml><body><div id='act-new' "
-                               "style='width:90px;height:90px;background-color:#fff;'></div></body></rml>"))
+        touch(2, 13, 125, 25);
+        fixture.Close();
+        if (fixture.Load("<!doctype html><html><head></head><body><div id='act-new' "
+                               "style='width:90px;height:90px;background-color:#fff;'></div></body></html>"))
         {
             urui_update();
-            urui_touch_event(0, 14, 25, 25);
-            urui_unload_document();
-            if (urui_load_document("<rml><body><div id='act-new' "
-                                   "style='width:90px;height:90px;background-color:#fff;'></div></body></rml>"))
+            touch(0, 14, 25, 25);
+            fixture.Close();
+            if (fixture.Load("<!doctype html><html><head></head><body><div id='act-new' "
+                                   "style='width:90px;height:90px;background-color:#fff;'></div></body></html>"))
             {
                 urui_update();
-                if (urui_touch_event(0, 14, 25, 25) == 1 && urui_touch_event(3, 14, 25, 25) == 1)
+                if (touch(0, 14, 25, 25) == 1 && touch(3, 14, 25, 25) == 1)
                     pass |= 32;
-                urui_unload_document();
+                fixture.Close();
             }
         }
-        if (urui_load_document("<rml><body style='margin:0;'><div id='plain' "
+        if (fixture.Load("<!doctype html><html><head></head><body style='margin:0;'><div id='plain' "
                                "style='position:absolute;left:0;top:0;width:90px;height:90px;background-color:#fff;'></"
-                               "div></body></rml>"))
+                               "div></body></html>"))
         {
             urui_update();
             clicks.clear();
-            urui_touch_event(0, 15, 25, 25);
-            urui_touch_event(2, 15, 25, 25);
+            touch(0, 15, 25, 25);
+            touch(2, 15, 25, 25);
             if (!clicks.empty() && ClickId(clicks.back()) == "plain")
                 pass |= 64;
-            urui_unload_document();
+            fixture.Close();
         }
-        if (urui_load_document("<rml><body style='margin:0;'><div id='first' "
-                               "style='width:90px;height:90px;background-color:#fff;'></div></body></rml>"))
-        {
-            urui_update();
-            if (urui_touch_event(0, 20, 25, 25) == 1 && urui_touch_event(0, 21, 25, 25) == -2 &&
-                urui_touch_event(2, 21, 25, 25) == 0 && urui_touch_event(3, 20, 25, 25) == 1)
-                pass |= 128;
-            urui_unload_document();
-        }
-        if (urui_load_document("<rml><body style='margin:0;'><div id='gone' "
-                               "style='width:90px;height:90px;background-color:#fff;'></div></body></rml>"))
+        if (fixture.Load("<!doctype html><html><head></head><body style='margin:0;'><div id='first' "
+                               "style='width:90px;height:90px;background-color:#fff;'></div></body></html>"))
         {
             urui_update();
             clicks.clear();
-            if (urui_touch_event(0, 22, 25, 25) == 1 && urui_remove_element("gone") == 1 &&
-                urui_touch_event(1, 22, 30, 30) == 1 && urui_touch_event(2, 22, 30, 30) == 1 && clicks.empty())
+            // Surface 指针协议允许多指，次指结束只能产生自己的点击。
+            if (touch(0, 20, 25, 25) == 1 && touch(0, 21, 25, 25) == 1 &&
+                touch(2, 21, 25, 25) == 1 && touch(3, 20, 25, 25) == 1 &&
+                clicks.size() == 1 && ClickId(clicks.back()) == "first")
+                pass |= 128;
+            fixture.Close();
+        }
+        if (fixture.Load("<!doctype html><html><head></head><body style='margin:0;'><div id='gone' "
+                               "style='width:90px;height:90px;background-color:#fff;'></div></body></html>"))
+        {
+            urui_update();
+            clicks.clear();
+            if (touch(0, 22, 25, 25) == 1 && urui_remove_element(fixture.owner, "gone") == 1 &&
+                touch(1, 22, 30, 30) == 1 && touch(2, 22, 30, 30) == 1 && clicks.empty())
                 pass |= 256;
-            urui_unload_document();
+            fixture.Close();
         }
         return pass;
     }
 
     int urui_dom_selftest(void)
     {
+        DiagnosticDocument fixture;
         int pass = 0;
-        if (!urui_load_document(
-                "<rml><body><div id='root'><div id='dup'></div><div id='dup'></div></div></body></rml>"))
+        if (!fixture.Load(
+                "<!doctype html><html><head></head><body><div id='root'><div id='dup'></div><div id='dup'></div></div></body></html>"))
             return 0;
+        auto* document = fixture.Element();
         auto* root = document->GetElementById("root");
         if (root && root->GetNumChildren() == 2 && document->GetElementById("dup") == root->GetChild(0))
             pass |= 1;
-        if (urui_set_attribute("dup", "data-test", "first") == 1 &&
-            root->GetChild(0)->GetAttribute<Rml::String>("data-test", "") == "first" &&
-            root->GetChild(1)->GetAttribute<Rml::String>("data-test", "").empty())
+        if (urui_set_attribute(fixture.owner, "dup", "data-test", "first") == 1 &&
+            root->GetChild(0)->GetAttribute<URUI::String>("data-test", "") == "first" &&
+            root->GetChild(1)->GetAttribute<URUI::String>("data-test", "").empty())
             pass |= 2;
-        if (urui_append_element("root", "div", "dynamic") == 1 && urui_element_exists("dynamic") == 1)
+        if (urui_append_element(fixture.owner, "root", "div", "dynamic") == 1 && urui_element_exists(fixture.owner, "dynamic") == 1)
             pass |= 4;
-        if (urui_set_style("dynamic", "opacity", "0.5") == 1 &&
-            urui_set_inner_rml("dynamic", "<span id='nested'>hello</span>") == 1 && urui_element_exists("nested") == 1)
+        if (urui_set_style(fixture.owner, "dynamic", "opacity", "0.5") == 1 &&
+            urui_set_inner_html(fixture.owner, "dynamic", "<span id='nested'>hello</span>") == 1 && urui_element_exists(fixture.owner, "nested") == 1)
             pass |= 8;
-        if (urui_remove_element("dynamic") == 1 && urui_element_exists("dynamic") == 0 &&
-            urui_element_exists("nested") == 0)
+        if (urui_remove_element(fixture.owner, "dynamic") == 1 && urui_element_exists(fixture.owner, "dynamic") == 0 &&
+            urui_element_exists(fixture.owner, "nested") == 0)
             pass |= 16;
-        if (urui_set_attribute("dup", "id", "changed") == 1 && urui_element_exists("changed") == 1 &&
-            urui_element_exists("dup") == 1)
+        if (urui_set_attribute(fixture.owner, "dup", "id", "changed") == 1 && urui_element_exists(fixture.owner, "changed") == 1 &&
+            urui_element_exists(fixture.owner, "dup") == 1)
             pass |= 32;
-        urui_unload_document();
-        if (urui_element_exists("root") == 0 && urui_set_style("root", "opacity", "1") == 0)
+        fixture.Close();
+        if (urui_element_exists(fixture.owner, "root") == 0 && urui_set_style(fixture.owner, "root", "opacity", "1") == 0)
             pass |= 64;
         return pass;
     }
 
     int urui_transform_selftest(void)
     {
-        if (!urui_load_document("<rml><body><div "
+        DiagnosticDocument fixture;
+        if (!fixture.Load("<!doctype html><html><head></head><body><div "
                                 "style='position:absolute;left:20px;top:20px;width:60px;height:60px;background-color:#"
-                                "fff;transform:translate(12px,4px) rotate(15deg);'></div></body></rml>"))
+                                "fff;transform:translate(12px,4px) rotate(15deg);'></div></body></html>"))
             return 0;
         urui_update();
         urui_render();
@@ -318,7 +315,7 @@ extern "C"
                 std::abs(m[12]) > 0.001f)
                 changed = true;
         }
-        urui_unload_document();
+        fixture.Close();
         return count > 0 && result == count && changed ? 1 : 0;
     }
 }

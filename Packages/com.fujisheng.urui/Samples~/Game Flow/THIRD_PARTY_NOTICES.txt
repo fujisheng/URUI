@@ -1,7 +1,7 @@
 Bundled unmodified LatoLatin-Regular.ttf, distributed under SIL Open Font License 1.1.
-Source: bundled RmlUi 6.3 sample assets. The upstream notices follow unchanged.
+Source: bundled URUI 6.3 sample assets. The upstream notices follow unchanged.
 
-The RmlUi samples include fonts that are separately licensed. They are listed
+The URUI samples include fonts that are separately licensed. They are listed
 below along with their licenses.
 
 -----------------------------------------------------------

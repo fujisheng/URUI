@@ -18,7 +18,7 @@ namespace urui_core
     // contract. Other matrices and unusual floats retain the managed oracle.
     inline void Prepare(const UruiCommand& c, const float* m, UruiCoreKey& key, UruiCoreValue& value, float* world)
     {
-        key = {c.geometry, c.texture, c.clip_enabled, c.clip_x, c.clip_y, c.clip_w, c.clip_h, 0};
+        key = {c.geometry, c.texture, c.flags, c.clip_x, c.clip_y, c.clip_w, c.clip_h, 0};
         value = {};
         value.data[0] = c.tx;
         value.data[1] = c.ty;

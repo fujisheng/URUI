@@ -1,0 +1,126 @@
+urui-particles { display:block; pointer-events:none; }
+urui-particles.has-particles { --urui-decorator:shader(particles); }
+/* Apply behavior to an ordinary authored element. Geometry belongs to the caller's stylesheet. */
+.particle-paint { pointer-events:none; }
+.particle-paint.has-particles { --urui-decorator:shader(particles); }
+.feather-mask { --urui-mask-image:shader(feather-mask); }
+
+/* Static wave vocabulary remains ordinary CSS custom properties. */
+.wave-image { --urui-wave-fixed-edge:top; --urui-wave-displacement:horizontal; --urui-wave-columns:24; --urui-wave-rows:8; --urui-wave-amplitude:18px; --urui-wave-frequency:6; --urui-wave-speed:1.3; --urui-wave-secondary:.5; --urui-wave-fixed-part:.65; --urui-wave-cross-influence:.25; --urui-wave-cross-scale:.01; --urui-wave-time-offset:0; }
+.wave-image > img { --urui-image-effect:ui-wave; }
+
+/* 通用效果的独立节点参数。作者规则仍按标准级联覆盖这些初始值。 */
+@property --urui-fx-tone-filter { syntax: "none | grayscale | sepia | negative | retro | posterize"; inherits: false; initial-value: none; }
+@property --urui-fx-tone-intensity { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-color-filter { syntax: "none | multiply | additive | subtractive | replace | multiply-luminance | multiply-additive | hsv-modifier | contrast"; inherits: false; initial-value: none; }
+@property --urui-fx-color-intensity { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-color { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-color-glow { syntax: "false | true"; inherits: false; initial-value: false; }
+@property --urui-fx-color-hue-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-color-saturation-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-color-value-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-color-contrast-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-color-brightness-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-color-alpha { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-target-mode { syntax: "none | hue | luminance"; inherits: false; initial-value: none; }
+@property --urui-fx-target-color { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-target-range { syntax: "<number>"; inherits: false; initial-value: .1; }
+@property --urui-fx-target-softness { syntax: "<number>"; inherits: false; initial-value: .5; }
+@property --urui-fx-sampling-filter { syntax: "none | blur-fast | blur-medium | blur-detail | pixelation | rgb-shift | edge-luminance | edge-alpha"; inherits: false; initial-value: none; }
+@property --urui-fx-sampling-intensity { syntax: "<number>"; inherits: false; initial-value: .5; }
+@property --urui-fx-sampling-width { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-sampling-scale { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-allow-to-modify-mesh-shape { syntax: "false | true"; inherits: false; initial-value: true; }
+
+/* Transition / Detail / Edge: source algorithm extensions. */
+@property --urui-fx-transition-filter { syntax: "none | fade | cutoff | dissolve | shiny | mask | melt | burn | pattern"; inherits: false; initial-value: none; }
+@property --urui-fx-transition-progress { syntax: "<number>"; inherits: false; initial-value: .5; }
+@property --urui-fx-transition-width { syntax: "<number>"; inherits: false; initial-value: .2; }
+@property --urui-fx-transition-softness { syntax: "<number>"; inherits: false; initial-value: .2; }
+@property --urui-fx-transition-rotation { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-transition-range-min { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-transition-range-max { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-transition-auto-play-speed { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-detail-intensity { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-detail-threshold-min { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-detail-threshold-max { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-edge-width { syntax: "<number>"; inherits: false; initial-value: .5; }
+@property --urui-fx-edge-shiny-progress { syntax: "<number>"; inherits: false; initial-value: .5; }
+@property --urui-fx-edge-shiny-width { syntax: "<number>"; inherits: false; initial-value: .5; }
+@property --urui-fx-edge-shiny-auto-play-speed { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-transition-reverse { syntax: "false | true"; inherits: false; initial-value: false; }
+@property --urui-fx-transition-keep-aspect-ratio { syntax: "false | true"; inherits: false; initial-value: true; }
+@property --urui-fx-transition-pattern-reverse { syntax: "false | true"; inherits: false; initial-value: false; }
+@property --urui-fx-transition-color-glow { syntax: "false | true"; inherits: false; initial-value: false; }
+@property --urui-fx-edge-color-glow { syntax: "false | true"; inherits: false; initial-value: false; }
+@property --urui-fx-transition-texture { syntax: "<image>"; inherits: false; initial-value: none; }
+@property --urui-fx-transition-texture-scale-x { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-transition-texture-scale-y { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-transition-texture-offset-x { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-transition-texture-offset-y { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-transition-texture-speed-x { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-transition-texture-speed-y { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-detail-texture { syntax: "<image>"; inherits: false; initial-value: none; }
+@property --urui-fx-detail-texture-scale-x { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-detail-texture-scale-y { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-detail-texture-offset-x { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-detail-texture-offset-y { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-detail-texture-speed-x { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-detail-texture-speed-y { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-transition-color-filter { syntax: "none | multiply | additive | subtractive | replace | multiply-luminance | multiply-additive | hsv-modifier | contrast"; inherits: false; initial-value: multiply-additive; }
+@property --urui-fx-transition-color-hue-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-transition-color-saturation-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-transition-color-value-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-transition-color-contrast-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-transition-color-brightness-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-transition-color-alpha { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-edge-color-filter { syntax: "none | multiply | additive | subtractive | replace | multiply-luminance | multiply-additive | hsv-modifier | contrast"; inherits: false; initial-value: replace; }
+@property --urui-fx-edge-color-hue-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-edge-color-saturation-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-edge-color-value-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-edge-color-contrast-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-edge-color-brightness-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-edge-color-alpha { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-transition-color { syntax: "<color>"; inherits: false; initial-value: #0080ff; }
+@property --urui-fx-detail-color { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-edge-color { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-detail-filter { syntax: "none | masking | multiply | additive | subtractive | replace | multiply-additive"; inherits: false; initial-value: none; }
+@property --urui-fx-edge-mode { syntax: "none | plain | shiny"; inherits: false; initial-value: none; }
+@property --urui-fx-pattern-area { syntax: "all | inner | edge"; inherits: false; initial-value: inner; }
+
+/* Gradation: source color keys and coordinate modes. */
+@property --urui-fx-gradation-mode { syntax: "none | horizontal | horizontal-gradient | vertical | vertical-gradient | radial-fast | radial-detail | diagonal-to-right-bottom | diagonal-to-left-bottom | angle | angle-gradient | diagonal"; inherits: false; initial-value: none; }
+@property --urui-fx-gradation-color-filter { syntax: "none | multiply | additive | subtractive | replace | multiply-luminance | multiply-additive"; inherits: false; initial-value: multiply; }
+@property --urui-fx-gradation-intensity { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-gradation-offset { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-gradation-scale { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-gradation-rotation { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-gradation-gradient { syntax: "<image>"; inherits: false; initial-value: none; }
+@property --urui-fx-gradation-color1 { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-gradation-color2 { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-gradation-color3 { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-gradation-color4 { syntax: "<color>"; inherits: false; initial-value: white; }
+
+/* Shadow / mirror and independent Flip flags. */
+@property --urui-fx-shadow-mode { syntax: "none | shadow | shadow3 | outline | outline8 | mirror"; inherits: false; initial-value: none; }
+@property --urui-fx-shadow-distance-x { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-shadow-distance-y { syntax: "<number>"; inherits: false; initial-value: -1; }
+@property --urui-fx-shadow-iteration { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-shadow-fade { syntax: "<number>"; inherits: false; initial-value: .9; }
+@property --urui-fx-shadow-mirror-scale { syntax: "<number>"; inherits: false; initial-value: .5; }
+@property --urui-fx-shadow-blur-intensity { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --urui-fx-flip { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --urui-fx-shadow-color-filter { syntax: "none | multiply | additive | subtractive | replace | multiply-luminance | multiply-additive | hsv-modifier | contrast"; inherits: false; initial-value: replace; }
+@property --urui-fx-shadow-color { syntax: "<color>"; inherits: false; initial-value: white; }
+@property --urui-fx-shadow-color-glow { syntax: "false | true"; inherits: false; initial-value: false; }
+@property --urui-fx-shadow-color-hue-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-shadow-color-saturation-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-shadow-color-value-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-shadow-color-contrast-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-shadow-color-brightness-shift { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+@property --urui-fx-shadow-color-alpha { syntax: "<number> | auto"; inherits: false; initial-value: auto; }
+
+/* Unity fixed blend factors; composed at this node's destination. */
+@property --urui-fx-blend-type { syntax: "custom | alpha-blend | multiply | additive | soft-additive | multiply-additive"; inherits: false; initial-value: alpha-blend; }
+@property --urui-fx-src-blend-mode { syntax: "zero | one | dst-color | src-color | one-minus-dst-color | src-alpha | one-minus-src-color | dst-alpha | one-minus-dst-alpha | src-alpha-saturate | one-minus-src-alpha"; inherits: false; initial-value: one; }
+@property --urui-fx-dst-blend-mode { syntax: "zero | one | dst-color | src-color | one-minus-dst-color | src-alpha | one-minus-src-color | dst-alpha | one-minus-dst-alpha | src-alpha-saturate | one-minus-src-alpha"; inherits: false; initial-value: one-minus-src-alpha; }

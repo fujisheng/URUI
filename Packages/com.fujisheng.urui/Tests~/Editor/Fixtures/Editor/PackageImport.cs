@@ -16,6 +16,54 @@ namespace URUI.Tests.Editor
     {
         const string Package = "Packages/com.fujisheng.urui";
 
+        [Serializable] sealed class SampleImportReport
+        {
+            public bool passed;
+            public string packageVersion;
+            public SampleImportEntry[] samples;
+        }
+        [Serializable] sealed class SampleImportEntry
+        {
+            public string name, sourcePath, importPath;
+            public bool importedNow, previouslyImported;
+            public int fileCount;
+        }
+
+        /// <summary>在尚未复制运行时夹具的独立工程中使用真实 UPM 导入全部声明样例。</summary>
+        public static void ImportSamples()
+        {
+            try
+            {
+                var info = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(Package + "/package.json");
+                Need(info != null, "UPM resolution before sample import");
+                var samples = UnityEditor.PackageManager.UI.Sample.FindByPackage(info.name, info.version).ToArray();
+                Need(samples.Length != 0, "package declares samples");
+                var entries = samples.Select(sample =>
+                {
+                    var previouslyImported = sample.isImported;
+                    Need(sample.Import(UnityEditor.PackageManager.UI.Sample.ImportOptions.OverridePreviousImports),
+                        "Sample.Import: " + sample.displayName);
+                    Need(Directory.Exists(sample.importPath), "sample import directory: " + sample.displayName);
+                    var files = Directory.GetFiles(sample.resolvedPath, "*", SearchOption.AllDirectories)
+                        .Where(path => !path.EndsWith(".meta", StringComparison.Ordinal)).ToArray();
+                    foreach (var source in files)
+                    {
+                        var target = Path.Combine(sample.importPath, Path.GetRelativePath(sample.resolvedPath, source));
+                        Need(File.Exists(target) && File.ReadAllBytes(source).SequenceEqual(File.ReadAllBytes(target)),
+                            "sample source bytes: " + target);
+                    }
+                    return new SampleImportEntry { name = sample.displayName, sourcePath = sample.resolvedPath,
+                        importPath = sample.importPath, importedNow = true, previouslyImported = previouslyImported, fileCount = files.Length };
+                }).ToArray();
+                Directory.CreateDirectory("Evidence");
+                File.WriteAllText("Evidence/sample-import.json", JsonUtility.ToJson(new SampleImportReport {
+                    passed = true, packageVersion = info.version, samples = entries }, true));
+                Debug.Log("URUI_SAMPLE_IMPORT_PASS " + entries.Length);
+                EditorApplication.Exit(0);
+            }
+            catch (Exception error) { Debug.LogException(error); EditorApplication.Exit(1); }
+        }
+
         static void Need(bool condition, string reason)
         {
             if (!condition)
@@ -34,7 +82,7 @@ namespace URUI.Tests.Editor
             var assemblies = CompilationPipeline.GetAssemblies();
             var runtime = assemblies.Single(value => value.name == "URUI.Runtime");
             Need(!runtime.assemblyReferences.Any(value => value.name == "Unity.ugui"), "runtime dependency closure");
-            var definitions = Directory.GetFiles(info.resolvedPath, "*.asmdef", SearchOption.AllDirectories).Where(path => !path.Split(Path.DirectorySeparatorChar).Any(part => part.EndsWith("~"))).ToArray();
+            var definitions = Directory.GetFiles(info.resolvedPath, "*.asmdef", SearchOption.AllDirectories).Where(path => !path.Split(Path.DirectorySeparatorChar).Any(part => part.EndsWith("~") || part == "Tests")).ToArray();
             Need(definitions.Length == 2, "single runtime and editor assembly definitions");
             var shader = UnityResources.Load<Shader>("URUI/Premultiplied");
             Need(shader && shader.name == "URUI/Premultiplied", "shader identity");

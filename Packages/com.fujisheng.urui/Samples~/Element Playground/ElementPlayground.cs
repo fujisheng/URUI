@@ -48,7 +48,7 @@ namespace URUI.Samples
 
             if (document.Source)
             {
-                document.Load(document.Source);
+                document.Load(document.Source, "samples/element-playground/Playground.html");
             }
         }
 
@@ -56,7 +56,7 @@ namespace URUI.Samples
         {
             ReleaseSubscriptions();
             selected = null;
-            var root = loaded.Root;
+            var root = loaded.DocumentElement;
             items = root.Q("items");
             status = root.Q("status");
             subscriptions.Add(root.Q("add").RegisterCallback<ClickEvent>(_ => AddItem()));

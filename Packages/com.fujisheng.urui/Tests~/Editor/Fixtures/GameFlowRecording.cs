@@ -41,7 +41,7 @@ namespace URUI.Tests
                 Application.runInBackground = true; Application.targetFrameRate = 30;
                 app = FindFirstObjectByType<GameFlowSample>(); doc = app.GetComponent<Document>();
                 await Until(() => doc.IsLoaded && Camera.main, "loading document");
-                doc.Input.UseUnityInput = false;
+                doc.Surface.Input.UseUnityInput = false;
                 await Task.Delay(160);
                 report.width = Screen.width; report.height = Screen.height;
                 target = new RenderTexture(Screen.width, Screen.height, 24, RenderTextureFormat.ARGB32);
@@ -49,7 +49,7 @@ namespace URUI.Tests
                 started = next = Time.realtimeSinceStartup; recording = true; Mark("loading");
                 await Page(GamePage.Login); Mark("login"); await Task.Delay(450);
                 var name = doc.Q<TextField>("call-sign"); name.Value = ""; name.Focus();
-                foreach (char value in "Rhea") { doc.Input.SendText(value.ToString()); await Task.Delay(110); }
+                foreach (char value in "Rhea") { doc.Surface.Input.SendText(value.ToString()); await Task.Delay(110); }
                 await Task.Delay(350); await Click("login-submit");
                 await Page(GamePage.Home); Mark("home"); await Task.Delay(1100);
                 await Click("open-inventory"); await Page(GamePage.Inventory); Mark("inventory");
@@ -62,14 +62,14 @@ namespace URUI.Tests
                 await Click("open-settings"); await Page(GamePage.Settings); Mark("settings"); await Task.Delay(650);
                 var slider = doc.Q<Slider>("volume").WorldBound;
                 var point = new Vector2(slider.xMin + slider.width * .65f, slider.center.y);
-                doc.Input.SendPointer(PointerPhase.Move, point); await Task.Delay(180);
-                doc.Input.SendPointer(PointerPhase.Down, point, pressedButtons: 1);
+                doc.Surface.Input.SendPointer(PointerPhase.Move, point); await Task.Delay(180);
+                doc.Surface.Input.SendPointer(PointerPhase.Down, point, pressedButtons: 1);
                 for (int i = 0; i <= 8; i++)
                 {
                     point.x = slider.xMin + slider.width * (.65f - .035f * i);
-                    doc.Input.SendPointer(PointerPhase.Move, point, pressedButtons: 1); await Task.Delay(70);
+                    doc.Surface.Input.SendPointer(PointerPhase.Move, point, pressedButtons: 1); await Task.Delay(70);
                 }
-                doc.Input.SendPointer(PointerPhase.Up, point); await Task.Delay(400);
+                doc.Surface.Input.SendPointer(PointerPhase.Up, point); await Task.Delay(400);
                 if (Math.Abs(doc.Q<Slider>("volume").Value - 65) < 1) throw new Exception("Recorded slider did not move.");
                 await Click("tab-display"); await Task.Delay(700);
                 await Click("save-settings"); await Task.Delay(650);
@@ -117,16 +117,16 @@ namespace URUI.Tests
         async Task Page(GamePage page)
         {
             await Until(() => app.CurrentPage == page && doc.IsLoaded && !app.IsBusy, page.ToString());
-            doc.Input.UseUnityInput = false; await Task.Delay(350);
+            doc.Surface.Input.UseUnityInput = false; await Task.Delay(350);
         }
         async Task Click(string id)
         {
             var element = doc.Q(id);
             if (element == null || !element.HasLayout) throw new Exception("Recording target is absent: " + id);
             var point = element.WorldBound.center;
-            doc.Input.SendPointer(PointerPhase.Move, point); await Task.Delay(160);
-            doc.Input.SendPointer(PointerPhase.Down, point, pressedButtons: 1); await Task.Delay(120);
-            doc.Input.SendPointer(PointerPhase.Up, point); await Task.Delay(150);
+            doc.Surface.Input.SendPointer(PointerPhase.Move, point); await Task.Delay(160);
+            doc.Surface.Input.SendPointer(PointerPhase.Down, point, pressedButtons: 1); await Task.Delay(120);
+            doc.Surface.Input.SendPointer(PointerPhase.Up, point); await Task.Delay(150);
         }
         void Finish(int code)
         {

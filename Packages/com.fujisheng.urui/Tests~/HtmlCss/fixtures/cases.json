@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"name":"layout","regions":[{"name":"first-fill","rect":[60,60,4,4]},{"name":"rem-fill","rect":[70,140,4,4]}]},
+    {"name":"typography","regions":[{"name":"color-fill","rect":[410,50,4,4]}]},
+    {"name":"forms","preview":true,"regions":[{"name":"track-fill","rect":[210,60,4,4]},{"name":"progress-fill","rect":[50,130,4,4]}]},
+    {"name":"compositing","regions":[{"name":"base-fill","rect":[400,260,4,4]},{"name":"group-background","rect":[65,65,4,4]},{"name":"group-child","rect":[90,90,4,4]},{"name":"visible-child","rect":[80,215,4,4]},{"name":"direct-rgba","rect":[230,210,4,4]},{"name":"group-rgba","rect":[280,210,4,4]},{"name":"overlapping-rgba","rect":[330,210,4,4]}]},
+    {"name":"documents","regions":[{"name":"unit-fill","rect":[70,70,4,4]},{"name":"inert-area","rect":[370,50,4,4]}]}
+  ]
+}

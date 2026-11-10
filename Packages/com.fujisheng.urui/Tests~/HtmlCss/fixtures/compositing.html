@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><link rel="stylesheet" href="/urui/base.css"><link rel="stylesheet" href="common.css"><style>
+#base { width:400px; height:240px; background-color:#335577; }
+#opacity { position:absolute; left:20px; top:20px; width:120px; height:100px; opacity:.5; background-color:#aa6622; }
+#child { position:absolute; left:20px; top:20px; width:60px; height:60px; background-color:#779933; }
+#gradient { position:absolute; left:180px; top:20px; width:120px; height:100px; background-image:linear-gradient(90deg,#335577,#883355); }
+#hidden { position:absolute; left:20px; top:160px; width:120px; height:40px; visibility:hidden; background-color:red; transform:translate(5px,0); }
+#visible { width:80px; height:30px; visibility:visible; background-color:#779933; }
+.alpha { position:absolute; top:160px; width:32px; height:32px; }
+.half { position:absolute; left:0; top:0; width:32px; height:32px; background-color:rgba(192,96,32,.5); }
+#alpha { left:180px; background-color:rgba(192,96,32,.5); }
+#alpha-group { left:230px; opacity:.5; }
+#alpha-overlap { left:280px; opacity:.5; }
+.second-half { background-color:rgba(32,160,192,.5); }
+</style></head><body>
+<div id="base" data-test="base" class="panel"><div id="opacity" data-test="opacity"><div id="child" data-test="child"></div></div><div id="gradient" data-test="gradient"></div><div id="hidden" data-test="hidden"><div id="visible" data-test="visible"></div></div>
+<div id="alpha" class="alpha" data-test="alpha"></div>
+<div id="alpha-group" class="alpha" data-test="alpha-group"><div class="half"></div></div>
+<div id="alpha-overlap" class="alpha" data-test="alpha-overlap"><div class="half"></div><div class="half second-half"></div></div>
+</div>
+</body></html>

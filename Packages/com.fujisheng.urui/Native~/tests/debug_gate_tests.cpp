@@ -9,7 +9,6 @@ int main()
 
     RenderSerial serial;
     RenderPlan plan(serial);
-    plan.Enable(true);
     std::vector<UruiCommand> commands;
     std::vector<std::array<float, 16>> matrices;
     UruiCommand command{};

@@ -33,7 +33,7 @@ namespace URUI.Events
         /// <summary>是否向祖先传播；布局和挂载通知只投递目标。</summary>
         public virtual bool Bubbles => true;
 
-        /// <summary>完成当前元素回调后停止传播；原生事件遵循 RmlUi 默认行为规则。</summary>
+        /// <summary>完成当前元素回调后停止传播；原生事件遵循 URUI 默认行为规则。</summary>
         public void StopPropagation() => IsPropagationStopped = true;
         /// <summary>立即停止本次事件余下的回调。</summary>
         public void StopImmediatePropagation()
@@ -134,6 +134,12 @@ namespace URUI.Events
 
     /// <summary>元素失去焦点。</summary>
     public sealed class BlurEvent : EventBase { }
+
+    /// <summary>作者关键帧动画完成；URUI 对每个完成的属性分别通知。</summary>
+    public sealed class AnimationEndEvent : EventBase { public string PropertyName { get; internal set; } public string AnimationName {get;internal set;} public ulong Identity {get;internal set;} }
+    internal sealed class AnimationCreatedEvent:EventBase {internal string AnimationName;internal string PropertyName;internal ulong Identity;internal int Iterations;}
+    /// <summary>作者样式过渡完成。</summary>
+    public sealed class TransitionEndEvent : EventBase { public string PropertyName { get; internal set; } }
 
     /// <summary>滚动位置变化。</summary>
     public sealed class ScrollEvent : EventBase { }

@@ -1,33 +1,46 @@
-# URUI · UnityRmlUi
+# URUI
 
-URUI 为 AI 辅助开发 Unity UI 提供可读的文本界面：使用 RML/RCSS 描述层级、布局和外观，使用 C# 查询与更新元素。RmlUi 处理文档与布局，Unity 提交绘制并提供输入。
+URUI 使用 HTML/CSS 描述 Unity 游戏界面的结构、布局、皮肤和动画，通过 C# 查询节点、更新数据及处理输入。当前版本 `0.7.1-preview.1`，程序集 `URUI.Runtime`。HTML/CSS 支持范围以 [HtmlCssSupport.json](Documentation~/HtmlCssSupport.json) 为准。
 
-uGUI 的场景、Prefab、Inspector 与对象引用需要共同还原界面关系。RML/RCSS 将更多界面信息表达为文本，便于人和 AI 阅读、修改与审查。URUI 采用 Web 风格的工作方式，实际语法与能力以 RmlUi 为准，不提供完整浏览器或 JavaScript 运行环境。
+## 文档导航
 
-本文档对应仓库 `main` 分支。安装见[安装指南](Documentation~/INSTALL_ZH.md)。默认推荐从 **Game Flow** 开始：在 Package Manager 选择 URUI，在 Samples 中导入 **Game Flow**，打开导入目录中的 `GameFlow.unity` 进入 Play Mode。也可使用 **Tools > URUI > Open Game Flow Sample** 导入并打开；安装包本身不会自动导入样例。
+| 要完成的工作 | 阅读文档 |
+| --- | --- |
+| 安装包、配置 Unity 与原生插件 | [安装](Documentation~/INSTALL_ZH.md) |
+| 运行样例、创建第一个页面 | [快速开始](Documentation~/QUICK_START_ZH.md) |
+| 加载页面、查询/创建节点、操作层级 | [Document 与 Element API](Documentation~/API_ZH.md) |
+| 按钮、输入框、滑块、下拉框、列表 | [控件使用](Documentation~/CONTROLS_ZH.md) |
+| 默认外观、图片按钮与状态反馈 | [默认控件与作者皮肤](Documentation~/DEFAULT_CONTROLS_ZH.md) |
+| 点击、指针捕获、键盘及组合串 | [输入与事件](Documentation~/EVENTS_ZH.md) |
+| CSS 更新、计算样式、动画播放与时钟 | [样式与动画](Documentation~/STYLES_ANIMATION_ZH.md) |
+| 图片、字体、租约、重载和释放 | [生命周期与资源](Documentation~/LIFECYCLE_ZH.md) |
+| 自定义绘制、效果扩展、提交和视频 | [渲染扩展与媒体](Documentation~/RENDERING_ZH.md) |
+| 查类型、完整签名、默认参数及继承关系 | [接口声明参考](Documentation~/REFERENCE_ZH.md) |
+| 判断平台、输入和性能验证范围 | [支持范围](Documentation~/LIMITATIONS_ZH.md)、[插件清单](Documentation~/PLUGINS.json) |
+| 后续方向与代码规范 | [路线图](Documentation~/ROADMAP_ZH.md)、[代码约定](Documentation~/CODE_STYLE_ZH.md) |
 
-权威源码在包内 `Samples~/Game Flow`。Unity 标准导入到 `Assets/Samples/URUI/<包版本>/Game Flow`，以实际返回路径为准；项目内 Assets 是导入副本。完整 RML/RCSS、图片、字体、脚本、场景和程序集配置随样例提供，不需要开发工作区或 Artifacts。见 [Game Flow 运行说明](Samples~/Game%20Flow/README.md)。
+## 推荐从 Game Flow 开始
 
-Hello URUI、Element Playground、Runtime Controls 和 **Create Minimal UI Scene** 保留为次要学习入口。
+Package Manager → URUI → Samples → **Game Flow** → Import，打开导入目录中的 `GameFlow.unity` 并进入 Play Mode。菜单 **Tools > URUI > Open Game Flow Sample** 也会导入并打开场景。安装包本身不会自动导入样例。
+
+样例展示加载、模拟登录、主页、背包、设置和排行榜，登录及排行使用本地 mock。HTML/CSS、图片、字体、脚本与场景均随包提供。标准导入目录为 `Assets/Samples/URUI/<包版本>/Game Flow`，以 Unity 实际路径为准。包内 `Samples~/Game Flow` 是源码，Assets 目录是导入副本。见 [Game Flow 说明](Samples~/Game%20Flow/README.md)。
 
 ![Game Flow：Unity Editor 实际运行录制](Documentation~/Images/game-flow.gif)
 
-动图由 Unity Editor 的实际运行画面连续采帧生成，展示加载、登录、主界面、物品选择/装备、设置、排行榜和返回。登录及排行使用本地 mock；960×540、约25秒，无 Player 构建。
+动图为 Unity Editor 实际运行录制，不是 Player 验收。Hello URUI、Element Playground 与 Runtime Controls 可分别用于学习最小接入、节点操作和类型化控件。
 
-业务代码引用程序集 `URUI.Runtime`，按职责使用 `URUI.Documents`、`URUI.Elements`、`URUI.Controls` 和 `URUI.Events`：通过 `Document` 加载文档，查询或创建有类型节点，再更新文本、结构、样式和事件订阅。
+## 核心使用关系
 
-- [快速开始](Documentation~/QUICK_START_ZH.md)
-- [C# API](Documentation~/API_ZH.md)
-- [事件与解绑](Documentation~/EVENTS_ZH.md)
-- [资源和生命周期](Documentation~/LIFECYCLE_ZH.md)
-- [支持矩阵与限制](Documentation~/LIMITATIONS_ZH.md)
-- [路线图](Documentation~/ROADMAP_ZH.md)
-- [代码约定](Documentation~/CODE_STYLE_ZH.md)
+一个活动 `URUI.Hosting.Surface` 统一管理视口、时钟、输入和绘制；多个 `URUI.Documents.Document` 各自拥有 DOM、样式和资源。通过 `document.Q<T>()` 查询，或 `document.Create<T>()` 创建同文档节点。原始输入入口为 `document.Surface.Input`，节点操作在 Unity 主线程完成。
 
-当前验证目标：**Unity 6000.3.22f1 / macOS ARM64 / Built-in / Metal**。运行需要单个活动文档、Unity 主线程、`MainCamera`、旧 Input Manager、可读取的字体文件及完整常驻 mip0 的颜色图片；图片直接借用 Texture2D，无需 Read/Write。七个平台的 ABI3 / texture protocol v1 原生插件已同步编译并随包提供；本轮仅验证 macOS ARM64 Editor，其他目标的 Unity 运行验证仍待完成；已提供控件、键盘、表单与组合串接口；真实系统 IME、默认移动软键盘接入、SRP 和设备验证范围见支持矩阵。
+Core 不内置业务数据绑定。FUI 的窗口、导航与绑定由独立适配包接入；普通 Unity 组件也可以直接使用 Core。可选 [URUI.Effect](../com.fujisheng.urui.effect/README.md) 提供效果控制器、预设、粒子与表面处理，Core 不依赖该包。
+
+普通几何按透明混合依赖合批，每批最多绑定 8 张原纹理，不制作图集或复制图片。纹理预算、颜色域、裁剪、变换、自定义绘制和图层会影响批次；效果可能产生额外绘制及 RenderTexture。具体性能需在目标项目和设备测量。
+
+## 环境与发布范围
+
+主要验证环境为 Unity **6000.3.22f1 / macOS ARM64 / Metal**，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 **ABI8 / style4 / effect7 / filter3 / animation1**，正式 C 导出 176 个。各平台构建、静态审计和实际运行状态分别记录在[插件清单](Documentation~/PLUGINS.json)。
+
+使用 MainCamera、Input Manager (Old/Both) 或自行注入输入。真实系统 IME、移动软键盘及无障碍边界见[支持范围](Documentation~/LIMITATIONS_ZH.md)。图片借用完整常驻 mip0 的 Texture2D，字体需提供包含所需字形的可读字节资源。
 
 项目许可见 [LICENSE.md](LICENSE.md)，第三方许可见 [Third Party Notices](Third%20Party%20Notices.md) 与 `Documentation~/Licenses/`。
-
-## 类型化控件
-
-主要样例 **Game Flow** 展示加载、模拟登录、主界面、背包、设置和排行榜的组合流程，使用独立 RML/RCSS 资源。需要逐项学习控件时，再导入 **Runtime Controls** 并打开 `RuntimeControls.unity`。API 通过 `Document.Create<T>()` / `Q<T>()`、值变化订阅、ContentContainer 与 Document.Input 连接业务，详见 Documentation~/API_ZH.md。

@@ -1,0 +1,443 @@
+<!doctype html><html><head><meta charset="utf-8"><title>URUI Effect Gallery</title><link rel="stylesheet" href="/urui/base.css"><link rel="stylesheet" href="/urui-effect/Effect.css"><link rel="stylesheet" href="Gallery.css"></head><body><div class="gallery"><header id="intro"><h1>URUI Effect Gallery</h1><p>Strict HTML / CSS. URUI extensions show the original image in browsers. Cost labels describe the algorithm, not GPU milliseconds.</p></header><section id="browser" data-test="browser"><h2>Standard CSS / browser comparison</h2><img id="browser-original" data-test="browser-original" src="input.png"><img id="browser-gray" data-test="browser-gray" src="input.png"><img id="browser-color" data-test="browser-color" src="input.png"><img id="browser-blur" data-test="browser-blur" src="input.png"></section><h2>Custom image definition</h2><div class="row"><img class="small" src="white.png"><img class="large" src="white.png"></div><h2>Preset / link / playback — C13, C14</h2><section id="controls"><div class="row"><button id="play">Play</button><button id="pause">Pause</button><button id="resume">Resume</button><button id="stop">Stop</button><button id="restart">Restart</button><input id="seek" type="range" min="0" max="1" step="0.001" value="0"></div><div class="row"><img id="controlled" src="input.png"><img id="linked" src="input.png"></div><p>Seek is manual; it never signals successful completion. The second image uses an independent linked snapshot.</p></section><h2>Declarative particles</h2><urui-particles id="particle-demo" src="sample-particles" data-urui-pause-when-hidden="true" data-urui-restart-on-show="true"></urui-particles><p>Unity ParticleSystem prefab; browser placeholder. No browser simulation.</p>
+<h2>ToneFilter — C01</h2><div class="cards">
+<article class="card" id="ToneFilter-None"><p>None</p><p>enum:ToneFilter.None</p><div class="states">
+<img class="ToneFilter-None-default" src="input.png" alt="default">
+<img class="ToneFilter-None-extreme" src="input.png" alt="extreme">
+<img class="ToneFilter-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ToneFilter-Grayscale"><p>Grayscale</p><p>enum:ToneFilter.Grayscale</p><div class="states">
+<img class="ToneFilter-Grayscale-default" src="input.png" alt="default">
+<img class="ToneFilter-Grayscale-extreme" src="input.png" alt="extreme">
+<img class="ToneFilter-Grayscale-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ToneFilter-Sepia"><p>Sepia</p><p>enum:ToneFilter.Sepia</p><div class="states">
+<img class="ToneFilter-Sepia-default" src="input.png" alt="default">
+<img class="ToneFilter-Sepia-extreme" src="input.png" alt="extreme">
+<img class="ToneFilter-Sepia-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ToneFilter-Negative"><p>Negative</p><p>enum:ToneFilter.Negative</p><div class="states">
+<img class="ToneFilter-Negative-default" src="input.png" alt="default">
+<img class="ToneFilter-Negative-extreme" src="input.png" alt="extreme">
+<img class="ToneFilter-Negative-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ToneFilter-Retro"><p>Retro</p><p>enum:ToneFilter.Retro</p><div class="states">
+<img class="ToneFilter-Retro-default" src="input.png" alt="default">
+<img class="ToneFilter-Retro-extreme" src="input.png" alt="extreme">
+<img class="ToneFilter-Retro-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ToneFilter-Posterize"><p>Posterize</p><p>enum:ToneFilter.Posterize</p><div class="states">
+<img class="ToneFilter-Posterize-default" src="input.png" alt="default">
+<img class="ToneFilter-Posterize-extreme" src="input.png" alt="extreme">
+<img class="ToneFilter-Posterize-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>ColorFilter — C02</h2><div class="cards">
+<article class="card" id="ColorFilter-None"><p>None</p><p>enum:ColorFilter.None</p><div class="states">
+<img class="ColorFilter-None-default" src="input.png" alt="default">
+<img class="ColorFilter-None-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-Multiply"><p>Multiply</p><p>enum:ColorFilter.Multiply</p><div class="states">
+<img class="ColorFilter-Multiply-default" src="input.png" alt="default">
+<img class="ColorFilter-Multiply-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-Multiply-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-Additive"><p>Additive</p><p>enum:ColorFilter.Additive</p><div class="states">
+<img class="ColorFilter-Additive-default" src="input.png" alt="default">
+<img class="ColorFilter-Additive-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-Additive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-Subtractive"><p>Subtractive</p><p>enum:ColorFilter.Subtractive</p><div class="states">
+<img class="ColorFilter-Subtractive-default" src="input.png" alt="default">
+<img class="ColorFilter-Subtractive-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-Subtractive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-Replace"><p>Replace</p><p>enum:ColorFilter.Replace</p><div class="states">
+<img class="ColorFilter-Replace-default" src="input.png" alt="default">
+<img class="ColorFilter-Replace-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-Replace-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-MultiplyLuminance"><p>MultiplyLuminance</p><p>enum:ColorFilter.MultiplyLuminance</p><div class="states">
+<img class="ColorFilter-MultiplyLuminance-default" src="input.png" alt="default">
+<img class="ColorFilter-MultiplyLuminance-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-MultiplyLuminance-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-MultiplyAdditive"><p>MultiplyAdditive</p><p>enum:ColorFilter.MultiplyAdditive</p><div class="states">
+<img class="ColorFilter-MultiplyAdditive-default" src="input.png" alt="default">
+<img class="ColorFilter-MultiplyAdditive-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-MultiplyAdditive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-HsvModifier"><p>HsvModifier</p><p>enum:ColorFilter.HsvModifier</p><div class="states">
+<img class="ColorFilter-HsvModifier-default" src="input.png" alt="default">
+<img class="ColorFilter-HsvModifier-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-HsvModifier-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ColorFilter-Contrast"><p>Contrast</p><p>enum:ColorFilter.Contrast</p><div class="states">
+<img class="ColorFilter-Contrast-default" src="input.png" alt="default">
+<img class="ColorFilter-Contrast-extreme" src="input.png" alt="extreme">
+<img class="ColorFilter-Contrast-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>GradationColorFilter — C09</h2><div class="cards">
+<article class="card" id="GradationColorFilter-None"><p>None</p><p>enum:GradationColorFilter.None</p><div class="states">
+<img class="GradationColorFilter-None-default" src="input.png" alt="default">
+<img class="GradationColorFilter-None-extreme" src="input.png" alt="extreme">
+<img class="GradationColorFilter-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationColorFilter-Multiply"><p>Multiply</p><p>enum:GradationColorFilter.Multiply</p><div class="states">
+<img class="GradationColorFilter-Multiply-default" src="input.png" alt="default">
+<img class="GradationColorFilter-Multiply-extreme" src="input.png" alt="extreme">
+<img class="GradationColorFilter-Multiply-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationColorFilter-Additive"><p>Additive</p><p>enum:GradationColorFilter.Additive</p><div class="states">
+<img class="GradationColorFilter-Additive-default" src="input.png" alt="default">
+<img class="GradationColorFilter-Additive-extreme" src="input.png" alt="extreme">
+<img class="GradationColorFilter-Additive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationColorFilter-Subtractive"><p>Subtractive</p><p>enum:GradationColorFilter.Subtractive</p><div class="states">
+<img class="GradationColorFilter-Subtractive-default" src="input.png" alt="default">
+<img class="GradationColorFilter-Subtractive-extreme" src="input.png" alt="extreme">
+<img class="GradationColorFilter-Subtractive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationColorFilter-Replace"><p>Replace</p><p>enum:GradationColorFilter.Replace</p><div class="states">
+<img class="GradationColorFilter-Replace-default" src="input.png" alt="default">
+<img class="GradationColorFilter-Replace-extreme" src="input.png" alt="extreme">
+<img class="GradationColorFilter-Replace-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationColorFilter-MultiplyLuminance"><p>MultiplyLuminance</p><p>enum:GradationColorFilter.MultiplyLuminance</p><div class="states">
+<img class="GradationColorFilter-MultiplyLuminance-default" src="input.png" alt="default">
+<img class="GradationColorFilter-MultiplyLuminance-extreme" src="input.png" alt="extreme">
+<img class="GradationColorFilter-MultiplyLuminance-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationColorFilter-MultiplyAdditive"><p>MultiplyAdditive</p><p>enum:GradationColorFilter.MultiplyAdditive</p><div class="states">
+<img class="GradationColorFilter-MultiplyAdditive-default" src="input.png" alt="default">
+<img class="GradationColorFilter-MultiplyAdditive-extreme" src="input.png" alt="extreme">
+<img class="GradationColorFilter-MultiplyAdditive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>SamplingFilter — C03</h2><div class="cards">
+<article class="card" id="SamplingFilter-None"><p>None</p><p>enum:SamplingFilter.None</p><div class="states">
+<img class="SamplingFilter-None-default" src="input.png" alt="default">
+<img class="SamplingFilter-None-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 1 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="SamplingFilter-BlurFast"><p>BlurFast</p><p>enum:SamplingFilter.BlurFast</p><div class="states">
+<img class="SamplingFilter-BlurFast-default" src="input.png" alt="default">
+<img class="SamplingFilter-BlurFast-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-BlurFast-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 25 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="SamplingFilter-BlurMedium"><p>BlurMedium</p><p>enum:SamplingFilter.BlurMedium</p><div class="states">
+<img class="SamplingFilter-BlurMedium-default" src="input.png" alt="default">
+<img class="SamplingFilter-BlurMedium-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-BlurMedium-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 81 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="SamplingFilter-BlurDetail"><p>BlurDetail</p><p>enum:SamplingFilter.BlurDetail</p><div class="states">
+<img class="SamplingFilter-BlurDetail-default" src="input.png" alt="default">
+<img class="SamplingFilter-BlurDetail-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-BlurDetail-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 169 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="SamplingFilter-Pixelation"><p>Pixelation</p><p>enum:SamplingFilter.Pixelation</p><div class="states">
+<img class="SamplingFilter-Pixelation-default" src="input.png" alt="default">
+<img class="SamplingFilter-Pixelation-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-Pixelation-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 1 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="SamplingFilter-RgbShift"><p>RgbShift</p><p>enum:SamplingFilter.RgbShift</p><div class="states">
+<img class="SamplingFilter-RgbShift-default" src="input.png" alt="default">
+<img class="SamplingFilter-RgbShift-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-RgbShift-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 1 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="SamplingFilter-EdgeLuminance"><p>EdgeLuminance</p><p>enum:SamplingFilter.EdgeLuminance</p><div class="states">
+<img class="SamplingFilter-EdgeLuminance-default" src="input.png" alt="default">
+<img class="SamplingFilter-EdgeLuminance-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-EdgeLuminance-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 1 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="SamplingFilter-EdgeAlpha"><p>EdgeAlpha</p><p>enum:SamplingFilter.EdgeAlpha</p><div class="states">
+<img class="SamplingFilter-EdgeAlpha-default" src="input.png" alt="default">
+<img class="SamplingFilter-EdgeAlpha-extreme" src="input.png" alt="extreme">
+<img class="SamplingFilter-EdgeAlpha-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">kernel 1 source samples; image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>TransitionFilter — C04</h2><div class="cards">
+<article class="card" id="TransitionFilter-None"><p>None</p><p>enum:TransitionFilter.None</p><div class="states">
+<img class="TransitionFilter-None-default" src="input.png" alt="default">
+<img class="TransitionFilter-None-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Fade"><p>Fade</p><p>enum:TransitionFilter.Fade</p><div class="states">
+<img class="TransitionFilter-Fade-default" src="input.png" alt="default">
+<img class="TransitionFilter-Fade-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Fade-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Cutoff"><p>Cutoff</p><p>enum:TransitionFilter.Cutoff</p><div class="states">
+<img class="TransitionFilter-Cutoff-default" src="input.png" alt="default">
+<img class="TransitionFilter-Cutoff-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Cutoff-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Dissolve"><p>Dissolve</p><p>enum:TransitionFilter.Dissolve</p><div class="states">
+<img class="TransitionFilter-Dissolve-default" src="input.png" alt="default">
+<img class="TransitionFilter-Dissolve-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Dissolve-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Shiny"><p>Shiny</p><p>enum:TransitionFilter.Shiny</p><div class="states">
+<img class="TransitionFilter-Shiny-default" src="input.png" alt="default">
+<img class="TransitionFilter-Shiny-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Shiny-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Mask"><p>Mask</p><p>enum:TransitionFilter.Mask</p><div class="states">
+<img class="TransitionFilter-Mask-default" src="input.png" alt="default">
+<img class="TransitionFilter-Mask-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Mask-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Melt"><p>Melt</p><p>enum:TransitionFilter.Melt</p><div class="states">
+<img class="TransitionFilter-Melt-default" src="input.png" alt="default">
+<img class="TransitionFilter-Melt-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Melt-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Burn"><p>Burn</p><p>enum:TransitionFilter.Burn</p><div class="states">
+<img class="TransitionFilter-Burn-default" src="input.png" alt="default">
+<img class="TransitionFilter-Burn-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Burn-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TransitionFilter-Pattern"><p>Pattern</p><p>enum:TransitionFilter.Pattern</p><div class="states">
+<img class="TransitionFilter-Pattern-default" src="input.png" alt="default">
+<img class="TransitionFilter-Pattern-extreme" src="input.png" alt="extreme">
+<img class="TransitionFilter-Pattern-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>BlendType — C06</h2><div class="cards">
+<article class="card" id="BlendType-Custom"><p>Custom</p><p>enum:BlendType.Custom</p><div class="states">
+<img class="BlendType-Custom-default" src="input.png" alt="default">
+<img class="BlendType-Custom-extreme" src="input.png" alt="extreme">
+<img class="BlendType-Custom-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">whole-node capture / final blend</p></article>
+<article class="card" id="BlendType-AlphaBlend"><p>AlphaBlend</p><p>enum:BlendType.AlphaBlend</p><div class="states">
+<img class="BlendType-AlphaBlend-default" src="input.png" alt="default">
+<img class="BlendType-AlphaBlend-extreme" src="input.png" alt="extreme">
+<img class="BlendType-AlphaBlend-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="BlendType-Multiply"><p>Multiply</p><p>enum:BlendType.Multiply</p><div class="states">
+<img class="BlendType-Multiply-default" src="input.png" alt="default">
+<img class="BlendType-Multiply-extreme" src="input.png" alt="extreme">
+<img class="BlendType-Multiply-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">whole-node capture / final blend</p></article>
+<article class="card" id="BlendType-Additive"><p>Additive</p><p>enum:BlendType.Additive</p><div class="states">
+<img class="BlendType-Additive-default" src="input.png" alt="default">
+<img class="BlendType-Additive-extreme" src="input.png" alt="extreme">
+<img class="BlendType-Additive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">whole-node capture / final blend</p></article>
+<article class="card" id="BlendType-SoftAdditive"><p>SoftAdditive</p><p>enum:BlendType.SoftAdditive</p><div class="states">
+<img class="BlendType-SoftAdditive-default" src="input.png" alt="default">
+<img class="BlendType-SoftAdditive-extreme" src="input.png" alt="extreme">
+<img class="BlendType-SoftAdditive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">whole-node capture / final blend</p></article>
+<article class="card" id="BlendType-MultiplyAdditive"><p>MultiplyAdditive</p><p>enum:BlendType.MultiplyAdditive</p><div class="states">
+<img class="BlendType-MultiplyAdditive-default" src="input.png" alt="default">
+<img class="BlendType-MultiplyAdditive-extreme" src="input.png" alt="extreme">
+<img class="BlendType-MultiplyAdditive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">whole-node capture / final blend</p></article>
+</div>
+<h2>TargetMode — C05</h2><div class="cards">
+<article class="card" id="TargetMode-None"><p>None</p><p>enum:TargetMode.None</p><div class="states">
+<img class="TargetMode-None-default" src="input.png" alt="default">
+<img class="TargetMode-None-extreme" src="input.png" alt="extreme">
+<img class="TargetMode-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TargetMode-Hue"><p>Hue</p><p>enum:TargetMode.Hue</p><div class="states">
+<img class="TargetMode-Hue-default" src="input.png" alt="default">
+<img class="TargetMode-Hue-extreme" src="input.png" alt="extreme">
+<img class="TargetMode-Hue-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="TargetMode-Luminance"><p>Luminance</p><p>enum:TargetMode.Luminance</p><div class="states">
+<img class="TargetMode-Luminance-default" src="input.png" alt="default">
+<img class="TargetMode-Luminance-extreme" src="input.png" alt="extreme">
+<img class="TargetMode-Luminance-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>ShadowMode — C07</h2><div class="cards">
+<article class="card" id="ShadowMode-None"><p>None</p><p>enum:ShadowMode.None</p><div class="states">
+<img class="ShadowMode-None-default" src="input.png" alt="default">
+<img class="ShadowMode-None-extreme" src="input.png" alt="extreme">
+<img class="ShadowMode-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ShadowMode-Shadow"><p>Shadow</p><p>enum:ShadowMode.Shadow</p><div class="states">
+<img class="ShadowMode-Shadow-default" src="input.png" alt="default">
+<img class="ShadowMode-Shadow-extreme" src="input.png" alt="extreme">
+<img class="ShadowMode-Shadow-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ShadowMode-Shadow3"><p>Shadow3</p><p>enum:ShadowMode.Shadow3</p><div class="states">
+<img class="ShadowMode-Shadow3-default" src="input.png" alt="default">
+<img class="ShadowMode-Shadow3-extreme" src="input.png" alt="extreme">
+<img class="ShadowMode-Shadow3-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ShadowMode-Outline"><p>Outline</p><p>enum:ShadowMode.Outline</p><div class="states">
+<img class="ShadowMode-Outline-default" src="input.png" alt="default">
+<img class="ShadowMode-Outline-extreme" src="input.png" alt="extreme">
+<img class="ShadowMode-Outline-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ShadowMode-Outline8"><p>Outline8</p><p>enum:ShadowMode.Outline8</p><div class="states">
+<img class="ShadowMode-Outline8-default" src="input.png" alt="default">
+<img class="ShadowMode-Outline8-extreme" src="input.png" alt="extreme">
+<img class="ShadowMode-Outline8-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="ShadowMode-Mirror"><p>Mirror</p><p>enum:ShadowMode.Mirror</p><div class="states">
+<img class="ShadowMode-Mirror-default" src="input.png" alt="default">
+<img class="ShadowMode-Mirror-extreme" src="input.png" alt="extreme">
+<img class="ShadowMode-Mirror-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>EdgeMode — C10</h2><div class="cards">
+<article class="card" id="EdgeMode-None"><p>None</p><p>enum:EdgeMode.None</p><div class="states">
+<img class="EdgeMode-None-default" src="input.png" alt="default">
+<img class="EdgeMode-None-extreme" src="input.png" alt="extreme">
+<img class="EdgeMode-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="EdgeMode-Plain"><p>Plain</p><p>enum:EdgeMode.Plain</p><div class="states">
+<img class="EdgeMode-Plain-default" src="input.png" alt="default">
+<img class="EdgeMode-Plain-extreme" src="input.png" alt="extreme">
+<img class="EdgeMode-Plain-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="EdgeMode-Shiny"><p>Shiny</p><p>enum:EdgeMode.Shiny</p><div class="states">
+<img class="EdgeMode-Shiny-default" src="input.png" alt="default">
+<img class="EdgeMode-Shiny-extreme" src="input.png" alt="extreme">
+<img class="EdgeMode-Shiny-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>PatternArea — C12</h2><div class="cards">
+<article class="card" id="PatternArea-All"><p>All</p><p>enum:PatternArea.All</p><div class="states">
+<img class="PatternArea-All-default" src="input.png" alt="default">
+<img class="PatternArea-All-extreme" src="input.png" alt="extreme">
+<img class="PatternArea-All-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="PatternArea-Inner"><p>Inner</p><p>enum:PatternArea.Inner</p><div class="states">
+<img class="PatternArea-Inner-default" src="input.png" alt="default">
+<img class="PatternArea-Inner-extreme" src="input.png" alt="extreme">
+<img class="PatternArea-Inner-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="PatternArea-Edge"><p>Edge</p><p>enum:PatternArea.Edge</p><div class="states">
+<img class="PatternArea-Edge-default" src="input.png" alt="default">
+<img class="PatternArea-Edge-extreme" src="input.png" alt="extreme">
+<img class="PatternArea-Edge-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>GradationMode — C08</h2><div class="cards">
+<article class="card" id="GradationMode-None"><p>None</p><p>enum:GradationMode.None</p><div class="states">
+<img class="GradationMode-None-default" src="input.png" alt="default">
+<img class="GradationMode-None-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-Horizontal"><p>Horizontal</p><p>enum:GradationMode.Horizontal</p><div class="states">
+<img class="GradationMode-Horizontal-default" src="input.png" alt="default">
+<img class="GradationMode-Horizontal-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-Horizontal-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-HorizontalGradient"><p>HorizontalGradient</p><p>enum:GradationMode.HorizontalGradient</p><div class="states">
+<img class="GradationMode-HorizontalGradient-default" src="input.png" alt="default">
+<img class="GradationMode-HorizontalGradient-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-HorizontalGradient-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-Vertical"><p>Vertical</p><p>enum:GradationMode.Vertical</p><div class="states">
+<img class="GradationMode-Vertical-default" src="input.png" alt="default">
+<img class="GradationMode-Vertical-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-Vertical-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-VerticalGradient"><p>VerticalGradient</p><p>enum:GradationMode.VerticalGradient</p><div class="states">
+<img class="GradationMode-VerticalGradient-default" src="input.png" alt="default">
+<img class="GradationMode-VerticalGradient-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-VerticalGradient-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-RadialFast"><p>RadialFast</p><p>enum:GradationMode.RadialFast</p><div class="states">
+<img class="GradationMode-RadialFast-default" src="input.png" alt="default">
+<img class="GradationMode-RadialFast-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-RadialFast-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-RadialDetail"><p>RadialDetail</p><p>enum:GradationMode.RadialDetail</p><div class="states">
+<img class="GradationMode-RadialDetail-default" src="input.png" alt="default">
+<img class="GradationMode-RadialDetail-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-RadialDetail-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-Diagonal"><p>Diagonal</p><p>enum:GradationMode.Diagonal</p><div class="states">
+<img class="GradationMode-Diagonal-default" src="input.png" alt="default">
+<img class="GradationMode-Diagonal-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-Diagonal-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-DiagonalToRightBottom"><p>DiagonalToRightBottom</p><p>enum:GradationMode.DiagonalToRightBottom</p><div class="states">
+<img class="GradationMode-DiagonalToRightBottom-default" src="input.png" alt="default">
+<img class="GradationMode-DiagonalToRightBottom-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-DiagonalToRightBottom-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-DiagonalToLeftBottom"><p>DiagonalToLeftBottom</p><p>enum:GradationMode.DiagonalToLeftBottom</p><div class="states">
+<img class="GradationMode-DiagonalToLeftBottom-default" src="input.png" alt="default">
+<img class="GradationMode-DiagonalToLeftBottom-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-DiagonalToLeftBottom-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-Angle"><p>Angle</p><p>enum:GradationMode.Angle</p><div class="states">
+<img class="GradationMode-Angle-default" src="input.png" alt="default">
+<img class="GradationMode-Angle-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-Angle-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="GradationMode-AngleGradient"><p>AngleGradient</p><p>enum:GradationMode.AngleGradient</p><div class="states">
+<img class="GradationMode-AngleGradient-default" src="input.png" alt="default">
+<img class="GradationMode-AngleGradient-extreme" src="input.png" alt="extreme">
+<img class="GradationMode-AngleGradient-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>DetailFilter — C11</h2><div class="cards">
+<article class="card" id="DetailFilter-None"><p>None</p><p>enum:DetailFilter.None</p><div class="states">
+<img class="DetailFilter-None-default" src="input.png" alt="default">
+<img class="DetailFilter-None-extreme" src="input.png" alt="extreme">
+<img class="DetailFilter-None-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="DetailFilter-Masking"><p>Masking</p><p>enum:DetailFilter.Masking</p><div class="states">
+<img class="DetailFilter-Masking-default" src="input.png" alt="default">
+<img class="DetailFilter-Masking-extreme" src="input.png" alt="extreme">
+<img class="DetailFilter-Masking-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="DetailFilter-Multiply"><p>Multiply</p><p>enum:DetailFilter.Multiply</p><div class="states">
+<img class="DetailFilter-Multiply-default" src="input.png" alt="default">
+<img class="DetailFilter-Multiply-extreme" src="input.png" alt="extreme">
+<img class="DetailFilter-Multiply-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="DetailFilter-Additive"><p>Additive</p><p>enum:DetailFilter.Additive</p><div class="states">
+<img class="DetailFilter-Additive-default" src="input.png" alt="default">
+<img class="DetailFilter-Additive-extreme" src="input.png" alt="extreme">
+<img class="DetailFilter-Additive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="DetailFilter-Subtractive"><p>Subtractive</p><p>enum:DetailFilter.Subtractive</p><div class="states">
+<img class="DetailFilter-Subtractive-default" src="input.png" alt="default">
+<img class="DetailFilter-Subtractive-extreme" src="input.png" alt="extreme">
+<img class="DetailFilter-Subtractive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="DetailFilter-Replace"><p>Replace</p><p>enum:DetailFilter.Replace</p><div class="states">
+<img class="DetailFilter-Replace-default" src="input.png" alt="default">
+<img class="DetailFilter-Replace-extreme" src="input.png" alt="extreme">
+<img class="DetailFilter-Replace-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="DetailFilter-MultiplyAdditive"><p>MultiplyAdditive</p><p>enum:DetailFilter.MultiplyAdditive</p><div class="states">
+<img class="DetailFilter-MultiplyAdditive-default" src="input.png" alt="default">
+<img class="DetailFilter-MultiplyAdditive-extreme" src="input.png" alt="extreme">
+<img class="DetailFilter-MultiplyAdditive-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+<h2>Flip — C12</h2><div class="cards">
+<article class="card" id="Flip-Horizontal"><p>Horizontal</p><p>enum:Flip.Horizontal</p><div class="states">
+<img class="Flip-Horizontal-default" src="input.png" alt="default">
+<img class="Flip-Horizontal-extreme" src="input.png" alt="extreme">
+<img class="Flip-Horizontal-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="Flip-Vertical"><p>Vertical</p><p>enum:Flip.Vertical</p><div class="states">
+<img class="Flip-Vertical-default" src="input.png" alt="default">
+<img class="Flip-Vertical-extreme" src="input.png" alt="extreme">
+<img class="Flip-Vertical-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="Flip-Effect"><p>Effect</p><p>enum:Flip.Effect</p><div class="states">
+<img class="Flip-Effect-default" src="input.png" alt="default">
+<img class="Flip-Effect-extreme" src="input.png" alt="extreme">
+<img class="Flip-Effect-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+<article class="card" id="Flip-Shadow"><p>Shadow</p><p>enum:Flip.Shadow</p><div class="states">
+<img class="Flip-Shadow-default" src="input.png" alt="default">
+<img class="Flip-Shadow-extreme" src="input.png" alt="extreme">
+<img class="Flip-Shadow-off" src="input.png" alt="off">
+</div><p>default / extreme / disabled</p><p class="cost">image: 0 extra RT; subtree: bounded capture</p></article>
+</div>
+</div></body></html>

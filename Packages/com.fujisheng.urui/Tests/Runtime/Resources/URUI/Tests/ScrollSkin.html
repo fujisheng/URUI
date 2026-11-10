@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head>
+  <link rel="stylesheet" href="/urui/controls.css">
+  <style>
+    body { margin:0; }
+    #frame { position:absolute; left:10px; top:10px; width:112px; height:80px; }
+    #viewport { background-color:blue; }
+    #content { width:100px; height:400px; }
+    #first, #second { width:100px; height:200px; }
+    #first { background-color:red; }
+    #second { background-color:blue; }
+    #track { background-color:lime; }
+    #thumb { background-color:white; }
+  </style>
+</head><body>
+  <urui-scroll id="frame">
+    <urui-scroll-view id="viewport" tabindex="0">
+      <div id="content" class="urui-scroll-content"><div id="first"></div><div id="second"></div></div>
+    </urui-scroll-view>
+    <div id="track" class="urui-scrollbar" data-urui-orientation="vertical" role="scrollbar" aria-controls="viewport" aria-orientation="vertical" tabindex="0">
+      <div id="thumb" class="urui-scrollbar-thumb"></div>
+    </div>
+  </urui-scroll>
+</body></html>

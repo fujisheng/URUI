@@ -11,7 +11,7 @@
   },
   "sourceDevelopmentRecords": "Workspace FUI-CLI/GameFlowDesign (optional authoring evidence, never loaded at runtime)",
   "workflowReference": "fujisheng/fui-cli@0e09b7fbf5ba814bf53175ea550f7af7775cdf75 / Skills/fui-cli/references/asset-generation-workflow.md",
-  "adaptation": "URUI RML/RCSS and public Texture2D mapping. Actual visual bboxes/crops/masks/edit targets/imageGen/alpha/scale records retained; public Editor layout snapshots and composed screen comparisons replace FUI Web-to-UGUI handoff. No visual-ui.json or UGUI-prefab pass is claimed. Per-box bounds are executor-reviewed under approved design, not separately user-click-confirmed.",
+  "adaptation": "URUI HTML/CSS and public Texture2D mapping. Actual visual bboxes/crops/masks/edit targets/imageGen/alpha/scale records retained; public Editor layout snapshots and composed screen comparisons replace FUI Web-to-UGUI handoff. No visual-ui.json or UGUI-prefab pass is claimed. Per-box bounds are executor-reviewed under approved design, not separately user-click-confirmed.",
   "noWholeScreenUITexture": true,
   "assets": [
     {

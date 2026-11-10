@@ -1,0 +1,11 @@
+{
+  "name": "URUI.Effect.Performance",
+  "references": [
+    "URUI.Runtime",
+    "URUI.Effect"
+  ],
+  "autoReferenced": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

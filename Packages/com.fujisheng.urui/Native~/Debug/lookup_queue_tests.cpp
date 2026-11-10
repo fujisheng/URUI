@@ -1,17 +1,17 @@
 #if defined(URUI_DEBUG)
 #include "lookup_probe.h"
-#include <RmlUi/Core.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Factory.h>
+#include <URUI/Core.h>
+#include <URUI/Core/ElementDocument.h>
+#include <URUI/Core/Factory.h>
 namespace
 {
-    Rml::ElementPtr Node(const char* id)
+    URUI::ElementPtr Node(const char* id)
     {
-        auto e = Rml::Factory::InstanceElement(nullptr, "div", "div", {});
+        auto e = URUI::Factory::InstanceElement(nullptr, "div", "div", {});
         e->SetId(id);
         return e;
     }
-    bool Same(Rml::Element* root, const char* id)
+    bool Same(URUI::Element* root, const char* id)
     {
         urui_lookup::inline_enabled = false;
         auto* expected = root->GetElementById(id);
@@ -21,7 +21,7 @@ namespace
 } // namespace
 extern "C" int urui_lookup_queue_selftest()
 {
-    auto* ctx = Rml::GetContext("urui");
+    auto* ctx = URUI::GetContext("urui");
     if (!ctx || ctx->GetNumDocuments() != 0)
         return -1;
     struct Restore

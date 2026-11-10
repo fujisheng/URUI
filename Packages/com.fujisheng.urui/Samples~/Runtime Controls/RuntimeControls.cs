@@ -7,6 +7,7 @@ using URUI.Documents;
 using URUI.Elements;
 using UnityResources = UnityEngine.Resources;
 using URUI.Resources;
+using URUI.Hosting;
 
 namespace URUI.Samples
 {
@@ -19,7 +20,6 @@ namespace URUI.Samples
         readonly List<IDisposable> subscriptions = new List<IDisposable>();
         readonly List<string> items = new List<string>();
         Button apply;
-        Texture2D sampleImage;
 
         void OnEnable()
         {
@@ -31,6 +31,10 @@ namespace URUI.Samples
                 ownedCamera.backgroundColor = new Color(.04f, .06f, .1f);
             }
             document = GetComponent<Document>();
+            if (!document.Surface)
+            {
+                document.Surface = GetComponent<Surface>() ?? gameObject.AddComponent<Surface>();
+            }
             document.Loaded += OnLoaded;
             if (document.IsLoaded)
             {
@@ -54,35 +58,39 @@ namespace URUI.Samples
                 yield break;
             }
 
-            if (!sampleImage)
-            {
-                sampleImage = new Texture2D(16, 16, TextureFormat.RGBA32, false);
-                var pixels = new Color32[256];
-                for (int y = 0; y < 16; y++)
-                {
-                    for (int x = 0; x < 16; x++)
-                    {
-                        pixels[y * 16 + x] = (x / 4 + y / 4) % 2 == 0 ? new Color32(72, 197, 175, 255) : new Color32(49, 111, 202, 255);
-                    }
-                }
-
-                sampleImage.SetPixels32(pixels);
-                sampleImage.Apply();
-            }
             var images = new List<ImageAsset>(document.Images);
-            if (!images.Exists(image => image.Source == "runtime-controls-icon"))
+            if (!images.Exists(image => image.Source == "runtime-controls-icon.png"))
             {
-                images.Add(new ImageAsset("runtime-controls-icon", sampleImage));
+                var sampleImage = UnityResources.Load<Texture2D>("URUI/Samples/runtime-controls-icon")
+                    ?? throw new InvalidOperationException("样例缺少 runtime-controls-icon.png。");
+                images.Add(new ImageAsset("runtime-controls-icon.png", sampleImage));
                 document.Images = images.ToArray();
             }
 
-            var source = document.Source ? document.Source : UnityResources.Load<TextAsset>("URUI/Samples/RuntimeControls.rml");
+            var source = document.Source ? document.Source : UnityResources.Load<TextAsset>("URUI/Samples/RuntimeControls");
             if (!source)
             {
-                throw new InvalidOperationException("请同时导入 Runtime Controls 样例中的 RML 资源。");
+                throw new InvalidOperationException("请同时导入 Runtime Controls 样例中的 HTML 资源。");
             }
 
-            document.Load(source);
+            var files = new List<TextResource>(document.TextResources);
+            AddFile("/urui/base.css", "URUI/base");
+            AddFile("/urui/controls.css", "URUI/controls");
+            foreach (var family in new[] { "Serif", "Sans", "Mono" })
+                foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
+                {
+                    var name = "Liberation" + family + "-" + face + ".ttf";
+                    AddFile("/urui/Fonts/" + name + ".bytes", "URUI/Fonts/" + name);
+                }
+            document.TextResources = files.ToArray();
+            document.Load(source, "samples/runtime-controls/RuntimeControls.html");
+
+            void AddFile(string uri, string resource)
+            {
+                if (files.Exists(file => file.Source == uri)) { return; }
+                files.Add(new TextResource(uri, UnityResources.Load<TextAsset>(resource)
+                    ?? throw new InvalidOperationException("样例缺少作者依赖：" + resource)));
+            }
         }
 
         void OnLoaded(Document loaded)
@@ -165,11 +173,6 @@ namespace URUI.Samples
         }
         void OnDestroy()
         {
-            if (sampleImage)
-            {
-                Destroy(sampleImage);
-            }
-
             if (ownedCamera)
             {
                 Destroy(ownedCamera.gameObject);

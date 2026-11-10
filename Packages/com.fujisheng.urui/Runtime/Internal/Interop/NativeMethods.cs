@@ -13,84 +13,72 @@ namespace URUI.Internal.Interop
         internal static extern int urui_bridge_abi_version();
 
         [DllImport(NativeLibrary.Name, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_count();
+        internal static extern int urui_command_protocol_version();
+
+        [DllImport(NativeLibrary.Name, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_surface_set_default_font_face(int family, byte[] bytes, int length, int faceIndex, int style, int weight);
+
+        [DllImport(NativeLibrary.Name, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_element_count(ulong documentHandle);
 
         const string Dll = NativeLibrary.Name;
 
         // 字符串固定按 UTF-8 传入，数组容量由调用者提供；原生端不接管托管资源所有权。
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_create(int w, int h, [MarshalAs(UnmanagedType.LPUTF8Str)] string font);
+        internal static extern int urui_create(int w, int h);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void urui_destroy();
 
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_load_document([MarshalAs(UnmanagedType.LPUTF8Str)] string rml);
+
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void urui_unload_document();
+        internal static extern int urui_document_add_stylesheet(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string css, [MarshalAs(UnmanagedType.LPUTF8Str)] string sourceUrl, int beforeAuthor);
+
 
         // Versioned metadata-only registration; resource IDs are logical, never GPU pointers.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_texture_protocol_version();
 
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_register_external_texture(
-            [MarshalAs(UnmanagedType.LPUTF8Str)] string source, int width, int height, ulong resourceId);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_get_texture_kind(ulong id);
 
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_register_rgba_texture(
-            [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
-            int width,
-            int height,
-            [In] byte[] rgba,
-            int byteCount,
-            out ulong handle);
+
+
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_unregister_texture([MarshalAs(UnmanagedType.LPUTF8Str)] string source);
+        internal static extern int urui_hit_test_id(ulong documentHandle, float x, float y, [Out] byte[] id, int capacity);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_touch_event(int phase, ulong pointerId, float x, float y);
+        internal static extern int urui_element_exists(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_hit_test_id(float x, float y, [Out] byte[] id, int capacity);
+        internal static extern int urui_get_element_box(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id, [Out] float[] values);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_exists([MarshalAs(UnmanagedType.LPUTF8Str)] string id);
-
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_get_element_box([MarshalAs(UnmanagedType.LPUTF8Str)] string id, [Out] float[] values);
-
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_set_attribute(
-            [MarshalAs(UnmanagedType.LPUTF8Str)] string id,
+        internal static extern int urui_set_attribute(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_set_style(
-            [MarshalAs(UnmanagedType.LPUTF8Str)] string id,
+        internal static extern int urui_set_style(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_set_translate_scale_2d([MarshalAs(UnmanagedType.LPUTF8Str)] string id, float x, float y, float sx, float sy);
+        internal static extern int urui_set_translate_scale_2d(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id, float x, float y, float sx, float sy);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_set_inner_rml([MarshalAs(UnmanagedType.LPUTF8Str)] string id, [MarshalAs(UnmanagedType.LPUTF8Str)] string markup);
+        internal static extern int urui_set_inner_html(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id, [MarshalAs(UnmanagedType.LPUTF8Str)] string markup);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_append_element(
-            [MarshalAs(UnmanagedType.LPUTF8Str)] string parent,
+        internal static extern int urui_append_element(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string parent,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string tag,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string id);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_remove_element([MarshalAs(UnmanagedType.LPUTF8Str)] string id);
+        internal static extern int urui_remove_element(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_get_command_transforms([Out] float[] transforms, int floatCapacity);
@@ -98,14 +86,8 @@ namespace URUI.Internal.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void urui_resize(int w, int h);
 
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void urui_mouse_move(int x, int y);
 
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void urui_mouse_button(int b, int down);
 
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void urui_mouse_wheel(float dy);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void urui_update();
@@ -114,14 +96,13 @@ namespace URUI.Internal.Interop
         internal static extern void urui_render();
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void urui_set_text([MarshalAs(UnmanagedType.LPUTF8Str)] string id, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
+        internal static extern void urui_set_text(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern float urui_get_scroll_top([MarshalAs(UnmanagedType.LPUTF8Str)] string id);
+        internal static extern float urui_get_scroll_top(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_set_pixel_style(
-            [MarshalAs(UnmanagedType.LPUTF8Str)] string id,
+        internal static extern int urui_set_pixel_style(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string property,
             float pixels);
 
@@ -150,7 +131,7 @@ namespace URUI.Internal.Interop
         internal static extern int urui_copy_texture(ulong id, [Out] byte[] data, int capacity);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_pop_event([Out] byte[] data, int capacity);
+        internal static extern int urui_pop_event(ulong documentHandle, [Out] byte[] data, int capacity);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         static extern IntPtr urui_last_error();
@@ -159,25 +140,22 @@ namespace URUI.Internal.Interop
         internal static extern int urui_render_plan_version();
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_render_plan_enable(int enabled);
-
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_render_plan_stamp(out UruiFrameStampNative stamp);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_element_ref_acquire([MarshalAs(UnmanagedType.LPUTF8Str)] string id);
+        internal static extern ulong urui_element_ref_acquire(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_ref_valid(ulong token);
+        internal static extern int urui_element_ref_valid(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_ref_release(ulong token);
+        internal static extern int urui_element_ref_release(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_ref_count();
+        internal static extern int urui_element_ref_count(ulong documentHandle);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_ref_set_translate_scale_2d(ulong token, float x, float y, float sx, float sy);
+        internal static extern int urui_element_ref_set_translate_scale_2d(ulong documentHandle, ulong token, float x, float y, float sx, float sy);
 
         internal static string LastError()
         {

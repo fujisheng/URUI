@@ -14,29 +14,15 @@ namespace URUI.Tests.Editor
     {
         public static void Check(Assembly runtime)
         {
-            var rendererType = runtime.GetType("URUI.Internal.Rendering.Parameters.ParameterTableRenderer", true);
-            var packetType = rendererType.GetNestedType("Packet", BindingFlags.NonPublic);
-            var stateType = rendererType.GetNestedType("State", BindingFlags.NonPublic);
-            var packetsField = rendererType.GetField("packets", BindingFlags.Instance | BindingFlags.NonPublic);
-            var stateField = packetType.GetField("state", BindingFlags.Instance | BindingFlags.NonPublic);
-            var faulted = rendererType.GetProperty("Faulted", BindingFlags.Instance | BindingFlags.NonPublic);
-            // 不运行构造器，避免创建材质或 CommandBuffer；这里只测试故障状态的放行边界。
-            var renderer = FormatterServices.GetUninitializedObject(rendererType);
-            var packet = FormatterServices.GetUninitializedObject(packetType);
-            var packets = (IList)Activator.CreateInstance(packetsField.FieldType);
-            packetsField.SetValue(renderer, packets);
-            packets.Add(packet);
-            stateField.SetValue(packet, Enum.Parse(stateType, "Uncertain"));
-            if (!(bool)faulted.GetValue(renderer))
-            {
-                throw new Exception("Uncertain GPU packet was accepted with diagnostics disabled");
-            }
-
-            stateField.SetValue(packet, Enum.Parse(stateType, "Free"));
-            if ((bool)faulted.GetValue(renderer))
-            {
-                throw new Exception("Free packet incorrectly marked as faulted");
-            }
+            var hostType=runtime.GetType("URUI.Internal.Hosting.RenderHost",true);
+            foreach(var field in hostType.GetFields(BindingFlags.Public|BindingFlags.Instance|BindingFlags.DeclaredOnly))
+                if(field.FieldType==typeof(bool))throw new Exception("Runtime performance switch remains: "+field.Name);
+            var host=FormatterServices.GetUninitializedObject(hostType);
+            hostType.GetField("hasOwnedImages",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(host,true);
+            var rejected=false;
+            try{hostType.GetProperty("RenderBuffer",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(host);}
+            catch(TargetInvocationException error){rejected=error.InnerException is InvalidOperationException;}
+            if(!rejected)throw new Exception("Owned GPU resources must reject untracked command-buffer borrowing.");
 
             Debug.Log("URUI_PRODUCTION_FENCE_GUARD_PASS");
         }

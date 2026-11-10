@@ -1,0 +1,9 @@
+<!doctype html><html><head><style>
+html,body{margin:0;width:160px;height:48px;background-color:black;}
+img,#fallback{position:absolute;top:0;width:32px;height:32px;}
+#direct-a{left:0;}#direct-b{left:40px;}#direct-c{left:80px;}
+.filtered #direct-a,#fallback{filter:brightness(2) contrast(.5) opacity(.5);}
+.filtered #direct-b{filter:contrast(.5) brightness(2) opacity(.5);}
+.filtered #direct-c{filter:grayscale(1) saturate(3) brightness(.5);}
+#fallback{left:120px;}#fallback img{left:0;}
+</style></head><body class="filtered"><img id="direct-a" data-test="direct-a" src="CssFilterDirectInput.png"><img id="direct-b" data-test="direct-b" src="CssFilterDirectInput.png"><img id="direct-c" data-test="direct-c" src="CssFilterDirectInput.png"><div id="fallback" data-test="fallback"><img id="fallback-input" src="CssFilterDirectInput.png"></div></body></html>

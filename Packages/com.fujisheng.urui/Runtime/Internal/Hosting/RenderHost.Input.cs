@@ -28,7 +28,7 @@ namespace URUI.Internal.Hosting
                     lastHeight = Screen.height;
                     NativeMethods.urui_resize(UiWidth, UiHeight);
                 }
-                OwnerDocument?.Input.PollUnity();
+                OwnerSurface.Input.PollUnity();
             }
 #if URUI_DEBUG
             long timer = (measureBridge || phaseDiagnostics) ? Now() : 0;
@@ -51,7 +51,8 @@ namespace URUI.Internal.Hosting
             using (updateMarker.Auto())
 #endif
             {
-                NativeMethods.urui_update();
+                SynchronizeUiClock();
+                using(nativeUpdatePhase.Auto()){NativeMethods.urui_update();}
             }
 #if URUI_DEBUG
             if (phaseDiagnostics)
@@ -78,7 +79,10 @@ namespace URUI.Internal.Hosting
                 return;
             }
 
-            DrawFrame(ref phase);
+            if (!DrawFrame(ref phase)) return;
+            if (!active || !isActiveAndEnabled) return;
+            // URUI 在录制绘制时更新变换矩阵；此后才可同步屏幕空间值。
+            OwnerSurface.NotifyLayoutUpdated();
 #if URUI_DEBUG
             if (phaseDiagnostics)
             {
@@ -101,34 +105,20 @@ namespace URUI.Internal.Hosting
 
         void DrainEvents()
         {
-            // ABI3 keeps its legacy queue for native consumers; managed dispatch is synchronous.
-            while (active && NativeMethods.urui_element_pop_click(out _) > 0) { }
-            OwnerDocument?.RefreshElements(true);
-            OwnerDocument?.FinishNativeCall();
+            foreach (var document in OwnerSurface.DocumentsSnapshot()) if (document && document.IsLoaded)
+                while (active && NativeMethods.urui_element_pop_click(document.NativeHandle, out _) > 0) { }
+            OwnerSurface.RefreshDocuments(true);
+            OwnerSurface.FinishNativeCall();
         }
 
         public string HitTestId(float logicalX, float logicalY)
         {
-            if (!active)
-            {
-                return null;
-            }
-
-            var bytes = new byte[512];
-            int n = NativeMethods.urui_hit_test_id(logicalX, logicalY, bytes, bytes.Length);
-            if (n < 0)
-            {
-                int required = -n;
-                if (required > 1024 * 1024)
-                {
-                    throw new Exception("URUI hit ID exceeds 1 MiB");
-                }
-
-                bytes = new byte[required];
-                n = NativeMethods.urui_hit_test_id(logicalX, logicalY, bytes, bytes.Length);
-            }
-
-            return n > 0 ? Encoding.UTF8.GetString(bytes, 0, n) : null;
+            if (!active) return null;
+            var token = NativeMethods.urui_surface_pick(logicalX, logicalY, out var handle);
+            var owner = URUI.Hosting.Surface.FindDocument(handle);
+            for (var element = owner?.WrapElement(token); element != null; element = element.Parent)
+                if (!string.IsNullOrEmpty(element.Name)) return element.Name;
+            return null;
         }
 
         void EmitMousePointer(PointerPhase pointerPhase, Vector3 mouse)

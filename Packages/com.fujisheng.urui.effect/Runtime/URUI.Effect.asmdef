@@ -1,0 +1,6 @@
+{
+  "name": "URUI.Effect",
+  "rootNamespace": "URUI.Effect",
+  "references": ["URUI.Runtime"],
+  "autoReferenced": true
+}

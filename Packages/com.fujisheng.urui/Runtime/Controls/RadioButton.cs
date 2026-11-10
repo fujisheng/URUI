@@ -29,7 +29,7 @@ namespace URUI.Controls
                 }
             }
 
-            return element.Document.Root;
+            return element.Document.DocumentElement;
         }
         /// <summary>方向键在同一表单的组内循环，跳过禁用和隐藏的成员。</summary>
         protected override void OnEvent(EventBase evt)

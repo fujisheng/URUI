@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head>
+  <link rel="stylesheet" href="/urui/controls.css">
+  <style>
+    body { margin:0; }
+    /* 本fixture冻结主色几何，默认渐变由DefaultControlTests单独验证。 */
+    #popup { --urui-select-fade:0; }
+    #select-host { position:absolute; left:10px; top:10px; width:100px; height:32px; }
+    .urui-select-trigger { background-color:blue; }
+    .urui-select-option { min-height:20px; height:20px; padding:0 4px; }
+    .urui-select-option { background-color:red; }
+    .urui-select-option.urui-selected { background-color:lime; }
+    .urui-select-option:disabled { background-color:blue; }
+  </style>
+</head><body>
+  <urui-select id="select-host">
+    <select id="input" tabindex="-1">
+      <option value="a" selected>A</option>
+      <option value="b" disabled>B</option>
+      <option value="c">C</option>
+    </select>
+    <button id="trigger" class="urui-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+      <span id="value" class="urui-select-value"></span><span class="urui-select-arrow"></span>
+    </button>
+    <button id="prototype" class="urui-select-option" type="button" role="option" hidden></button>
+    <div id="popup" class="urui-select-options" role="listbox" hidden></div>
+  </urui-select>
+</body></html>

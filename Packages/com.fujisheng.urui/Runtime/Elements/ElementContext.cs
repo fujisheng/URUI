@@ -9,11 +9,13 @@ namespace URUI.Elements
         public Document Document { get; }
         internal uint Generation { get; }
         internal ulong Token { get; }
-        internal ElementContext(Document document, uint generation, ulong token)
+        internal ulong NativeHandle { get; }
+        internal ElementContext(Document document, uint generation, ulong token, ulong nativeHandle)
         {
             Document = document;
             Generation = generation;
             Token = token;
+            NativeHandle = nativeHandle;
         }
     }
 }

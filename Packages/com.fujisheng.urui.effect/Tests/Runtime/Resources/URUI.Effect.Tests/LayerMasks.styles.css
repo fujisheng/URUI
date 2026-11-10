@@ -1,0 +1,7 @@
+body { width:100%; height:100%; }
+.masked { position:absolute; width:60px; height:60px; mask-image:url(test-mask.png); overflow:hidden; }
+#single { left:20px; top:20px; }
+#outer { left:120px; top:20px; }
+#inner { left:0; top:0; }
+.fill { position:absolute; left:0; top:0; width:100%; height:100%; background-color:red; }
+#sibling { position:absolute; left:200px; top:20px; width:40px; height:60px; background-color:lime; }

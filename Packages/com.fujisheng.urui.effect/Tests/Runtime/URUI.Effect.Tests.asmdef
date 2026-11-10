@@ -1,0 +1,9 @@
+{
+  "name": "URUI.Effect.Tests",
+  "references": ["URUI.Runtime", "URUI.Effect"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

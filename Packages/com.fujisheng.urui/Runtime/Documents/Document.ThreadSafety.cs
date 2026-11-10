@@ -7,8 +7,10 @@ namespace URUI.Documents
     // 统一检查主线程、当前世代和名称参数，内部调用同样遵守公开接口的约束。
     public sealed partial class Document
     {
-        internal void CheckThread()
+        internal void CheckThread(bool allowImageCallback = false)
         {
+            if (imageCallbackDepth != 0 && !allowImageCallback)
+                throw new InvalidOperationException("不能在同步图片解析/释放回调中重入文档或元素 API。");
             // 未执行 Awake 的禁用组件也必须遵守主线程约束，使用运行时登记线程兜底。
             var expected = ownerThread == 0 ? unityThread : ownerThread;
             if (expected == 0 || Thread.CurrentThread.ManagedThreadId != expected)
@@ -17,7 +19,9 @@ namespace URUI.Documents
             }
         }
 
-        internal bool IsCurrent(uint version) => IsLoaded && generation == version;
+        internal bool IsCurrent(uint version) => host && host.Ready &&
+            (activeContent != null && !activeContent.Retired && activeContent.Generation == version ||
+             candidateContent != null && !candidateContent.Retired && candidateContent.Generation == version);
 
         internal RenderHost Host => host;
 

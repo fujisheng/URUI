@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head>
+  <link rel="stylesheet" href="/urui/controls.css">
+  <style>
+    body { margin:0; }
+    #fold { position:absolute; left:10px; top:10px; width:100px; }
+    #header { height:32px; padding:0; }
+    #progress { position:absolute; left:10px; top:90px; width:100px; height:20px; background-color:blue; }
+    #fill { background-color:lime; }
+  </style>
+</head><body>
+  <urui-foldout id="fold" data-urui-expanded="false" data-urui-label="Section">
+    <button id="header" class="urui-foldout-header" type="button" aria-expanded="false"><span class="urui-foldout-label">Section</span></button>
+    <div id="fold-content" class="urui-foldout-content"><button type="button">Child</button></div>
+  </urui-foldout>
+  <urui-progress-bar id="progress" min="10" max="30" value="20" data-urui-label="Loading" role="progressbar">
+    <div id="fill" class="urui-progress-fill"></div>
+    <span id="title" class="urui-progress-title">Loading</span>
+    <div id="progress-content" class="urui-progress-content"></div>
+  </urui-progress-bar>
+</body></html>

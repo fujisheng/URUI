@@ -7,7 +7,7 @@ namespace URUI.Internal.Interop
     [StructLayout(LayoutKind.Sequential)]
     internal struct ElementEventNative
     {
-        internal ulong target, current;
+        internal ulong document, target, current;
         internal int type, phase, pointer, button, buttons, modifiers, key, kind;
         internal float x, y, dx, dy;
         internal IntPtr text;
@@ -21,58 +21,64 @@ namespace URUI.Internal.Interop
         internal static extern int urui_element_api_version();
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_transform_api_version();
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_element_local_transform(ulong documentHandle, ulong token, [Out] float[] values, int capacity);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_set_event_callback(ElementEventCallback callback);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_document_listen();
+        internal static extern int urui_document_listen(ulong documentHandle);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_listen(ulong token, int type, int capture, int enabled);
+        internal static extern int urui_element_listen(ulong documentHandle, ulong token, int type, int capture, int enabled);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_box(ulong token, [Out] float[] values, int capacity);
+        internal static extern int urui_element_box(ulong documentHandle, ulong token, [Out] float[] values, int capacity);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_viewport(ulong token, [Out] float[] values, int capacity);
+        internal static extern int urui_element_viewport(ulong documentHandle, ulong token, [Out] float[] values, int capacity);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_point(ulong token, int toWorld, float x, float y, [Out] float[] values);
+        internal static extern int urui_element_point(ulong documentHandle, ulong token, int toWorld, float x, float y, [Out] float[] values);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_element_pick(float x, float y);
+        internal static extern ulong urui_element_pick(ulong documentHandle, float x, float y);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_focus(ulong token, int focus);
+        internal static extern int urui_element_focus(ulong documentHandle, ulong token, int focus);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_focused_element();
+        internal static extern ulong urui_focused_element(ulong documentHandle);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_scroll(ulong token, float x, float y);
+        internal static extern int urui_element_scroll(ulong documentHandle, ulong token, float x, float y);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_control_value_write(ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
+        internal static extern int urui_control_value_write(ulong documentHandle, ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_control_value_read(ulong token, [Out] byte[] value, int capacity, out int required);
+        internal static extern int urui_control_value_read(ulong documentHandle, ulong token, [Out] byte[] value, int capacity, out int required);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_element_style_read(ulong token, int local, [MarshalAs(UnmanagedType.LPUTF8Str)] string property, [Out] byte[] value, int capacity, out int required);
+        internal static extern int urui_element_style_read(ulong documentHandle, ulong token, int local, [MarshalAs(UnmanagedType.LPUTF8Str)] string property, [Out] byte[] value, int capacity, out int required);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_pointer_event(int pointer, int kind, int phase, float x, float y, int button, int buttons, float dx, float dy, int modifiers);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_pointer_capture(int pointer, ulong token);
+        internal static extern int urui_pointer_capture(ulong documentHandle, int pointer, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong urui_pointer_captured(int pointer);
+        internal static extern ulong urui_pointer_captured(ulong documentHandle, int pointer);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_input_reset();
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_cancel_pointers(ulong owner);
+        internal static extern int urui_cancel_pointers(ulong documentHandle, ulong owner);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_key_event(int key, int pressed, int modifiers);
@@ -96,19 +102,19 @@ namespace URUI.Internal.Interop
         internal static extern int urui_process_deferred_operations();
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_select_option_count(ulong token);
+        internal static extern int urui_select_option_count(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_select_option_read(ulong token, int index, [Out] byte[] value, int capacity, out int required);
+        internal static extern int urui_select_option_read(ulong documentHandle, ulong token, int index, [Out] byte[] value, int capacity, out int required);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_select_option_add(ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
+        internal static extern int urui_select_option_add(ulong documentHandle, ulong token, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_select_options_clear(ulong token);
+        internal static extern int urui_select_options_clear(ulong documentHandle, ulong token);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_select_selection(ulong token, int index);
+        internal static extern int urui_select_selection(ulong documentHandle, ulong token, int index);
 
         delegate int StringReader(byte[] value, int capacity, out int required);
 
@@ -134,15 +140,54 @@ namespace URUI.Internal.Interop
             return Encoding.UTF8.GetString(bytes, 0, actual - 1);
         }
 
-        internal static string ReadControl(ulong token) => ReadUtf8Snapshot(
-            (byte[] bytes, int capacity, out int required) => urui_control_value_read(token, bytes, capacity, out required));
+        internal static string ReadControl(ulong documentHandle, ulong token) => ReadUtf8Snapshot(
+            (byte[] bytes, int capacity, out int required) => urui_control_value_read(documentHandle, token, bytes, capacity, out required));
 
-        internal static string ReadStyle(ulong token, string property, bool local) => ReadUtf8Snapshot(
-            (byte[] bytes, int capacity, out int required) => urui_element_style_read(token, local ? 1 : 0, property, bytes, capacity, out required));
+        internal static string ReadStyle(ulong documentHandle, ulong token, string property, bool local, string previous = null)
+        {
+            var result = urui_element_style_read(documentHandle, token, local ? 1 : 0, property, null, 0, out var required);
+            if (result == 0) { return null; }
+            var bytes = SnapshotBuffer(result, required);
+            ValidateSnapshot(urui_element_style_read(documentHandle, token, local ? 1 : 0, property, bytes, required, out var actual), actual, required, bytes);
+            return SnapshotText(bytes, actual - 1, previous);
+        }
 
-        internal static string ReadOption(ulong token, int index) => ReadUtf8Snapshot(
-            (byte[] bytes, int capacity, out int required) => urui_select_option_read(token, index, bytes, capacity, out required));
+        internal static string ReadOption(ulong documentHandle, ulong token, int index) => ReadUtf8Snapshot(
+            (byte[] bytes, int capacity, out int required) => urui_select_option_read(documentHandle, token, index, bytes, capacity, out required));
 
-        internal static string ReadClipboard() => ReadUtf8Snapshot(urui_clipboard_read);
+        [ThreadStatic] static string clipboardSnapshot;
+        internal static string ReadClipboard()
+        {
+            var result = urui_clipboard_read(null, 0, out var required);
+            if (result == 0) { clipboardSnapshot = null; return null; }
+            var bytes = SnapshotBuffer(result, required);
+            ValidateSnapshot(urui_clipboard_read(bytes, required, out var actual), actual, required, bytes);
+            return clipboardSnapshot = SnapshotText(bytes, actual - 1, clipboardSnapshot);
+        }
+
+        [ThreadStatic] static byte[] snapshotScratch, snapshotComparison;
+        static byte[] SnapshotBuffer(int result, int required, int maximum = 16 * 1024 * 1024)
+        {
+            if (result != -3 || required <= 0 || required > maximum)
+            { throw new InvalidOperationException("URUI 字符串读取失败：" + LastError()); }
+            if (required > 256 * 1024) { return new byte[required]; }
+            if (snapshotScratch == null || snapshotScratch.Length < required) { snapshotScratch = new byte[required]; }
+            return snapshotScratch;
+        }
+        static void ValidateSnapshot(int result, int actual, int expected, byte[] bytes)
+        {
+            if (result != 1 || actual != expected || bytes[actual - 1] != 0) { throw new InvalidOperationException("URUI 字符串快照失效。"); }
+        }
+        static string SnapshotText(byte[] bytes, int count, string previous)
+        {
+            // 每次仍读取原生的真实值；只复用相同文本，不依赖可能尚未推进的布局版本。
+            if (previous != null && Encoding.UTF8.GetByteCount(previous) == count)
+            {
+                if (snapshotComparison == null || snapshotComparison.Length < count) { snapshotComparison = new byte[count]; }
+                Encoding.UTF8.GetBytes(previous, 0, previous.Length, snapshotComparison, 0);
+                if (new ReadOnlySpan<byte>(bytes, 0, count).SequenceEqual(new ReadOnlySpan<byte>(snapshotComparison, 0, count))) { return previous; }
+            }
+            return Encoding.UTF8.GetString(bytes, 0, count);
+        }
     }
 }

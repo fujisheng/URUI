@@ -1,0 +1,10 @@
+<!doctype html>
+<html><head><link rel='stylesheet' href='/urui/base.css'><style>
+@property --urui-motion-progress {syntax:"<number>";inherits:false;initial-value:0;}
+@property --urui-motion-rotation-progress {syntax:"<number>";inherits:false;initial-value:0;}
+body {margin:0;}
+#source,#target,#path,#rotation {position:absolute;display:block;width:20px;height:20px;}
+#source {left:10px;top:10px;} #target {left:210px;top:10px;}
+#path {left:0;top:0;--urui-motion-midpoint-from:.5;--urui-motion-midpoint-to:.5;--urui-motion-bend-from:0;--urui-motion-bend-to:0;--urui-motion-rotation-from:180;--urui-motion-rotation-to:180;}
+#rotation {left:0;top:0;}
+</style></head><body><div id="source"></div><div id="target"><div id="path"><div id="rotation"></div></div></div></body></html>

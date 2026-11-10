@@ -11,7 +11,7 @@ int main()
     c.texture = 9;
     c.tx = 12;
     c.ty = 1;
-    c.clip_enabled = 1;
+    c.flags = 1;
     c.clip_x = -3;
     c.clip_w = 40;
     UruiCoreKey k{};

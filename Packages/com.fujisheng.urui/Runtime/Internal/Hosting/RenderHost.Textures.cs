@@ -6,15 +6,18 @@ namespace URUI.Internal.Hosting
     // 借用调用者图片；仅为原生生成纹理创建 Unity 副本，并清理自有缓存。
     internal sealed partial class RenderHost
     {
-        Texture2D LoadTexture(ulong id)
+        Texture LoadTexture(ulong id)
         {
             if (id == 0)
             {
                 return white;
             }
 
-            if (borrowedTextures.TryResolve(id, out var borrowed))
+            if (URUI.Internal.Resources.BorrowedTextureRegistry.IsBorrowed(id))
+            {
+                legacyImagePins.AcquireOne(borrowedTextures,id,out var borrowed);
                 return borrowed;
+            }
 
             if (textures.TryGetValue(id, out var old))
             {
@@ -42,7 +45,7 @@ namespace URUI.Internal.Hosting
                 return white;
             }
 
-            var texture = new Texture2D(w, h, TextureFormat.RGBA32, false, false)
+            var texture = new Texture2D(w, h, TextureFormat.RGBA32, false, true)
             {
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear

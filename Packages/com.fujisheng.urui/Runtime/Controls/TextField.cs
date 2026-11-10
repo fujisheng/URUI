@@ -23,7 +23,7 @@ namespace URUI.Controls
         protected override string FormatValue(string value) => value;
         /// <summary>文本入口与 Value 一致，不替换控件内部结构。</summary>
         public override string Text { get => Value; set => Value = value; }
-        /// <summary>多行输入；RML input 节点只能单行，需使用 textarea 或 C# 创建支持多行切换。</summary>
+        /// <summary>多行输入；HTML input 节点只能单行，需使用 textarea 或 C# 创建支持多行切换。</summary>
         public bool Multiline
         {
             get => GetAttribute("data-urui-multiline") == "true" || (TagName == "textarea" && GetAttribute("data-urui-multiline") == null);
@@ -46,7 +46,7 @@ namespace URUI.Controls
             base.OnEvent(evt);
             if (evt is NativeValueChangedEvent && ReferenceEquals(evt.Target, this) && IsValid && !Document.HasPendingInvalidation)
             {
-                string raw = NativeMethods.ReadControl(Token);
+                string raw = NativeMethods.ReadControl(NativeHandle, Token);
                 string normalized = NormalizeValue(raw);
                 if (normalized != raw)
                 {

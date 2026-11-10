@@ -1,0 +1,5 @@
+body { width:100%; height:100%; }
+#masked { position:absolute; left:20px; top:20px; width:100px; height:100px; opacity:0.5; --urui-mask-feather-top:20px; --urui-mask-feather-bottom:40px; }
+.opaque-fill { position:absolute; left:0; top:0; width:100%; height:100%; background-color:red; }
+#masked.opaque { opacity:1; }
+#sibling { position:absolute; left:200px; top:20px; width:40px; height:60px; background-color:lime; }
