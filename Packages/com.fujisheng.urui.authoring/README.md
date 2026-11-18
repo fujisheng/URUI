@@ -1,13 +1,13 @@
 # URUI Authoring
 
-Unity 内的 URUI HTML/CSS 作者工具：可视化画布、独立节点树、原生 Inspector、真实 Play 页面临时调参，以及可选本机 Agent API。需要 Unity 6000.3.22f1 与 URUI Core 0.8.0-preview.1。
+Unity 内的 URUI HTML/CSS 作者工具：控件库、节点树、可视化画布、样式表和内置 Inspector、真实 Play 页面临时调参，以及可选本机 Agent API。需要 Unity 6000.3.22f1 与 URUI Core 0.8.0-preview.1。
 
 先安装 Core，再从磁盘添加本包 `package.json`。Effect 为可选依赖；不要求 UnityCLI、FUI、Node.js 或外部 .NET CLI。安装 Effect 后通过 Core Editor 契约发现效果/粒子面板。
 
 1. 从 Package Manager 导入 **Authoring Demo**，双击导入的 `Inventory.html`。
-2. 用 `Window → URUI → Hierarchy / Canvas` 停靠窗口，选中节点后在 Unity Inspector 编辑。
+2. 在 URUI Editor 工具栏点击「控件库」展开或收起左侧抽屉。单击带外观预览的卡片即可添加，也可以拖到画布或图层定位。选中控件后可在 URUI Inspector 修改常用属性。
 3. 作者模式修改工作副本，按 Save 或聚焦作者窗口后 Cmd/Ctrl+S 才写文件。
-4. Play 中选中真实 Document，再在 URUI Hierarchy 选择节点。此时修改真实实例，退出运行丢弃未应用调整。
+4. 左右两侧可停靠的 URUI 层级和属性面板随 Edit Mode 和 Play Mode 自动切换。Play 中选择文档和节点即可修改真实实例，退出运行后切回作者工作副本。
 
 - [使用、布局与运行时行为](Documentation~/index.md)
 - [Agent HTTP 协议及完整客户端](Documentation~/agent-api.md)

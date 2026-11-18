@@ -68,13 +68,23 @@ namespace URUI.Authoring.Sessions
                 return ValidateMarkup(path, text, true);
             return error;
         }
-        public void Open(string path)
+        public void Open(string path) => Open(path, false);
+
+        internal void Open(string path, bool discardChanges)
         {
             var file = Workspace.Open(path);
-            string error = Validate(file.Path, file.Text);
+            string text = discardChanges ? file.SavedText : file.Text;
+            if (text == null)
+                throw new InvalidOperationException("Open an existing HTML page.");
+            string error = Validate(file.Path, text);
             if (error != null)
                 throw new InvalidOperationException(error);
-            var model = SourceDocument.Parse(file.Text);
+            var model = SourceDocument.Parse(text);
+            if (discardChanges)
+            {
+                Workspace.DiscardChanges();
+                SessionUndoBridge.Clear(Id);
+            }
             File = file;
             Model = model;
             Workspace.InvalidateContext();
@@ -85,6 +95,30 @@ namespace URUI.Authoring.Sessions
         }
         public void Set(string key, string property, string value, long expectedRevision)
             => Execute(new[] { new AuthoringEdit { Node = key, Property = property, Value = value } }, expectedRevision);
+
+        /// <summary>Insert one element at a known position and return the new element's session identity.</summary>
+        public string InsertNode(string parentIdentity, int index, string markup, long expectedRevision)
+            => InsertNodes(parentIdentity, index, markup, expectedRevision, requireSingle: true)[0];
+
+        internal string[] InsertNodes(string parentIdentity, int index, string markup, long expectedRevision, bool requireSingle = false)
+        {
+            if (expectedRevision != Revision)
+                throw new InvalidOperationException("source_conflict: stale authoring revision");
+            string parentKey = ResolveIdentity(parentIdentity);
+            if (parentKey == null)
+                throw new InvalidOperationException("stale_node: insertion parent no longer exists");
+            var fragment = SourceDocument.Parse(markup);
+            int count = fragment.Roots.Count;
+            if (count == 0 || (requireSingle && count != 1))
+                throw new InvalidOperationException(requireSingle ? "InsertNode requires one root element." : "Paste requires at least one HTML element.");
+            int position = index == -1 ? Model.Find(parentKey).Children.Count : index;
+            Execute(new[] { new AuthoringEdit { Operation = "insert", Parent = parentKey, Index = index, Value = markup } }, expectedRevision);
+            var children = Model.Find(ResolveIdentity(parentIdentity)).Children;
+            var created = new string[count];
+            for (int i = 0; i < created.Length; i++)
+                created[i] = NodeIdentity(children[position + i].Key);
+            return created;
+        }
         /// <summary>按源码顺序复制选中根节点；祖先与子节点同时选中时只复制祖先。</summary>
         public string CopyNodes(IEnumerable<string> keys)
         {
@@ -177,7 +211,7 @@ namespace URUI.Authoring.Sessions
                     case "set":
                         if (edit.Property == "image")
                         {
-                            string relative = edit.Value == null ? null : Uri.UnescapeDataString(new Uri(File.Path).MakeRelativeUri(new Uri(Path.GetFullPath(edit.Value))).ToString());
+                            string relative = edit.Value == null ? null : Preview.AuthoringAssetPaths.Reference(Workspace.ProjectRoot, File.Path, edit.Value);
                             next = candidate.SetAttribute(edit.Node, "src", relative);
                         }
                         else

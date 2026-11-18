@@ -62,7 +62,7 @@ namespace URUI.Authoring.Animation
         {
             Workspace = new AnimationWorkspace(AuthoringEnvironment.Author);
             AuthoringEnvironment.Author.Changed += OnSourceChanged;
-            Selection.selectionChanged += () => { if (Recording && (Selection.activeObject as ElementSelectionProxy)?.TargetId != recordingTarget) EndRecording(); };
+            AuthoringEnvironment.NodeSelectionChanged += () => { if (Recording && (AuthoringEnvironment.ActiveNode)?.TargetId != recordingTarget) EndRecording(); };
             AssemblyReloadEvents.beforeAssemblyReload += Stop;
             EditorApplication.quitting += Stop;
             EditorApplication.playModeStateChanged += _ => Stop();

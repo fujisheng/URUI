@@ -1,6 +1,9 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using UnityEditor;
+using UnityEditor.IMGUI.Controls;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -104,6 +107,11 @@ namespace URUI.Authoring.Tests
                     return;
                 }
                 Check(AuthoringEnvironment.Author.File != null && AuthoringEnvironment.Author.File.Dirty && AuthoringEnvironment.Author.File.Text.Contains("unsaved author draft"), "Unsaved author text was lost during Play/domain reload");
+                var preview = AuthoringEnvironment.Preview;
+                Check(preview != null && preview.IsReady, "The authoring preview did not recover after leaving Play mode");
+                preview.Resize(64, 64);
+                Check(preview.IsReady && preview.Target.width == 64 && preview.Target.height == 64,
+                    "The recovered preview could not retire and recreate its render target after leaving Play mode");
                 int iteration = SessionState.GetInt(Prefix + "iteration", 0) + 1;
                 SessionState.SetInt(Prefix + "iteration", iteration);
                 if (iteration < 2)
@@ -119,14 +127,17 @@ namespace URUI.Authoring.Tests
             {
                 var document = UnityEngine.Object.FindFirstObjectByType<Document>();
                 Check(document && document.IsLoaded, "Real scene page did not load");
+                // Keep pixel coordinates stable when the editor layout changes during the check.
+                document.Surface.Viewport = new Vector2Int(640, 480);
                 Check(document.Q("live").Text == "runtime", "Game loaded unsaved author preview instead of actual source");
                 Check(AuthoringEnvironment.Preview == null, "Authoring preview retained Surface during Play");
                 AuthoringEnvironment.SetDocument(document);
                 Selection.activeGameObject = document.gameObject;
+                CheckRuntimeDebugWindows(document);
                 var node = RuntimeInspectionBridge.Inspect(document.Q("live"));
                 var proxy = ElementSelectionProxy.ForLive(node, AuthoringEnvironment.Live);
                 AuthoringEnvironment.Select(proxy);
-                Check(Selection.activeObject == proxy, "Native selection did not use proxy");
+                Check(Selection.objects.Length == 0, "Selecting a live node must clear the native Inspector");
                 proxy.Set("style.width", "88px");
                 Check(document.Q("live").Layout.width == 88, "Live width did not affect real game node");
                 EditorApplication.isPaused = true;
@@ -200,6 +211,61 @@ namespace URUI.Authoring.Tests
             }
             catch (Exception error) { Fail(error); }
         }
+
+        static void CheckRuntimeDebugWindows(Document document)
+        {
+            const string menu = "Window/URUI/Runtime Debugging";
+            const BindingFlags fields = BindingFlags.NonPublic | BindingFlags.Instance;
+            EditorWindow Window(string name) => UnityEngine.Resources.FindObjectsOfTypeAll<EditorWindow>()
+                .SingleOrDefault(window => window.GetType().Name == name);
+            ElementSelectionProxy Selected() => (ElementSelectionProxy)typeof(AuthoringEnvironment)
+                .GetProperty("ActiveNode", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+
+            Check(EditorApplication.ExecuteMenuItem(menu), "The runtime debug menu did not open the windows");
+            var hierarchy = Window("UruiRuntimeHierarchyWindow");
+            var inspector = Window("UruiRuntimeInspectorWindow");
+            Check(hierarchy && inspector, "Runtime debugging must open both editor panels");
+            var nativeHierarchy = Window("SceneHierarchyWindow");
+            var nativeInspector = Window("InspectorWindow");
+            if (nativeHierarchy && nativeHierarchy.docked)
+                Check(hierarchy.docked, "The runtime hierarchy did not dock by Unity's hierarchy");
+            if (nativeInspector && nativeInspector.docked)
+                Check(inspector.docked, "The runtime inspector did not dock by Unity's inspector");
+            Check(Selection.activeGameObject == document.gameObject, "Opening runtime debugging changed Unity's selected object");
+            var tree = (TreeView)hierarchy.GetType().GetField("tree", fields).GetValue(hierarchy);
+            var added = document.CreateElement("button");
+            added.Name = "dynamic-button";
+            added.SetAttribute("class", "floating-check");
+            document.Body.Add(added);
+            tree.searchString = ".floating-check";
+            tree.Reload();
+            Check(tree.GetRows().Count == 1, "Runtime search did not find the dynamic node by class");
+            tree.SetSelection(new[] { tree.GetRows()[0].id }, TreeViewSelectionOptions.FireSelectionChanged);
+            Check(Selected() is { IsLive: true, IsTargetValid: true } selected && selected.Node.Id == RuntimeInspectionBridge.Inspect(added).Id,
+                "The runtime hierarchy did not publish the selected dynamic node to URUI's inspector");
+            Check(Selection.objects.Length == 0, "Selecting a runtime row must clear the native Inspector");
+            Selection.activeGameObject = document.gameObject;
+            tree.GetType().GetMethod("SingleClickedItem", fields).Invoke(tree, new object[] { tree.GetRows()[0].id });
+            Check(Selection.objects.Length == 0, "Clicking the already selected runtime row must also clear the native Inspector");
+            Selected().Set("style.width", "123px");
+            Check(added.Style.Get("width") == "123px", "Edits from the selected proxy did not affect the dynamic node");
+
+            Selection.activeGameObject = document.gameObject;
+            added.Destroy();
+            hierarchy.GetType().GetField("nextRefresh", fields).SetValue(hierarchy, 0d);
+            hierarchy.GetType().GetMethod("Tick", fields).Invoke(hierarchy, null);
+            Check(!Selected(), "The runtime hierarchy kept an invalid selection after the node was destroyed");
+            Check(Selection.activeGameObject == document.gameObject, "Updating the runtime tree cleared an unrelated native selection");
+            tree.searchString = "";
+
+            inspector.Close();
+            Check(EditorApplication.ExecuteMenuItem(menu) && Window("UruiRuntimeHierarchyWindow") == hierarchy,
+                "Reopening the inspector replaced the already open hierarchy");
+            var reopened = Window("UruiRuntimeInspectorWindow");
+            Check(reopened && (!nativeInspector || !nativeInspector.docked || reopened.docked),
+                "The runtime inspector did not reopen as a dockable panel");
+        }
+
         static void VerifyExitingCleanup(PlayModeStateChange state)
         {
             if (state != PlayModeStateChange.ExitingPlayMode)

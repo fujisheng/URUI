@@ -66,24 +66,28 @@ namespace URUI.Authoring.Presentation
                 case "text":
                     return "<span style=\"font-size:24px;color:#ffffff;\">Text</span>";
                 case "button":
-                    return "<button style=\"width:160px;height:40px;\">Button</button>";
+                    return "<button style=\"width:160px;height:40px;color:#ffffff;background-color:#2d3947;\">Button</button>";
                 case "input":
                     return "<input type=\"text\" placeholder=\"Enter text\" style=\"width:200px;height:32px;\" />";
                 case "toggle":
                     return "<input type=\"checkbox\" />";
+                case "radio":
+                    return "<input type=\"radio\" />";
                 case "slider":
                     return "<input type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"0.5\" style=\"width:200px;\" />";
                 case "progress":
                     return "<progress value=\"0.5\" max=\"1\" style=\"width:200px;height:20px;\"></progress>";
                 case "particles":
                     return "<urui-particles style=\"width:200px;height:200px;\"></urui-particles>";
+                case "textarea":
+                    return "<textarea placeholder=\"Text\" style=\"width:200px;height:70px;\"></textarea>";
+                case "select":
+                    return "<select style=\"width:160px;\"><option>Option</option></select>";
                 // Keep the existing tag-based creation entry point for callers and Agent workflows.
                 case "img":
                     return "<img />";
                 case "div":
                 case "span":
-                case "textarea":
-                case "select":
                 case "urui-particles":
                     return "<" + kind + ">" + (kind == "span" ? "Text" : "") + "</" + kind + ">";
                 default:

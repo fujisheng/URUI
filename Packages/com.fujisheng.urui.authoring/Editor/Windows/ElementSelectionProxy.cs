@@ -8,7 +8,7 @@ using URUI.Editor.Inspection;
 
 namespace URUI.Authoring.Windows
 {
-    /// <summary>每个访问过的节点拥有固定代理，兼容锁定 Inspector；对象不写入场景。</summary>
+    /// <summary>为 URUI Inspector 提供固定的节点代理；对象不写入场景。</summary>
     public sealed class ElementSelectionProxy : ScriptableObject, IAuthoringContext
     {
         static readonly Dictionary<string, ElementSelectionProxy> proxies = new Dictionary<string, ElementSelectionProxy>();

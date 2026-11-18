@@ -23,6 +23,7 @@ namespace URUI.Authoring.Sessions
                 entry = new Entry { Cursor = cursor, Position = position, Undo = undo, Redo = redo }; entries[id] = entry;
             }
             entry.Cursor.position = position(); entry.LastCursor = entry.Cursor.position;
+            UnityEditor.Undo.IncrementCurrentGroup();
             UnityEditor.Undo.RecordObject(entry.Cursor, "Edit URUI");
             action(); entry.Cursor.position = position(); entry.LastCursor = entry.Cursor.position; UnityEditor.Undo.FlushUndoRecordObjects();
         }
@@ -45,5 +46,15 @@ namespace URUI.Authoring.Sessions
         }
         public static void Clear()
         { foreach (var entry in entries.Values) if (entry.Cursor) { UnityEditor.Undo.ClearUndo(entry.Cursor); UnityEngine.Object.DestroyImmediate(entry.Cursor); } entries.Clear(); }
+
+        internal static void Clear(string id)
+        {
+            if (entries.TryGetValue(id, out var entry) && entry.Cursor)
+            {
+                UnityEditor.Undo.ClearUndo(entry.Cursor);
+                UnityEngine.Object.DestroyImmediate(entry.Cursor);
+            }
+            entries.Remove(id);
+        }
     }
 }

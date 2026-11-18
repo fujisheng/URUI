@@ -361,9 +361,8 @@ namespace URUI.Authoring.Animation
             string source = string.IsNullOrEmpty(track.Source) ? fallback ?? author.Model.Nodes.FirstOrDefault(n => n.Attribute("id") == track.Target)?.Attribute("src") : track.Source;
             if (string.IsNullOrEmpty(source))
                 throw new InvalidOperationException("粒子轨道需要有效资源引用。");
-            string relative = author.File.Path.Substring(author.Workspace.ProjectRoot.Length).Replace('\\', '/');
-            string path = URUI.Editor.Inspection.RuntimeInspectionBridge.ResolveResourceUrl(relative, source).TrimStart('/');
-            if (!path.StartsWith("Assets/", StringComparison.Ordinal) && !path.StartsWith("Packages/", StringComparison.Ordinal))
+            string path = Preview.AuthoringAssetPaths.ResolveAsset(author.Workspace.ProjectRoot, author.File.Path, source);
+            if (path == null)
                 throw new InvalidOperationException("read_only_asset: 粒子资源必须来自项目资产。");
             var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.GameObject>(path);
             if (!prefab || prefab.GetComponentsInChildren<UnityEngine.ParticleSystem>(true).Length == 0)

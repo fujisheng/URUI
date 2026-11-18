@@ -87,6 +87,9 @@ namespace URUI.Internal.Resources
         static readonly Stack<BorrowedTextureRegistry.SubmissionPins> idlePins = new();
         static bool quitting;
 
+#if !UNITY_EDITOR
+        // Editor Play Mode also raises the quit notifications. Its graphics device
+        // stays active and subsequent authoring previews must still submit retirement fences.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void InitializeShutdown()
         {
@@ -94,6 +97,9 @@ namespace URUI.Internal.Resources
             Application.quitting-=BeginShutdown;
             Application.quitting+=BeginShutdown;
         }
+
+        void OnApplicationQuit()=>BeginShutdown();
+#endif
 
         static void ReleaseBarrierCommands(Pending item)
         {
@@ -114,8 +120,6 @@ namespace URUI.Internal.Resources
             quitting=true;
             ReleaseBarrierCommands();
         }
-
-        void OnApplicationQuit()=>BeginShutdown();
 
         internal static BorrowedTextureRegistry.SubmissionPins RentPins()
             => idlePins.Count > 0 ? idlePins.Pop() : new BorrowedTextureRegistry.SubmissionPins();

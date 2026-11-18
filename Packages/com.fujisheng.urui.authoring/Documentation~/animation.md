@@ -4,7 +4,7 @@
 
 1. 双击项目 Assets 下的 HTML，或打开 英文菜单 `Window/URUI/Editor`（中文为 `Window/URUI/编辑器`）→ Open Page / 打开页面。
 2. 选中节点，切到“动画”，点击“添加动画”→ 弹出 / 淡入 / 淡出 / 滑入 / 按钮脉冲。
-3. 拖动刻度预览；输入秒数可精确定位。点击“录制”，在原生 Inspector 或画布调整当前节点。
+3. 拖动刻度预览；输入秒数可精确定位。点击“录制”，在 URUI Inspector 或画布调整当前节点。
 4. 点击“结束录制”，播放检查，再点击“保存”。页面、CSS、序列一起保存；粒子 Prefab、Material、EffectPreset 仍在各自工作台明确 Apply。
 
 第一次添加预设会为无 id 的节点分配唯一 id，在同目录创建 `<页面名>.animations.css` 和 `<页面名>.urui-sequence.json`，并链接 CSS。三项变更是一笔可撤销事务，保存前不创建文件。预设只创建动画，没有自动挂到 CSS `animation` 属性上；正式运行由 `SequencePlayer` 或业务自己的 CSS 动画触发。

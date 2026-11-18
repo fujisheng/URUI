@@ -29,15 +29,14 @@ namespace URUI.Authoring.Windows
             };
         }
         [MenuItem("Window/URUI/Hierarchy")]
-        public static void Open() => GetWindow<UruiHierarchyWindow>("URUI Hierarchy");
+        public static void Open() => RuntimeDebugWindows.OpenHierarchy();
         [OnOpenAsset(1)]
         static bool OnOpenAsset(int instanceId, int line)
         {
             string path = AssetDatabase.GetAssetPath(instanceId);
             if (!path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
                 return false;
-            AuthoringEnvironment.Try(() => AuthoringEnvironment.Open(path));
-            UruiEditorWindow.Open();
+            AuthoringEnvironment.Try(() => { if (UruiEditorWindow.OpenPageWithConfirmation(path)) UruiEditorWindow.Open(); });
             return true;
         }
         void OnEnable()
@@ -46,7 +45,7 @@ namespace URUI.Authoring.Windows
             tree = new NodeTree(treeState);
             AuthoringEnvironment.Observe(true);
             AuthoringEnvironment.Changed += Refresh;
-            Selection.selectionChanged += FollowSelection;
+            AuthoringEnvironment.NodeSelectionChanged += FollowSelection;
             L.LanguageChanged += RefreshLanguage;
             FollowSelection();
         }
@@ -54,7 +53,7 @@ namespace URUI.Authoring.Windows
         {
             AuthoringEnvironment.Observe(false);
             AuthoringEnvironment.Changed -= Refresh;
-            Selection.selectionChanged -= FollowSelection;
+            AuthoringEnvironment.NodeSelectionChanged -= FollowSelection;
             L.LanguageChanged -= RefreshLanguage;
         }
         void RefreshLanguage()
@@ -64,7 +63,7 @@ namespace URUI.Authoring.Windows
         }
         void FollowSelection()
         {
-            if (Selection.activeObject is ElementSelectionProxy proxy)
+            if (AuthoringEnvironment.ActiveNode is ElementSelectionProxy proxy)
                 tree?.Reveal(proxy);
             Repaint();
         }
@@ -92,7 +91,7 @@ namespace URUI.Authoring.Windows
                 {
                     string path = EditorUtility.OpenFilePanel(L.Tr("Open URUI HTML"), Application.dataPath, "html");
                     if (!string.IsNullOrEmpty(path))
-                        AuthoringEnvironment.Try(() => AuthoringEnvironment.Open(path));
+                        AuthoringEnvironment.Try(() => UruiEditorWindow.OpenPageWithConfirmation(path));
                 }
             }
             if (EditorApplication.isPlaying)
@@ -162,34 +161,8 @@ namespace URUI.Authoring.Windows
         }
         static void CreateNode(string tag)
         {
-            var author = AuthoringEnvironment.Author;
-            string parent = (Selection.activeObject as ElementSelectionProxy)?.SourceKey;
-            if (parent == null || author.Model.Find(parent).IsVoid)
-                foreach (var node in author.Model.Nodes)
-                    if (node.Tag == "body")
-                    {
-                        parent = node.Key;
-                        break;
-                    }
-            if (parent == null)
-                throw new InvalidOperationException("No editable parent.");
-            string markup = NodePresentation.Template(tag);
-            var template = SourceDocument.Parse(markup);
-            string baseName = char.ToUpperInvariant(tag[0]) + tag.Substring(1);
-            string name = baseName;
-            var used = new HashSet<string>();
-            foreach (var node in author.Model.Nodes)
-                used.Add(node.Attribute("id"));
-            for (int suffix = 1; used.Contains(name); suffix++)
-                name = baseName + suffix;
-            markup = template.SetAttribute(template.Roots[0].Key, "id", name);
-            SessionUndoBridge.Record(author, () => author.Execute(new[] { new AuthoringEdit { Operation = "insert", Parent = parent, Value = markup } }, author.Revision));
-            foreach (var node in author.Model.Nodes)
-                if (node.Attribute("id") == name)
-                {
-                    AuthoringEnvironment.Select(ElementSelectionProxy.ForAuthor(node.Key));
-                    break;
-                }
+            var selected = AuthoringEnvironment.ActiveNode;
+            NodePlacement.ChildOf(selected?.SourceNode).Insert(tag);
         }
         static void RenameNode(string key, string value)
         {
@@ -212,13 +185,13 @@ namespace URUI.Authoring.Windows
                 evt.Use();
                 return;
             }
-            var proxy = Selection.activeObject as ElementSelectionProxy;
+            var proxy = AuthoringEnvironment.ActiveNode;
             if (!proxy || !proxy.IsTargetValid || proxy.IsLive)
                 return;
             var author = AuthoringEnvironment.Author;
             var node = proxy.SourceNode;
             var keys = new List<string>();
-            foreach (var obj in Selection.objects)
+            foreach (var obj in AuthoringEnvironment.SelectedNodes)
                 if (obj is ElementSelectionProxy selected && !selected.IsLive && selected.IsTargetValid)
                     keys.Add(selected.SourceKey);
             if ((evt.control || evt.command) && evt.keyCode == KeyCode.C)
@@ -242,12 +215,20 @@ namespace URUI.Authoring.Windows
             readonly Dictionary<string, int> ids = new Dictionary<string, int>();
             readonly Dictionary<int, string> sourceKeys = new Dictionary<int, string>();
             readonly Dictionary<int, InspectedNode> liveNodes = new Dictionary<int, InspectedNode>();
+            readonly bool runtimeWindow;
             sealed class NodeItem : TreeViewItem
             {
                 internal string Tooltip;
-                internal NodeItem(int id, int depth, string tag, string name, string inputType = null) : base(id, depth, L.NodeName(tag, name))
+                internal string SearchText, Binding, Classes;
+                internal NodeItem(int id, int depth, string tag, string name, string inputType = null, string classes = null, string text = null, bool runtime = false)
+                    : base(id, depth, runtime ? WorkbenchUi.NodeTitle(tag, name, classes, text, inputType) : L.NodeName(tag, name))
                 {
+                    Binding = name;
+                    Classes = classes;
+                    SearchText = string.Join(" ", displayName, tag, name, classes, text);
                     Tooltip = "<" + tag + "> · " + L.Tr(NodePresentation.TypeLabel(tag, inputType)) + (string.IsNullOrEmpty(name) ? L.Tr("\n未设置绑定 id") : "\nid: " + name);
+                    if (!string.IsNullOrEmpty(classes))
+                        Tooltip += "\nclass: " + classes;
                     string iconName = tag == "img" ? "Texture2D Icon" : tag == "urui-particles" ? "ParticleSystem Icon" : tag == "span" || tag == "p" || tag == "label" ? "TextAsset Icon" : "RectTransform Icon";
                     icon = EditorGUIUtility.FindTexture(iconName) ?? EditorGUIUtility.ObjectContent(null, tag == "img" ? typeof(Texture2D) : tag == "span" || tag == "p" || tag == "label" ? typeof(TextAsset) : typeof(RectTransform)).image as Texture2D;
                 }
@@ -279,7 +260,44 @@ namespace URUI.Authoring.Windows
             int nextId = 1, visited;
             long sourceStructure = -1;
             bool autoExpand, syncing;
-            public NodeTree(TreeViewState state) : base(state) { showBorder = true; Reload(); }
+            public NodeTree(TreeViewState state, bool runtimeWindow = false) : base(state)
+            {
+                this.runtimeWindow = runtimeWindow;
+                showBorder = true;
+                Reload();
+            }
+
+            internal void ResetRuntimeItems()
+            {
+                ids.Clear();
+                nextId = 1;
+                state.expandedIDs.Clear();
+                SetSelection(Array.Empty<int>());
+                Reload();
+            }
+
+            internal bool SelectFirstMatch()
+            {
+                var rows = GetRows();
+                if (string.IsNullOrEmpty(searchString) || rows.Count == 0)
+                    return false;
+                var selection = new[] { rows[0].id };
+                SetSelection(selection, TreeViewSelectionOptions.RevealAndFrame);
+                SelectionChanged(selection);
+                return true;
+            }
+
+            protected override bool DoesItemMatchSearch(TreeViewItem item, string search)
+            {
+                if (!runtimeWindow || item is not NodeItem node || string.IsNullOrEmpty(search))
+                    return base.DoesItemMatchSearch(item, search);
+                if (search[0] == '#')
+                    return string.Equals(node.Binding, search.Substring(1), StringComparison.OrdinalIgnoreCase);
+                if (search[0] == '.')
+                    return Array.Exists(node.Classes?.Split((char[])null, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>(),
+                        name => name.Equals(search.Substring(1), StringComparison.OrdinalIgnoreCase));
+                return node.SearchText.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
+            }
             int Id(string key)
             {
                 if (!ids.TryGetValue(key, out int id))
@@ -295,10 +313,10 @@ namespace URUI.Authoring.Windows
                 if (EditorApplication.isPlaying)
                 {
                     var doc = AuthoringEnvironment.LiveDocument;
-                    if (doc && doc.IsLoaded)
+                    if (doc && doc.IsLoaded && AuthoringEnvironment.Live != null)
                         AddLive(root, RuntimeInspectionBridge.Root(doc), 0);
                 }
-                else if (AuthoringEnvironment.Author.Model != null)
+                else if (!runtimeWindow && AuthoringEnvironment.Author.Model != null)
                 {
                     autoExpand = sourceStructure != AuthoringEnvironment.Author.StructureRevision;
                     sourceStructure = AuthoringEnvironment.Author.StructureRevision;
@@ -373,9 +391,16 @@ namespace URUI.Authoring.Windows
                     if (!HasNamedDescendant(node))
                         return;
                 }
-                int id = Id(AuthoringEnvironment.Live.Id + "/" + node.Id);
+                string key = AuthoringEnvironment.Live.Id + "/" + node.Id;
+                bool expandBody = runtimeWindow && node.Tag == "body" && !ids.ContainsKey(key);
+                int id = Id(key);
+                if (expandBody)
+                    state.expandedIDs.Add(id);
                 liveNodes[id] = node;
-                var item = new NodeItem(id, depth, node.Tag, node.Name);
+                var item = runtimeWindow
+                    ? new NodeItem(id, depth, node.Tag, node.Name, node.Read("attr.type"), node.Read("attr.class"),
+                        string.IsNullOrEmpty(node.Name) ? node.Read("text") : null, runtime: true)
+                    : new NodeItem(id, depth, node.Tag, node.Name);
                 parent.AddChild(item);
                 if (node.ChildCount == 0)
                     return;
@@ -386,18 +411,26 @@ namespace URUI.Authoring.Windows
                     item.children = CreateChildListForCollapsedParent();
             }
             protected override void ExpandedStateChanged() => Reload();
+
+            protected override void SingleClickedItem(int id)
+            {
+                var selection = GetSelection();
+                if (Selection.count != 0 && selection.Contains(id))
+                    SelectionChanged(selection);
+            }
+
             protected override void SelectionChanged(IList<int> selectedIds)
             {
                 if (syncing)
                     return;
-                var proxies = new List<UnityEngine.Object>();
+                var proxies = new List<ElementSelectionProxy>();
                 foreach (int id in selectedIds)
                     if (sourceKeys.TryGetValue(id, out var key))
                         proxies.Add(ElementSelectionProxy.ForAuthor(key));
                     else if (liveNodes.TryGetValue(id, out var node) && node.IsValid)
                         proxies.Add(ElementSelectionProxy.ForLive(node, AuthoringEnvironment.Live));
-                if (proxies.Count != 0)
-                    Selection.objects = proxies.ToArray();
+                if (runtimeWindow || proxies.Count != 0)
+                    AuthoringEnvironment.SetNodeSelection(proxies);
             }
             internal void Reveal(ElementSelectionProxy proxy)
             {

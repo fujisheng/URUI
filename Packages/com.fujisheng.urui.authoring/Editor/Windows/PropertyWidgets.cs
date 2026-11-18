@@ -117,13 +117,6 @@ namespace URUI.Authoring.Windows
                 int index = Array.IndexOf(options, shown);
                 if (index >= 0 || string.IsNullOrEmpty(shown))
                 {
-                    if (name == "text-align" && index >= 0)
-                    {
-                        var rect = EditorGUILayout.GetControlRect();
-                        var field = EditorGUI.PrefixLabel(rect, label);
-                        int next = GUI.Toolbar(field, index, new[] { new GUIContent(L.Tr("左"), L.Tr("左对齐")), new GUIContent(L.Tr("中"), L.Tr("居中")), new GUIContent(L.Tr("右"), L.Tr("右对齐")), new GUIContent("☰", L.Tr("两端对齐")) }, EditorStyles.miniButton);
-                        return next == index ? shown : options[next];
-                    }
                     int selected = EditorGUILayout.Popup(label, index, Array.ConvertAll(options, value => new GUIContent(ChoiceLabel(name, value), value)));
                     return selected == index || selected < 0 ? shown : options[selected];
                 }

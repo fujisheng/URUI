@@ -190,7 +190,8 @@ namespace URUI.Authoring.Tests
             string id = workspace.AddPreset(author.Model.Nodes.First(n => n.Tag == "div").Key, "empty", 0, .3, workspace.Revision);
             AnimationEnvironment.SelectTrack(id);
             AnimationEnvironment.Seek(.1);
-            var proxy = Selection.activeObject as ElementSelectionProxy;
+            var proxy = (ElementSelectionProxy)typeof(AuthoringEnvironment)
+                .GetProperty("ActiveNode", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).GetValue(null);
             AnimationEnvironment.BeginRecording(proxy);
             string original = author.File.Text;
             long revision = author.Revision;

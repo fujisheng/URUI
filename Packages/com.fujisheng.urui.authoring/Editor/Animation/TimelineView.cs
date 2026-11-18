@@ -125,7 +125,7 @@ namespace URUI.Authoring.Animation
                 GUILayout.Label(L.Tr("秒"), GUILayout.Width(18));
                 AnimationEnvironment.Snap = GUILayout.Toggle(AnimationEnvironment.Snap, L.Tr("帧吸附"), EditorStyles.toolbarButton, GUILayout.Width(85));
                 if (GUILayout.Button(AnimationEnvironment.Recording ? L.Tr("● 结束录制") : L.Tr("● 录制"), EditorStyles.toolbarButton, GUILayout.Width(85)))
-                    AuthoringEnvironment.Try(() => { if (AnimationEnvironment.Recording) AnimationEnvironment.EndRecording(); else AnimationEnvironment.BeginRecording(Selection.activeObject as ElementSelectionProxy); });
+                    AuthoringEnvironment.Try(() => { if (AnimationEnvironment.Recording) AnimationEnvironment.EndRecording(); else AnimationEnvironment.BeginRecording(AuthoringEnvironment.ActiveNode); });
                 GUILayout.FlexibleSpace();
                 using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
                 {
@@ -148,7 +148,7 @@ namespace URUI.Authoring.Animation
                 string preset = pair[1];
                 menu.AddItem(new GUIContent(pair[0]), false, () => Edit(() =>
                 {
-                    var proxy = Selection.activeObject as ElementSelectionProxy;
+                    var proxy = AuthoringEnvironment.ActiveNode;
                     if (!proxy || proxy.IsLive || !proxy.IsTargetValid)
                         throw new InvalidOperationException(L.Tr("请先在节点树或画布选中一个节点。"));
                     string id = AnimationEnvironment.Workspace.AddPreset(proxy.SourceKey, preset, 0, .3, AnimationEnvironment.Workspace.Revision);
@@ -159,7 +159,7 @@ namespace URUI.Authoring.Animation
             menu.AddSeparator("");
             menu.AddItem(new GUIContent(L.Tr("粒子播放轨道")), false, () => Edit(() =>
             {
-                var proxy = Selection.activeObject as ElementSelectionProxy;
+                var proxy = AuthoringEnvironment.ActiveNode;
                 if (!proxy || proxy.IsLive || !proxy.IsTargetValid || proxy.SourceNode.Tag != "urui-particles")
                     throw new InvalidOperationException(L.Tr("请选择 urui-particles 节点，并设置粒子 Prefab 资源路径。"));
                 string id = AnimationEnvironment.Workspace.AddParticles(proxy.SourceKey, proxy.SourceNode.Attribute("src") ?? "", 0, 1, AnimationEnvironment.Workspace.Revision);

@@ -32,7 +32,8 @@ namespace URUI.Tests
                 ImagePinRetirement.Retire(null,new List<ImageSubmissionFence>{new ImageSubmissionFence{barrier=firstBuffer,uncertain=true}},resource:first);
                 owner=(ImagePinRetirement)type.GetField("owner",StaticFields).GetValue(null);
                 Assert.That(NativePointer(firstBuffer),Is.Not.EqualTo(IntPtr.Zero));
-                owner.SendMessage("OnApplicationQuit",SendMessageOptions.DontRequireReceiver);
+                // Exercise the Player shutdown routine even when running this test in the Editor.
+                type.GetMethod("BeginShutdown",StaticFields).Invoke(null,null);
                 Assert.That(NativePointer(firstBuffer),Is.EqualTo(IntPtr.Zero),"退出时须在图形设备关闭前释放已录制的CPU命令对象。");
                 Assert.That(first.Disposals,Is.Zero,"未知GPU工作仍须保留真实资源租约。");
                 Assert.That(pending.Count,Is.EqualTo(1));

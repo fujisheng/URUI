@@ -24,6 +24,8 @@ namespace URUI.Editor.Inspection
         public bool HasLayout => IsValid && Element.HasLayout;
         public Rect Bounds => Require().WorldBound;
         public Rect Layout => Require().Layout;
+        /// <summary>当前节点内容的滚动偏移，用于在画布上从显示位置恢复源码坐标。</summary>
+        public Vector2 ScrollOffset => Require().ScrollOffset;
         public Vector2 ContentSize => Require().ContentRect.size;
         public InspectedNode Parent => RuntimeInspectionBridge.Inspect(Require().Parent);
         public int ChildCount => Require().Hierarchy.ChildCount;
@@ -137,6 +139,8 @@ namespace URUI.Editor.Inspection
         public static Vector2 Viewport(Document document) => new Vector2(document.Surface.Width, document.Surface.Height);
         public static void Refresh(Document document) { if (document && document.IsLoaded) document.SynchronizeLayout(); }
         public static InspectedNode Pick(Document document, Vector2 position) => Inspect(document.Pick(position));
+        /// <summary>The native context is available only after the previous Surface finishes shutting down.</summary>
+        public static bool CanCreatePreview => !URUI.Internal.Hosting.RenderHost.ActiveHost;
         public static EditorPreviewHost CreatePreview(int width, int height) => new EditorPreviewHost(width, height);
         public static CapturedPixels CaptureLive(Document document)
         {

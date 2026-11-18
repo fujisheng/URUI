@@ -57,7 +57,7 @@ namespace URUI.Authoring.Tests
         static void Select(int index)
         {
             var node = AuthoringEnvironment.Author.Model.Nodes.First(n => n.Attribute("id") == targets[index]);
-            Selection.activeObject = ElementSelectionProxy.ForAuthor(node.Key);
+            AuthoringEnvironment.Select(ElementSelectionProxy.ForAuthor(node.Key));
             inspector.Focus();
         }
         static void Tick()
@@ -125,19 +125,22 @@ namespace URUI.Authoring.Tests
     public sealed class FamiliarityInspectorHost : EditorWindow
     {
         internal static readonly HashSet<string> Painted = new HashSet<string>();
+        static readonly System.Reflection.PropertyInfo activeNode = typeof(AuthoringEnvironment)
+            .GetProperty("ActiveNode", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
         UnityEditor.Editor inspector;
         Vector2 scroll;
         void OnGUI()
         {
-            if (inspector && inspector.target != Selection.activeObject)
+            var proxy = (ElementSelectionProxy)activeNode.GetValue(null);
+            if (inspector && inspector.target != proxy)
                 DestroyImmediate(inspector);
-            if (!inspector && Selection.activeObject is ElementSelectionProxy)
-                inspector = UnityEditor.Editor.CreateEditor(Selection.activeObject, typeof(ElementInspector));
+            if (!inspector && proxy)
+                inspector = UnityEditor.Editor.CreateEditor(proxy, typeof(ElementInspector));
             using (var area = new EditorGUILayout.ScrollViewScope(scroll))
             {
                 scroll = area.scrollPosition;
                 inspector?.OnInspectorGUI();
-                if (Event.current.type == EventType.Repaint && inspector && inspector.target is ElementSelectionProxy proxy)
+                if (Event.current.type == EventType.Repaint && inspector && proxy)
                     Painted.Add(proxy.IsLive ? proxy.Node.Tag : proxy.SourceNode.Tag);
             }
         }

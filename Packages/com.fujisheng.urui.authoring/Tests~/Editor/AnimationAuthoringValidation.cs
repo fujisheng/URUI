@@ -88,7 +88,8 @@ namespace URUI.Authoring.Tests
                 author.Redo();
                 Check(workspace.Definition.Tracks.Count == 1, "Preset redo failed");
                 AnimationEnvironment.SelectTrack(track);
-                proxy = Selection.activeObject as ElementSelectionProxy;
+                proxy = (ElementSelectionProxy)typeof(AuthoringEnvironment)
+                    .GetProperty("ActiveNode", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).GetValue(null);
                 workspace.SetKey(track, .5, "opacity", ".5", workspace.Revision);
                 var htmlBeforeRecording = author.File.Text;
                 AnimationEnvironment.Seek(.15);

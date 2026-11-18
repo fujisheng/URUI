@@ -32,7 +32,7 @@ Unity 操作在主线程执行。请求最大 1 MiB，排队和保留任务均�
 | `document.save` | authoring；显式保存当前工作集，检查磁盘冲突 |
 | `hierarchy.children` | 可选 `target`，`offset` 默认 0，`limit` 默认 100、最大 500；live 根请求返回 root |
 | `hierarchy.find` | `name` 精确匹配 id，返回至多 500 项；允许重复 id，编辑使用返回的身份 |
-| `selection.set` | `target`，同步原生 Inspector |
+| `selection.set` | `target`，在 URUI Inspector 显示节点并清空 Unity 默认 Inspector |
 | `properties.read` | `target`，可选字符串数组 `properties`；区分 value、computed、origin |
 | `properties.set` | `target,property,value`，或 `edits:[{target,property,value}]`；删除声明用 `unset:true` |
 | `structure.insert` | authoring；`parent,html,index`，index=-1 追加 |

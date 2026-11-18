@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using URUI.Authoring.Preview;
@@ -18,6 +19,8 @@ namespace URUI.Authoring.Sessions
     [InitializeOnLoad]
     public static class AuthoringEnvironment
     {
+        internal const string SourcesSaved = "已保存页面、CSS 与序列工作集。";
+        internal const string SourcesDirty = "Authoring · unsaved changes";
         public static string ProjectRoot => Directory.GetParent(Application.dataPath).FullName;
         public static AuthoringSession Author
         {
@@ -37,6 +40,10 @@ namespace URUI.Authoring.Sessions
         }
         public static string Status { get; private set; } = "Open an HTML document to begin.";
         public static event Action Changed;
+        internal static event Action NodeSelectionChanged;
+        static ElementSelectionProxy[] selectedNodes = Array.Empty<ElementSelectionProxy>();
+        internal static IReadOnlyList<ElementSelectionProxy> SelectedNodes => selectedNodes;
+        internal static ElementSelectionProxy ActiveNode => selectedNodes.Length == 0 ? null : selectedNodes[0];
         public static WorkspaceMode Mode
         {
             get; private set;
@@ -56,6 +63,8 @@ namespace URUI.Authoring.Sessions
         public static bool HasObservers => observers != 0;
         static bool changingSelection;
         static bool recoveryConflict;
+        static bool recoveryPending = true;
+        static bool previewRefreshPending;
         static string RecoveryPath => Path.Combine(ProjectRoot, "Library/URUI/Authoring/working-copy.json");
         static AuthoringEnvironment()
         {
@@ -63,8 +72,13 @@ namespace URUI.Authoring.Sessions
             Author = new AuthoringSession(ProjectRoot);
             Author.Changed += () =>
             {
-                if (!EditorApplication.isPlayingOrWillChangePlaymode)
-                    Try(() => { EnsurePreview(); Preview.Refresh(); });
+                if (HasUnsavedSources && (Status == SourcesSaved || Status == "已保存选中的工作集项。" || Status.StartsWith("Authoring · /", StringComparison.Ordinal)))
+                    Status = SourcesDirty;
+                else if (!HasUnsavedSources && Status == SourcesDirty && Author.File != null)
+                    Status = "Authoring · " + Author.File.Path;
+                if (!EditorApplication.isPlaying)
+                    SetNodeSelection(selectedNodes, clearUnitySelection: false);
+                RefreshPreview();
                 Changed?.Invoke();
             };
             foreach (var type in TypeCache.GetTypesDerivedFrom<IAuthoringExtension>())
@@ -81,31 +95,57 @@ namespace URUI.Authoring.Sessions
             EditorApplication.quitting += BeforeReload;
             Selection.selectionChanged += FollowUnitySelection;
             EditorApplication.update += Update;
-            EditorApplication.delayCall += () =>
+        }
+
+        static void RecoverWorkingCopy()
+        {
+            if (!recoveryPending || EditorApplication.isCompiling || EditorApplication.isUpdating ||
+                (EditorApplication.isPlayingOrWillChangePlaymode && !EditorApplication.isPlaying))
+                return;
+            recoveryPending = false;
+            if (Author.File != null || !File.Exists(RecoveryPath))
+                return;
+            try
             {
-                if (Author.File != null || !File.Exists(RecoveryPath))
-                    return;
-                try
-                {
-                    Report("Recovered authoring working copies; source files unchanged.");
-                    SourceRecovery.Restore(Author, RecoveryPath);
-                }
-                catch (Exception error) { recoveryConflict = true; Report(error.Message); }
-            };
+                Status = "Recovered authoring working copies; source files unchanged.";
+                SourceRecovery.Restore(Author, RecoveryPath);
+            }
+            catch (Exception error)
+            {
+                recoveryConflict = true;
+                Report(error.Message);
+            }
         }
         public static void Observe(bool add)
         {
             observers = Math.Max(0, observers + (add ? 1 : -1));
         }
-        public static void Open(string path)
+        internal static bool HasUnsavedSources => Author.Workspace.Files.Any(file => file.Dirty);
+
+        public static void Open(string path) => Open(path, false);
+
+        internal static void Open(string path, bool discardChanges)
         {
-            if (Author.File != null && Path.GetFullPath(path) != Author.File.Path)
-                foreach (var file in Author.Workspace.Files)
-                    if (file.Dirty)
-                        throw new InvalidOperationException("Save or discard the current working set before opening another document.");
-            Status = "Authoring · " + Path.GetFullPath(path);
-            Author.Open(path);
+            path = Author.Workspace.CheckPath(path);
+            if (!discardChanges && Author.File != null && path != Author.File.Path && HasUnsavedSources)
+                throw new InvalidOperationException("Save or discard the current working set before opening another document.");
+            string previous = Status;
+            Status = "Authoring · " + path;
+            try { Author.Open(path, discardChanges); }
+            catch { Status = previous; throw; }
+            if (discardChanges)
+                SaveRecovery();
             Changed?.Invoke();
+        }
+
+        internal static void SaveSources()
+        {
+            if (Author.File == null && !HasUnsavedSources)
+                return;
+            Author.Save();
+            AssetDatabase.Refresh();
+            Report(SourcesSaved);
+            SaveRecovery();
         }
         public static void EnsurePreview()
         {
@@ -113,27 +153,58 @@ namespace URUI.Authoring.Sessions
                 return;
             Preview ??= new PreviewSession(Author, ProjectRoot);
         }
+
+        static void RefreshPreview()
+        {
+            if (Author.File == null || EditorApplication.isPlayingOrWillChangePlaymode)
+                return;
+            // Unity can report Edit Mode before removing the previous scene's active URUI Surface.
+            previewRefreshPending = Preview == null && !RuntimeInspectionBridge.CanCreatePreview;
+            if (!previewRefreshPending)
+                Try(() => { EnsurePreview(); Preview.Refresh(); });
+        }
         public static void Select(ElementSelectionProxy proxy, bool add = false)
         {
-            if (changingSelection)
+            if (!add || !proxy)
+            {
+                SetNodeSelection(proxy ? new[] { proxy } : Array.Empty<ElementSelectionProxy>());
+                return;
+            }
+            var selection = new List<ElementSelectionProxy>(selectedNodes);
+            if (!selection.Remove(proxy))
+                selection.Insert(0, proxy);
+            SetNodeSelection(selection);
+        }
+
+        internal static void SetNodeSelection(IEnumerable<ElementSelectionProxy> nodes, bool clearUnitySelection = true)
+        {
+            var valid = new List<ElementSelectionProxy>();
+            foreach (var node in nodes)
+                if (node && node.IsTargetValid && node.IsLive == EditorApplication.isPlaying &&
+                    (!node.IsLive || node.Node.Document == LiveDocument) && !valid.Contains(node))
+                    valid.Add(node);
+            if (clearUnitySelection && (valid.Count != 0 || Selection.activeObject is ElementSelectionProxy))
+                ClearUnitySelection();
+            if (valid.SequenceEqual(selectedNodes))
+                return;
+            selectedNodes = valid.ToArray();
+            NodeSelectionChanged?.Invoke();
+        }
+
+        static void ClearUnitySelection()
+        {
+            if (Selection.objects.Length == 0)
                 return;
             changingSelection = true;
             try
             {
-                if (!add)
-                    Selection.activeObject = proxy;
-                else
-                {
-                    var selected = new List<UnityEngine.Object>(Selection.objects);
-                    if (selected.Contains(proxy))
-                        selected.Remove(proxy);
-                    else
-                        selected.Add(proxy);
-                    Selection.objects = selected.ToArray();
-                }
+                Selection.objects = Array.Empty<UnityEngine.Object>();
+                var tracker = ActiveEditorTracker.sharedTracker;
+                // The Inspector can still hold its previous editors until Unity dispatches the selection change.
+                if (!tracker.isLocked)
+                    tracker.ForceRebuild();
             }
             finally { changingSelection = false; }
-            Changed?.Invoke();
         }
         public static Document[] Documents()
         {
@@ -153,11 +224,23 @@ namespace URUI.Authoring.Sessions
                 return;
             Animation.AnimationEnvironment.DocumentChanged(document);
             LiveDocument = document;
+            SetNodeSelection(selectedNodes, clearUnitySelection: false);
             Changed?.Invoke();
         }
         static void FollowUnitySelection()
         {
-            if (changingSelection || !EditorApplication.isPlaying)
+            if (changingSelection)
+                return;
+            if (Selection.activeObject is ElementSelectionProxy active)
+            {
+                var selection = new List<ElementSelectionProxy> { active };
+                foreach (var item in Selection.objects)
+                    if (item is ElementSelectionProxy proxy && proxy != active)
+                        selection.Add(proxy);
+                SetNodeSelection(selection);
+                return;
+            }
+            if (!EditorApplication.isPlaying)
                 return;
             var gameObject = Selection.activeGameObject;
             if (!gameObject)
@@ -181,6 +264,8 @@ namespace URUI.Authoring.Sessions
         {
             if (state == PlayModeStateChange.ExitingEditMode)
             {
+                previewRefreshPending = false;
+                SetNodeSelection(Array.Empty<ElementSelectionProxy>());
                 SaveRecovery();
                 foreach (var extension in extensions)
                     extension.EndSession(Author.Id);
@@ -191,21 +276,30 @@ namespace URUI.Authoring.Sessions
             {
                 EndLive();
                 Live = new LiveSession();
+                // Live animation can use the authoring sequence after a domain reload.
+                RecoverWorkingCopy();
                 FollowUnitySelection();
             }
             else if (state == PlayModeStateChange.ExitingPlayMode)
             {
                 EndLive();
                 LiveDocument = null;
+                SetNodeSelection(Array.Empty<ElementSelectionProxy>());
                 SessionUndoBridge.Clear();
                 ElementSelectionProxy.ClearLive();
             }
-            else if (state == PlayModeStateChange.EnteredEditMode && Author.File != null)
-                Try(() => { EnsurePreview(); Preview.Refresh(); });
+            else if (state == PlayModeStateChange.EnteredEditMode)
+            {
+                RecoverWorkingCopy();
+                RefreshPreview();
+            }
             Changed?.Invoke();
         }
         static void Update()
         {
+            RecoverWorkingCopy();
+            if (previewRefreshPending && RuntimeInspectionBridge.CanCreatePreview)
+                RefreshPreview();
             double now = EditorApplication.timeSinceStartup;
             float delta = (float)Math.Min(.1, Math.Max(0, now - lastTick));
             lastTick = now;
@@ -234,8 +328,7 @@ namespace URUI.Authoring.Sessions
                         {
                             Preview?.Dispose();
                             Preview = null;
-                            EnsurePreview();
-                            Preview.Refresh();
+                            RefreshPreview();
                         }
                     }
                     catch (Exception error) { Report(error.Message); break; }

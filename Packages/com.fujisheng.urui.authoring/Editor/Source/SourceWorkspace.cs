@@ -172,6 +172,22 @@ namespace URUI.Authoring.Source
             redo.Clear();
             HistoryPosition = 0;
         }
+
+        internal void DiscardChanges()
+        {
+            long next = ++revision;
+            foreach (var file in files.Values)
+            {
+                if (!file.Dirty)
+                    continue;
+                file.Text = file.SavedText;
+                file.Revision = next;
+            }
+            undo.Clear();
+            redo.Clear();
+            HistoryPosition = 0;
+        }
+
         void Read(SourceFile file)
         {
             byte[] bytes = File.ReadAllBytes(file.Path);

@@ -17,11 +17,10 @@ namespace URUI.Authoring.Windows
         string error;
         public static void OpenOrSave()
         {
-            if (AuthoringEnvironment.PendingAssets().Count == 0 && !EditorApplication.isPlaying)
+            if (AuthoringEnvironment.PendingAssets().Count == 0)
             {
-                AuthoringEnvironment.Author.Save();
-                AssetDatabase.Refresh();
-                AuthoringEnvironment.Report("已保存页面、CSS 与序列工作集。");
+                if (!EditorApplication.isPlayingOrWillChangePlaymode)
+                    AuthoringEnvironment.SaveSources();
                 return;
             }
             var window = GetWindow<SaveWorksetWindow>(true, L.Tr("保存 URUI 工作集"));

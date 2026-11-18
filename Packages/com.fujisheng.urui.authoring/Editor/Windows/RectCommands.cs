@@ -12,6 +12,41 @@ namespace URUI.Authoring.Windows
     public static class RectCommands
     {
         static string Px(float value) => value.ToString("0.###", CultureInfo.InvariantCulture) + "px";
+
+        internal static bool TryAutomaticOffset(InspectedNode node, string axis, out string offset)
+        {
+            offset = null;
+            bool horizontal = axis == "left";
+            if (!StylePixels(node.Computed(horizontal ? "margin-left" : "margin-top"), out float margin))
+                return false;
+            Vector2 origin = Vector2.zero, scroll = Vector2.zero;
+            if (node.Computed("position") != "fixed")
+            {
+                for (var ancestor = node.Parent; ancestor != null; ancestor = ancestor.Parent)
+                {
+                    scroll += ancestor.ScrollOffset;
+                    if (ancestor.Computed("position") is (null or "static"))
+                        continue;
+                    if (!ancestor.HasLayout)
+                        return false;
+                    origin = ancestor.Bounds.position + new Vector2(Pixels(ancestor.Computed("border-left-width")), Pixels(ancestor.Computed("border-top-width")));
+                    break;
+                }
+            }
+            Vector2 position = node.Bounds.position + scroll - origin;
+            float value = (horizontal ? position.x : position.y) - margin;
+            if (!float.IsFinite(value))
+                return false;
+            offset = Px(value);
+            return true;
+        }
+
+        static bool StylePixels(string value, out float result)
+        {
+            result = 0;
+            return value is null or "0" or "auto" || (value.EndsWith("px", StringComparison.Ordinal) &&
+                float.TryParse(value.Substring(0, value.Length - 2), NumberStyles.Float, CultureInfo.InvariantCulture, out result));
+        }
         public static AuthoringEdit[] AnchorEdits(InspectedNode node, string key, int x, int y, bool stretchX, bool stretchY)
         {
             if (node == null || !node.HasLayout || node.Parent == null || !node.Parent.HasLayout)

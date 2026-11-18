@@ -1,6 +1,7 @@
 using L = URUI.Editor.Localization.EditorText;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using URUI.Authoring.Sessions;
@@ -12,8 +13,9 @@ namespace URUI.Authoring.Windows
     [CustomEditor(typeof(ElementSelectionProxy)), CanEditMultipleObjects]
     public sealed class ElementInspector : UnityEditor.Editor
     {
+        internal bool AllowSharedRules { get; set; } = true;
         string search = "";
-        bool advanced, computed, drawingAdvanced, linkPadding, linkMargin;
+        bool advanced, computed, drawingAdvanced, drawingWorkbench, linkPadding, linkMargin;
         readonly HashSet<string> expressions = new HashSet<string>();
         readonly Dictionary<string, bool> panels = new Dictionary<string, bool>();
         sealed class RuleTarget
@@ -48,6 +50,81 @@ namespace URUI.Authoring.Windows
             }
         }
         public override bool RequiresConstantRepaint() => EditorApplication.isPlaying;
+
+        internal void DrawWorkbenchProperties()
+        {
+            if (target is not ElementSelectionProxy proxy || !proxy || !proxy.IsTargetValid)
+                return;
+
+            string tag = proxy.SourceNode.Tag;
+            string type = proxy.Read("attr.type");
+            bool text = !string.IsNullOrWhiteSpace(proxy.Read("text")) || tag is "span" or "p" or "label" or "button";
+            bool control = tag is "input" or "textarea" or "select" or "progress";
+            drawingWorkbench = true;
+            float previousLabelWidth = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = Mathf.Clamp(EditorGUIUtility.currentViewWidth * .36f, 86, 116);
+            try
+            {
+                if (tag is "img" or "urui-particles" || text || control)
+                {
+                    WorkbenchSection("内容");
+                    if (tag is "img" or "urui-particles")
+                        DrawResource(proxy);
+                    else if (control)
+                    {
+                        Row("value");
+                        if (tag == "textarea" || tag == "input" && type is not ("range" or "checkbox" or "radio"))
+                            Row("attr.placeholder");
+                    }
+                    else if (text)
+                    {
+                        Row("text");
+                        if (tag == "button" && TextChild(proxy) is ElementSelectionProxy child &&
+                            GUILayout.Button(L.Tr("选择文字子节点"), EditorStyles.miniButton))
+                            AuthoringEnvironment.Select(child);
+                    }
+                }
+
+                WorkbenchSection("大小与位置");
+                Row("style.width");
+                Row("style.height");
+                Row("style.position");
+                string position = DisplayedValue(proxy, "style.position");
+                if (position is "absolute" or "fixed" or "relative")
+                {
+                    Row("style.left");
+                    Row("style.top");
+                }
+                if (proxy.Node?.Computed("display") == "flex")
+                {
+                    Row("style.flex-direction");
+                    Row("style.gap");
+                }
+
+                WorkbenchSection("外观");
+                if (text)
+                {
+                    Row("style.font-size");
+                    Row("style.color");
+                }
+                Row("style.background-color");
+                Row("style.opacity");
+                EditorGUILayout.Space(8);
+            }
+            finally
+            {
+                EditorGUIUtility.labelWidth = previousLabelWidth;
+                drawingWorkbench = false;
+            }
+        }
+
+        static void WorkbenchSection(string title)
+        {
+            EditorGUILayout.Space(11);
+            EditorGUILayout.LabelField(L.Tr(title), EditorStyles.boldLabel);
+            EditorGUILayout.Space(4);
+        }
+
         public override void OnInspectorGUI()
         {
             var proxy = target as ElementSelectionProxy;
@@ -60,19 +137,25 @@ namespace URUI.Authoring.Windows
             string bindingName = proxy.Read("attr.id");
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                EditorGUILayout.LabelField(L.NodeName(tag, bindingName), EditorStyles.boldLabel);
+                if (AllowSharedRules)
+                    EditorGUILayout.LabelField(L.NodeName(tag, bindingName), EditorStyles.boldLabel);
                 EditorGUILayout.LabelField(L.Tr(NodePresentation.TypeLabel(tag, proxy.Read("attr.type"))) + "  ·  <" + tag + ">", EditorStyles.miniLabel);
                 Row("attr.id");
-                using (new EditorGUILayout.HorizontalScope())
+                if (!AllowSharedRules && !proxy.IsLive)
+                    Row("attr.class");
+                if (proxy.IsLive || AllowSharedRules)
                 {
-                    GUILayout.Label(proxy.IsLive ? L.Tr("● Play · 临时修改") : L.Tr("HTML / CSS 工作副本"), EditorStyles.miniLabel);
-                    GUILayout.FlexibleSpace();
-                    if (GUILayout.Button(proxy.IsLive ? L.Tr("审阅并应用…") : L.Tr("保存"), EditorStyles.miniButton, GUILayout.Width(proxy.IsLive ? 100 : 50)))
+                    using (new EditorGUILayout.HorizontalScope())
                     {
-                        if (proxy.IsLive)
-                            LiveApplyWindow.Open(proxy);
-                        else
-                            AuthoringEnvironment.Try(AuthoringEnvironment.Save);
+                        GUILayout.Label(proxy.IsLive ? L.Tr("● Play · 临时修改") : L.Tr("HTML / CSS 工作副本"), EditorStyles.miniLabel);
+                        GUILayout.FlexibleSpace();
+                        if (GUILayout.Button(proxy.IsLive ? L.Tr("审阅并应用…") : L.Tr("保存"), EditorStyles.miniButton, GUILayout.Width(proxy.IsLive ? 100 : 50)))
+                        {
+                            if (proxy.IsLive)
+                                LiveApplyWindow.Open(proxy);
+                            else
+                                AuthoringEnvironment.Try(AuthoringEnvironment.Save);
+                        }
                     }
                 }
             }
@@ -85,7 +168,10 @@ namespace URUI.Authoring.Windows
                         AuthoringEnvironment.Try(() => { if (Animation.AnimationEnvironment.Recording) Animation.AnimationEnvironment.EndRecording(); else Animation.AnimationEnvironment.BeginRecording(proxy); });
                 }
             }
-            foreach (var section in InspectorPresentation.SectionsForControl(tag, proxy.Read("attr.type"), !string.IsNullOrWhiteSpace(proxy.Read("text"))))
+            var sections = InspectorPresentation.SectionsForControl(tag, proxy.Read("attr.type"), !string.IsNullOrWhiteSpace(proxy.Read("text")));
+            if (!AllowSharedRules)
+                sections = sections.OrderBy(section => section.Name == "文字 Text" || section.Name == "图像 Image" ? 0 : 1);
+            foreach (var section in sections)
             {
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
@@ -167,9 +253,11 @@ namespace URUI.Authoring.Windows
                 {
                     foreach (string property in new[] { "attr.class", "attr.title", "attr.tabindex", "text", "attr.src" })
                         Row(property);
-                    if (!proxy.IsLive)
+                    if (!proxy.IsLive && AllowSharedRules)
+                    {
                         DrawRuleTarget();
-                    EditorGUILayout.LabelField(L.Tr("以下属性使用所选写入位置；上方常用面板始终编辑当前节点。"), EditorStyles.wordWrappedMiniLabel);
+                        EditorGUILayout.LabelField(L.Tr("以下属性使用所选写入位置；上方常用面板始终编辑当前节点。"), EditorStyles.wordWrappedMiniLabel);
+                    }
                     search = EditorGUILayout.TextField(L.Tr("搜索属性"), search);
                     drawingAdvanced = true;
                     try
@@ -240,8 +328,7 @@ namespace URUI.Authoring.Windows
             if (!string.IsNullOrEmpty(source))
                 try
                 {
-                    string relative = AuthoringEnvironment.Author.File.Path.Substring(AuthoringEnvironment.ProjectRoot.Length).Replace('\\', '/');
-                    path = URUI.Editor.Inspection.RuntimeInspectionBridge.ResolveResourceUrl(relative, source).TrimStart('/');
+                    path = Preview.AuthoringAssetPaths.ResolveAsset(AuthoringEnvironment.ProjectRoot, AuthoringEnvironment.Author.File.Path, source);
                 }
                 catch (InvalidOperationException) { }
             var current = path == null ? null : AssetDatabase.LoadAssetAtPath(path, type);
@@ -249,7 +336,7 @@ namespace URUI.Authoring.Windows
             var asset = EditorGUILayout.ObjectField(type == typeof(Texture2D) ? L.Tr("图片") : L.Tr("粒子 Prefab"), current, type, false);
             if (EditorGUI.EndChangeCheck())
             {
-                string value = asset ? Uri.UnescapeDataString(new Uri(AuthoringEnvironment.Author.File.Path).MakeRelativeUri(new Uri(System.IO.Path.GetFullPath(AssetDatabase.GetAssetPath(asset)))).ToString()) : null;
+                string value = asset ? Preview.AuthoringAssetPaths.Reference(AuthoringEnvironment.ProjectRoot, AuthoringEnvironment.Author.File.Path, AssetDatabase.GetAssetPath(asset)) : null;
                 Apply("attr.src", value);
             }
             Row("attr.src");
@@ -332,7 +419,7 @@ namespace URUI.Authoring.Windows
                     if (GUILayout.Button(new GUIContent("◇", L.Tr("将当前值加入所选轨道的当前时间。")), EditorStyles.miniButton, GUILayout.Width(20)))
                         AddKey(proxy, property, shown);
                 }
-                if (property.StartsWith("style.", StringComparison.Ordinal))
+                if (!drawingWorkbench && property.StartsWith("style.", StringComparison.Ordinal))
                 {
                     string status = rule != null ? L.Tr("共") : !proxy.IsLive && Animation.AnimationEnvironment.Recording ? L.Tr("录") : proxy.IsLive ? L.Tr("临") : value == null ? L.Tr("继") : L.Tr("改");
                     GUILayout.Label(new GUIContent(status, rule != null ? L.Tr("共享规则") : value == null ? L.Tr("计算或继承值") : L.Tr("当前节点覆盖")), EditorStyles.miniLabel, GUILayout.Width(15));
