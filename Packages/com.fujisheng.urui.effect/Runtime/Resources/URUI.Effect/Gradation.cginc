@@ -2,9 +2,6 @@
 #ifndef URUI_EFFECT_GRADATION_INCLUDED
 #define URUI_EFFECT_GRADATION_INCLUDED
 sampler2D _GradationTex;
-float4 _GradationTex_ST, _GradationColor1, _GradationColor2, _GradationColor3, _GradationColor4;
-int _GradationMode, _GradationColorFilter;
-float _GradationIntensity;
 half4 UruiGradation(half4 color,float2 coordinate)
 {
     if(_GradationMode==0)return color;

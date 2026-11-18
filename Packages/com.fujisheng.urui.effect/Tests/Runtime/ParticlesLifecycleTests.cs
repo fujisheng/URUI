@@ -70,7 +70,8 @@ namespace URUI.Effect.Tests
             try
             {
                 var node=Load(fixture);yield return null;yield return null;fixture.Render();var before=node.GetStatistics();
-                for(var i=0;i<12;i++)fixture.Render();var after=node.GetStatistics();
+                // 验证同帧重复准备不重复烘焙；GPU 提交积压另有八份准入测试。
+                for(var i=0;i<12;i++)fixture.Document.SynchronizeLayout();fixture.Render();var after=node.GetStatistics();
                 Assert.That(after.BodyBakes,Is.EqualTo(before.BodyBakes));Assert.That(after.TrailBakes,Is.EqualTo(before.TrailBakes));Assert.That(after.ParticleReads,Is.EqualTo(before.ParticleReads));
                 yield return null;fixture.Render();var next=node.GetStatistics();Assert.That(next.BodyBakes-after.BodyBakes,Is.EqualTo(1));Assert.That(next.TrailBakes-after.TrailBakes,Is.EqualTo(1));
             }

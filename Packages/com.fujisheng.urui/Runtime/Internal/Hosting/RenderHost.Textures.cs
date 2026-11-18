@@ -77,7 +77,7 @@ namespace URUI.Internal.Hosting
             {
                 if (textures[id])
                 {
-                    Destroy(textures[id]);
+                    DestroyRenderObject(textures[id]);
                 }
 
                 textures.Remove(id);

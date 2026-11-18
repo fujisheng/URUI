@@ -1,0 +1,6 @@
+{
+  "name": "URUI.Effect.Reference.Clock",
+  "references": [
+    "Coffee.UIEffect"
+  ]
+}

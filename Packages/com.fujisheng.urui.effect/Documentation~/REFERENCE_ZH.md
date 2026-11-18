@@ -1,6 +1,6 @@
 # URUI.Effect 接口声明参考
 
-对应包版本 `0.4.1-preview.1`。本页根据当前 Runtime 源码整理公开类型及其直接声明的公开/受保护成员，供查参数、返回类型、默认值和继承关系；不包含 internal/private 类型，也不重复继承成员。Unity 基类接口请查 Unity 文档。
+对应包版本 `0.5.0-preview.1`。本页根据当前 Runtime 源码整理公开类型及其直接声明的公开/受保护成员，供查参数、返回类型、默认值和继承关系；不包含 internal/private 类型，也不重复继承成员。Unity 基类接口请查 Unity 文档。
 
 声明块用于查阅，省略实现体；完整使用顺序、资源释放和可运行组件见[文档导航](../README.md)。同名的 partial 类型合并列出，受保护构造函数由 Document 工厂调用。成员注释来自源码，不替代专题说明中的约束。
 
@@ -63,12 +63,13 @@ public enum EffectApplyMode { Replace, MergeActiveGroups }
 
 ```csharp
 // 作者节点的预设、独立播放与快照联动；不拥有 DOM 或每节点 MonoBehaviour。
-public sealed class EffectController : IDisposable
+public sealed class EffectController : IDisposable, IEffectParameterBinding
 public Element Element { get; }
 public TransitionInputPolicy InputPolicy { get; set; }
 public void Apply(EffectPreset preset, EffectApplyMode mode = EffectApplyMode.Replace);
 public EffectParameters CreateParameters();
 public void SaveTo(EffectPreset preset);
+public IDisposable OverridePreset(EffectPreset preset);
 public EffectPlayback Play(EffectTweenDefinition definition, CancellationToken cancellationToken = default);
 public IDisposable Link(EffectController source, bool useTargetRoot = true);
 public void Dispose();
@@ -108,6 +109,8 @@ public override int GetHashCode();
 // 显式安装到一个文档的效果模块。项目资产和媒体输入由调用者绑定，不查找场景对象。
 public sealed class EffectModule : IDisposable
 public Document Document { get; }
+public static IReadOnlyList<StylePropertyDefinition> PropertyDefinitions { get; }
+public static bool TryGet(Document document, out EffectModule module);
 public EffectModule(Document document);
 public EffectModule(Document document, IEffectResourceResolver resources);
 public EffectController GetController(Element element);
@@ -411,9 +414,17 @@ public sealed class ParticlePainter : IDisposable
 public ParticlePlaybackState PlaybackState { get; private set; }
 public int ParticleCount { get; private set; }
 public GameObject Source { get; }
+public float SimulationTime { get; private set; }
+public bool ManualSimulation { get; }
 public ParticlePainter(Element element, GameObject source, bool restartOnShow = true);
 public ParticlePainter(Element element, GameObject source, ParticlePlaybackOptions options);
 public void SetSource(GameObject value);
+public void RefreshSource();
+public void SetManualSimulation(bool enabled, uint randomSeed = 1);
+public void Seek(float time, uint randomSeed = 1);
+public void Step(float delta);
+public IDisposable OverridePlayback();
+public IDisposable OverrideMaterial(Material source, Material replacement);
 public void SetOptions(ParticlePlaybackOptions value);
 public void Play();
 public void Pause();
@@ -574,11 +585,18 @@ public string Source { get; set; }
 public string CurrentSource { get; }
 public int ParticleCount { get; }
 public ParticlePlaybackState PlaybackState { get; }
+public float SimulationTime { get; }
 public ParticlePainterStatistics GetStatistics();
 public void Play();
 public void Pause();
 public void Stop();
 public void Restart();
+public void Seek(float time, uint randomSeed = 1);
+public void Step(float delta);
+public void RefreshSource();
+public IDisposable OverridePlayback();
+public IDisposable OverrideSource(GameObject value);
+public IDisposable OverrideMaterial(Material source, Material replacement);
 protected override void OnInitialize();
 protected override void OnAttributeChanged(string name);
 protected override void OnUpdate();

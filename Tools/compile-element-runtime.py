@@ -8,7 +8,7 @@ parser.add_argument("--project", type=Path)
 parser.add_argument("--debug", action="store_true")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[1]
-project = (args.project or repo.parent / "Tests/ElementRuntime").resolve()
+project = (args.project or repo.parent / "Client").resolve()
 responses = list((project / "Library/Bee/artifacts").glob("*/URUI.Runtime.rsp"))
 if not responses:
     parser.error("Run verify-element-runtime.py once to generate the Unity compiler response")

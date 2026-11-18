@@ -25,8 +25,8 @@ class TextureProtocol(unittest.TestCase):
 
     def setUp(self):
         self.assertEqual(self.fn("urui_texture_protocol_version", I)(), 1)
-        self.assertEqual(self.fn("urui_bridge_abi_version", I)(), 8)
-        self.assertEqual(self.fn("urui_element_api_version", I)(), 2)
+        self.assertEqual(self.fn("urui_bridge_abi_version", I)(), 11)
+        self.assertEqual(self.fn("urui_element_api_version", I)(), 3)
         self.assertEqual(C.sizeof(Command), 48)
         self.external = self.fn("urui_document_register_external_texture", I, U, S, I, I, U)
         self.rgba = self.fn("urui_document_register_rgba_texture", I, U, S, I, I, P, I, P)

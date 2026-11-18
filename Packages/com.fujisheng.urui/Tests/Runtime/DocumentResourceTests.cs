@@ -45,6 +45,22 @@ namespace URUI.Tests
         }
 
         [Test]
+        public void RegisteredResourceSnapshotsSurviveSourceDestructionAndKeepDocumentIsolation()
+        {
+            var first = Css("#box{width:73px;height:19px;}");
+            a.TextResources = new[] { new TextResource("ui/theme.css", first) };
+            a.LoadHtml(Html, "ui/a.html");
+            UnityEngine.Object.DestroyImmediate(first);
+            b.TextResources = new[] { new TextResource("ui/other.css", Css("#box{width:91px;height:23px;}")) };
+            b.LoadHtml(Html.Replace("theme.css", "other.css"), "ui/b.html");
+            a.SynchronizeLayout(); b.SynchronizeLayout();
+            Assert.That(a.Q("box").Layout.width, Is.EqualTo(73).Within(.01));
+            Assert.That(b.Q("box").Layout.width, Is.EqualTo(91).Within(.01));
+            b.Unload(); a.SynchronizeLayout();
+            Assert.That(a.Q("box").Layout.height, Is.EqualTo(19).Within(.01));
+        }
+
+        [Test]
         public void ImageAssetsExposeDocumentSpriteRegions()
         {
             var type=typeof(ImageAsset).Assembly.GetType("URUI.Resources.SpriteRegion");

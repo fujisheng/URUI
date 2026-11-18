@@ -17,6 +17,7 @@ namespace URUI.Documents
     {
         [SerializeField]
         TextAsset source;
+        [SerializeField] CompiledDocumentAsset compiledSource;
         [SerializeField]
         ImageAsset[] images = Array.Empty<ImageAsset>();
         [SerializeField]
@@ -29,6 +30,7 @@ namespace URUI.Documents
         bool changingContent;
         bool loadRequested = true;
         static int unityThread;
+        internal void InitializeForEditor() { ownerThread = Thread.CurrentThread.ManagedThreadId; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void CaptureUnityThread()

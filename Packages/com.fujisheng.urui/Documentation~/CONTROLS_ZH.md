@@ -1,6 +1,6 @@
 # 控件使用
 
-本页对应 Core `0.7.1-preview.1`，命名空间为 `URUI.Controls`。节点统一用 `document.Create<T>()` 或 `document.Q<T>()` 获取；通用层级和状态见 [Element API](API_ZH.md)。全部签名及继承成员所属基类见[接口声明参考](REFERENCE_ZH.md)。
+本页对应 Core `0.8.0-preview.1`，命名空间为 `URUI.Controls`。节点统一用 `document.Create<T>()` 或 `document.Q<T>()` 获取；通用层级和状态见 [Element API](API_ZH.md)。全部签名及继承成员所属基类见[接口声明参考](REFERENCE_ZH.md)。
 
 ## HTML 与类型
 

@@ -101,7 +101,7 @@ private:
 	StableVectorIndex InsertGeometry(Mesh&& mesh);
 	CompiledGeometryHandle GetCompiledGeometryHandle(StableVectorIndex index);
 
-	void Render(const Geometry& geometry, Vector2f translation, Texture texture, const CompiledShader& shader);
+	void Render(const Geometry& geometry, Vector2f translation, Texture texture, const CompiledShader& shader, const DrawParameters& parameters);
 
 	void GetTextureSourceList(StringList& source_list) const;
 	const Mesh& GetMesh(const Geometry& geometry) const;
@@ -128,11 +128,20 @@ private:
 	int compiled_shader_count = 0;
 
 	RenderState state;
+	// 只标记本次渲染中当前裁剪状态的来源，不保存逐节点结果或对象所有权。
+	const Element* clipping_parent = nullptr;
+	int clipping_ignored = 0;
+	bool clipping_ignores_all = false;
+	bool clipping_input_valid = false;
+	bool clipping_reuse_active = false;
+	uint64_t clipping_mutation_revision = 0;
 	Vector2i viewport_dimensions;
 
 	Vector<LayerHandle> render_stack;
 
 	friend class RenderManagerAccess;
+	friend class ElementUtilities;
+	friend class Context;
 };
 
 } // namespace URUI

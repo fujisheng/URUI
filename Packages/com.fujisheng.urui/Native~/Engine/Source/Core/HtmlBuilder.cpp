@@ -1,5 +1,7 @@
 #include "HtmlBuilder.h"
 #include "DocumentHeader.h"
+#include "CompiledDocument.h"
+#include "ElementStyle.h"
 #include <URUI/Core/Core.h>
 #include <URUI/Core/Context.h>
 #include <URUI/Core/ElementDocument.h>
@@ -42,6 +44,26 @@ void Failure(Vector<Diagnostic>& diagnostics, const HtmlDocument& parsed, const 
 bool BuildOptions(const Vector<HtmlNode>& nodes, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics,
     Vector<ElementPtr>& options, int& selected, Element& owner);
 void InstallOptions(ElementFormControlSelect& select, Vector<ElementPtr> options, int selected);
+void MarkCompiledNode(Element& element, const HtmlNode& node, const HtmlDocument& parsed)
+{
+    if (!parsed.blueprintIdentity) return;
+    unsigned flags = 7;
+    if (element.GetId() != Attribute(node, "id")) flags &= ~2u;
+    if (element.GetStyle()->GetClassNameList() != node.compiledClasses) flags &= ~4u;
+    const bool inert_children = node.kind == HtmlNodeKind::Template || node.tag == "textarea" || node.tag == "select";
+    const auto expected = inert_children ? size_t(0) : node.children.size();
+    if (size_t(element.GetNumChildren()) != expected) flags = 0;
+    else for (size_t i = 0; i < expected; ++i) {
+        const auto* child = element.GetChild(int(i));
+        if (child->GetCompiledBlueprint() != parsed.blueprintIdentity || child->GetCompiledNodeId() != node.children[i].localId) flags = 0;
+        flags &= child->GetCompiledQueryFlags();
+    }
+    element.SetCompiledNodeIdentity(parsed.blueprintIdentity, node.localId, node.subtreeEnd, flags);
+}
+ElementPtr FinishCompiledNode(ElementPtr element, const HtmlNode& node, const HtmlDocument& parsed)
+{
+    MarkCompiledNode(*element, node, parsed); return element;
+}
 ElementPtr BuildNode(const HtmlNode& node, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics, Element& owner)
 {
     if (node.kind == HtmlNodeKind::Text) {
@@ -49,7 +71,7 @@ ElementPtr BuildNode(const HtmlNode& node, const HtmlDocument& parsed, Vector<Di
         auto* text = urui_dynamic_cast<ElementText*>(element.get());
         if (!text) { Failure(diagnostics, parsed, &node, "Text instancing failed."); return nullptr; }
         text->SetText(node.text);
-        return element;
+        return FinishCompiledNode(std::move(element), node, parsed);
     }
     if (node.kind == HtmlNodeKind::Comment) {
         auto element = Factory::InstanceElement(&owner, "#comment", "#comment", {});
@@ -57,9 +79,9 @@ ElementPtr BuildNode(const HtmlNode& node, const HtmlDocument& parsed, Vector<Di
         if (!comment) { Failure(diagnostics, parsed, &node, "Comment instancing failed."); return nullptr; }
         comment->text = node.text;
         comment->SetProperty("display", "none");
-        return element;
+        return FinishCompiledNode(std::move(element), node, parsed);
     }
-    auto element = Factory::InstanceElement(&owner, node.tag, node.tag, Attributes(node));
+    auto element = Factory::InstanceElement(&owner, node.tag, node.tag, Attributes(node), node.compiledStyle.get());
     if (!element) { Failure(diagnostics, parsed, &node, "Element <" + node.tag + "> instancing failed."); return nullptr; }
     if (node.kind == HtmlNodeKind::Template) {
         auto* item = urui_dynamic_cast<ElementTemplate*>(element.get());
@@ -67,27 +89,28 @@ ElementPtr BuildNode(const HtmlNode& node, const HtmlDocument& parsed, Vector<Di
         HtmlDocument content;
         content.kind = HtmlDocumentKind::Fragment;
         content.sourceUrl = parsed.sourceUrl;
+        content.blueprintIdentity = parsed.blueprintIdentity;
         content.nodes = node.children;
         item->SetContent(content);
-        return element;
+        return FinishCompiledNode(std::move(element), node, parsed);
     }
     if (auto* textarea = urui_dynamic_cast<ElementFormControlTextArea*>(element.get())) {
         textarea->SetValue(TextContent(node));
-        return element;
+        return FinishCompiledNode(std::move(element), node, parsed);
     }
     if (auto* select = urui_dynamic_cast<ElementFormControlSelect*>(element.get())) {
         Vector<ElementPtr> options;
         int selected = -1;
         if (!BuildOptions(node.children, parsed, diagnostics, options, selected, *element)) return nullptr;
         InstallOptions(*select, std::move(options), selected);
-        return element;
+        return FinishCompiledNode(std::move(element), node, parsed);
     }
     for (const auto& child : node.children) {
         auto built = BuildNode(child, parsed, diagnostics, *element);
         if (!built) return nullptr;
         element->AppendChild(std::move(built));
     }
-    return element;
+    return FinishCompiledNode(std::move(element), node, parsed);
 }
 bool BuildOptions(const Vector<HtmlNode>& nodes, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics,
     Vector<ElementPtr>& options, int& selected, Element& owner)
@@ -157,20 +180,11 @@ void ElementTemplate::GetInnerHTML(String& output) const
 {
     for (const auto& node : content.nodes) Serialize(node, output);
 }
-bool BuildHtmlDocument(ElementDocument& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics)
+bool CollectHtmlHeader(const HtmlDocument& parsed, DocumentHeader& header, Vector<Diagnostic>& diagnostics)
 {
-    if (parsed.kind != HtmlDocumentKind::Document || target.GetTagName() != "html" || target.GetNumChildren() != 0) {
-        Failure(diagnostics, parsed, nullptr, "Document building requires an empty html candidate.");
-        return false;
-    }
     const HtmlNode* html = nullptr;
     for (const auto& node : parsed.nodes) if (node.tag == "html") html = &node;
-    if (!html) { Failure(diagnostics, parsed, nullptr, "Missing document element."); return false; }
-    HtmlDocument fragment;
-    fragment.kind = HtmlDocumentKind::Fragment;
-    fragment.sourceUrl = parsed.sourceUrl;
-    fragment.nodes = html->children;
-    DocumentHeader header;
+    if (!html) return false;
     header.source = parsed.sourceUrl;
     // The author sheet follows this subset of the browser's user-agent defaults.
     header.css.push_back({parsed.sourceUrl,
@@ -206,15 +220,34 @@ bool BuildHtmlDocument(ElementDocument& target, const HtmlDocument& parsed, Vect
             }
         }
     }
+    return true;
+}
+bool BuildHtmlDocument(ElementDocument& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics, CompiledDocument* compiled)
+{
+    if (parsed.kind != HtmlDocumentKind::Document || target.GetTagName() != "html" || target.GetNumChildren() != 0) {
+        Failure(diagnostics, parsed, nullptr, "Document building requires an empty html candidate.");
+        return false;
+    }
+    const HtmlNode* html = nullptr;
+    for (const auto& node : parsed.nodes) if (node.tag == "html") html = &node;
+    if (!html) { Failure(diagnostics, parsed, nullptr, "Missing document element."); return false; }
+    HtmlDocument fragment;
+    fragment.kind = HtmlDocumentKind::Fragment;
+    fragment.sourceUrl = parsed.sourceUrl;
+    fragment.blueprintIdentity = parsed.blueprintIdentity;
+    fragment.nodes = html->children;
+    DocumentHeader header;
+    if (!compiled && !CollectHtmlHeader(parsed, header, diagnostics)) return false;
     // Registrations and font-face matching must exist before node attributes are parsed.
-    if (!target.ProcessHeader(&header)) {
+    if (!(compiled ? target.ProcessCompiledHeader(parsed.sourceUrl, compiled->title, std::move(compiled->specification), std::move(compiled->styles)) : target.ProcessHeader(&header))) {
         Failure(diagnostics, parsed, html, target.GetResourceError());
         return false;
     }
     auto children = BuildNodes(fragment, diagnostics, target);
     if (children.size() != html->children.size()) return false;
-    target.SetAttributes(Attributes(*html));
+    target.SetAttributes(Attributes(*html), html->compiledStyle.get());
     for (auto& child : children) target.AppendChild(std::move(child));
+    MarkCompiledNode(target, *html, parsed);
     return true;
 }
 bool ReplaceInnerHtml(Element& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics)
@@ -293,6 +326,15 @@ void InnerHtmlReplacement::Commit()
 {
     active = false;
     previous.clear();
+    if (compiled_blueprint && target) {
+        unsigned flags = 7;
+        for (int i = 0; i < target->GetNumChildren(); ++i) {
+            const auto* child = target->GetChild(i);
+            if (child->GetCompiledBlueprint() != compiled_blueprint) flags = 0;
+            flags &= child->GetCompiledQueryFlags();
+        }
+        target->SetCompiledNodeIdentity(compiled_blueprint, UINT32_MAX, compiled_end, flags | 8);
+    }
 }
 
 void InnerHtmlReplacement::Rollback()

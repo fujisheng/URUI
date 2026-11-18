@@ -8,6 +8,77 @@ namespace URUI.Effect.Tests
     public sealed class EffectRootTests
     {
         [UnityTest]
+        public IEnumerator LinkedRootChangesTheActualGpuGradientCoordinates()
+        {
+            using var fixture=new EffectRenderFixture();var pixels=new Color[4096];for(var i=0;i<pixels.Length;i++)pixels[i]=Color.white;fixture.Source.SetPixels(pixels);fixture.Source.Apply();
+            fixture.Load("--urui-fx-gradation-mode:horizontal;--urui-fx-gradation-color1:red;--urui-fx-gradation-color2:blue;",
+                "<img id='subject' class='fx' src='input.png' style='left:16px;width:64px;height:64px;'><img id='peer' class='fx' src='input.png' style='left:160px;width:64px;height:64px;'>",".fx");
+            var source=fixture.Module.GetController(fixture.Document.Q("subject"));var target=fixture.Module.GetController(fixture.Document.Q("peer"));
+            Color[] shared;using(target.Link(source,true))shared=fixture.Render();
+            yield return null;
+            Color[] own;using(target.Link(source,false))own=fixture.Render();
+            var index=(255-96)*256+176;
+            Assert.That(Mathf.Abs(shared[index].r-own[index].r)+Mathf.Abs(shared[index].b-own[index].b),Is.GreaterThan(.25f),"公开 Frame 的根和实际 Shader 使用的根必须一致。");
+            yield return null;
+        }
+        [UnityTest]
+        public IEnumerator ZeroScaleCapturedUiIsEmptyAndFinite()
+        {
+            using var fixture=new EffectRenderFixture();
+            fixture.Load("transform:scale(0);--urui-fx-sampling-filter:blur-fast;","<div id='subject'><img src='input.png' style='width:128px;height:128px;'><img src='input.png' style='position:absolute;left:16px;top:16px;width:128px;height:128px;'></div>");
+            foreach(var pixel in fixture.Render()){Assert.That(float.IsFinite(pixel.a),Is.True);Assert.That(pixel.a,Is.LessThan(.002f));}
+            yield return null;
+        }
+        [UnityTest]
+        public IEnumerator FractionalFlipUsesTheSameRoundingAsTheLayoutContract()
+        {
+            using var fixture=new EffectRenderFixture();fixture.Load("--urui-fx-flip:2;");var expected=fixture.Render();yield return null;
+            fixture.Document.Q("subject").Style.SetNumber("--urui-fx-flip",2.5f);var actual=fixture.Render();
+            for(var i=0;i<expected.Length;i++)for(var channel=0;channel<4;channel++)Assert.That(actual[i][channel],Is.EqualTo(expected[i][channel]).Within(.002f));
+            yield return null;
+        }
+        [UnityTest]
+        public IEnumerator TwoDistinctUiSourcesKeepTheSameBlurKernelInOneBatch()
+        {
+            Texture2D clone=null;
+            try {
+                using var fixture=new EffectRenderFixture();clone=Object.Instantiate(fixture.Source);
+                fixture.Document.Images=new[]{new URUI.Resources.ImageAsset("input.png",fixture.Source),new URUI.Resources.ImageAsset("duplicate.png",clone)};
+                string Content(string second)=>"<img class='fx' src='input.png' style='left:24px;width:64px;height:64px;'><img class='fx' src='"+second+"' style='left:128px;width:64px;height:64px;'>";
+                fixture.Load("--urui-fx-sampling-filter:blur-detail;",Content("input.png"),".fx");var expected=fixture.Render();yield return null;
+                fixture.Load("--urui-fx-sampling-filter:blur-detail;",Content("duplicate.png"),".fx");var actual=fixture.Render();
+                object renderer=null;foreach(var component in fixture.Surface.GetComponentsInChildren<MonoBehaviour>(true))if(component.GetType().FullName=="URUI.Internal.Hosting.RenderHost")renderer=component;
+                Assert.That((int)renderer.GetType().GetProperty("RecordedGeometryDraws",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic).GetValue(renderer),Is.EqualTo(1));
+                for(var i=0;i<expected.Length;i++)for(var channel=0;channel<4;channel++)Assert.That(actual[i][channel],Is.EqualTo(expected[i][channel]).Within(.002f));
+            } finally {URUI.Resources.GpuRetirement.Retire(()=>Object.Destroy(clone));}
+            yield return null;
+        }
+        [UnityTest]
+        public IEnumerator CapturedInkIncludesGpuExpansionInDocumentPixelsUnderScale()
+        {
+            using var fixture=new EffectRenderFixture();
+            fixture.Load("transform:scale(.5);transform-origin:0px 0px;--urui-fx-sampling-filter:blur-detail;--urui-fx-sampling-intensity:1;",
+                "<div id='subject'><img src='input.png' style='display:block;width:128px;height:128px;'><img src='input.png' style='position:absolute;left:0px;top:0px;width:128px;height:128px;'></div>");
+            fixture.Render();Assert.That(fixture.Document.Effects.TryGetFrame(fixture.Document.Q("subject"),out var frame),Is.True);Assert.That(frame.SourceIsCaptured,Is.True);Assert.That(frame.ElementToDocument.m00,Is.EqualTo(.5f).Within(.00001f));
+            var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Public;
+            var entries=(System.Collections.IDictionary)typeof(URUI.Documents.Document).GetProperty("effectInstances",flags).GetValue(fixture.Document);var found=false;
+            foreach(System.Collections.DictionaryEntry entry in entries)if(entry.Value.GetType().GetField("instance",flags).GetValue(entry.Value) is URUI.Rendering.Effects.IEffectBounds bounds) {
+                found=true;Assert.That(bounds.InkBounds.xMin,Is.LessThanOrEqualTo(frame.ContentOffset.x-20),"捕获图扩边为文档像素；半缩放后的局部范围至少需要20px，不能裁掉GPU的10px扩边。");
+            }
+            Assert.That(found,Is.True);yield return null;
+        }
+        [UnityTest]
+        public IEnumerator ThinImageInkIncludesTheFullGpuExpandedTriangle()
+        {
+            using var fixture=new EffectRenderFixture();fixture.Load("width:1px;height:4px;--urui-fx-sampling-filter:rgb-shift;");fixture.Render();
+            var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Public;
+            var entries=(System.Collections.IDictionary)typeof(URUI.Documents.Document).GetProperty("effectInstances",flags).GetValue(fixture.Document);var found=false;
+            foreach(System.Collections.DictionaryEntry entry in entries)if(entry.Value.GetType().GetField("instance",flags).GetValue(entry.Value) is URUI.Rendering.Effects.IEffectBounds bounds) {
+                found=true;Assert.That(bounds.InkBounds.xMin,Is.LessThanOrEqualTo(-20.04f),"1px三角形的扩展系数为0.5/(1-0.002)，不能用固定的一半近似。");
+            }
+            Assert.That(found,Is.True);yield return null;
+        }
+        [UnityTest]
         public IEnumerator RootResizeAndRemoval()
         {
             using var fixture=new EffectRenderFixture();

@@ -105,6 +105,7 @@ namespace URUI.Effect.Tests
                         report.cases.Add(new SamplingCapture { id = id,
                             nominalKernelSamples = mode == SamplingFilter.BlurFast ? 25 : mode == SamplingFilter.BlurMedium ? 81 : mode == SamplingFilter.BlurDetail ? 169 : 0,
                             leasedTargets = EffectStatistics.GetTargets().LeasedTargets, processingPasses = EffectStatistics.FilterProcessingPasses - passes });
+                        yield return null;
                     }
                 }
                 File.WriteAllText(Path.Combine(output, "sampling-captures.json"), JsonUtility.ToJson(report, true)); yield return null;
@@ -203,6 +204,7 @@ namespace URUI.Effect.Tests
                         Assert.That(maximumGreen, Is.GreaterThan(.05f), "输入不能被错误地清空：" + mode + "/" + variant);
                     if (mode == "blur-fast" && variant.Contains("width:80px")) Save(read, "AtlasNonUniform.png");
                     if (mode == "blur-fast" && variant == "width:1px;height:1px;") Save(read, "AtlasTiny.png");
+                    yield return null;
                 }
                 yield return null;
             }
@@ -373,10 +375,7 @@ namespace URUI.Effect.Tests
                     Assert.Throws<InvalidOperationException>(() => document.CreateElement()); guarded++;
                     return new Vector4(8, 4, 8, 4);
                 };
-                var constructor = typeof(EffectDefinition).GetConstructors().SingleOrDefault(value => value.GetParameters().Length == 9);
-                Assert.That(constructor, Is.Not.Null, "离屏输入分配之前需要纯扩边元数据");
-                var definition = (EffectDefinition)constructor.Invoke(new object[] { "probe", EffectKind.Element, probe,
-                    "probe:v1", "premultiplied", null, false, Vector4.zero, resolver });
+                var definition=new EffectDefinition("probe",EffectKind.Element,probe,"probe:v1","premultiplied",expansionResolver:resolver);
                 document.Effects.Register(definition);
                 document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}div{width:80px;height:40px;background-color:red;--urui-effect:probe;}" +
                     "</style></head><body><div></div></body></html>", "/halo.html");

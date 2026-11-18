@@ -38,7 +38,7 @@ class Elements(unittest.TestCase):
         self.valid = self.fn("urui_element_ref_valid", I, U, U)
         self.attached = self.fn("urui_element_attached", I, U, U)
         self.pop = self.fn("urui_element_pop_click", I, U, P)
-        self.assertEqual(self.fn("urui_bridge_abi_version", I)(), 8)
+        self.assertEqual(self.fn("urui_bridge_abi_version", I)(), 11)
         self.assertEqual(self.fn("urui_create", I, I, I)(640, 480), 1)
         markup = b"<!doctype html><html><head><style>body{margin:0;}#panel{width:200px;height:100px;background-color:red;}</style></head><body><div id='panel'><div id='first' class='item'></div><div><span id='deep' class='item'></span></div><span id='last' class='item'></span></div></body></html>"
         self.owner = 0

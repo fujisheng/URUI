@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "description": "Standalone test fragments and explicitly registered runtime image providers; source hashes must match the current files. Client fragment roles come from each complete HTML document.",
+  "files": [
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AuthoredRowSize.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AxisScroll.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AuthoredPointerContact.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AuthoredProjection.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/BoundFragment.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AuthoredDynamic.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/FUI.URUI.Tests/CustomNumeric.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/FUI.URUI.Tests/InitialVisibility.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Templates/ReviewDynamic.html",
+      "kind": "fragment"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AuthoredImage.html",
+      "kind": "fragment"
+    }
+  ],
+  "runtimeResources": [
+    {
+      "path": "URUI/Packages/com.fujisheng.urui/Tests/Runtime/Resources/URUI/Tests/EffectLifecycle.html",
+      "source": "probe.png",
+      "provider": "URUI/Packages/com.fujisheng.urui/Tests/Runtime/EffectLifecycleTests.cs",
+      "providerSha256": "eebe44728b393d151ae9c2107b438453a2b5aef6256f7c888ebdf41ed5ab4ede",
+      "ownerSha256": "feaef90ef4dd0c3a0b65fe3fd213a44523b7e5850a731dd30edc994b83972cd5"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/ImageSemantics.html",
+      "source": "test-image.png",
+      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/UruiImageSemanticsTests.cs",
+      "providerSha256": "62a6d1bc32612f2da3a989d7b4d48e4e4f34b0907fca460ceee1c91de2aadf0f",
+      "ownerSha256": "1f7098285b538c4dc8247e6e0a24b600f1255c15faf8056fa3c778a70f447386"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/LiveTexture.html",
+      "source": "live-frame",
+      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/UruiImageResolverTests.cs",
+      "providerSha256": "a50f56768e117c7631290dfdabb57bdeeb429e194b96bdaca8c6269d54460efe",
+      "ownerSha256": "85e2c11b0a8ee531d7e86edc5017131f81f2d247a77c1c1357b95d1f58d4d777"
+    },
+    {
+      "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AuthoredImage.html",
+      "source": "authored.png",
+      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/UruiStageTests.cs",
+      "providerSha256": "52af188dad8e3eca86b1fb17a83dee1ef1aba04821c7fef774e96047de70c127",
+      "ownerSha256": "b349456b1a2e9fe556b6699e4ce48223c535c78a47a26fc23812605edcf6b29e"
+    },
+    {
+      "path": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/Resources/URUI.Effect.Tests/FilterChains.html",
+      "source": "half-mask.png",
+      "provider": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/FilterChainTests.cs",
+      "providerSha256": "040de415cf79feb3f7cd9dec80b3fe1acca429f95502682fdf8b4f54efc680c4",
+      "ownerSha256": "41f921749be1cf74d7763d2852fc1bd026fe62c5c94f0edfb4129cf62efa2c05"
+    },
+    {
+      "path": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/Resources/URUI.Effect.Tests/LayerMasks.styles.css",
+      "source": "test-mask.png",
+      "provider": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/LayerMaskTests.cs",
+      "providerSha256": "219cef177f4896036cb40bb15411eb4244ab44be43b4ec2b99df5fd5a1877c78",
+      "ownerSha256": "933a40034bc13cd2872d0f61ea3b1120fe735c4a2412ff1cda46671fe73ee71e"
+    },
+    {
+      "path": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/Resources/URUI.Effect.Tests/ScheduledSurface.html",
+      "source": "surface.png",
+      "provider": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/EffectSchedulingTests.cs",
+      "providerSha256": "7c56d035108d5e645d10869fa4e10db7790b1e61c52c75609eb3d0e8fdeef8ac",
+      "ownerSha256": "bfbadad0568331a04fea6546077861f37d4ded7f083cd8884b468a2f22ec3923"
+    },
+    {
+      "path": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/Resources/URUI.Effect.Tests/TextureInstances.html",
+      "source": "white.png",
+      "provider": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/EffectInstanceIsolationTests.cs",
+      "providerSha256": "9752eccef05855d06e8788bfecf565ba9250dcbd54b973c844272ebf5a5ecf36",
+      "ownerSha256": "f2381d5caa6f3d6a2363466f4fde5d38496e7c7eb2d8db92dd3ec9b8d69f4c15"
+    },
+    {
+      "path": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/Resources/URUI.Effect.Tests/Wave.html",
+      "source": "wave.png",
+      "provider": "URUI/Packages/com.fujisheng.urui.effect/Tests/Runtime/WaveImageTests.cs",
+      "providerSha256": "769ed01d9da710fcae7718b25a3ac10648c5257fb7aaac9e7de5e172db404280",
+      "ownerSha256": "c84f97e82e758e6577f5148a8c539622ccb21aed2d2f97375b07726ed4f32e29"
+    },
+    {
+      "path": "URUI/Packages/com.fujisheng.urui/Tests/Runtime/Resources/URUI/Tests/DefaultControlsGallery.html",
+      "source": "input.png",
+      "provider": "URUI/Packages/com.fujisheng.urui.effect/Samples~/EffectGallery/EffectGallery.cs",
+      "providerSha256": "3ec14052e0f94001ac5d1e9c3dafe02c4868693d457543e39528cae1053d4a4c",
+      "ownerSha256": "ca4fdcecfa9ff3f726901c10012d6c2fb4402b860fbf56ea2311de52ef94daf1"
+    }
+  ]
+}

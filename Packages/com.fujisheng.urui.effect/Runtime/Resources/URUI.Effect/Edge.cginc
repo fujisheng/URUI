@@ -1,9 +1,6 @@
 // UIEffect 5.8.4 派生算法；MIT 许可见 ThirdParty/UIEffect/LICENSE.md。
 #ifndef URUI_EFFECT_EDGE_INCLUDED
 #define URUI_EFFECT_EDGE_INCLUDED
-int _EdgeMode, _EdgeColorFilter, _EdgeColorGlow;
-float _EdgeWidth, _EdgeShinyRate, _EdgeShinyAutoPlaySpeed, _EdgeShinyWidth;
-float4 _EdgeColor;
 float UruiEdgeFactor(float2 uv)
 {
     if (_EdgeMode==0) return 0;

@@ -55,6 +55,12 @@ public:
 
 	/// Clones this element, returning a new, unparented element.
 	ElementPtr Clone() const;
+	uint64_t GetCompiledBlueprint() const { return compiled_blueprint; }
+	uint64_t GetCompiledQueryRevision() const { return compiled_query_revision; }
+	uint32_t GetCompiledNodeId() const { return compiled_node_id; }
+	uint32_t GetCompiledSubtreeEnd() const { return compiled_subtree_end; }
+	unsigned GetCompiledQueryFlags() const { return compiled_query_flags; }
+	void SetCompiledNodeIdentity(uint64_t blueprint, uint32_t id, uint32_t end, unsigned flags);
 
 	/** @name Classes
 	 */
@@ -239,6 +245,10 @@ public:
 	/// If an animation of the same property name exists, it will be replaced.
 	/// If start_value is null, the current property value on this element is used.
 	/// @return True if a new animation was added.
+    bool GetKeyframeProperties(const String& name, PropertyIdSet& properties) const;
+    int GetKeyframeCount(const String& name) const;
+    void UpdateSequenceProperties(float dp_ratio, Vector2f viewport);
+    bool SampleKeyframes(const String& name, float progress, const String& easing, const PropertyDictionary& baseline, PropertyDictionary& output);
 	bool Animate(const String& property_name, const Property& target_value, float duration, Tween tween = Tween{}, int num_iterations = 1,
 		bool alternate_direction = true, float delay = 0.0f, const Property* start_value = nullptr);
 	bool Animate(PropertyId id, const Property& target_value, float duration, Tween tween = Tween{}, int num_iterations = 1,
@@ -305,7 +315,7 @@ public:
 	void RemoveAttribute(const String& name);
 	/// Set a group of attributes.
 	/// @param[in] attributes Attributes to set.
-	void SetAttributes(const ElementAttributes& attributes);
+	void SetAttributes(const ElementAttributes& attributes, const PropertyDictionary* compiled_style = nullptr);
 	/// Get the attributes of the element.
 	/// @return The attributes
 	const ElementAttributes& GetAttributes() const { return attributes; }
@@ -334,8 +344,13 @@ public:
 	const String& GetTagName() const;
     // Runtime effect state is independent of author CSS and dies with this element.
     bool IsDirectEffectImage();
+    bool IsEffectCaptureRequired() const {return effect_capture_required;}
+    bool IsEffectInputDisabled() const {return effect_input_disabled;}
+    void SetEffectState(bool capture_required, bool input_disabled);
+private:
     bool effect_capture_required = false;
     bool effect_input_disabled = false;
+public:
 
 	/// Gets the id of the element.
 	/// @return The element's id.
@@ -655,12 +670,17 @@ protected:
 	void DirtyDefinition(DirtyNodes dirty_nodes);
 
 	void SetOwnerDocument(ElementDocument* document, bool force_set);
+    void DirtyNativeRendering();
 
 	void OnStyleSheetChangeRecursive();
 
 	void Release() override;
 
 private:
+	uint64_t compiled_blueprint = 0, compiled_query_revision = 1;
+	uint32_t compiled_node_id = UINT32_MAX, compiled_subtree_end = 0;
+	unsigned compiled_query_flags = 0;
+	void InvalidateCompiledQueries(unsigned parts);
 	void SetParent(Element* parent);
 
 	void DirtyAbsoluteOffset();
@@ -679,6 +699,7 @@ private:
 
 	void DirtyTransformState(bool perspective_dirty, bool transform_dirty);
 	void UpdateTransformState();
+    void SynchronizeGeometry();
 
 	void OnDpRatioChangeRecursive();
 	void DirtyFontFaceRecursive();

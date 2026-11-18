@@ -10,6 +10,8 @@
 | `new EffectModule(Document,IEffectResourceResolver)` | 同时注入额外图片和粒子资源解析 |
 | `Document` | 该模块所属文档 |
 | `GetController(Element)` | 取得/复用当前文档节点的 EffectController；失效或外文档节点被拒绝 |
+| `TryGet(Document,out EffectModule)` | 静态查询已安装模块；不创建模块，不接管文档生命周期 |
+| `PropertyDefinitions` | 静态只读样式注册描述，供 Editor schema 使用 |
 | `BindSurface(Element,SurfaceEffectInput)` | 给当前节点绑定明确表面输入，返回 IDisposable；每节点只能绑定一个 |
 | `Dispose()` | 取消控制器播放、释放粒子及模块订阅，清理绑定；不销毁 Document |
 
@@ -30,6 +32,7 @@
 | `controller.Apply(preset,EffectApplyMode.MergeActiveGroups)` | 合并传入的启用组，None 不清除已启用组 |
 | `controller.CreateParameters()` | 取得该节点当前有效的独立参数快照 |
 | `controller.SaveTo(preset)` | 将当前有效参数快照保存到传入预设对象 |
+| `controller.OverridePreset(preset)` | 临时预设基础通道，返回 IDisposable；释放恢复前一个仍有效租约或原基础通道，不解除 Link/播放或改写 CSS |
 
 运行时 SetParameters/SaveTo 修改内存对象，不等于编辑器资产已标脏并持久化；需要保存 .asset 时由编辑器工作流明确负责。不要为每帧更新反复创建预设资产。
 

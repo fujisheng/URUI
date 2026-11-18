@@ -55,6 +55,17 @@ namespace URUI.Editor.Authoring
             return uri;
         }
 
+        /// <summary>片段的标准资源依赖；相对路径使用片段的作者来源作为独立编译基准。</summary>
+        public static HtmlResourceDependencies CollectFragment(string htmlUri, Func<string, TextAsset> load)
+        {
+            if (load == null) throw new ArgumentNullException(nameof(load));
+            var source = ResolveUrl("/", htmlUri);
+            RequireExtension(source, ".html");
+            var result = new HtmlResourceDependencies(source, load);
+            result.InspectHtml(result.Load(source), source, true);
+            return result;
+        }
+
         TextAsset Load(string uri)
         {
             var asset = load(uri);

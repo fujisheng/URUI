@@ -9,6 +9,8 @@ import sys
 
 repo = Path(__file__).resolve().parents[1]
 project = repo.parent
+if not (project / 'ProjectSettings/ProjectVersion.txt').is_file() or not (project / 'Assets').is_dir():
+    raise SystemExit('Legacy workspace required. No files changed. Import the Game Flow package sample into an isolated Unity project; see its README.')
 sample = repo / "Packages/com.fujisheng.urui/Samples~/Game Flow"
 fixtures = repo / "Packages/com.fujisheng.urui/Tests~/Editor/Fixtures"
 target = project / "Assets/URUI/Verification"

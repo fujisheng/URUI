@@ -54,6 +54,7 @@ public:
 	bool AddKey(float target_time, const Property& property, Element& element, Tween tween, bool extend_duration);
 
 	Property UpdateAndGetProperty(double time, Element& element);
+	Property Sample(float normalized_time, Element& element) const;
 
 	void SetIdentity(const String& name){animation_name=name;identity=AnimationIdentityCounter()++;}
     const String& GetName() const{return animation_name;}

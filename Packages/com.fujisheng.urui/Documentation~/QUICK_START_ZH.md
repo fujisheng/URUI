@@ -1,6 +1,6 @@
 # 快速开始
 
-对应 Core `0.7.1-preview.1`。先按[安装](INSTALL_ZH.md)准备 Unity 6000.3.22f1、MainCamera、配套原生插件与 Input Manager (Old/Both)。
+对应 Core `0.8.0-preview.1`。先按[安装](INSTALL_ZH.md)准备 Unity 6000.3.22f1、MainCamera、配套原生插件与 Input Manager (Old/Both)。
 
 ## 先运行 Game Flow
 
@@ -39,7 +39,7 @@ body { margin: 24px; color: white; font-family: sans-serif; font-size: 24px; }
 
 ## 完整宿主组件
 
-场景已有启用的 Surface 和 MainCamera。创建普通 GameObject，挂下面组件，并在 Inspector 配置 Surface、HTML TextAsset 与 CSS TextAsset。文件名与类名均为 PanelController。
+场景已有启用的 Surface 和 MainCamera。先由项目 Editor 导入器调用 CompiledDocumentCompiler.CompileAndSave，将 HTML/CSS 与资源闭包生成 CompiledDocumentAsset；规范 URI 映射见生命周期文档。Tools → URUI 的最小场景菜单也会直接创建配套编译资产。创建普通 GameObject，挂下面组件，在 Inspector 配置 Surface 与编译资产。文件名与类名均为 PanelController。
 
 ```csharp
 using System;
@@ -52,16 +52,15 @@ using UnityEngine;
 public sealed class PanelController : MonoBehaviour
 {
     [SerializeField] Surface surface;
-    [SerializeField] TextAsset html;
-    [SerializeField] TextAsset css;
+    [SerializeField] CompiledDocumentAsset compiled;
     Document document;
     Button button;
     Action clicked;
 
     void OnEnable()
     {
-        if (!surface || !html || !css)
-            throw new InvalidOperationException("请配置 Surface、HTML 与 CSS。");
+        if (!surface || !compiled)
+            throw new InvalidOperationException("请配置 Surface 与编译资产。");
         var page = new GameObject("Panel Document");
         page.SetActive(false);
         page.transform.SetParent(transform, false);
@@ -69,11 +68,10 @@ public sealed class PanelController : MonoBehaviour
         try
         {
             document.Surface = surface;
-            document.TextResources = new[] { new TextResource("/demo/panel.css", css) };
             document.Loaded += Bind;
             document.Unloaded += Unbind;
             page.SetActive(true);
-            document.Load(html, "/demo/panel.html");
+            document.Load(compiled);
         }
         catch
         {
@@ -114,7 +112,7 @@ public sealed class PanelController : MonoBehaviour
 }
 ```
 
-此例由组件创建并拥有 Document，禁用时卸载和销毁。若使用 Inspector 配置的 Document.Source 自动加载，应在订阅 Loaded 后检查 IsLoaded，并在已加载时立即绑定；不要依赖不同组件 OnEnable 的先后顺序。
+此例由组件创建并拥有 Document，禁用时卸载和销毁。若使用 Inspector 配置的 Document.CompiledSource 自动加载，应在订阅 Loaded 后检查 IsLoaded，并在已加载时立即绑定；不要依赖不同组件 OnEnable 的先后顺序。
 
 ## 动态节点和输入
 

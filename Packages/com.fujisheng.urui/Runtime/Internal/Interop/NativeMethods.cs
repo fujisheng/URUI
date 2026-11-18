@@ -13,6 +13,9 @@ namespace URUI.Internal.Interop
         internal static extern int urui_bridge_abi_version();
 
         [DllImport(NativeLibrary.Name, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_synchronize_geometry();
+
+        [DllImport(NativeLibrary.Name, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_command_protocol_version();
 
         [DllImport(NativeLibrary.Name, CallingConvention = CallingConvention.Cdecl)]

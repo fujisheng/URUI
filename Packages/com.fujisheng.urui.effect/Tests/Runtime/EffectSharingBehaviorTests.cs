@@ -99,7 +99,7 @@ namespace URUI.Effect.Tests
         {
             using var fixture=new EffectRenderFixture();fixture.Load("--urui-fx-transition-filter:fade;--urui-fx-transition-progress:1;");fixture.Render();var element=fixture.Document.Q("subject");var controller=fixture.Module.GetController(element);
             Assert.That(fixture.Document.Pick(new Vector2(96,96)),Is.SameAs(element));controller.InputPolicy=TransitionInputPolicy.DisableWhenComplete;fixture.Render();Assert.That(fixture.Document.Pick(new Vector2(96,96)),Is.Not.SameAs(element));
-            foreach(var mode in new[]{"none","shiny","mask","pattern"}){element.Style.Set("--urui-fx-transition-filter",mode);fixture.Render();Assert.That(fixture.Document.Pick(new Vector2(96,96)),Is.SameAs(element),mode);}
+            foreach(var mode in new[]{"none","shiny","mask","pattern"}){element.Style.Set("--urui-fx-transition-filter",mode);fixture.Render();Assert.That(fixture.Document.Pick(new Vector2(96,96)),Is.SameAs(element),mode);yield return null;}
             element.Style.Set("--urui-fx-transition-filter","fade");fixture.Render();controller.Dispose();fixture.Render();Assert.That(fixture.Document.Pick(new Vector2(96,96)),Is.SameAs(element));
             Assert.That(element.Style.Get("pointer-events"),Is.Null.Or.Empty);yield return null;
         }
@@ -114,7 +114,8 @@ namespace URUI.Effect.Tests
                 var type=typeof(EffectModule).Assembly.GetType("URUI.Effect.Rendering.EffectGradientCache");
                 var entries=(System.Collections.IDictionary)type.GetField("entries",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic).GetValue(null);
                 int References(){var count=0;foreach(var value in entries.Values)count+=(int)value.GetType().GetField("References",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(value);return count;}
-                var before=References();for(var i=0;i<12;i++)fixture.Render();
+                for(var i=0;i<4;i++)yield return null;
+                var before=References();for(var i=0;i<12;i++){fixture.Render();yield return null;}
                 Assert.That(References(),Is.EqualTo(before),"稳定参数不得重复取得同一 LUT 租约并进入 GPU 退役队列");
             }
             finally{UnityEngine.Object.DestroyImmediate(preset);}

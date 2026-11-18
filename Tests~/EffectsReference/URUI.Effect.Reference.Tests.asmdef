@@ -1,0 +1,14 @@
+{
+  "name": "URUI.Effect.Reference.Tests",
+  "references": [
+    "Coffee.UIEffect",
+    "Unity.ugui",
+    "URUI.Effect.Reference.Clock"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

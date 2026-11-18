@@ -1,6 +1,6 @@
 # URUI
 
-URUI 使用 HTML/CSS 描述 Unity 游戏界面的结构、布局、皮肤和动画，通过 C# 查询节点、更新数据及处理输入。当前版本 `0.7.1-preview.1`，程序集 `URUI.Runtime`。HTML/CSS 支持范围以 [HtmlCssSupport.json](Documentation~/HtmlCssSupport.json) 为准。
+URUI 使用 HTML/CSS 描述 Unity 游戏界面的结构、布局、皮肤和动画，通过 C# 查询节点、更新数据及处理输入。当前版本 `0.8.0-preview.1`，程序集 `URUI.Runtime`。HTML/CSS 支持范围以 [HtmlCssSupport.json](Documentation~/HtmlCssSupport.json) 为准。
 
 ## 文档导航
 
@@ -39,7 +39,7 @@ Core 不内置业务数据绑定。FUI 的窗口、导航与绑定由独立适�
 
 ## 环境与发布范围
 
-主要验证环境为 Unity **6000.3.22f1 / macOS ARM64 / Metal**，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 **ABI8 / style4 / effect7 / filter3 / animation1**，正式 C 导出 176 个。各平台构建、静态审计和实际运行状态分别记录在[插件清单](Documentation~/PLUGINS.json)。
+主要验证环境为 Unity **6000.3.22f1 / macOS ARM64 / Metal**，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 **ABI11 / render-plan8 / style4 / effect7 / filter3 / animation1**，正式 C 导出集合由头文件与二进制核对生成。各平台构建、静态审计和实际运行状态分别记录在[插件清单](Documentation~/PLUGINS.json)。
 
 使用 MainCamera、Input Manager (Old/Both) 或自行注入输入。真实系统 IME、移动软键盘及无障碍边界见[支持范围](Documentation~/LIMITATIONS_ZH.md)。图片借用完整常驻 mip0 的 Texture2D，字体需提供包含所需字形的可读字节资源。
 

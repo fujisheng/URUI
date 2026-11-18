@@ -21,7 +21,7 @@ float4 UruiSamplingBase(float2 uv, float intensity)
         const float weights[13] = {.0438,.1138,.2486,.4566,.7046,.9141,1,.9141,.7046,.4566,.2486,.1138,.0438};
         #endif
         float4 color = 0; float sum = 0; half2 delta = UruiSamplingTexel() * intensity * 2;
-        [unroll] for (int x=0;x<size;x++) [unroll] for (int y=0;y<size;y++)
+        [loop] for (int x=0;x<size;x++) [loop] for (int y=0;y<size;y++)
         {
             float2 sampleUv = uv + delta * float2(float(x)-size/2,float(y)-size/2);
             float weight = weights[x]*weights[y]*UruiSamplingMask(sampleUv);

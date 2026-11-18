@@ -223,6 +223,25 @@ bool ElementDocument::ProcessHeader(const DocumentHeader* document_header)
 	return true;
 }
 
+bool ElementDocument::ProcessCompiledHeader(const String& source, const String& compiled_title,
+	SharedPtr<PropertySpecification> specification, SharedPtr<StyleSheetContainer> styles)
+{
+	resource_error.clear();
+	if (!specification) { resource_error = "Missing compiled property specification."; return false; }
+	source_url = source;
+	title = compiled_title;
+	style_specification = std::move(specification);
+	document_specification = style_specification;
+	SetStyleSheetContainer(std::move(styles));
+	const float dp_ratio = context ? context->GetDensityIndependentPixelRatio() : 1.f;
+	const Vector2f dimensions = context ? Vector2f(context->GetDimensions()) : Vector2f(1.f);
+	UpdateProperties(dp_ratio, dimensions);
+	if (!font_context->GetFailedSource().empty()) {
+		resource_error = "Font face could not be loaded: " + font_context->GetFailedSource(); return false;
+	}
+	return true;
+}
+
 Context* ElementDocument::GetContext()
 {
 	return context;
@@ -263,6 +282,7 @@ void ElementDocument::SetStyleSheetContainer(SharedPtr<StyleSheetContainer> _sty
 		return;
 
 	style_sheet_container = std::move(_style_sheet_container);
+    if(context)context->DirtyNativeRendering();
 
 	DirtyMediaQueries();
 }
@@ -330,6 +350,7 @@ void ElementDocument::Show(ModalFlag modal_flag, FocusFlag focus_flag, ScrollFla
 	pending_show = true;
 
 	// Hosting visibility is independent of the author's CSS visibility.
+	if(!presented&&context)context->DirtyNativeRendering();
 	presented = true;
 	if (auto* parent = GetParentNode()) parent->DirtyStackingContext();
 	if (update_document) UpdateDocument();
@@ -398,6 +419,7 @@ void ElementDocument::UpdatePendingPresentation()
 
 void ElementDocument::Hide()
 {
+	if(presented&&context)context->DirtyNativeRendering();
 	presented = false;
 	pending_focus = FocusFlag::None;
 	pending_show = false;
@@ -417,6 +439,7 @@ void ElementDocument::Hide()
 void ElementDocument::SetStackOrder(int layer, int order)
 {
 	if (presentation_layer == layer && presentation_order == order) return;
+	if(context)context->DirtyNativeRendering();
 	presentation_layer = layer; presentation_order = order;
 	if (auto* parent = GetParentNode()) parent->DirtyStackingContext();
 }
@@ -472,6 +495,15 @@ void ElementDocument::UpdateDocument()
 	UpdateLayout();
 	UpdatePosition();
 	UpdatePendingPresentation();
+}
+
+bool ElementDocument::SynchronizeSequenceLayout()
+{
+    auto* context = GetContext();
+    if (!context) return false;
+    UpdateSequenceProperties(context->GetDensityIndependentPixelRatio(), Vector2f(context->GetDimensions()));
+    UpdateLayout(); UpdatePosition();
+    return true;
 }
 
 void ElementDocument::UpdateLayout()
@@ -543,6 +575,7 @@ void ElementDocument::DirtyPosition()
 
 void ElementDocument::DirtyLayout()
 {
+    if(context)context->DirtyNativeRendering();
 	layout_dirty = true;
 }
 

@@ -3,6 +3,7 @@
 #include "../../Include/URUI/Core/PropertyDictionary.h"
 #include "../../Include/URUI/Core/Types.h"
 #include "StyleSheetSelector.h"
+#include <unordered_map>
 
 namespace URUI {
 
@@ -50,7 +51,10 @@ public:
 	Specificity GetSpecificity() const;
 
 private:
+	friend class CompiledArchive;
 	void CalculateAndSetSpecificity();
+	StyleSheetNode* FindChild(const CompoundSelector& other);
+	StyleSheetNode* AppendChild(UniquePtr<StyleSheetNode> child);
 
 	// Match an element to the local node requirements.
 	inline bool Match(const Element* element, const Element* scope) const;
@@ -72,6 +76,9 @@ private:
 	PropertyDictionary properties;
 
 	StyleSheetNodeList children;
+	using ChildIndex = std::unordered_multimap<size_t, size_t>;
+	UniquePtr<ChildIndex> child_index;
+	size_t indexed_children = 0;
 };
 
 } // namespace URUI

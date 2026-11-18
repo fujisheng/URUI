@@ -37,6 +37,18 @@ namespace URUI.Effect.Tests
             finally{UnityEngine.Object.DestroyImmediate(preset);target.Release();UnityEngine.Object.DestroyImmediate(target);UnityEngine.Object.DestroyImmediate(read);}
             yield return null;
         }
+        [Test]
+        public void PreviewRespectsTheRequestedBlendState()
+        {
+            var source=new Texture2D(1,1,TextureFormat.RGBAFloat,false,true);var target=new RenderTexture(4,4,0,RenderTextureFormat.ARGBHalf,RenderTextureReadWrite.Linear);var read=new Texture2D(1,1,TextureFormat.RGBAFloat,false,true);var previous=RenderTexture.active;
+            try {
+                source.SetPixel(0,0,new Color(.2f,.3f,.4f,.5f));source.Apply();target.Create();
+                using var preview=new EffectPreview(new EffectParameters{BlendType=BlendType.Additive});
+                preview.Render(source,new Rect(0,0,4,4),0,target,new Color(.1f,.1f,.1f,1));
+                RenderTexture.active=target;read.ReadPixels(new Rect(2,2,1,1),0,0);read.Apply();
+                Assert.That(read.GetPixel(0,0).a,Is.EqualTo(1.5f).Within(.002f));
+            } finally {RenderTexture.active=previous;target.Release();Object.DestroyImmediate(target);Object.DestroyImmediate(source);Object.DestroyImmediate(read);}
+        }
         sealed class PreviewClock:URUI.Animation.IUiClock {public double Now=>1.25;public float Delta=>0;}
     }
 }

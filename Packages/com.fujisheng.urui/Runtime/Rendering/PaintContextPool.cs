@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 using URUI.Elements;
+using URUI.Internal.Rendering;
 
 namespace URUI.Rendering
 {
@@ -13,8 +14,10 @@ namespace URUI.Rendering
             readonly PaintContextPool owner;
             internal Scope Next;
             internal ulong Generation;
-            internal bool Active, UsesOriginal, Clipped;
-            internal CommandBuffer Buffer;
+            internal bool Active, UsesOriginal, Clipped, WritesParent;
+            internal CommandBuffer DirectBuffer;
+            internal ExternalCommandRecording Recording;
+            internal CommandBuffer Buffer => Recording != null ? Recording.Buffer : DirectBuffer;
             internal Matrix4x4 Transform;
             internal Vector4 Clip;
             MaterialPropertyBlock defaults;
@@ -30,7 +33,8 @@ namespace URUI.Rendering
             {
                 if (!Active || Generation != generation) { return; }
                 Active = false;
-                Buffer = null;
+                DirectBuffer = null;
+                Recording = null;
                 Next = owner.idle;
                 owner.idle = this;
             }
@@ -38,7 +42,7 @@ namespace URUI.Rendering
 
         Scope idle;
         ulong generation;
-        internal ElementPaintContext Open(Element element, CommandBuffer buffer, Matrix4x4 transform, Vector4 clip, bool clipped, bool isMaskImage = false)
+        internal ElementPaintContext Open(Element element, CommandBuffer buffer, Matrix4x4 transform, Vector4 clip, bool clipped, bool isMaskImage = false, ExternalCommandRecording recording = null)
         {
             if (generation == ulong.MaxValue) { throw new InvalidOperationException("绘制窗口代际已耗尽。"); }
             var scope = idle;
@@ -47,7 +51,9 @@ namespace URUI.Rendering
             scope.Generation = ++generation;
             scope.Active = true;
             scope.UsesOriginal = false;
-            scope.Buffer = buffer;
+            scope.WritesParent = false;
+            scope.DirectBuffer = buffer;
+            scope.Recording = recording;
             scope.Transform = transform;
             scope.Clip = clip;
             scope.Clipped = clipped;

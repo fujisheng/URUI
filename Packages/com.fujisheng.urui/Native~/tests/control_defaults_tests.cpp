@@ -20,10 +20,20 @@ static void Equal(URUI::Colourb got, URUI::Colourb want) {
     assert(got == want);
 }
 static void Vertices(uint64_t texture, int r, int g, int b, int a, float extent = -1) {
-    urui_render(); std::vector<UruiCommand> commands(urui_command_count()); urui_get_commands(commands.data(),int(commands.size())); bool found=false;
-    for (const auto& command:commands) if(command.texture==texture) {
+    UruiPlanInputPacket input{};assert(urui_plan_begin(&input)==1);bool found=false;
+    struct ReleaseInput {uint64_t lease;~ReleaseInput(){assert(urui_plan_release(lease)==1);}} release{input.lease};
+    for (uint32_t index=0;index<input.command_count;index++) {
+        const auto& command=input.commands[index];if(command.texture!=texture)continue;
         int vc=0,ic=0;assert(urui_get_geometry_info(command.geometry,&vc,&ic)==1);
         std::vector<UruiVertex> v(vc);std::vector<int> ids(ic);assert(urui_copy_geometry(command.geometry,v.data(),vc,ids.data(),ic)==1);
+        // The color oracle applies immutable draw uniforms to base vertices,
+        // exactly as the production vertex shader will. Expected RGBA stays unchanged.
+        const auto& uniform=input.uniforms[index];
+        for(auto& vertex:v) {
+            vertex.r=uint8_t(std::lround(vertex.r*uniform.tint[0]));vertex.g=uint8_t(std::lround(vertex.g*uniform.tint[1]));
+            vertex.b=uint8_t(std::lround(vertex.b*uniform.tint[2]));vertex.a=uint8_t(std::lround(vertex.a*uniform.tint[3]));
+            vertex.u=vertex.u*uniform.uv[0]+uniform.uv[2];vertex.v=vertex.v*uniform.uv[1]+uniform.uv[3];
+        }
         if (extent >= 0) {
             float low=1e9f,high=-1e9f;for(const auto& x:v){low=std::min(low,x.x);high=std::max(high,x.x);}
             if(std::abs(high-low-extent)>.01f)continue;

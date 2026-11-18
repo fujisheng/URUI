@@ -1,5 +1,6 @@
 #include "urui.h"
 #include "style_properties.h"
+#include "render_program_parameters.h"
 #include <URUI/Core.h>
 #include <URUI/Core/PropertyParser.h>
 #include <URUI/Core/PropertyDefinition.h>
@@ -7,6 +8,9 @@
 #include <URUI/Core/StyleSheetTypes.h>
 #include "Engine/Source/Core/ElementStyle.h"
 #include <algorithm>
+#include <array>
+#include <stdexcept>
+#include <thread>
 #include <cmath>
 #include <cstring>
 #include <unordered_map>
@@ -26,17 +30,46 @@ struct Snapshot {
     uint64_t stamp = UINT64_MAX, revision = 0;
     float width = -1, height = -1;
     bool has_unregistered_custom = false;
+    bool has_unregistered_expressions = false;
     float parent_width = -1, parent_height = -1;
     std::vector<Value> values;
     std::vector<UruiStyleValue> serialized;
     std::vector<char> text;
 };
+static void ClearPrograms();
 static ElementResolver resolve = nullptr;
-static std::unordered_map<uint64_t, Snapshot> snapshots;
+static std::thread::id owner_thread;
+struct SnapshotNode {
+    uint64_t owner=0;
+    std::array<Snapshot,2> banks;
+    std::array<uint32_t,2> pins{};
+    uint32_t current=0;
+};
+struct FrozenSnapshot {uint64_t owner=0,token=0,version=0;uint32_t bank=0;};
+static_assert(sizeof(UruiFrozenStyleHandle)==16,"frozen style handle ABI");
+static std::unordered_map<uint64_t, SnapshotNode> snapshots;
+static std::vector<FrozenSnapshot> frozen_snapshots;
+static std::vector<uint32_t> idle_frozen_snapshots;
+static uint64_t next_frozen_version=0;
+static FrozenSnapshot* Frozen(uint64_t owner,const UruiFrozenStyleHandle* handle) {
+    if(!handle||!handle->slot||handle->slot>frozen_snapshots.size()||!handle->version)return nullptr;
+    auto& value=frozen_snapshots[size_t(handle->slot-1)];
+    return value.version==handle->version&&value.owner==owner?&value:nullptr;
+}
+static void Release(FrozenSnapshot& frozen) {
+    auto found=snapshots.find(frozen.token);
+    if(found!=snapshots.end()&&found->second.owner==frozen.owner) {
+        auto& pins=found->second.pins[frozen.bank];
+        if(!pins)throw std::logic_error("unbalanced prepared style reference");
+        pins--;
+    }
+    const auto index=uint32_t(&frozen-frozen_snapshots.data());
+    frozen={};idle_frozen_snapshots.push_back(index);
+}
 static uint64_t next_revision = 0, builds = 0, strings = 0, copies = 0;
 static std::unordered_map<const URUI::PropertyDefinition*, std::unordered_map<uint64_t, URUI::String>> keyword_text;
-void Begin(ElementResolver resolver) { snapshots.clear(); keyword_text.clear(); resolve = resolver; builds = strings = copies = 0; }
-void End() { snapshots.clear(); keyword_text.clear(); resolve = nullptr; }
+void Begin(ElementResolver resolver) { ClearPrograms();owner_thread=std::this_thread::get_id();frozen_snapshots.clear();idle_frozen_snapshots.clear();snapshots.clear(); keyword_text.clear(); resolve = resolver; builds = strings = copies = 0; }
+void End() { ClearPrograms();frozen_snapshots.clear();idle_frozen_snapshots.clear();snapshots.clear(); keyword_text.clear(); resolve = nullptr; }
 void RecordStringRead() { strings++; }
 static URUI::String KeywordText(const URUI::String& name, const URUI::Property& property) {
     // 标准属性定义在引擎会话内固定；仅缓存有限的内置枚举，不持有文档的自定义注册。
@@ -160,51 +193,59 @@ static void Serialize(Snapshot& snapshot) {
         output.push_back({name, value.kind, value.x, value.y, value.z, value.w, content, source});
     }
 }
-static bool UpdateNumbers(URUI::Element* element, Snapshot& snapshot, uint64_t stamp) {
-    if (!snapshot.revision || snapshot.has_unregistered_custom) return false;
-    const auto* changed = element->GetStyle()->GetSnapshotNumericChanges(snapshot.stamp);
-    if (!changed) return false;
-    const auto& specification = element->GetPropertySpecification();
-    std::vector<std::pair<size_t, Value>> updates;
-    for (auto id : *changed) {
-        const auto& name = specification.GetPropertyName(id);
-        auto existing = std::lower_bound(snapshot.values.begin(), snapshot.values.end(), name,
-            [](const Value& value, const URUI::String& key) { return value.name < key; });
-        if (existing == snapshot.values.end() || existing->name != name || (existing->kind & 255) != 1) return false;
-        const auto* property = element->GetProperty(id);
-        if (!property) return false;
-        auto value = Read(element, name, *property, false);
-        if (value.kind != 1) return false;
-        value.kind |= Origin(element, name) << 8;
-        updates.emplace_back(size_t(existing - snapshot.values.begin()), std::move(value));
+static bool UpdatePrimitiveValues(URUI::Element* element,Snapshot& snapshot,uint64_t stamp) {
+    if(!snapshot.revision||snapshot.has_unregistered_expressions)return false;
+    // Constant raw fields preserve the delta. Unregistered var() results have
+    // no property ID in the engine facts and require a complete read.
+    const auto* changed=element->GetStyle()->GetSnapshotValueChanges(snapshot.stamp);
+    if(!changed)return false;
+    const auto& specification=element->GetPropertySpecification();
+    // Validate the complete delta first; neither pass allocates a Value/name copy.
+    for(const auto& delta:*changed) {
+        const auto& name=specification.GetPropertyName(delta.id);
+        const auto existing=std::lower_bound(snapshot.values.begin(),snapshot.values.end(),name,
+            [](const Value& value,const URUI::String& key){return value.name<key;});
+        if(existing==snapshot.values.end()||existing->name!=name||uint32_t(existing->kind&255)!=delta.kind||(delta.kind!=1&&delta.kind!=4))return false;
+        for(float value:delta.values)if(!std::isfinite(value))return false;
     }
-    bool modified = false;
-    for (auto& update : updates) {
-        auto& previous = snapshot.values[update.first];
-        if (previous == update.second) continue;
-        modified = true; previous = std::move(update.second);
-        auto& output = snapshot.serialized[update.first];
-        output.kind = previous.kind; output.x = previous.x; output.y = previous.y; output.z = previous.z; output.w = previous.w;
+    bool modified=false;
+    for(const auto& delta:*changed) {
+        const auto& name=specification.GetPropertyName(delta.id);
+        auto existing=std::lower_bound(snapshot.values.begin(),snapshot.values.end(),name,
+            [](const Value& value,const URUI::String& key){return value.name<key;});
+        const auto* values=delta.values;const int kind=int(delta.kind)|(Origin(element,name)<<8);
+        if(existing->x==values[0]&&existing->y==values[1]&&existing->z==values[2]&&existing->w==values[3]&&existing->kind==kind)continue;
+        modified=true;existing->kind=kind;existing->x=values[0];existing->y=values[1];existing->z=values[2];existing->w=values[3];
+        auto& output=snapshot.serialized[size_t(existing-snapshot.values.begin())];
+        output.kind=kind;output.x=values[0];output.y=values[1];output.z=values[2];output.w=values[3];
     }
-    if (modified) snapshot.revision = ++next_revision;
-    snapshot.stamp = stamp; builds++;
-    return true;
+    if(modified)snapshot.revision=++next_revision;
+    snapshot.stamp=stamp;builds++;return true;
 }
 static Snapshot* Get(uint64_t owner, uint64_t token) {
     auto* element = resolve ? resolve(owner, token) : nullptr;
     if (!element) return nullptr;
-    auto& snapshot = snapshots[token];
-    snapshot.owner = owner;
+    auto& node = snapshots[token];node.owner=owner;
+    auto* selected=&node.banks[node.current];
+    selected->owner=owner;
     const auto stamp = element->GetStyle()->GetComputedRevision();
     const auto size = element->GetBox().GetSize(URUI::BoxArea::Border);
     auto* parent = element->GetParentNode();
     const auto parent_size = parent ? parent->GetBox().GetSize(URUI::BoxArea::Content) : URUI::Vector2f{};
+    const bool unchanged_parent=selected->parent_width==parent_size.x&&selected->parent_height==parent_size.y;
+    if(selected->stamp==stamp&&selected->width==size.x&&selected->height==size.y&&unchanged_parent)return selected;
+    if(node.pins[node.current]) {
+        const uint32_t next=1-node.current;
+        if(node.pins[next])throw std::runtime_error("both computed style versions are retained");
+        node.banks[next]=*selected;node.current=next;selected=&node.banks[next];
+    }
+    auto& snapshot=*selected;
     const bool same_parent = snapshot.parent_width == parent_size.x && snapshot.parent_height == parent_size.y;
     // 相对长度随包含块变化；即使本节点只有数值参数变化，也需要重新求值。
-    if (snapshot.stamp == stamp && snapshot.width == size.x && snapshot.height == size.y && same_parent) return &snapshot;
-    if (snapshot.width == size.x && snapshot.height == size.y && same_parent && UpdateNumbers(element, snapshot, stamp)) return &snapshot;
+    if (snapshot.width == size.x && snapshot.height == size.y && same_parent && UpdatePrimitiveValues(element, snapshot, stamp)) return &snapshot;
     std::vector<Value> values;
     snapshot.has_unregistered_custom = false;
+    snapshot.has_unregistered_expressions = false;
     const auto& specification = element->GetPropertySpecification();
     for (auto id : specification.GetRegisteredProperties()) {
         const auto& name = specification.GetPropertyName(id);
@@ -233,6 +274,7 @@ static Snapshot* Get(uint64_t owner, uint64_t token) {
     for (const auto& name : names) {
         if (specification.GetPropertyId(name) != URUI::PropertyId::Invalid) continue;
         snapshot.has_unregistered_custom = true;
+        snapshot.has_unregistered_expressions|=element->GetStyle()->HasCustomPropertyExpression(name);
         if (const auto* property = element->GetProperty(name)) {
             auto value = Read(element, name, *property, true); if (value.kind) values.push_back(std::move(value));
         }
@@ -248,6 +290,59 @@ static Snapshot* Get(uint64_t owner, uint64_t token) {
 }
 extern "C" {
 int urui_style_api_version() { return 4; }
+int urui_style_frozen_api_version() {return 1;}
+int urui_style_snapshot_freeze(UruiDocumentHandle owner,uint64_t token,const UruiFrozenStyleHandle* previous,UruiFrozenStyleHandle* output) try {
+    if(!output)return -1;
+    const auto prior=previous?*previous:UruiFrozenStyleHandle{};*output={};
+    if(!urui_styles::resolve)return -2;
+    if(urui_styles::owner_thread!=std::this_thread::get_id())return -3;
+    if(!urui_styles::resolve(owner,token))return -2;
+    auto* old=previous?urui_styles::Frozen(owner,&prior):nullptr;
+    if(previous&&(!old||old->token!=token))return -2;
+    if(urui_styles::next_frozen_version==UINT64_MAX)return -8;
+    if(old)urui_styles::Release(*old);
+    auto* snapshot=urui_styles::Get(owner,token);if(!snapshot)return -2;
+    auto& node=urui_styles::snapshots.at(token);
+    if(node.pins[node.current]==UINT32_MAX)return -8;
+    auto& scopes=urui_styles::frozen_snapshots;auto& idle=urui_styles::idle_frozen_snapshots;
+    uint32_t index;
+    if(!idle.empty()){index=idle.back();idle.pop_back();}
+    else {
+        if(scopes.size()>=65536)return -4;
+        if(scopes.size()==scopes.capacity()) {
+            const auto capacity=std::max(size_t(16),scopes.size()*2);
+            scopes.reserve(capacity);idle.reserve(capacity);
+        }
+        index=uint32_t(scopes.size());scopes.emplace_back();
+    }
+    auto& frozen=scopes[index];frozen={owner,token,++urui_styles::next_frozen_version,node.current};node.pins[node.current]++;
+    *output={uint64_t(index)+1,frozen.version};return 1;
+} catch(...) {return -8;}
+int urui_style_snapshot_release(UruiDocumentHandle owner,const UruiFrozenStyleHandle* handle) try {
+    if(!urui_styles::resolve)return -2;
+    if(urui_styles::owner_thread!=std::this_thread::get_id())return -3;
+    auto* frozen=urui_styles::Frozen(owner,handle);if(!frozen)return -2;
+    urui_styles::Release(*frozen);return 1;
+} catch(...) {return -8;}
+int urui_style_snapshot_copy(UruiDocumentHandle owner,const UruiFrozenStyleHandle* handle,uint64_t expected,UruiStyleValue* output,int capacity,char* names,int names_capacity,
+    uint64_t* revision,int* value_count,int* name_bytes) try {
+    if(capacity<0||names_capacity<0||!revision||!value_count||!name_bytes)return -1;
+    *revision=0;*value_count=0;*name_bytes=0;
+    if(!urui_styles::resolve)return -2;
+    if(urui_styles::owner_thread!=std::this_thread::get_id())return -3;
+    const auto* frozen=urui_styles::Frozen(owner,handle);if(!frozen)return -2;
+    const auto found=urui_styles::snapshots.find(frozen->token);
+    if(found==urui_styles::snapshots.end()||found->second.owner!=owner||!urui_styles::resolve||!urui_styles::resolve(owner,frozen->token))return -2;
+    const auto& snapshot=found->second.banks[frozen->bank];
+    if(snapshot.serialized.size()>INT32_MAX||snapshot.text.size()>INT32_MAX)return -8;
+    *revision=snapshot.revision;*value_count=int(snapshot.serialized.size());*name_bytes=int(snapshot.text.size());
+    if(expected&&expected!=*revision)return -4;
+    if(capacity<*value_count||names_capacity<*name_bytes||(!output&&*value_count)||(!names&&*name_bytes))return -3;
+    if(*value_count)std::memcpy(output,snapshot.serialized.data(),snapshot.serialized.size()*sizeof(UruiStyleValue));
+    if(*name_bytes)std::memcpy(names,snapshot.text.data(),snapshot.text.size());
+    urui_styles::copies++;return 1;
+} catch(...) {return -8;}
+
 int urui_element_style_snapshot(UruiDocumentHandle document_handle, uint64_t token, uint64_t expected_revision, UruiStyleValue* output, int capacity, char* names, int names_capacity,
     uint64_t* revision, int* value_count, int* name_bytes) try {
     if (capacity < 0 || names_capacity < 0 || !revision || !value_count || !name_bytes) return -1;
@@ -266,3 +361,5 @@ int urui_style_diagnostics(uint64_t* values, int capacity) {
     values[0] = urui_styles::builds; values[1] = urui_styles::strings; values[2] = urui_styles::copies; values[3] = urui_styles::snapshots.size(); return 1;
 }
 }
+
+#include "render_program_parameters.inl"

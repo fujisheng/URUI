@@ -34,11 +34,13 @@ namespace URUI.Effect.Tests
             {
                 fixture.Load("--urui-effect:none;--urui-image-effect:count;" + border);
                 fixture.Render();
+                yield return null;
                 var created = factory.Created;
                 for (var i = 0; i < 6; i++)
                 {
                     fixture.Document.Q("subject").Style.Set("width", (128 + i).ToString() + "px");
                     fixture.Render();
+                    yield return null;
                 }
                 Assert.That(factory.Created, Is.EqualTo(created), "几何重建必须复用每个绘制槽的效果实例。");
             }

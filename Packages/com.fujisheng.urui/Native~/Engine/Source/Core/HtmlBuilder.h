@@ -4,7 +4,10 @@
 
 namespace URUI {
 
-bool BuildHtmlDocument(ElementDocument& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics);
+class DocumentHeader;
+struct CompiledDocument;
+bool CollectHtmlHeader(const HtmlDocument& parsed, DocumentHeader& header, Vector<Diagnostic>& diagnostics);
+bool BuildHtmlDocument(ElementDocument& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics, CompiledDocument* compiled = nullptr);
 bool ReplaceInnerHtml(Element& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics);
 bool IsHtmlVoidElement(const String& tag);
 
@@ -16,6 +19,7 @@ public:
     Element* Target() const { return target.get(); }
     void Commit();
     void Rollback();
+    void SetCompiledRoot(uint64_t blueprint, uint32_t end) { compiled_blueprint = blueprint; compiled_end = end; }
 private:
     explicit InnerHtmlReplacement(Element& element);
     ObserverPtr<Element> target, focused;
@@ -24,6 +28,8 @@ private:
     String text_value;
     int selection = -1;
     bool active = false;
+    uint64_t compiled_blueprint = 0;
+    uint32_t compiled_end = 0;
 };
 
 class ElementTemplate final : public Element {

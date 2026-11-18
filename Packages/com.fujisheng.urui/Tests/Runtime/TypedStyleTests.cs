@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using URUI.Documents;
 using URUI.Styles;
+using URUI.Internal.Rendering;
+using Unity.Profiling;
 namespace URUI.Tests
 {
     public sealed class TypedStyleTests
@@ -18,6 +20,65 @@ namespace URUI.Tests
             document.Load(global::UnityEngine.Resources.Load<TextAsset>("URUI/Tests/TypedStyle"), "URUI/Tests/TypedStyle.html"); document.SynchronizeLayout();
         }
         [TearDown] public void TearDown() { UnityEngine.Object.DestroyImmediate(root); UnityEngine.Object.DestroyImmediate(camera); }
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void EquivalentElementSnapshotsDoNotReallocateAllRegisteredPropertyNames(bool frozen, bool differentKeywords)
+        {
+            var html = new System.Text.StringBuilder("<!doctype html><html><head><style>");
+            for (var i = 0; i < 200; i++)
+            {
+                html.Append("@property --shared-").Append(i).Append("{syntax:'<number>';inherits:false;initial-value:0;}");
+            }
+            html.Append("@property --shared-key{syntax:'a | b';inherits:false;initial-value:a;}div{width:10px;height:10px;}</style></head><body>");
+            for (var i = 0; i < 17; i++)
+            {
+                html.Append("<div id='n").Append(i).Append("' style='--shared-key:").Append(differentKeywords && i % 2 == 1 ? "b" : "a").Append(";'></div>");
+            }
+            html.Append("</body></html>");
+            document.LoadHtml(html.ToString(), "ui/shared-styles.html");
+            document.SynchronizeLayout();
+            var nodes = new URUI.Elements.Element[17];
+            var prepared = new NativePreparedStyle[17];
+            var snapshots = new ComputedStyleSnapshot[17];
+            try
+            {
+                for (var i = 0; i < nodes.Length; i++)
+                {
+                    nodes[i] = document.Q("n" + i);
+                    if (frozen) { prepared[i].Replace(nodes[i]); }
+                }
+                snapshots[0] = frozen ? prepared[0].Materialize(nodes[0]) : document.Styles.GetComputed(nodes[0]);
+                using (var positive = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC.Alloc", 8192, ProfilerRecorderOptions.CollectOnlyOnCurrentThread))
+                {
+                    var probe = new byte[4096]; GC.KeepAlive(probe); positive.Stop();
+                    Assert.IsTrue(positive.Valid && positive.Count > 0, "必须记录到真实 GC.Alloc 阳性探针。");
+                }
+                long allocations = 0;
+                using (var recorder = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC.Alloc", 8192, ProfilerRecorderOptions.CollectOnlyOnCurrentThread))
+                {
+                    for (var i = 1; i < nodes.Length; i++)
+                    {
+                        snapshots[i] = frozen ? prepared[i].Materialize(nodes[i]) : document.Styles.GetComputed(nodes[i]);
+                    }
+                    recorder.Stop();
+                    Assert.IsTrue(recorder.Valid && !recorder.WrappedAround);
+                    for (var i = 0; i < recorder.Count; i++) { allocations += recorder.GetSample(i).Count; }
+                }
+                Assert.LessOrEqual(allocations, differentKeywords ? 384 : 96, "相同样式的 16 个新元素不能各自重新分配 200 个属性名和索引。");
+                nodes[1].Style.SetNumber("--shared-30", 11); document.SynchronizeLayout();
+                Assert.AreEqual(11, document.Styles.GetComputed(nodes[1]).GetNumber("--shared-30"));
+                Assert.AreEqual(0, snapshots[1].GetNumber("--shared-30"));
+                Assert.AreEqual(0, snapshots[2].GetNumber("--shared-30"));
+                Assert.AreEqual(differentKeywords ? "b" : "a", snapshots[1].GetKeyword("--shared-key"));
+                Assert.AreEqual("a", snapshots[2].GetKeyword("--shared-key"));
+                var overridden = snapshots[2].WithOverrides(new System.Collections.Generic.Dictionary<string, StyleOverride> { { "--shared-key", StyleOverride.FromKeyword("b") } }, StyleValueOrigin.Transition);
+                Assert.AreEqual("b", overridden.GetKeyword("--shared-key"));
+                Assert.AreEqual("a", snapshots[2].GetKeyword("--shared-key"));
+            }
+            finally { for (var i = 0; i < prepared.Length; i++) { prepared[i].Dispose(); } }
+        }
         [Test] public void ComputedDisplayReflectsPositionAndFloatBlockification()
         {
             document.LoadHtml("<!doctype html><html><head><style>" +
@@ -36,6 +97,21 @@ namespace URUI.Tests
             element.Style.Set("position", "static"); document.SynchronizeLayout();
             Assert.AreEqual("inline-block", document.Styles.GetComputed(element).GetKeyword("display"));
             Assert.AreEqual("block", before.GetKeyword("display"));
+        }
+        [Test] public void PreparedStyleReadsTheFrozenVersionAfterLiveStyleChanges()
+        {
+            var child=document.Q("child");var prepared=new NativePreparedStyle();
+            try
+            {
+                prepared.Replace(child);
+                child.Style.SetNumber("--fx-progress",.75f);document.SynchronizeLayout();
+                Assert.That(document.Styles.GetComputed(child).GetNumber("--fx-progress"),Is.EqualTo(.75f));
+                var old=prepared.Materialize(child);Assert.That(old.GetNumber("--fx-progress"),Is.Zero);
+                prepared.Replace(child);var current=prepared.Materialize(child);
+                Assert.That(current.GetNumber("--fx-progress"),Is.EqualTo(.75f));Assert.That(old.GetNumber("--fx-progress"),Is.Zero);
+                document.Unload();Assert.Throws<InvalidOperationException>(()=>old.GetNumber("--fx-progress"));
+            }
+            finally{prepared.Dispose();}
         }
         [Test] public void RegisteredNumbersRespectInitialInheritanceAndVar()
         {

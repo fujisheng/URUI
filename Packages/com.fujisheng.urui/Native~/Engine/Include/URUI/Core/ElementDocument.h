@@ -40,6 +40,7 @@ enum class ScrollFlag {
 
 class URUI_CORE_API ElementDocument : public Element {
 public:
+    bool SynchronizeSequenceLayout();
 	URUI_RTTI_DeclareWithParent(ElementDocument, Element)
 
 	ElementDocument(const String& tag);
@@ -47,6 +48,8 @@ public:
 	PropertySpecification& GetStyleSpecification();
 	const PropertySpecification& GetStyleSpecification() const;
 	const SharedPtr<PropertySpecification>& GetStyleSpecificationStorage() const { return style_specification; }
+	uint64_t GetCompiledIdentity() const { return compiled_identity; }
+	void SetCompiledIdentity(uint64_t identity) { compiled_identity = identity; }
 	DocumentFontContext& GetFontContext();
 	const SharedPtr<ResourceContext>& GetResourceContext() const { return resource_context; }
 	void SetResourceContext(SharedPtr<ResourceContext> resources);
@@ -56,6 +59,8 @@ public:
 
 	/// Process given document header
 	bool ProcessHeader(const DocumentHeader* header);
+	bool ProcessCompiledHeader(const String& source, const String& title, SharedPtr<PropertySpecification> specification,
+		SharedPtr<StyleSheetContainer> styles);
 	const String& GetResourceError() const { return resource_error; }
 
 	/// Returns the document's context.
@@ -143,6 +148,7 @@ protected:
 	void SetFocusableFromModal(bool focusable);
 
 private:
+	uint64_t compiled_identity = 0;
     uint64_t effect_structure_revision = 1;
 	/// Searches forwards or backwards for a focusable element in the given subtree.
 	Element* SearchFocusSubtree(Element* element, bool forward);
@@ -193,9 +199,13 @@ private:
 
 	bool layout_dirty;
 	bool position_dirty;
+    bool opaque_native_rendering = false;
+    // 0 表示尚未证明静态，最大值表示正在更新；只保存文档代际，不保存节点快照。
+    uint64_t native_idle_update_revision = 0;
 
 	friend class URUI::Context;
 	friend class URUI::Factory;
+    friend class URUI::Element;
 };
 
 } // namespace URUI

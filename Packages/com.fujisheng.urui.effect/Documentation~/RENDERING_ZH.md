@@ -66,6 +66,11 @@ EffectModule 在 Load 前注册 `URUI.Effect.Elements.ParticlesElement`。通过
 | `CurrentSource` | 最近成功安装的源；失败时与 Source 可能不同 |
 | `ParticleCount` / `PlaybackState` | 当前粒子数 / Playing、Paused、Stopped |
 | `Play()` / `Pause()` / `Stop()` / `Restart()` | 显式播放控制；有效 src 准备前调用会失败 |
+| `Seek(time,randomSeed = 1)` / `SimulationTime` | 从零模拟到 0..600 秒，种子必须非零；切换为手动模拟并暂停 |
+| `Step(delta)` | 推进 0..1 秒并暂停；自动模拟不会同时推进 |
+| `RefreshSource()` | 源引用不变时重建隔离实例；新源准备失败保留旧源 |
+| `OverrideSource(GameObject)` / `OverridePlayback()` | 临时源/播放租约；释放恢复原引用和播放状态，不写 Prefab |
+| `OverrideMaterial(source,replacement)` | 仅替换当前粒子实例中匹配的主体/尾迹材质槽；不修改 Renderer/Prefab 源引用，释放时恢复 |
 | `GetStatistics()` | 读取 CPU 读取、主体/尾迹烘焙、录制次数及毫秒累计 |
 | `data-urui-play-on-load` | 默认 true |
 | `data-urui-pause-when-hidden` | 默认 true |
@@ -74,6 +79,18 @@ EffectModule 在 Load 前注册 `URUI.Effect.Elements.ParticlesElement`。通过
 data 属性接受 true/false，显式 Pause/Stop 不会被再次显示自动恢复。裁剪只影响绘制/烘焙，不代替暂停；原粒子时间模式保持不变。换源会先校验组件、材质和尾迹条件，失败保留旧实例与状态。移除、片段替换、文档卸载或模块释放都会回收实例，相关 GPU 数据仍等待安全退役。
 
 需要把粒子组合到普通作者节点时使用 `new ParticlePainter(element, source, ParticlePlaybackOptions)`；PlayOnLoad/PauseWhenHidden/RestartOnShow 默认均为 true。该类提供 SetSource、SetOptions、播放控制、Source 和 GetStatistics，Dispose 释放绑定。作者节点使用 particle-paint class 及对应样式。
+
+`ParticlePainter` 同样提供 Seek、Step、RefreshSource 和 OverridePlayback；`SetManualSimulation(bool,uint)` 显式切换模拟驱动。恢复自动驱动后沿用源的自动随机种子配置。Seek 的确定性仅针对同平台、同粒子配置，不承诺跨平台一致。所有模拟/刷新/租约操作在拥有该节点的 Unity 主线程执行，节点或绑定失效后不可继续调用。
+
+## UI 固定参数程序
+
+`ui` 的计算样式由原生固定布局读取，数值和共享时钟通过参数纹理送入 Shader。采样扩边、Flip、阴影距离/淡出和镜像裁切在 GPU 执行；源拓扑、阴影模式或迭代次数变化时建立模板。归一化三角流及颜色完全相同的源共享模板，模板和资源等实际提交 fence 完成后退役。
+
+普通图像效果直接参与有序合批。子树效果保留必要的捕获与最终组混合；重叠内容、不同混合域、邻域采样的含义保持一致。附加纹理仍由资源解析器和租约管理，相对 URL 包含声明来源。
+
+`URUI.Effect/UiEffect` 是固定参数表驱动的内部程序。已有通过 `Graphics.Blit` 设置其旧 Uniform 的调用改用 `EffectPreview`；文档中的效果继续通过 CSS、预设及控制器调用。自有 Shader 和表面处理继续使用它们自己的材质契约。
+
+自定义固定程序通过 Core 的 `IParameterImageEffect`、`RenderParameterLayout` 提供值布局，`EffectProgramPreparation` 在回调内提供源和坐标事实。`Frame` 按需生成独立不可变快照；准备视图和 Span 不能跨回调保存。带几何的程序实现 `IParameterImageGeometry`，额外运行时行和共享资源上传分别使用 `IParameterImageRuntime`、`IParameterImageResources`。捕获子树需同时提供 `IParameterImageGeometry` 和 `IParameterEffectLayout`，在分配输入之前返回保守覆盖范围和最终混合。
 
 ## 原图材质效果与 Wave
 
@@ -151,4 +168,4 @@ Assets → Create → URUI → Effect Preset 创建预设后，可在 Inspector 
 
 ## 成本和统计
 
-BlurFast/Medium/Detail 核采样分别为 25/81/169；阴影/描边复制几何，复杂 Blend/节点效果可能先捕获。EffectStatistics.GetTargets、TextureEffectSurface.GetStatistics 和 ParticlePainter.GetStatistics 的含义不同；计数与 CPU 毫秒不等于 GPU 执行时间。更多平台和资源限制见 [Core 支持范围](../../com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
+BlurFast/Medium/Detail 核采样分别为 25/81/169；阴影/描边使用共享复制拓扑和 GPU 位移，复杂 Blend/节点效果可能先捕获。EffectStatistics.GetTargets、TextureEffectSurface.GetStatistics 和 ParticlePainter.GetStatistics 的含义不同；计数与 CPU 毫秒不等于 GPU 执行时间。更多平台和资源限制见 [Core 支持范围](../../com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。

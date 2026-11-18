@@ -12,7 +12,7 @@ namespace URUI.Effect
         public EffectPreview(EffectParameters parameters)
         {
             SetParameters(parameters);
-            renderer=new EffectPreviewRenderer(new EffectDefinition("preview",EffectKind.Image,new UiEffectFactory(null,_=>this.parameters),"ui:v1","UIEffect production shader"));
+            renderer=new EffectPreviewRenderer(new EffectDefinition("preview",EffectKind.Image,new UiEffectFactory(null,_=>this.parameters),"ui:v1","UIEffect production shader",renderProgram:EffectProgramDescriptors.Ui,renderParameters:UiEffectParameters.Layout));
         }
         public void SetParameters(EffectParameters value){parameters=(value??throw new ArgumentNullException(nameof(value))).Clone();}
         public void Render(Texture source,Rect content,double time,RenderTexture destination,Color background)=>renderer.Render(source,content,time,destination,background);

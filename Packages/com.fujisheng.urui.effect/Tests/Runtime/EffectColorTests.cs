@@ -93,6 +93,7 @@ namespace URUI.Effect.Tests
                         Assert.That(sum / (actual.Length * 4), Is.LessThanOrEqualTo(.5 / 255), space + "/" + item.id + " 平均误差");
                     }
                     finally { UnityEngine.Object.DestroyImmediate(expected); }
+                    yield return null; // Each case is a real submission, allowing its GPU fence to retire.
                 }
                 File.WriteAllText(Path.Combine(output, "color-captures.json"), JsonUtility.ToJson(new CaptureSet {
                     colorSpace = space, cases = cases.ConvertAll(item => item.id).ToArray() }, true));
@@ -162,11 +163,11 @@ namespace URUI.Effect.Tests
         [Test]
         public void TargetHueWrapsAtZero()
         {
-            var color = Render(new Color(1, 0, .06f, 1), material =>
+            var color = Render(new Color(1, 0, .06f, 1), parameters =>
             {
-                material.SetInt("_ColorFilter", 4); material.SetColor("_ColorValue", Color.green); material.SetFloat("_ColorIntensity", 1);
-                material.SetInt("_TargetMode", 1); material.SetColor("_TargetColor", new Color(1, .06f, 0, 1));
-                material.SetFloat("_TargetRange", .1f); material.SetFloat("_TargetSoftness", .5f);
+                parameters.ColorFilter=ColorFilter.Replace; parameters.Color=Color.green; parameters.ColorIntensity=1;
+                parameters.TargetMode=TargetMode.Hue; parameters.TargetColor=new Color(1,.06f,0,1);
+                parameters.TargetRange=.1f; parameters.TargetSoftness=.5f;
             });
             Assert.That(color.g, Is.GreaterThan(.98f)); Assert.That(color.r, Is.LessThan(.02f));
         }
@@ -176,8 +177,8 @@ namespace URUI.Effect.Tests
         {
             foreach (var alpha in new[] { 0f, .5f, 1f })
             {
-                var color = Render(new Color(2, -.1f, .5f, alpha), material =>
-                { material.SetInt("_ColorFilter", 2); material.SetVector("_ColorValue", new Vector4(2, 1, 0, 1)); material.SetFloat("_ColorIntensity", .5f); });
+                var color = Render(new Color(2, -.1f, .5f, alpha), parameters =>
+                { parameters.ColorFilter=ColorFilter.Additive; parameters.Color=new Color(2,1,0,1); parameters.ColorIntensity=.5f; });
                 for (var channel = 0; channel < 4; channel++) { Assert.That(float.IsFinite(color[channel]), Is.True); }
                 Assert.That(color.r, Is.EqualTo(3 * alpha).Within(.004f));
                 Assert.That(color.a, Is.EqualTo(alpha).Within(.002f));
@@ -187,7 +188,7 @@ namespace URUI.Effect.Tests
         [Test]
         public void GammaAndLinearAreExplicit()
         {
-            var color = Render(new Color(.25f, .5f, .75f, .5f), material => { });
+            var color = Render(new Color(.25f, .5f, .75f, .5f), parameters => { });
             Assert.That(color.r, Is.EqualTo(.125f).Within(.002f), QualitySettings.activeColorSpace.ToString());
             Assert.That(color.g, Is.EqualTo(.25f).Within(.002f)); Assert.That(color.b, Is.EqualTo(.375f).Within(.002f));
         }
@@ -195,10 +196,10 @@ namespace URUI.Effect.Tests
         [Test]
         public void GlowPreservesHdrRgbWhileReducingAlpha()
         {
-            var color = Render(new Color(2, .1f, .5f, .5f), material =>
+            var color = Render(new Color(2, .1f, .5f, .5f), parameters =>
             {
-                material.SetInt("_ColorFilter", 2); material.SetVector("_ColorValue", new Vector4(2, 1, 0, 1));
-                material.SetFloat("_ColorIntensity", 1); material.SetInt("_ColorGlow", 1);
+                parameters.ColorFilter=ColorFilter.Additive; parameters.Color=new Color(2,1,0,1);
+                parameters.ColorIntensity=1; parameters.ColorGlow=true;
             });
             Assert.That(color.r, Is.EqualTo(2).Within(.004f)); Assert.That(color.g, Is.EqualTo(.55f).Within(.002f));
             Assert.That(color.b, Is.EqualTo(.25f).Within(.002f)); Assert.That(color.a, Is.EqualTo(0).Within(.002f));
@@ -236,24 +237,22 @@ namespace URUI.Effect.Tests
             }
         }
 
-        static Color Render(Color input, Action<Material> configure)
+        static Color Render(Color input, Action<EffectParameters> configure)
         {
-            var shader = UnityEngine.Resources.Load<Shader>("URUI.Effect/UiEffect");
-            Assert.That(shader, Is.Not.Null, "通用颜色程序尚未实现");
-            var material = new Material(shader);
             var source = new Texture2D(1, 1, TextureFormat.RGBAFloat, false, true);
             var target = new RenderTexture(2, 2, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             var read = new Texture2D(2, 2, TextureFormat.RGBAFloat, false, true); var previous = RenderTexture.active;
             try
             {
                 source.SetPixel(0, 0, input); source.Apply(); target.Create(); RenderTexture.active = target; GL.Clear(false, true, Color.clear);
-                configure(material); Graphics.Blit(source, target, material);
+                var parameters=new EffectParameters();configure(parameters);
+                using var preview=new EffectPreview(parameters);preview.Render(source,new Rect(0,0,2,2),0,target,Color.clear);
                 RenderTexture.active = target; read.ReadPixels(new Rect(0, 0, 2, 2), 0, 0); read.Apply(); return read.GetPixel(1, 1);
             }
             finally
             {
                 RenderTexture.active = previous; target.Release(); UnityEngine.Object.DestroyImmediate(target);
-                UnityEngine.Object.DestroyImmediate(source); UnityEngine.Object.DestroyImmediate(read); UnityEngine.Object.DestroyImmediate(material);
+                UnityEngine.Object.DestroyImmediate(source); UnityEngine.Object.DestroyImmediate(read);
             }
         }
     }

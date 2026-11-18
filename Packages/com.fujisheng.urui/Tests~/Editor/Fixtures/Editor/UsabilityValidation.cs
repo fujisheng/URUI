@@ -15,6 +15,12 @@ namespace URUI.Tests.Editor
     /// </summary>
     public static class UsabilityValidation
     {
+        static TextAsset AuthorSource(Document document)
+        {
+            var compiled = new SerializedObject(document).FindProperty("compiledSource").objectReferenceValue;
+            if (!compiled) throw new Exception("Menu document must use a compiled asset.");
+            return (TextAsset)new SerializedObject(compiled).FindProperty("authorSource").objectReferenceValue;
+        }
         /// <summary>
         /// 批处理入口；仅在可丢弃的工程中运行，会创建测试场景和证据文件。
         /// </summary>
@@ -25,7 +31,7 @@ namespace URUI.Tests.Editor
             EditorSceneManager.SaveScene(SceneManager.GetActiveScene(), "Assets/MenuTestStart.unity");
             DocumentMenu.CreateMinimalScene();
             var first = UnityEngine.Object.FindFirstObjectByType<Document>();
-            var firstSource = (TextAsset)new SerializedObject(first).FindProperty("source").objectReferenceValue;
+            var firstSource = AuthorSource(first);
             var firstPath = AssetDatabase.GetAssetPath(firstSource);
             File.AppendAllText(firstPath, "\n<!-- preserve edited document -->\n");
             AssetDatabase.Refresh();
@@ -33,7 +39,7 @@ namespace URUI.Tests.Editor
             // 第二次创建必须使用新路径，第一次创建后编辑的文档内容必须原样保留。
             DocumentMenu.CreateMinimalScene();
             var second = UnityEngine.Object.FindFirstObjectByType<Document>();
-            var secondSource = (TextAsset)new SerializedObject(second).FindProperty("source").objectReferenceValue;
+            var secondSource = AuthorSource(second);
             if (SceneManager.GetActiveScene().path == firstScene
                 || AssetDatabase.GetAssetPath(secondSource) == firstPath
                 || !File.ReadAllText(firstPath).Contains("preserve edited document"))
@@ -45,6 +51,7 @@ namespace URUI.Tests.Editor
             var smoke = new GameObject("Usability Test").AddComponent<UsabilitySmoke>();
             smoke.generatedDocument = second;
             smoke.generatedSource = secondSource;
+            smoke.generatedCompiled = (URUI.Resources.CompiledDocumentAsset)new SerializedObject(second).FindProperty("compiledSource").objectReferenceValue;
             EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
             // 等待编辑器完成资产初始化后再进入 Play Mode。
             EditorApplication.delayCall += () => EditorApplication.delayCall += () => EditorApplication.isPlaying = true;

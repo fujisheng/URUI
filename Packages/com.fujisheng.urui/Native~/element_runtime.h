@@ -1,11 +1,18 @@
 #pragma once
 
-// Document-owned element protocol v2. The event packet contains its document identity.
+// Document-owned element protocol v3. The event packet contains its document identity.
 #ifdef __cplusplus
 extern "C"
 {
 #endif
     URUI_API int urui_element_api_version(void);
+    // Process-wide invalidation revision, including native destruction and token release.
+    // Atomic read; valid during teardown and from any thread. No element pointers escape.
+    URUI_API uint64_t urui_element_ref_revision(void);
+    // 当前布局/挂载及 token 有效性的变化证明；仅在 Context 所属线程读取。
+    // 输出16字节，无回调；失败时清零。1成功，-1空输出，-2无上下文，-3错误线程。
+    typedef struct UruiElementRefreshStamp { uint64_t mutation, references; } UruiElementRefreshStamp;
+    URUI_API int urui_element_refresh_stamp(UruiElementRefreshStamp* out);
     // 独立的附加变换协议，不改变既有 ABI/Element 数据布局。
     URUI_API int urui_transform_api_version(void);
     // 32 个列主序浮点数：本地变换矩阵、仅显式旋转原语的矩阵。
@@ -17,6 +24,10 @@ extern "C"
     URUI_API int urui_element_box(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity);
     // 只读刷新：有效位1、挂载位2；out为相对布局的x/y/width/height，不计算世界边界。
     URUI_API int urui_element_refresh_state(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity);
+    typedef struct UruiElementRefreshState { int32_t state; float layout[4]; } UruiElementRefreshState;
+    // Synchronous read-only batch, no callbacks. 1 success; invalid tokens have state=0.
+    // Count <=65536; output zeroed on context/document/failure after argument validation.
+    URUI_API int urui_element_refresh_states(UruiDocumentHandle owner, const uint64_t* tokens, UruiElementRefreshState* out, uint32_t count);
     // Content viewport after padding and scrollbar exclusion: x/y/width/height.
     URUI_API int urui_element_viewport(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity);
     URUI_API int urui_element_point(UruiDocumentHandle document_handle, uint64_t token, int to_world, float x, float y, float* out);
@@ -44,7 +55,9 @@ extern "C"
     typedef int (*UruiElementCallback)(const UruiElementEvent* event);
     URUI_API int urui_set_event_callback(UruiElementCallback callback);
     URUI_API int urui_document_listen(UruiDocumentHandle document_handle);
+    URUI_API int urui_element_event_interest(UruiDocumentHandle owner,uint64_t token,uint32_t mask,uint64_t version);
     URUI_API int urui_element_listen(UruiDocumentHandle document_handle, uint64_t token, int type, int capture, int enabled);
+    URUI_API int urui_pointer_poll(int pointer,int kind,float x,float y,int buttons,int modifiers);
     URUI_API int urui_pointer_event(int pointer, int kind, int phase, float x, float y, int button, int buttons, float dx, float dy, int modifiers);
     URUI_API int urui_pointer_capture(UruiDocumentHandle document_handle, int pointer, uint64_t token);
     URUI_API uint64_t urui_pointer_captured(UruiDocumentHandle document_handle, int pointer);
@@ -55,6 +68,7 @@ extern "C"
     // operation 0 preview, 1 commit, 2 cancel; text is UTF-8.
     URUI_API int urui_text_composition(const char* text, int operation);
     URUI_API int urui_text_selection(int* start, int* end, int write);
+    URUI_API uint64_t urui_clipboard_version();
     URUI_API int urui_clipboard_write(const char* text);
     URUI_API int urui_clipboard_read(char* out, int capacity, int* required);
     // Called outside URUI dispatch: reclaim detached listeners/deferred context teardown.

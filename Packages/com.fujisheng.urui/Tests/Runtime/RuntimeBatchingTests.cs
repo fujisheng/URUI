@@ -77,6 +77,16 @@ namespace URUI.Tests
             Assert.That(actual.b,Is.EqualTo(expected.b).Within(3f/255));
         }
 
+        [Test]
+        public void LargeLayoutTranslationPreservesVisibleSourceGeometry()
+        {
+            Load("<img src='red.png' style='width:16.75px;'>"+
+                "<img src='red.png' style='left:16777216px;top:8px;width:16.75px;transform:translate(-16777216px,0);transform-origin:0 0;'>");
+            var reference=Pixel(15,1);
+            Assert.That(reference.r,Is.GreaterThan(.1f),"参考图形必须实际覆盖像素中心。");
+            Assert.That(Pixel(15,9).r,Is.EqualTo(reference.r).Within(1f/255),"大布局坐标变换后仍应绘制原生源网格覆盖的像素。");
+        }
+
         [TestCase(100)]
         [TestCase(1000)]
         public void SameTextureAutomaticallyUsesOneGeometrySubmission(int count)
@@ -247,22 +257,18 @@ namespace URUI.Tests
         }
 
         [UnityTest]
-        public IEnumerator StableCommandsDoNotRepeatInterpretationAfterAValidatedDirtyRefresh()
+        public IEnumerator StableCommandsDoNotRepeatUploadsAfterAValidatedParameterRefresh()
         {
             Load("<img id='probe' src='red.png'>");
-            using(var positive=ProfilerRecorder.StartNew(ProfilerCategory.Scripts,"URUI.Render.Commands",64))
-            {
-                document.Q("probe").Style.SetPixels("left",4);
-                document.SynchronizeLayout();yield return null;positive.Stop();
-                Assert.That(MarkerCalls(positive),Is.GreaterThan(0),"必须先捕获实际重建，不能用无效计数器证明缓存命中。");
-            }
+            var uploaded=Host.ParameterUploadBytes;
+            document.Q("probe").Style.SetPixels("left",4); document.SynchronizeLayout();
+            Assert.That(Host.ParameterUploadBytes,Is.GreaterThan(uploaded),"阳性验证：实际参数变化必须触发上传。");
             for(var i=0;i<5;i++)document.SynchronizeLayout();
-            using(var stable=ProfilerRecorder.StartNew(ProfilerCategory.Scripts,"URUI.Render.Commands",64))
-            {
-                for(var i=0;i<5;i++)document.SynchronizeLayout();
-                yield return null;stable.Stop();
-                Assert.That(MarkerCalls(stable),Is.Zero);
-            }
+            uploaded=Host.ParameterUploadBytes;var geometry=Host.GeometryUploadBytes;
+            for(var i=0;i<5;i++)document.SynchronizeLayout();
+            Assert.That(Host.ParameterUploadBytes,Is.EqualTo(uploaded));
+            Assert.That(Host.GeometryUploadBytes,Is.EqualTo(geometry));
+            yield return null;
             Rgb(Pixel(5,1),new Color(.5f,0,0));
         }
 
@@ -282,12 +288,13 @@ namespace URUI.Tests
         public void DestroyingHiddenGeometryDoesNotRetainItBehindTheStaticCache()
         {
             Load("<img id='visible' src='red.png'><img id='hidden' src='red.png' style='left:4px;'>");
-            var field=typeof(RenderHost).GetField("meshes",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
-            var meshes=(System.Collections.IDictionary)field.GetValue(Host);
+            var commands=new URUI.Internal.Interop.CommandNative[2];
+            Assert.That(URUI.Internal.Interop.NativeMethods.urui_get_commands(commands,commands.Length),Is.EqualTo(2));
+            var hidden=commands[1].geometry;
+            Assert.That(URUI.Internal.Interop.NativeMethods.urui_geometry_exists(hidden),Is.EqualTo(1));
             document.Q("hidden").Style.Set("display","none");document.SynchronizeLayout();
-            var hiddenCount=meshes.Count;
             document.Q("hidden").Destroy();document.SynchronizeLayout();
-            Assert.That(meshes.Count,Is.LessThan(hiddenCount));
+            Assert.That(URUI.Internal.Interop.NativeMethods.urui_geometry_exists(hidden),Is.Zero);
             Rgb(Pixel(1,1),new Color(.5f,0,0));
         }
 

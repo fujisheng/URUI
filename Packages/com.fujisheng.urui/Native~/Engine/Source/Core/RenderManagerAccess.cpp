@@ -15,9 +15,9 @@ Vector2i RenderManagerAccess::GetDimensions(RenderManager* render_manager, Stabl
 }
 
 void RenderManagerAccess::Render(RenderManager* render_manager, const Geometry& geometry, Vector2f translation, Texture texture,
-	const CompiledShader& shader)
+	const CompiledShader& shader, const DrawParameters& parameters)
 {
-	render_manager->Render(geometry, translation, texture, shader);
+	render_manager->Render(geometry, translation, texture, shader, parameters);
 }
 
 void RenderManagerAccess::GetTextureSourceList(RenderManager* render_manager, StringList& source_list)

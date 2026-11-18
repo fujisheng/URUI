@@ -63,6 +63,7 @@ public:
 	void SetOrigin(CssOrigin origin);
 
 private:
+	friend class CompiledArchive;
 	StyleSheet();
 
 	// Root level node, attributes from special nodes like "body" get added to this node

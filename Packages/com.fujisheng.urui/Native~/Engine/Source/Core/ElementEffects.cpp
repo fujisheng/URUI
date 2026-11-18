@@ -24,7 +24,7 @@ ElementEffects::~ElementEffects()
 bool ElementEffects::IsDirectImage()
 {
     const auto revision = element->GetStyle()->GetComputedRevision();
-    const bool capture = element->effect_capture_required;
+    const bool capture = element->IsEffectCaptureRequired();
     // The document resource schema is fixed before publication. Only computed
     // style and the host's capture requirement can change this policy afterward.
     if (!direct_image_initialized || revision != direct_image_revision || capture != direct_image_capture) {

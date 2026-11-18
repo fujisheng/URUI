@@ -49,7 +49,7 @@ namespace URUI.Tests
                     filteredTargets = EffectStatistics.GetTargets().LeasedTargets, baselinePasses = baselinePasses,
                     filteredPasses = EffectStatistics.FilterProcessingPasses - beforePasses };
                 Assert.That(EffectStatistics.GetTargets().LeasedTargets, Is.EqualTo(baselineTargets), "简单图片颜色链不能增加 RT 租约");
-                Assert.That(EffectStatistics.FilterProcessingPasses - beforePasses, Is.EqualTo(baselinePasses), "新增三条图片滤镜链不能增加处理 Pass");
+                Assert.That(EffectStatistics.FilterProcessingPasses - beforePasses, Is.LessThanOrEqualTo(baselinePasses), "新增三条图片滤镜链不能增加处理 Pass；已有子层可在 fence 完成后命中缓存");
                 Capture();
                 var alpha = 128f / 255;
                 AssertPixel(16, new Color(.75f, .45f, .75f) * (alpha * .5f));

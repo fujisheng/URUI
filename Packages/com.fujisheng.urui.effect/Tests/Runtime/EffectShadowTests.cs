@@ -17,7 +17,7 @@ namespace URUI.Effect.Tests
             {
                 var id="ShadowMode."+mode+".050";
                 fixture.Load("--urui-fx-shadow-mode:"+EffectRenderFixture.Kebab(mode.ToString())+";--urui-fx-shadow-distance-x:5;--urui-fx-shadow-distance-y:-4;--urui-fx-shadow-iteration:2;");
-                fixture.Compare(id);report.cases.Add(id);
+                fixture.Compare(id);report.cases.Add(id);yield return null;
             }
             File.WriteAllText(Path.Combine(fixture.Output,"shadow-captures.json"),JsonUtility.ToJson(report,true));yield return null;
         }
@@ -31,7 +31,7 @@ namespace URUI.Effect.Tests
                 var id="Flip."+flip+".050";
                 fixture.Load("--urui-fx-flip:"+flip+";--urui-fx-transition-filter:shiny;--urui-fx-transition-texture:url('pattern.png');--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;"+
                     "--urui-fx-gradation-mode:diagonal;--urui-fx-gradation-intensity:.5;--urui-fx-gradation-color1:#e61a33;--urui-fx-gradation-color2:#1acc4db3;--urui-fx-gradation-color3:#334de6;--urui-fx-gradation-color4:#e6b33366;");
-                fixture.Compare(id);report.cases.Add(id);
+                fixture.Compare(id);report.cases.Add(id);yield return null;
             }
             File.WriteAllText(Path.Combine(fixture.Output,"flip-captures.json"),JsonUtility.ToJson(report,true));yield return null;
         }

@@ -742,6 +742,17 @@ float ElementAnimation::GetInterpolationFactorAndKeys(int* out_key0, int* out_ke
 	return alpha;
 }
 
+Property ElementAnimation::Sample(float normalized_time, Element& element) const
+{
+    if (keys.empty() || !std::isfinite(normalized_time) || normalized_time < 0 || normalized_time > 1) return {};
+    auto sample = *this;
+    sample.time_since_iteration_start = normalized_time * duration;
+    sample.reverse_direction = false;
+    int key0 = -1, key1 = -1;
+    const float alpha = sample.GetInterpolationFactorAndKeys(&key0, &key1);
+    return InterpolateProperties(keys[key0].property, keys[key1].property, alpha, element, keys[0].property.definition);
+}
+
 Property ElementAnimation::UpdateAndGetProperty(double world_time, Element& element)
 {
     // A finite zero-duration CSS animation still creates/ends its named tracks.

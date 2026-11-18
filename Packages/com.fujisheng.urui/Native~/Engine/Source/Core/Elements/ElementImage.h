@@ -98,6 +98,8 @@ private:
 	// The geometry used to render this element.
 	Geometry geometry;
 	ImageEffectState image_effect;
+    uint64_t tint_revision = UINT64_MAX;
+    ColourbPremultiplied render_tint;
 	bool geometry_dirty;
 };
 

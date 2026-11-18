@@ -14,15 +14,23 @@ ElementBackgroundBorder::ElementBackgroundBorder() {}
 void ElementBackgroundBorder::Render(Element* element, bool foreground, bool image_border)
 {
     if (background_dirty || border_dirty) {
-        for (auto& background : backgrounds) background.second.geometry.Release();
         GenerateGeometry(element);
         background_dirty = border_dirty = false;
     }
     const Vector2f offset = element->GetAbsoluteOffset(BoxArea::Border);
     if (Background* shadow = GetBackground(foreground ? BackgroundType::InnerShadow : BackgroundType::OuterShadow))
         if (shadow->shadow) shadow->shadow->geometry.Render(offset, shadow->shadow->texture);
-    if (Background* background = (foreground && image_border ? nullptr : GetBackground(foreground ? BackgroundType::Border : BackgroundType::Background)))
-        background->geometry.Render(offset);
+    if (Background* background = (foreground && image_border ? nullptr : GetBackground(foreground ? BackgroundType::Border : BackgroundType::Background))) {
+        if (foreground) background->geometry.Render(offset);
+        else {
+            const auto color = element->GetComputedValues().background_color();
+            // 图形倍率只能相乘；透明背景不会贡献绘制，仍保留上方阴影及独立边框流程。
+            if (color.alpha == 0) return;
+            DrawParameters parameters;
+            parameters.tint = urui_graphic::Tint(*element, color).ToPremultiplied();
+            if(parameters.tint.alpha) background->geometry.Render(offset, {}, {}, parameters);
+        }
+    }
 }
 
 void ElementBackgroundBorder::DirtyBackground() { background_dirty = true; }
@@ -64,18 +72,26 @@ void ElementBackgroundBorder::GenerateGeometry(Element* element)
         if (computed.has_box_shadow()) GetOrCreateBackground(pass.first).shadow = BoxShadowCache::GetHandle(element, computed, pass.second);
         else backgrounds.erase(pass.first);
     }
-    const Array<ColourbPremultiplied, 4> border_colors = {
-        urui_graphic::Tint(*element,computed.border_top_color()).ToPremultiplied(), urui_graphic::Tint(*element,computed.border_right_color()).ToPremultiplied(),
-        urui_graphic::Tint(*element,computed.border_bottom_color()).ToPremultiplied(), urui_graphic::Tint(*element,computed.border_left_color()).ToPremultiplied()};
-    const size_t layer_count = GetCssImageLayerCount(element, PropertyId::BackgroundImage);
-    const auto clip = GetCssImageArea(element, PropertyId::BackgroundClip, layer_count ? layer_count-1 : 0);
-    Mesh background_mesh, border_mesh;
-    for (int index = 0; index < element->GetNumBoxes(); ++index) {
-        MeshUtilities::GenerateBackground(background_mesh, element->GetRenderBox(clip,index), urui_graphic::Tint(*element,computed.background_color()).ToPremultiplied());
-        MeshUtilities::GenerateBackgroundBorder(border_mesh, element->GetRenderBox(BoxArea::Padding,index), ColourbPremultiplied(0,0), border_colors.data());
+    if(background_dirty) {
+        for(auto type:{BackgroundType::Background,BackgroundType::ClipBorder,BackgroundType::ClipPadding,BackgroundType::ClipContent})
+            if(auto* background=GetBackground(type))background->geometry.Release();
+        const size_t layer_count = GetCssImageLayerCount(element, PropertyId::BackgroundImage);
+        const auto clip = GetCssImageArea(element, PropertyId::BackgroundClip, layer_count ? layer_count-1 : 0);
+        Mesh mesh;
+        for(int index=0;index<element->GetNumBoxes();index++)
+            MeshUtilities::GenerateBackground(mesh,element->GetRenderBox(clip,index),ColourbPremultiplied(255));
+        GetOrCreateBackground(BackgroundType::Background).geometry=manager->MakeGeometry(std::move(mesh));
     }
-    GetOrCreateBackground(BackgroundType::Background).geometry = manager->MakeGeometry(std::move(background_mesh));
-    GetOrCreateBackground(BackgroundType::Border).geometry = manager->MakeGeometry(std::move(border_mesh));
+    if(border_dirty) {
+        auto& border=GetOrCreateBackground(BackgroundType::Border);border.geometry.Release();
+        const Array<ColourbPremultiplied, 4> colors = {
+            urui_graphic::Tint(*element,computed.border_top_color()).ToPremultiplied(), urui_graphic::Tint(*element,computed.border_right_color()).ToPremultiplied(),
+            urui_graphic::Tint(*element,computed.border_bottom_color()).ToPremultiplied(), urui_graphic::Tint(*element,computed.border_left_color()).ToPremultiplied()};
+        Mesh mesh;
+        for(int index=0;index<element->GetNumBoxes();index++)
+            MeshUtilities::GenerateBackgroundBorder(mesh,element->GetRenderBox(BoxArea::Padding,index),ColourbPremultiplied(0,0),colors.data());
+        border.geometry=manager->MakeGeometry(std::move(mesh));
+    }
 }
 
 } // namespace URUI

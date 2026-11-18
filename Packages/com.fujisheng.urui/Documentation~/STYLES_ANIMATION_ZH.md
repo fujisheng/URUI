@@ -38,7 +38,7 @@ public static class StyleExamples
 }
 ```
 
-ResolvedStyle.Get 读取级联值，任意属性可能仍保留相对单位。ResolvedStyle.Width/Height 为实际 border 像素尺寸；测量位置和内容区用 Layout/ContentRect/WorldBound。首次布局前检查 HasLayout。
+ResolvedStyle.Get 读取级联值，任意属性可能仍保留相对单位。`ResolvedStyle.TryGetLength(name, out Length)` 读取有限像素、百分比、em、rem 或 auto，不创建托管字符串；缺失、未解析或非长度值返回 false。它保留单位；无单位数值与 `Length.Parse` 一样视为像素，不代替 CSS 属性类型校验，也不把百分比等相对单位自动换算成像素。ResolvedStyle.Width/Height 为实际 border 像素尺寸；测量位置和内容区用 Layout/ContentRect/WorldBound。首次布局前检查 HasLayout。
 
 ## 自定义属性与计算快照
 

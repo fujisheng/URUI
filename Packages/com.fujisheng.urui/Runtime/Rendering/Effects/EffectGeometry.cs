@@ -4,6 +4,35 @@ using UnityEngine;
 
 namespace URUI.Rendering.Effects
 {
+    // Private immutable topology plus frozen uniform values. Public arrays are
+    // derived only when observed, never for the native draw consumer.
+    internal readonly struct PreparedSourceGeometry
+    {
+        internal readonly EffectGeometry Base;
+        internal readonly ulong Identity;
+        readonly Vector4 tint,uv;
+        internal PreparedSourceGeometry(EffectGeometry source,ulong identity,Vector4 tint,Vector4 uv)
+        {Base=source;Identity=identity;this.tint=tint;this.uv=uv;}
+        internal Rect UvBounds {
+            get {
+                var b=Base.UvBounds;var a=new Vector2(b.xMin*uv.x+uv.z,b.yMin*uv.y+uv.w);var c=new Vector2(b.xMax*uv.x+uv.z,b.yMax*uv.y+uv.w);
+                return Rect.MinMaxRect(Mathf.Min(a.x,c.x),Mathf.Min(a.y,c.y),Mathf.Max(a.x,c.x),Mathf.Max(a.y,c.y));
+            }
+        }
+        internal EffectGeometry Materialize(EffectGeometry previous)
+        {
+            if(previous!=null&&previous.GeometryId==Identity)return previous;
+            if(tint==Vector4.one&&uv==new Vector4(1,1,0,0))return Base;
+            var count=Base.PositionData.Length;var textureCoordinates=new Vector2[count];var colors=new Color32[count];
+            for(var index=0;index<count;index++)
+            {
+                var source=Base.UvData[index];textureCoordinates[index]=new Vector2(source.x*uv.x+uv.z,source.y*uv.y+uv.w);
+                var color=Base.ColorData[index];colors[index]=new Color32(Scale(color.r,tint.x),Scale(color.g,tint.y),Scale(color.b,tint.z),Scale(color.a,tint.w));
+            }
+            return new EffectGeometry(Identity,Base.PositionData,textureCoordinates,colors,Base.IndexData);
+        }
+        static byte Scale(byte value,float scale)=>(byte)Mathf.Clamp(Mathf.FloorToInt(value*scale+.5f),0,255);
+    }
     /// <summary>原始绘制几何的不可变副本；同一原生几何身份复用，不依赖 Record 阶段的 DOM。</summary>
     public sealed class EffectGeometry
     {

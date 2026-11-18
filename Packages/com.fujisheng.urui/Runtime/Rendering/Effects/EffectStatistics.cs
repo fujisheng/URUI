@@ -1,6 +1,6 @@
 namespace URUI.Rendering.Effects
 {
-    /// <summary>效果目标的实际所有权计数；颜色字节不含驱动对齐、深度缓冲或视频解码输入。</summary>
+    /// <summary>效果目标的实际所有权计数；颜色字节为持久颜色容量，不含memoryless片上存储、驱动对齐、深度缓冲或视频解码输入。</summary>
     public readonly struct EffectTargetStatistics
     {
         public readonly int LiveTargets,LeasedTargets;

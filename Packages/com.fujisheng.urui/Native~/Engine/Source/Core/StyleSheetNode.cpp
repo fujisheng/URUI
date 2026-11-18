@@ -9,6 +9,27 @@
 
 namespace URUI {
 
+static size_t ChildSelectorHash(const CompoundSelector& selector)
+{
+	size_t value = 0;
+	auto add = [&](size_t item) { value ^= item + size_t(0x9e3779b9) + (value << 6) + (value >> 2); };
+	auto text = [&](const String& item) { add(Hash<String>{}(item)); };
+	auto list = [&](const StringList& items) { add(items.size()); for (const auto& item : items) text(item); };
+	text(selector.tag); text(selector.id);
+	list(selector.additional_ids); list(selector.class_names); list(selector.pseudo_class_names);
+	add(selector.attributes.size());
+	for (const auto& attribute : selector.attributes) {
+		add(size_t(attribute.type)); text(attribute.name); text(attribute.value);
+	}
+	add(selector.structural_selectors.size());
+	for (const auto& structural : selector.structural_selectors) {
+		add(size_t(structural.type)); add(size_t(structural.a)); add(size_t(structural.b));
+	}
+	// 不扫描嵌套选择器树；候选命中后仍以完整相等比较为准。
+	add(size_t(selector.combinator));
+	return value;
+}
+
 static inline bool IsTextElement(const Element* element)
 {
 	return !element->GetTagName().empty() && element->GetTagName()[0] == '#';
@@ -31,37 +52,53 @@ StyleSheetNode::StyleSheetNode(StyleSheetNode* parent, CompoundSelector&& select
 
 StyleSheetNode* StyleSheetNode::GetOrCreateChildNode(const CompoundSelector& other)
 {
-	// See if we match an existing child
-	for (const auto& child : children)
-	{
-		if (child->selector == other)
-			return child.get();
-	}
-
-	// We don't, so create a new child
-	auto child = MakeUnique<StyleSheetNode>(this, other);
-	StyleSheetNode* result = child.get();
-
-	children.push_back(std::move(child));
-
-	return result;
+	if (auto* found = FindChild(other)) return found;
+	return AppendChild(MakeUnique<StyleSheetNode>(this, other));
 }
 
 StyleSheetNode* StyleSheetNode::GetOrCreateChildNode(CompoundSelector&& other)
 {
-	// See if we match an existing child
-	for (const auto& child : children)
-	{
-		if (child->selector == other)
-			return child.get();
+	if (auto* found = FindChild(other)) return found;
+	return AppendChild(MakeUnique<StyleSheetNode>(this, std::move(other)));
+}
+
+StyleSheetNode* StyleSheetNode::FindChild(const CompoundSelector& other)
+{
+	if (children.size() < 16) {
+		for (const auto& child : children) if (child->selector == other) return child.get();
+		return nullptr;
 	}
+	if (!child_index || indexed_children != children.size()) {
+		auto next = MakeUnique<ChildIndex>();
+		next->reserve(children.size());
+		for (size_t index = 0; index < children.size(); index++)
+			next->emplace(ChildSelectorHash(children[index]->selector), index);
+		child_index = std::move(next);
+		indexed_children = children.size();
+	}
+	const auto candidates = child_index->equal_range(ChildSelectorHash(other));
+	size_t selected = children.size();
+	for (auto it = candidates.first; it != candidates.second; ++it)
+		if (it->second < selected && children[it->second]->selector == other) selected = it->second;
+	// 即便输入树带有重复要求，也与原有遍历一样选择最早的子节点。
+	return selected < children.size() ? children[selected].get() : nullptr;
+}
 
-	// We don't, so create a new child
-	auto child = MakeUnique<StyleSheetNode>(this, std::move(other));
-	StyleSheetNode* result = child.get();
-
+StyleSheetNode* StyleSheetNode::AppendChild(UniquePtr<StyleSheetNode> child)
+{
+	auto* result = child.get();
 	children.push_back(std::move(child));
-
+	try {
+		if (child_index) {
+			child_index->emplace(ChildSelectorHash(result->selector), children.size() - 1);
+			indexed_children = children.size();
+		}
+	} catch (...) {
+		// 索引扩容失败时同时撤销节点，避免悬空候选或半次插入。
+		child_index.reset(); indexed_children = 0;
+		children.pop_back();
+		throw;
+	}
 	return result;
 }
 

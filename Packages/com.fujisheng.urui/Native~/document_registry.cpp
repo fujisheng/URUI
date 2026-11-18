@@ -77,6 +77,7 @@ int DocumentRegistry::Publish(uint64_t handle, URUI::ElementDocument* document)
         context.ReserveDocumentRetirement();
         auto reference = document->GetObserverPtr();
         handles.emplace(document, handle);
+        state->templates.Clear();
         if (auto* previous = state->Element())
         {
             state->retiring = true;

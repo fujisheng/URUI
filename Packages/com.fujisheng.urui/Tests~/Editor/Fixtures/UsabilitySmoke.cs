@@ -16,6 +16,7 @@ namespace URUI.Tests
     {
         public Document generatedDocument;
         public TextAsset generatedSource;
+        public URUI.Resources.CompiledDocumentAsset generatedCompiled;
         HelloUrui sample;
         int frames;
         int clicks;
@@ -75,10 +76,10 @@ namespace URUI.Tests
                 if (frames == 3)
                 {
                     Need(generatedDocument.IsLoaded && generatedDocument.Q("label").IsValid, "generated serialized Document loaded");
-                    Need(generatedDocument.Source == generatedSource, "TextAsset source visible after Loaded");
+                    Need(generatedDocument.CompiledSource == generatedCompiled, "compiled source visible after Loaded");
                     generatedDocument.enabled = false;
                     generatedDocument.enabled = true;
-                    Need(generatedDocument.IsLoaded && generatedDocument.Source == generatedSource, "serialized source survives enable cycle");
+                    Need(generatedDocument.IsLoaded && generatedDocument.CompiledSource == generatedCompiled, "compiled source survives enable cycle");
                     generatedDocument.Unload();
                     var surface = generatedDocument.Surface;
                     surface.Viewport = new Vector2Int(640, 480);

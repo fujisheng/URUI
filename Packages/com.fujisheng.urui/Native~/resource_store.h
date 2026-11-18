@@ -34,12 +34,15 @@ public:
         };
         entry.claims.erase(std::remove_if(entry.claims.begin(), entry.claims.end(), [](const auto& weak) { return weak.expired(); }), entry.claims.end());
         entry.contents.erase(std::remove_if(entry.contents.begin(), entry.contents.end(), [](const auto& weak) { return weak.expired(); }), entry.contents.end());
-        for (const auto& weak : entry.claims) if (auto claim = weak.lock()) {
-            if (claim->group != group && (claim->kind != kind || !equal(*claim->bytes)))
-                throw std::invalid_argument("Resource URI has a different source: " + source);
-        }
         ResourceFiles::Data shared;
-        for (const auto& weak : entry.contents) if (auto content = weak.lock(); content && equal(*content)) { shared = std::move(content); break; }
+        for (const auto& weak : entry.claims) if (auto claim = weak.lock(); claim && claim->group != group) {
+            if (claim->kind != kind || (claim->bytes != shared && !equal(*claim->bytes)))
+                throw std::invalid_argument("Resource URI has a different source: " + source);
+            // 活动声明通常共享同一份不可变数据；相同 backing 只比较一次。
+            shared = claim->bytes;
+        }
+        if (!shared)
+            for (const auto& weak : entry.contents) if (auto content = weak.lock(); content && equal(*content)) { shared = std::move(content); break; }
         if (!shared) {
             auto copy = std::make_shared<std::vector<uint8_t>>();
             if (length) copy->assign(bytes, bytes + length);

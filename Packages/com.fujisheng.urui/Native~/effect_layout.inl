@@ -19,7 +19,7 @@ extern "C" {
  int urui_element_effect_state(UruiDocumentHandle owner,uint64_t token,int capture_required,int input_disabled) try {
   if(!render||context_thread!=std::this_thread::get_id()||urui_interaction::callback_depth||capture_required<0||capture_required>1||input_disabled<0||input_disabled>1)return -1;
   auto* element=urui_elements::Get(owner,token);if(!element)return -2;
-  element->effect_capture_required=capture_required!=0;element->effect_input_disabled=input_disabled!=0;return 1;
+  element->SetEffectState(capture_required!=0,input_disabled!=0);return 1;
  } catch(...) {return -8;}
  int urui_document_effect_image_condition(UruiDocumentHandle owner,const char* effect,const char* property,const char* direct_value) try {
   URUI::Bridge::DocumentState* state=nullptr;

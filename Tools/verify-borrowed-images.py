@@ -8,6 +8,8 @@ import sys
 
 repo = Path(__file__).resolve().parents[1]
 project = repo.parent
+if not (project / 'ProjectSettings/ProjectSettings.asset').is_file() or not (project / 'Assets').is_dir():
+    raise SystemExit('Legacy workspace required. No files changed. Import Tests~/TextureBorrowing into an isolated Unity project; see its README.')
 package = repo / 'Packages/com.fujisheng.urui'
 fixtures = package / 'Tests~/Editor/Fixtures'
 output = project / 'Artifacts/ImageMemoryAudit/Implementation'

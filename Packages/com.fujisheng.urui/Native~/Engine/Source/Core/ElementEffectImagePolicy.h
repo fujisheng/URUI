@@ -7,7 +7,7 @@
 
 namespace URUI {
 inline bool DirectElementEffectImage(Element* element) {
- if(element->effect_capture_required)return false;
+ if(element->IsEffectCaptureRequired())return false;
  if(element->GetTagName()!="img")return false;
  const auto* image=element->GetProperty("--urui-image-effect");
  const auto image_name=image ? image->Get<String>() : String();

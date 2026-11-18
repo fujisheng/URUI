@@ -79,6 +79,205 @@ namespace URUI.Tests
         }
 
         [Test]
+        public void IdlePointerCancellationDoesNotAllocateDeferredActions()
+        {
+            Load(); var owner=document.Q("n0"); var input=document.Surface.Input;
+            Action cycle=()=>{for(var i=0;i<32;i++)input.CancelPointers(owner);};
+            for(var i=0;i<10;i++)cycle();ValidateRecorder();
+            Assert.That(Allocations(cycle),Is.Zero,"非回调中的取消不应反复创建延迟委托。");
+        }
+
+        [Test]
+        public void AlternatingStyleReadsReuseTwoValuesAndObserveAuthorWrites()
+        {
+            Load(); var node=document.Q("n0");
+            Action cycle=()=>
+            {
+                for(var i=0;i<32;i++)
+                {
+                    node.Style.Set("display", "flex"); _=node.Style.Get("display");
+                    node.Style.Set("display", "none"); _=node.Style.Get("display");
+                }
+            };
+            for(var i=0;i<10;i++)cycle();ValidateRecorder();
+            var allocations=Allocations(cycle);
+            node.Style.Set("display","block");Assert.That(node.Style.Get("display"),Is.EqualTo("block"));
+            node.Style.Remove("display");Assert.That(node.Style.Get("display"),Is.Null);
+            Assert.That(allocations,Is.Zero,"有限的双态样式不应在每次切换时创建相同字符串。");
+        }
+
+        [Test]
+        public void DeferredPointerCancellationKeepsSubtreeAndReentrantSemantics()
+        {
+            document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}#owner{position:absolute;width:100px;height:100px;}</style></head><body><div id='owner'></div></body></html>","/cancel-reentrancy.html");
+            document.SynchronizeLayout();var owner=document.Q("owner");var input=document.Surface.Input;var cancelled=0;
+            using var cancel=owner.RegisterCallback<PointerCancelEvent>(_=>{cancelled++;input.CancelPointers(owner);});
+            using var press=owner.RegisterCallback<PointerDownEvent>(_=>{owner.CapturePointer(0);input.CancelPointers(owner);});
+            input.SendPointer(PointerPhase.Down,new Vector2(20,20),pressedButtons:1);
+            Assert.That(cancelled,Is.EqualTo(1));Assert.That(owner.HasPointerCapture(0),Is.False);
+            input.SendPointer(PointerPhase.Up,new Vector2(20,20));Assert.That(cancelled,Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NestedEventDispatchReusesPathsAndSubscriptionSnapshots()
+        {
+            Load();var target=document.Q("n0");var parent=target.Parent;
+            var outer=new PointerMoveEvent();var inner=new PointerMoveEvent();var delivered=0;
+            using var first=target.RegisterCallback<PointerMoveEvent>(value=>{delivered++;if(ReferenceEquals(value,outer))target.SendEvent(inner);});
+            using var second=parent.RegisterCallback<PointerMoveEvent>(value=>delivered++);
+            Action cycle=()=>target.SendEvent(outer);
+            for(var i=0;i<300;i++)cycle();ValidateRecorder();
+            var before=delivered;var allocations=Allocations(()=>{for(var i=0;i<32;i++)cycle();});
+            Assert.That(delivered-before,Is.EqualTo(128));
+            Assert.That(allocations,Is.Zero,"嵌套分发应复用独立传播路径，订阅快照仅在订阅改变时创建。");
+        }
+
+        [Test]
+        public void NestedSubscriptionChangesKeepTheOuterPropagationSnapshot()
+        {
+            Load();var target=document.Q("n0");var parent=target.Parent;
+            var outer=new PointerMoveEvent();var inner=new PointerMoveEvent();
+            var calls=new System.Collections.Generic.List<string>();bool changed=false;
+            IDisposable added=null,previous=null;
+            using var first=target.RegisterCallback<PointerMoveEvent>(value=>
+            {
+                calls.Add(ReferenceEquals(value,outer)?"target-outer":"target-inner");
+                if(ReferenceEquals(value,outer)&&!changed)
+                {
+                    changed=true;added=parent.RegisterCallback<PointerMoveEvent>(nested=>
+                    {calls.Add(ReferenceEquals(nested,outer)?"new-outer":"new-inner");previous.Dispose();});
+                    target.SendEvent(inner);
+                }
+            });
+            previous=parent.RegisterCallback<PointerMoveEvent>(value=>calls.Add("old-inner"));
+            try
+            {
+                target.SendEvent(outer);
+                Assert.That(calls,Is.EqualTo(new[]{"target-outer","target-inner","old-inner","new-inner"}));
+                calls.Clear();target.SendEvent(outer);
+                Assert.That(calls,Is.EqualTo(new[]{"target-outer","new-outer"}));
+                Assert.That(outer.Target,Is.SameAs(target));Assert.That(inner.Target,Is.SameAs(target));
+            }
+            finally{added?.Dispose();previous.Dispose();}
+        }
+
+        [Test] public void AutomaticPointerPollingSkipsStableInputButTracksLayoutAndExplicitEvents()
+        {
+            document.LoadHtml("<!doctype html><html><head><style>body{margin:0;width:128px;height:128px;}div{position:absolute;left:0;top:0;width:100px;height:100px;}#under{z-index:0;}#over{z-index:1;}</style></head><body><div id='under'></div><div id='over'></div></body></html>","/pointer-poll.html");
+            document.SynchronizeLayout();var input=document.Surface.Input;var moves=0;var enters=0;var leaves=0;
+            using var movement=document.Body.RegisterCallback<PointerMoveEvent>(_=>moves++);
+            using var enter=document.Q("under").RegisterCallback<PointerEnterEvent>(_=>enters++);
+            using var leave=document.Q("over").RegisterCallback<PointerLeaveEvent>(_=>leaves++);
+            void Poll()=>input.PollUnityPointer(new Vector2(40,40),0,false,0,InputModifiers.None);
+            Poll();var initial=moves;Assert.That(initial,Is.EqualTo(1));
+            for(var i=0;i<8;i++)Poll();Assert.That(moves,Is.EqualTo(initial));
+            document.Q("over").Style.Set("left","150px");document.SynchronizeLayout();Poll();
+            Assert.That(moves,Is.EqualTo(initial+1));Assert.That(enters,Is.EqualTo(1));Assert.That(leaves,Is.EqualTo(1));
+            input.SendPointer(PointerPhase.Move,new Vector2(40,40));input.SendPointer(PointerPhase.Move,new Vector2(40,40));
+            Assert.That(moves,Is.EqualTo(initial+3),"显式 SendPointer 每次调用仍是一个真实事件。");
+            Poll();var afterExplicit=moves;Poll();Assert.That(moves,Is.EqualTo(afterExplicit));
+            document.Q("under").Style.Set("pointer-events","none");document.SynchronizeLayout();Poll();
+            Assert.That(moves,Is.EqualTo(afterExplicit+1),"静止坐标也必须观察命中策略变化。");
+        }
+        [Test] public void UnityClipboardSynchronizesAtFocusAndEditingBoundaries()
+        {
+            var system=GUIUtility.systemCopyBuffer;string native=null;
+            try
+            {
+                document.LoadHtml("<!doctype html><html><head></head><body><input type='text' id='value' value='abc'></body></html>","/clipboard-boundaries.html");
+                document.SynchronizeLayout();native=NativeMethods.ReadClipboard();var input=document.Surface.Input;var field=document.Q<TextField>("value");
+                GUIUtility.systemCopyBuffer="external α";NativeMethods.urui_clipboard_write("old");
+                field.Focus();input.SyncUnityClipboardFocus();Assert.That(NativeMethods.ReadClipboard(),Is.EqualTo("external α"));
+                GUIUtility.systemCopyBuffer="later";input.SyncUnityClipboardFocus();Assert.That(NativeMethods.ReadClipboard(),Is.EqualTo("external α"));
+                field.SelectRange(0,3);input.SendUnityKey(KeyCode.V,true,InputModifiers.Control);Assert.That(field.Value,Is.EqualTo("later"));
+                field.SelectRange(0,5);GUIUtility.systemCopyBuffer="outsider";
+                input.SendUnityKey(KeyCode.C,true,InputModifiers.Control);Assert.That(GUIUtility.systemCopyBuffer,Is.EqualTo("later"));
+                Action idle=()=>{input.SyncUnityClipboardFocus();input.FlushUnityClipboard();};
+                for(var i=0;i<300;i++)idle();ValidateRecorder();
+                Assert.That(Allocations(()=>{for(var i=0;i<32;i++)idle();}),Is.Zero);
+            }
+            finally{GUIUtility.systemCopyBuffer=system;NativeMethods.urui_clipboard_write(native??"");}
+        }
+        [Test] public void UnobservedNativePointerMovesDoNotAllocateManagedEvents()
+        {
+            document.LoadHtml("<!doctype html><html><head><style>#value{position:absolute;left:0;top:0;width:100px;height:100px;}</style></head><body><div id='value'></div></body></html>","/unobserved-events.html");
+            document.SynchronizeLayout();var input=document.Surface.Input;var frame=0;
+            Action cycle=()=>input.SendPointer(PointerPhase.Move,new Vector2(40+(++frame%2),40));
+            for(var i=0;i<300;i++)cycle();ValidateRecorder();
+            Assert.That(Allocations(()=>{for(var i=0;i<32;i++)cycle();}),Is.Zero,"没有托管兴趣的原生事件不应构造公开 EventBase。");
+            var delivered=0;using(var registration=document.Body.RegisterCallback<PointerMoveEvent>(_=>delivered++))
+            {cycle();Assert.That(delivered,Is.EqualTo(1),"祖先订阅必须接收到子节点事件。");}
+            cycle();Assert.That(delivered,Is.EqualTo(1));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void UnobservedManagedLayoutAndAttachmentChangesDoNotAllocate(bool hierarchy)
+        {
+            Load();var element=document.Q("n0");var frame=0;
+            Action cycle=()=>
+            {
+                if(hierarchy)
+                {
+                    if(element.IsAttached)element.RemoveFromHierarchy();else document.Body.Add(element);
+                }
+                else element.Style.Set("width",++frame%2==0?"12px":"13px");
+                document.SynchronizeLayout();
+            };
+            for(var i=0;i<300;i++)cycle();ValidateRecorder();
+            Assert.That(Allocations(()=>{for(var i=0;i<32;i++)cycle();}),Is.Zero,
+                "目标独占的布局/挂载通知没有回调和控件钩子时，不应构造 EventBase。");
+        }
+
+        sealed class NotificationHookElement:URUI.Elements.Element
+        {
+            internal int Geometry,Attached,Detached;
+            internal NotificationHookElement(URUI.Elements.ElementContext context):base(context){}
+            protected override void OnEvent(EventBase value)
+            {
+                if(value is GeometryChangedEvent)Geometry++;
+                if(value is AttachToDocumentEvent)Attached++;
+                if(value is DetachFromDocumentEvent)Detached++;
+            }
+        }
+
+        [Test]
+        public void ManagedNotificationsKeepHooksDynamicSubscriptionsAndRetainedEvents()
+        {
+            document.RegisterElementType("urui-notification-probe",context=>new NotificationHookElement(context));
+            document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}div,urui-notification-probe{display:block;width:10px;height:10px;}</style></head><body><div id='plain'></div><urui-notification-probe id='hook'></urui-notification-probe></body></html>","/managed-notifications.html");
+            document.SynchronizeLayout();
+            var hook=document.Q<NotificationHookElement>("hook");var before=hook.Geometry;
+            hook.Style.Set("width","20px");document.SynchronizeLayout();
+            Assert.That(hook.Geometry,Is.GreaterThan(before),"OnEvent 是消费者，不依赖公开委托注册。");
+            var detached=hook.Detached;hook.RemoveFromHierarchy();document.SynchronizeLayout();Assert.That(hook.Detached,Is.EqualTo(detached+1));
+            var attached=hook.Attached;document.Body.Add(hook);document.SynchronizeLayout();Assert.That(hook.Attached,Is.EqualTo(attached+1));
+            var plain=document.Q("plain");plain.Style.Set("width","15px");document.SynchronizeLayout();
+            GeometryChangedEvent first=null,second=null;var calls=0;
+            var registration=plain.RegisterCallback<GeometryChangedEvent>(value=>{calls++;if(first==null)first=value;else second=value;});
+            plain.Style.Set("width","16px");document.SynchronizeLayout();
+            plain.Style.Set("width","17px");document.SynchronizeLayout();
+            Assert.That(calls,Is.EqualTo(2));Assert.That(first,Is.Not.SameAs(second));
+            Assert.That(first.OldRect.width,Is.EqualTo(15));Assert.That(first.NewRect.width,Is.EqualTo(16));
+            Assert.That(second.OldRect.width,Is.EqualTo(16));Assert.That(second.NewRect.width,Is.EqualTo(17));
+            registration.Dispose();plain.Style.Set("width","18px");document.SynchronizeLayout();
+            Assert.That(calls,Is.EqualTo(2));Assert.That(first.NewRect.width,Is.EqualTo(16),"保留的公开事件不能被后续布局复用或改写。");
+        }
+        [Test]
+        public void PreparedStyleVersionsDoNotAllocateManagedOwners()
+        {
+            document.LoadHtml("<!doctype html><html><head><style>@property --phase{syntax:'<number>';inherits:false;initial-value:0;}</style></head><body><div id='value'></div></body></html>","/prepared-style-allocation.html");
+            document.SynchronizeLayout();var element=document.Q("value");var prepared=new URUI.Internal.Rendering.NativePreparedStyle();var frame=0;
+            Action cycle=()=>{element.Style.Set("--phase",++frame%2==0?".25":".75");document.SynchronizeLayout();prepared.Replace(element);};
+            try
+            {
+                for(var i=0;i<300;i++)cycle();ValidateRecorder();
+                Assert.That(Allocations(()=>{for(var i=0;i<32;i++)cycle();}),Is.Zero,"准备样式仅在观察公开值时物化，私有版本替换不能每帧创建托管所有者。");
+            }
+            finally{prepared.Dispose();}
+        }
+
+        [Test]
         public void AllocationChannelDetectsPositiveProbeAndHasNoEmptyActionNoise()
         {
             ValidateRecorder();
@@ -112,6 +311,488 @@ namespace URUI.Tests
             {
                 for (var i = 0; i < 20; ++i) { document.RefreshElements(true); }
             }), Is.Zero);
+        }
+
+        sealed class RefreshHookElement : URUI.Elements.Element
+        {
+            internal Action Tick;
+            internal RefreshHookElement(URUI.Elements.ElementContext context) : base(context) { }
+            protected override void OnUpdate() => Tick?.Invoke();
+        }
+
+        [Test]
+        public void StablePassiveRefreshDoesNotScaleWithWrappedNodes()
+        {
+            double Measure(int count)
+            {
+                var html = new StringBuilder("<!doctype html><html><head><style>div{position:absolute;width:4px;height:4px;}</style></head><body>");
+                for (var i = 0; i < count; i++) html.Append("<div></div>");
+                document.LoadHtml(html.Append("</body></html>").ToString(), "/passive-refresh.html");
+                document.SynchronizeGeometry();
+                Assert.That(document.Query<URUI.Elements.Element>().ToList().Count, Is.GreaterThanOrEqualTo(count));
+                for (var i = 0; i < 32; i++) document.RefreshElements(true);
+                var samples = new double[5];
+                for (var sample = 0; sample < samples.Length; sample++)
+                {
+                    var start = System.Diagnostics.Stopwatch.GetTimestamp();
+                    for (var i = 0; i < 128; i++) document.RefreshElements(true);
+                    samples[sample] = (System.Diagnostics.Stopwatch.GetTimestamp() - start) * 1000000d /
+                        System.Diagnostics.Stopwatch.Frequency / 128;
+                }
+                Array.Sort(samples);
+                return samples[2];
+            }
+            var small = Measure(500); var large = Measure(4000);
+            TestContext.WriteLine("500/4000节点稳定刷新：" + small + "/" + large + "us，比例=" + large / small);
+            Assert.That(large / small, Is.LessThan(1.8), "已完整观察且没有更新钩子的静态节点不应在每次刷新重新线性遍历。");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void StableMixedRefreshDoesNotScaleWithPassiveNodes(bool hookFirst)
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            double Measure(int count)
+            {
+                const string markup = "<urui-refresh-probe id='hook'></urui-refresh-probe>";
+                var html = new StringBuilder("<!doctype html><html><head><style>div{position:absolute;width:4px;height:4px;}</style></head><body>");
+                if (hookFirst) html.Append(markup);
+                for (var i = 0; i < count; i++) html.Append("<div></div>");
+                if (!hookFirst) html.Append(markup);
+                document.LoadHtml(html.Append("</body></html>").ToString(), "/mixed-refresh.html");
+                document.SynchronizeGeometry();
+                var hook = document.Q<RefreshHookElement>("hook"); var calls = 0;
+                hook.Tick = () => calls++;
+                for (var i = 0; i < 32; i++) document.RefreshElements(true);
+                var before = calls; var samples = new double[5];
+                for (var sample = 0; sample < samples.Length; sample++)
+                {
+                    var start = System.Diagnostics.Stopwatch.GetTimestamp();
+                    for (var i = 0; i < 128; i++) document.RefreshElements(true);
+                    samples[sample] = (System.Diagnostics.Stopwatch.GetTimestamp() - start) * 1000000d /
+                        System.Diagnostics.Stopwatch.Frequency / 128;
+                }
+                Assert.That(calls - before, Is.EqualTo(640), "普通节点不变时也必须逐次执行真实控件更新。");
+                Array.Sort(samples); return samples[2];
+            }
+            var small = Measure(500); var large = Measure(4000);
+            TestContext.WriteLine("混合文档500/4000节点：" + small + "/" + large + "us，比例=" + large / small);
+            Assert.That(large / small, Is.LessThan(1.8), "一个必要更新钩子不能让全部被动包装器继续线性刷新。");
+        }
+
+        sealed class InitializingRefreshHook : URUI.Elements.Element
+        {
+            internal int Updates;
+            internal InitializingRefreshHook(URUI.Elements.ElementContext context) : base(context) { }
+            protected override void OnInitialize() => Document.RefreshElements(true);
+            protected override void OnUpdate() => Updates++;
+        }
+
+        ulong AddNativeRefreshHook()
+        {
+            var token = NativeMethods.urui_element_create(document.NativeHandle, "urui-initialize-refresh");
+            Assert.That(token, Is.Not.Zero);
+            Assert.That(NativeMethods.urui_element_write(document.NativeHandle, token, 2, "id", "late-hook"), Is.EqualTo(1));
+            Assert.That(NativeMethods.urui_element_insert(document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
+            NativeMethods.urui_update();
+            for (var i = 0; i < 4; i++) document.RefreshElements(true);
+            return token;
+        }
+
+        [Test]
+        public void LateWrapperInitializationCannotReusePassiveDocumentProof()
+        {
+            document.RegisterElementType("urui-initialize-refresh", context => new InitializingRefreshHook(context));
+            Load();
+            AddNativeRefreshHook();
+            var hook = document.Q<InitializingRefreshHook>("late-hook");
+            Assert.That(hook.Updates, Is.GreaterThan(0), "新包装器初始化重入时也必须执行已挂接的更新钩子。");
+            var before = hook.Updates;
+            for (var i = 0; i < 31; i++) document.RefreshElements(true);
+            Assert.That(hook.Updates - before, Is.EqualTo(31));
+        }
+
+        [Test]
+        public void GeometryCallbackWrappingControlCannotPublishPassiveProof()
+        {
+            document.RegisterElementType("urui-initialize-refresh", context => new InitializingRefreshHook(context));
+            Load();
+            AddNativeRefreshHook();
+            var target = document.Q("n0");
+            InitializingRefreshHook hook = null;
+            target.RegisterCallback<GeometryChangedEvent>(e => hook = document.Q<InitializingRefreshHook>("late-hook"));
+            target.Style.Set("width", "30px");
+            NativeMethods.urui_update();
+            document.RefreshElements(true);
+            Assert.That(hook, Is.Not.Null);
+            var before = hook.Updates;
+            for (var i = 0; i < 31; i++) document.RefreshElements(true);
+            Assert.That(hook.Updates - before, Is.EqualTo(31));
+        }
+
+        [Test]
+        public void ThrowingUpdateHookIsRetriedAfterPassiveDocumentBecomesDynamic()
+        {
+            Load();
+            for (var i = 0; i < 4; i++) document.RefreshElements(true);
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            var hook = document.Create<RefreshHookElement>();
+            document.Body.Add(hook);
+            document.RefreshElements(true); document.RefreshElements(true);
+            hook.Tick = () => throw new InvalidOperationException("refresh retry probe");
+            Assert.Throws<InvalidOperationException>(() => document.RefreshElements(true));
+            var calls = 0; hook.Tick = () => calls++;
+            document.RefreshElements(true);
+            Assert.That(calls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SparseUpdateStopsReadingTailWhenCallbackWrapsNativeNodes()
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            document.LoadHtml("<!doctype html><html><head></head><body><urui-refresh-probe id='first'></urui-refresh-probe><urui-refresh-probe id='second'></urui-refresh-probe></body></html>", "/refresh-tail.html");
+            var first = document.Q<RefreshHookElement>("first"); var second = document.Q<RefreshHookElement>("second");
+            for (var i = 0; i < 2; i++)
+            {
+                var token = NativeMethods.urui_element_create(document.NativeHandle, "urui-refresh-probe");
+                Assert.That(NativeMethods.urui_element_write(document.NativeHandle, token, 2, "id", "late" + i), Is.EqualTo(1));
+                Assert.That(NativeMethods.urui_element_insert(document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
+            }
+            NativeMethods.urui_update();
+            for (var i = 0; i < 4; i++) document.RefreshElements(true);
+            var firstCalls = 0; var secondCalls = 0; var lateCalls = 0;
+            first.Tick = () =>
+            {
+                firstCalls++; first.Tick = () => firstCalls++;
+                for (var i = 0; i < 2; i++) document.Q<RefreshHookElement>("late" + i).Tick = () => lateCalls++;
+            };
+            second.Tick = () => secondCalls++;
+            document.RefreshElements(true);
+            Assert.That(firstCalls, Is.EqualTo(1)); Assert.That(secondCalls, Is.EqualTo(1));
+            Assert.That(lateCalls, Is.Zero, "回调新包装的节点不能替换旧快照中尚未执行的钩子。");
+            document.RefreshElements(true);
+            Assert.That(firstCalls, Is.EqualTo(2)); Assert.That(secondCalls, Is.EqualTo(2)); Assert.That(lateCalls, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void DenseUpdateHooksKeepAllCallsWithoutSpareSnapshotCapacity()
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            var html = new StringBuilder("<!doctype html><html><head></head><body>");
+            for (var i = 0; i < 100; i++) html.Append("<urui-refresh-probe></urui-refresh-probe>");
+            document.LoadHtml(html.Append("</body></html>").ToString(), "/refresh-dense.html"); document.SynchronizeGeometry();
+            var hooks = document.Query<RefreshHookElement>().ToList(); Assert.That(hooks.Count, Is.EqualTo(100));
+            var calls = 0; foreach (var hook in hooks) hook.Tick = () => calls++;
+            for (var i = 0; i < 32; i++) document.RefreshElements(true);
+            Assert.That(calls, Is.EqualTo(3200));
+        }
+
+        [Test]
+        public void SparseUpdateHooksDoNotAllocateNewSnapshots()
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            Load(); var hook = document.Create<RefreshHookElement>(); document.Body.Add(hook);
+            var calls = 0; hook.Tick = () => calls++;
+            Action refresh = () => { for (var i = 0; i < 32; i++) document.RefreshElements(true); };
+            refresh(); ValidateRecorder();
+            var before = calls; Assert.That(Allocations(refresh), Is.Zero); Assert.That(calls - before, Is.EqualTo(32));
+        }
+
+        [Test]
+        public void SparseUpdateStopsWhenFirstHookUnloadsDocument()
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            document.LoadHtml("<!doctype html><html><head></head><body><urui-refresh-probe id='first'></urui-refresh-probe><urui-refresh-probe id='second'></urui-refresh-probe></body></html>", "/refresh-unload.html");
+            var first = document.Q<RefreshHookElement>("first"); var second = document.Q<RefreshHookElement>("second");
+            document.SynchronizeGeometry(); for (var i = 0; i < 4; i++) document.RefreshElements(true);
+            var laterCalls = 0; first.Tick = () => document.Unload(); second.Tick = () => laterCalls++;
+            Assert.DoesNotThrow(() => document.RefreshElements(true));
+            Assert.That(document.IsLoaded, Is.False); Assert.That(laterCalls, Is.Zero);
+        }
+
+        [Test]
+        public void ReentrantFullRefreshCannotPublishTailOverwrittenByOuterPass()
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            document.LoadHtml("<!doctype html><html><head></head><body><urui-refresh-probe id='a'></urui-refresh-probe><urui-refresh-probe id='b'></urui-refresh-probe><urui-refresh-probe id='c'></urui-refresh-probe></body></html>", "/refresh-reentrant-tail.html");
+            var a = document.Q<RefreshHookElement>("a"); var b = document.Q<RefreshHookElement>("b"); var c = document.Q<RefreshHookElement>("c");
+            document.SynchronizeGeometry(); for (var i = 0; i < 4; i++) document.RefreshElements(true);
+            var calls = new System.Collections.Generic.List<string>();
+            a.Tick = () =>
+            {
+                a.Tick = null; a.RemoveFromHierarchy();
+                document.RefreshElements(true);
+            };
+            b.Tick = () => calls.Add("b"); c.Tick = () => calls.Add("c");
+            // 原生变化让外层先走完整遍历，再在钩子内发生重入。
+            document.Body.Style.Set("width", "120px"); NativeMethods.urui_update();
+            document.RefreshElements(true);
+            calls.Clear(); document.RefreshElements(true);
+            Assert.That(calls, Is.EqualTo(new[] { "b", "c" }), "外层不能覆盖内层发布的更新集合，导致重复或漏调。");
+        }
+
+        [Test]
+        public void AttachmentRefreshCannotSkipFirstGeometryOfLatePassiveWrapper()
+        {
+            Load();
+            var sentinel = document.CreateElement();
+            var token = NativeMethods.urui_element_create(document.NativeHandle, "div");
+            Assert.That(NativeMethods.urui_element_write(document.NativeHandle, token, 2, "id", "late-passive"), Is.EqualTo(1));
+            Assert.That(NativeMethods.urui_element_insert(document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
+            NativeMethods.urui_update();
+            for (var i = 0; i < 4; i++) document.RefreshElements(true);
+            var target = document.Q("n0");
+            URUI.Elements.Element late = null; var notifications = 0;
+            target.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                late = document.Q("late-passive");
+                late.RegisterCallback<GeometryChangedEvent>(geometry => notifications++);
+            });
+            target.Style.Set("width", "30px"); NativeMethods.urui_update();
+            document.RefreshElements(true);
+            Assert.That(late, Is.Not.Null);
+            Assert.That(notifications, Is.Zero);
+            // 对已脱离的节点重复移除仍会走真实的 attachment-only 刷新入口。
+            sentinel.RemoveFromHierarchy();
+            document.RefreshElements(true); document.RefreshElements(true);
+            Assert.That(notifications, Is.EqualTo(1), "仅挂接刷新不能掩盖新包装器尚未观察的首次几何通知。");
+        }
+
+        [Test]
+        public void EmptyHierarchySnapshotsDoNotAllocate()
+        {
+            Load();
+            var leaf = document.Q("n0");
+            Assert.That(leaf.Hierarchy.Children(), Is.Empty);
+            Action read = () => { for (var i = 0; i < 32; ++i) GC.KeepAlive(leaf.Hierarchy.Children()); };
+            read();
+            ValidateRecorder();
+            Assert.That(Allocations(read), Is.Zero);
+        }
+
+        sealed class SweepHookElement : URUI.Elements.Element
+        {
+            internal Action Invalidating;
+            internal int Invalidations;
+            internal SweepHookElement(URUI.Elements.ElementContext context) : base(context) { }
+            protected override void OnInvalidated()
+            {
+                Invalidations++;
+                var callback = Invalidating;
+                Invalidating = null;
+                callback?.Invoke();
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void PlainSubtreeInvalidationsPreserveLaterControlCallbacks(bool releaseOnly)
+        {
+            document.RegisterElementType("urui-sweep-probe", context => new SweepHookElement(context));
+            var html = new StringBuilder("<!doctype html><html><head></head><body>");
+            for (var i = 0; i < 128; i++) html.Append("<div id='plain").Append(i).Append("'></div>");
+            document.LoadHtml(html.Append("<urui-sweep-probe id='trigger'></urui-sweep-probe><div id='later'></div></body></html>").ToString(), "/sweep-plain.html");
+            var trigger = document.Q<SweepHookElement>("trigger");
+            var later = document.Q("later");
+            for (var i = 0; i < 128; i++)
+                Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, document.Q("plain" + i).Token), Is.EqualTo(1));
+            trigger.Invalidating = () => Assert.That(releaseOnly
+                ? NativeMethods.urui_element_ref_release(document.NativeHandle, later.Token)
+                : NativeMethods.urui_element_destroy(document.NativeHandle, later.Token), Is.EqualTo(1));
+            Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, trigger.Token), Is.EqualTo(1));
+            document.SweepInvalidElements();
+            Assert.That(trigger.Invalidations, Is.EqualTo(1));
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            Assert.That(typeof(URUI.Elements.Element).GetField("invalid", flags).GetValue(later), Is.True,
+                "普通节点清理后，控件失效回调仍必须使后续预读失效。");
+            var state = typeof(Document).GetField("content", flags).GetValue(document);
+            var elements = (System.Collections.IDictionary)state.GetType().GetField("Elements", flags).GetValue(state);
+            Assert.That(elements.Contains(later.Token), Is.False);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void SweepDiscardsPrefetchedValidityAfterInvalidationCallbacks(int mutation)
+        {
+            document.RegisterElementType("urui-sweep-probe", context => new SweepHookElement(context));
+            var html = new StringBuilder("<!doctype html><html><head></head><body>");
+            for (var i = 0; i < 150; i++) html.Append("<urui-sweep-probe id='n").Append(i).Append("'></urui-sweep-probe>");
+            document.LoadHtml(html.Append("</body></html>").ToString(), "/sweep-callback.html");
+            var trigger = document.Q<SweepHookElement>("n30");
+            var later = document.Q<SweepHookElement>("n31");
+            var nextWindow = document.Q<SweepHookElement>("n100");
+            var earlier = document.Q<SweepHookElement>("n0");
+            trigger.Invalidating = () => {
+                if (mutation == 3) { document.Unload(); return; }
+                Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, nextWindow.Token), Is.EqualTo(1));
+                Assert.That(mutation == 1 ? NativeMethods.urui_element_ref_release(document.NativeHandle, later.Token)
+                    : NativeMethods.urui_element_destroy(document.NativeHandle, later.Token), Is.EqualTo(1));
+                if (mutation == 2)
+                {
+                    Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, earlier.Token), Is.EqualTo(1));
+                    document.SweepInvalidElements();
+                    var created = document.CreateElement();
+                    created.Name = "created-during-sweep";
+                    document.Body.Hierarchy.Add(created);
+                }
+            };
+            Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, trigger.Token), Is.EqualTo(1));
+            document.SweepInvalidElements();
+            Assert.That(trigger.Invalidations, Is.EqualTo(1));
+            Assert.That(later.Invalidations, Is.EqualTo(1), "不能采用失效回调之前预读的有效标记。");
+            Assert.That(nextWindow.Invalidations, Is.EqualTo(1));
+            if (mutation == 2)
+            {
+                Assert.That(earlier.Invalidations, Is.EqualTo(1));
+                Assert.That(document.Q("created-during-sweep"), Is.Not.Null);
+            }
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var state = typeof(Document).GetField("content", flags).GetValue(document);
+            if (state != null)
+            {
+                var elements = (System.Collections.IDictionary)state.GetType().GetField("Elements", flags).GetValue(state);
+                Assert.That(elements.Contains(later.Token) || elements.Contains(nextWindow.Token), Is.False);
+            }
+        }
+
+        [Test]
+        public void ReadOnlyUpdateHooksDoNotRepeatFullElementValidation()
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            document.LoadHtml("<!doctype html><html><head></head><body><urui-refresh-probe id='hook'></urui-refresh-probe></body></html>", "/refresh-hook.html");
+            document.SynchronizeGeometry();
+            var hook = document.Q<RefreshHookElement>("hook"); var calls = 0;
+            hook.Tick = () => calls++;
+            long sweeps = 0;
+            using (var recorder = ProfilerRecorder.StartNew(ProfilerCategory.Scripts, "URUI.Elements.Sweep", 128, ProfilerRecorderOptions.CollectOnlyOnCurrentThread))
+            {
+                for (var i = 0; i < 32; i++) document.RefreshElements(true);
+                recorder.Stop();
+                Assert.That(recorder.Valid && !recorder.WrappedAround, Is.True);
+                for (var i = 0; i < recorder.Count; i++) sweeps += recorder.GetSample(i).Count;
+            }
+            Assert.That(calls, Is.EqualTo(32));
+            Assert.That(sweeps, Is.Zero, "只读更新回调不能使已经批量验证过的整份节点列表重新逐项验证。");
+        }
+
+        [Test]
+        public void StableRefreshReusesObservedStateWithoutSkippingUpdateHooks()
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            document.LoadHtml("<!doctype html><html><head></head><body><urui-refresh-probe id='hook'></urui-refresh-probe><div id='tail'></div></body></html>", "/refresh-stable.html");
+            var hook = document.Q<RefreshHookElement>("hook");
+            document.Q("tail");
+            document.SynchronizeGeometry();
+            var calls = 0;
+            hook.Tick = () => calls++;
+            document.RefreshElements(true);
+            calls = 0;
+            using var recorder = ProfilerRecorder.StartNew(ProfilerCategory.Scripts, "URUI.Elements.ReadStates", 128,
+                ProfilerRecorderOptions.CollectOnlyOnCurrentThread);
+            for (var i = 0; i < 32; i++) document.RefreshElements(true);
+            recorder.Stop();
+            Assert.That(recorder.Valid && !recorder.WrappedAround, Is.True);
+            long reads = 0;
+            for (var i = 0; i < recorder.Count; i++) reads += recorder.GetSample(i).Count;
+            Assert.That(calls, Is.EqualTo(32), "状态未变化也必须运行每次控件更新。");
+            Assert.That(reads, Is.Zero, "只读控件更新不能使未变化节点重复跨层查询状态。");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void UpdateHookGeometryMutationRefreshesEarlierAndLaterElements(bool earlier)
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            document.LoadHtml("<!doctype html><html><head><style>div{width:10px;height:10px;}</style></head><body><div id='before'></div><urui-refresh-probe id='hook'></urui-refresh-probe><div id='after'></div></body></html>", "/refresh-mutation.html");
+            var before = document.Q("before");
+            var hook = document.Q<RefreshHookElement>("hook");
+            var after = document.Q("after");
+            var target = earlier ? before : after;
+            document.SynchronizeGeometry();
+            document.RefreshElements(true);
+            var widths = new System.Collections.Generic.List<float>();
+            target.RegisterCallback<GeometryChangedEvent>(e => widths.Add(e.NewRect.width));
+            hook.Tick = () =>
+            {
+                hook.Tick = null;
+                target.Style.Set("width", "30px");
+                NativeMethods.urui_update();
+            };
+            document.RefreshElements(true);
+            document.RefreshElements(true);
+            Assert.That(widths, Is.EqualTo(new[] { 30f }), "回调修改更早节点后，下一轮仍须观察最新布局；较晚节点应在本轮观察到。");
+            Assert.That(target.Layout.width, Is.EqualTo(30));
+        }
+
+        [Test]
+        public void AttachmentOnlyRefreshCannotPublishUnobservedGeometry()
+        {
+            document.LoadHtml("<!doctype html><html><head><style>div{width:10px;height:10px;}</style></head><body><div id='target'></div></body></html>", "/refresh-attachment.html");
+            var target = document.Q("target");
+            document.SynchronizeGeometry();
+            document.RefreshElements(true);
+            var widths = new System.Collections.Generic.List<float>();
+            target.RegisterCallback<GeometryChangedEvent>(e => widths.Add(e.NewRect.width));
+            target.Style.Set("width", "30px");
+            NativeMethods.urui_update();
+            document.RefreshElements(false);
+            Assert.That(widths, Is.Empty);
+            document.RefreshElements(true);
+            Assert.That(widths, Is.EqualTo(new[] { 30f }));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void UpdateHookDestructionReclaimsPreviouslyVisitedWrappers(bool detached)
+        {
+            document.RegisterElementType("urui-refresh-probe", context => new RefreshHookElement(context));
+            document.LoadHtml("<!doctype html><html><head></head><body><urui-refresh-probe id='victim'></urui-refresh-probe><urui-refresh-probe id='killer'></urui-refresh-probe></body></html>", "/refresh-destroy.html");
+            document.SynchronizeGeometry();
+            var victim = document.Q<RefreshHookElement>("victim"); var killer = document.Q<RefreshHookElement>("killer");
+            if (detached) victim.RemoveFromHierarchy();
+            var token = victim.Token;
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var state = typeof(Document).GetField("content", flags).GetValue(document);
+            var elements = (System.Collections.IDictionary)state.GetType().GetField("Elements", flags).GetValue(state);
+            Assert.That(elements.Contains(token), Is.True);
+            var visited = 0; victim.Tick = () => visited++;
+            killer.Tick = () => {
+                if (!detached) Assert.That(visited, Is.EqualTo(1));
+                Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, token), Is.EqualTo(1));
+                killer.Tick = null;
+            };
+            document.RefreshElements(true);
+            Assert.That(victim.IsValid, Is.False);
+            Assert.That(elements.Contains(token), Is.False, "回调销毁更早访问的节点后，不能把失效包装器留在文档中。");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void NativeInvalidationBetweenRefreshesReclaimsWrappers(bool releaseOnly)
+        {
+            document.LoadHtml("<!doctype html><html><head></head><body><div id='victim'></div></body></html>", "/refresh-between.html");
+            document.SynchronizeGeometry();
+            var victim = document.Q("victim"); var token = victim.Token;
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var state = typeof(Document).GetField("content", flags).GetValue(document);
+            var elements = (System.Collections.IDictionary)state.GetType().GetField("Elements", flags).GetValue(state);
+            document.RefreshElements(true);
+            var result = releaseOnly ? NativeMethods.urui_element_ref_release(document.NativeHandle, token)
+                : NativeMethods.urui_element_destroy(document.NativeHandle, token);
+            Assert.That(result, Is.EqualTo(1));
+            document.RefreshElements(true);
+            Assert.That(elements.Contains(token), Is.False, "刷新开始前已经失效的节点也必须从缓存中移除。");
+            document.RefreshElements(true);
+            Assert.That(victim.IsValid, Is.False);
+            if (releaseOnly)
+            {
+                var fresh = document.Q("victim");
+                Assert.That(fresh, Is.Not.SameAs(victim));
+                Assert.That(fresh.IsValid, Is.True);
+            }
+            else Assert.That(document.Q("victim"), Is.Null);
         }
 
         [Test]
@@ -380,11 +1061,76 @@ namespace URUI.Tests
             document.LoadHtml(html.Append("</body></html>").ToString(),"/dynamic-allocations.html");
             for(var i=0;i<20;i++){clock.Now+=.01;document.SynchronizeLayout();}
             ValidateRecorder();
-            // 每次变化只允许一个不可变GPU批次版本的Unity Mesh包装对象，不再按1000个图形分配数组。
+            // 纯底色动画只更新 GPU 参数，不生成新的原生拓扑或 Unity Mesh 包装。
             Assert.That(Allocations(()=>
             {
                 for(var i=0;i<10;i++){clock.Now+=.01;document.SynchronizeLayout();}
-            }),Is.LessThanOrEqualTo(10));
+            }),Is.Zero);
+        }
+
+        [TestCase(.25f,.75f)]
+        [TestCase(17.25f,3.75f)]
+        public void FractionalIdleScrollDoesNotRewriteNumericStylesAndKeepsCompensation(float x,float y)
+        {
+            document.Surface.UiClock=new MovingClock();
+            document.TextResources=new[]{new URUI.Resources.TextResource("/urui/behaviors.css",UnityEngine.Resources.Load<TextAsset>("URUI/behaviors"))};
+            document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/behaviors.css'>"+
+                "<style>body{margin:0;}#viewport{width:80px;height:30px;overflow:auto;scrollbar-width:none;}"+
+                "#content{width:200px;height:80px;}</style></head><body>"+
+                "<div id='viewport' class='scroll-motion'><div id='content' class='scroll-motion-content'></div></div>"+
+                "</body></html>","/fractional-idle-scroll.html");
+            var viewport=document.Q("viewport");var content=document.Q("content");
+            using var scroll=new ScrollMotion(viewport,content);
+            document.SynchronizeGeometry();var original=content.WorldBound;
+            scroll.ScrollTo(new Vector2(x,y));
+            for(var i=0;i<3;i++){document.NotifyLayoutUpdated();document.SynchronizeGeometry();}
+            Assert.That(viewport.ScrollOffset.x,Is.EqualTo(Mathf.Round(x)));
+            Assert.That(viewport.ScrollOffset.y,Is.EqualTo(Mathf.Round(y)));
+            var before=content.WorldBound;
+            Assert.That(before.x,Is.EqualTo(original.x-x).Within(.02f),"原生整数偏移之外的小数补偿必须保留。");
+            Assert.That(before.y,Is.EqualTo(original.y-y).Within(.02f));
+            static long Calls(ProfilerRecorder probe)
+            {
+                Assert.That(probe.Valid&&!probe.WrappedAround,Is.True);
+                long calls=0;for(var i=0;i<probe.Count;i++)calls+=probe.GetSample(i).Count;return calls;
+            }
+            using(var positive=ProfilerRecorder.StartNew(ProfilerCategory.Scripts,"URUI.Style.WriteNumeric",128,ProfilerRecorderOptions.CollectOnlyOnCurrentThread))
+            {
+                content.Style.SetPixels("--urui-scroll-motion-x",viewport.ScrollOffset.x-x);
+                positive.Stop();Assert.That(Calls(positive),Is.EqualTo(1),"阳性探针必须观察到实际原生样式写入。");
+            }
+            document.SynchronizeGeometry();
+            using(var writes=ProfilerRecorder.StartNew(ProfilerCategory.Scripts,"URUI.Style.WriteNumeric",128,ProfilerRecorderOptions.CollectOnlyOnCurrentThread))
+            {
+                using(document.BeginUpdate())for(var i=0;i<20;i++)document.NotifyLayoutUpdated();
+                writes.Stop();Assert.That(Calls(writes),Is.Zero,"静止的小数滚动不能持续重写样式。");
+            }
+            Assert.That(content.WorldBound,Is.EqualTo(before));
+        }
+
+        [Test]
+        public void ScrollMotionAdoptsExternalOffsetAndReappliesRequestWhenRangeGrows()
+        {
+            document.Surface.UiClock=new MovingClock();
+            document.TextResources=new[]{new URUI.Resources.TextResource("/urui/behaviors.css",UnityEngine.Resources.Load<TextAsset>("URUI/behaviors"))};
+            document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/behaviors.css'>"+
+                "<style>body{margin:0;}#viewport{width:80px;height:30px;overflow:auto;scrollbar-width:none;}"+
+                "#content{width:200px;height:80px;}</style></head><body>"+
+                "<div id='viewport' class='scroll-motion'><div id='content' class='scroll-motion-content'></div></div>"+
+                "</body></html>","/changing-scroll-range.html");
+            var viewport=document.Q("viewport");var content=document.Q("content");
+            using var scroll=new ScrollMotion(viewport,content);
+            document.SynchronizeGeometry();var original=content.WorldBound;
+            scroll.ScrollTo(new Vector2(17.25f,3.75f));document.SynchronizeGeometry();
+            viewport.ScrollOffset=new Vector2(30,10);document.NotifyLayoutUpdated();document.SynchronizeGeometry();
+            Assert.That(content.WorldBound.x,Is.EqualTo(original.x-30).Within(.02f),"外部原生滚动必须替换旧的小数补偿。");
+            viewport.Style.Set("--urui-scroll-boundary","unrestricted");document.SynchronizeGeometry();
+            scroll.ScrollTo(new Vector2(400.25f,30.75f));document.SynchronizeGeometry();
+            Assert.That(viewport.ScrollOffset.x,Is.LessThan(400));var before=content.WorldBound;
+            content.Style.SetWidth(600);document.SynchronizeGeometry();
+            document.NotifyLayoutUpdated();document.SynchronizeGeometry();
+            Assert.That(viewport.ScrollOffset.x,Is.EqualTo(400),"范围增长后，仍须将原请求重新提交给原生滚动条。");
+            Assert.That(content.WorldBound.x,Is.EqualTo(before.x).Within(.02f),"更换原生偏移不能改变请求的逻辑位置。");
         }
 
         [Test]
@@ -404,6 +1150,55 @@ namespace URUI.Tests
             {
                 for(var i=0;i<20;i++)document.NotifyLayoutUpdated();
             }),Is.Zero);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        public void ScrollPublicationPreservesCallbackChangesAndDisposal(int change)
+        {
+            document.Surface.UiClock=new MovingClock();
+            document.TextResources=new[]{new URUI.Resources.TextResource("/urui/behaviors.css",UnityEngine.Resources.Load<TextAsset>("URUI/behaviors"))};
+            document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/behaviors.css'>"+
+                "<style>body{margin:0;}#viewport{width:80px;height:30px;overflow:auto;scrollbar-width:none;}"+
+                "#content{width:200px;height:80px;}</style></head><body>"+
+                "<div id='viewport' class='scroll-motion'><div id='content' class='scroll-motion-content'></div></div>"+
+                "</body></html>","/reentrant-scroll.html");
+            var viewport=document.Q("viewport");var content=document.Q("content");
+            if(change==2){content.Style.SetPixels("--urui-scroll-motion-x",3);content.Style.SetPixels("--urui-scroll-motion-y",-2);}
+            using var scroll=new ScrollMotion(viewport,content);document.SynchronizeGeometry();var callbackRan=false;
+            using var subscription=viewport.RegisterCallback<ScrollEvent>(_=>{
+                if(callbackRan)return;callbackRan=true;
+                document.RunAfterEvent(()=>{
+                    if(change==0)viewport.ScrollOffset=new Vector2(5,0);
+                    else if(change==1)scroll.ScrollTo(new Vector2(5.75f,0));
+                    else scroll.Dispose();
+                });
+            });
+            scroll.ScrollTo(new Vector2(17.25f,0));document.SynchronizeGeometry();
+            Assert.That(callbackRan,Is.True,"必须真正触发 setter 内的同步滚动回调。");
+            if(change==0)
+            {
+                // 回读不是本次取整结果时保留旧版的下一次更新重试策略。
+                document.NotifyLayoutUpdated();document.SynchronizeGeometry();
+                Assert.That(viewport.ScrollOffset.x,Is.EqualTo(17));
+                Assert.That(content.WorldBound.x,Is.EqualTo(-17.25f).Within(.02f));
+            }
+            else if(change==1)
+            {
+                Assert.That(viewport.ScrollOffset.x,Is.EqualTo(6));
+                Assert.That(content.WorldBound.x,Is.EqualTo(-5.75f).Within(.02f));
+                using var writes=ProfilerRecorder.StartNew(ProfilerCategory.Scripts,"URUI.Style.WriteNumeric",128,ProfilerRecorderOptions.CollectOnlyOnCurrentThread);
+                for(var i=0;i<10;i++)document.NotifyLayoutUpdated();writes.Stop();
+                Assert.That(writes.Valid&&!writes.WrappedAround,Is.True);long calls=0;
+                for(var i=0;i<writes.Count;i++)calls+=writes.GetSample(i).Count;
+                Assert.That(calls,Is.Zero,"外层请求不能覆盖已经完成的新请求缓存。");
+            }
+            else
+            {
+                Assert.That(content.Style.Get("--urui-scroll-motion-x"),Is.EqualTo("3px"));
+                Assert.That(content.Style.Get("--urui-scroll-motion-y"),Is.EqualTo("-2px"));
+            }
         }
 
         [Test]

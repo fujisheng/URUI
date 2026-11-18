@@ -23,7 +23,7 @@ private:
 	static Vector2i GetDimensions(RenderManager* render_manager, TextureFileIndex texture);
 	static Vector2i GetDimensions(RenderManager* render_manager, StableVectorIndex callback_texture);
 
-	static void Render(RenderManager* render_manager, const Geometry& geometry, Vector2f translation, Texture texture, const CompiledShader& shader);
+	static void Render(RenderManager* render_manager, const Geometry& geometry, Vector2f translation, Texture texture, const CompiledShader& shader, const DrawParameters& parameters);
 
 	static void GetTextureSourceList(RenderManager* render_manager, StringList& source_list);
 	static const Mesh& GetMesh(RenderManager* render_manager, const Geometry& geometry);

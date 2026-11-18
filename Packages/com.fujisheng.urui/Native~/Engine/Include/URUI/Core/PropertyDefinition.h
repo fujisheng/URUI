@@ -56,6 +56,7 @@ public:
 	PropertyId GetId() const;
 
 private:
+	friend class CompiledArchive;
 	PropertyId id;
 	const PropertySpecification* specification;
 	String registration_syntax;
@@ -66,6 +67,7 @@ private:
 
 	struct ParserState {
 		PropertyParser* parser;
+		String name;
 		ParameterMap parameters;
 	};
 

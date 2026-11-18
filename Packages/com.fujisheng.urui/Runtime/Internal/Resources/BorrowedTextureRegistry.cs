@@ -176,13 +176,20 @@ namespace URUI.Internal.Resources
             internal void Acquire(BorrowedTextureRegistry registry)
             {
                 if(owner!=null)throw new InvalidOperationException("URUI 提交仍持有上一批图片。");
+                try{Append(registry);}catch{Release();throw;}
+            }
+            // 即时相机队列上的后续 fence 覆盖较早提交；只追加尚未持有的资源版本。
+            internal void Append(BorrowedTextureRegistry registry)
+            {
+                if(owner!=null&&!ReferenceEquals(owner,registry))throw new InvalidOperationException("图片 pin 不能跨注册表使用。");
                 owner=registry;
-                try
+                foreach(var entry in registry.entries.Values)
                 {
-                    foreach(var entry in registry.entries.Values)if(entry.lease!=null)
-                    {entry.Validate();pinned.Add(entry);entry.pins++;}
+                    // 原生已释放的图片只属于既有录制/提交；未来提交不能再次延长其寿命。
+                    if(entry.lease==null||!entry.nativeHeld||!ids.Add(entry.id))continue;
+                    try{entry.Validate();pinned.Add(entry);entry.pins++;}
+                    catch{ids.Remove(entry.id);throw;}
                 }
-                catch{Release();throw;}
             }
             internal void Release()
             {

@@ -28,9 +28,29 @@ struct SourceHash {
 	}
 };
 struct Source { String alias; bool loaded = false; };
+using ImmutableBytes = SharedPtr<const Vector<byte>>;
+struct ImmutableKey {
+    const Vector<byte>* bytes;
+    int index;
+    Style::FontStyle style;
+    Style::FontWeight weight;
+    bool operator==(const ImmutableKey& other) const {
+        return bytes == other.bytes && index == other.index && style == other.style && weight == other.weight;
+    }
+};
+struct ImmutableHash {
+    size_t operator()(const ImmutableKey& key) const {
+        return std::hash<const void*>{}(key.bytes) ^ (size_t(key.index) << 1) ^ (size_t(key.style) << 9) ^ (size_t(key.weight) << 12);
+    }
+};
+struct ImmutableSource {
+    std::weak_ptr<const Vector<byte>> bytes;
+    const Source* source;
+};
 struct DefaultFace { int family; String source; Style::FontStyle style; Style::FontWeight weight; };
 struct Sources {
     std::unordered_map<SourceKey, Source, SourceHash> entries;
+    std::unordered_map<ImmutableKey, ImmutableSource, ImmutableHash> immutable;
     Vector<DefaultFace> defaults;
     uint64_t next = 0;
 };
@@ -50,6 +70,27 @@ const Source* LoadSource(SourceKey key, bool fallback)
         if (!found->second.loaded) { sources->entries.erase(found); return nullptr; }
     }
     return found->second.loaded ? &found->second : nullptr;
+}
+
+const Source* LoadImmutableSource(const ImmutableBytes& bytes, int index, Style::FontStyle style, Style::FontWeight weight)
+{
+    if (bytes->empty()) { return nullptr; }
+    const ImmutableKey key{bytes.get(), index, style, weight};
+    auto& cache = sources->immutable;
+    const auto found = cache.find(key);
+    if (found != cache.end() && found->second.bytes.lock() == bytes) { return found->second.source; }
+    const auto* source = LoadSource({String(reinterpret_cast<const char*>(bytes->data()), bytes->size()), index, style, weight}, false);
+    if (!source) { return nullptr; }
+    // 仅弱持有文件身份，避免字体缓存额外延长页面资源的寿命；加速表保持有界。
+    if (cache.size() >= 256) {
+        for (auto it = cache.begin(); it != cache.end();) {
+            if (it->second.bytes.expired()) { it = cache.erase(it); }
+            else { ++it; }
+        }
+        if (cache.size() >= 256) { cache.erase(cache.begin()); }
+    }
+    cache.insert_or_assign(key, ImmutableSource{bytes, source});
+    return source;
 }
 
 int FaceMatchRank(Style::FontStyle candidate_style, Style::FontWeight candidate_weight, Style::FontStyle style, Style::FontWeight weight)
@@ -123,9 +164,14 @@ bool DocumentFontContext::LoadFace(const String& path, const String& family, Sty
 	const auto handle = files->Open(path);
 	if (!handle) return false;
 	struct CloseFile { FileInterface* files; FileHandle handle; ~CloseFile() { files->Close(handle); } } close{files, handle};
-	SourceKey key{String(files->Length(handle), '\0'), face_index, style, weight};
-	if (key.bytes.empty() || files->Read(key.bytes.data(), key.bytes.size(), handle) != key.bytes.size()) return false;
-    const auto* source = LoadSource(std::move(key), false);
+    const Source* source = nullptr;
+    if (const auto bytes = files->GetImmutableData(handle)) {
+        source = LoadImmutableSource(bytes, face_index, style, weight);
+    } else {
+        SourceKey key{String(files->Length(handle), '\0'), face_index, style, weight};
+        if (key.bytes.empty() || files->Read(key.bytes.data(), key.bytes.size(), handle) != key.bytes.size()) { return false; }
+        source = LoadSource(std::move(key), false);
+    }
     if (!source) return false;
     faces.push_back({AsciiLowerCss(family), source->alias, style, weight});
 	return true;

@@ -1,1 +1,1 @@
-{"name":"URUI.Effect.Editor","rootNamespace":"URUI.Effect.Editor","references":["URUI.Effect","URUI.Runtime"],"includePlatforms":["Editor"],"autoReferenced":true}
+{"name":"URUI.Effect.Editor","rootNamespace":"URUI.Effect.Editor","references":["URUI.Effect","URUI.Runtime","URUI.Editor"],"includePlatforms":["Editor"],"autoReferenced":true}

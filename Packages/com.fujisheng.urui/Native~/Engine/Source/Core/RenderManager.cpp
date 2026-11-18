@@ -43,6 +43,9 @@ RenderManager::~RenderManager()
 
 void RenderManager::PrepareRender(Vector2i dimensions)
 {
+	clipping_reuse_active = true;
+	clipping_input_valid = false;
+	clipping_mutation_revision = 0;
 #ifdef URUI_ENGINE_DEBUG
 	const RenderState default_state;
 	URUI_ASSERT(state.clip_mask_list == default_state.clip_mask_list);
@@ -56,6 +59,7 @@ void RenderManager::PrepareRender(Vector2i dimensions)
 
 void RenderManager::SetViewport(Vector2i dimensions)
 {
+	clipping_input_valid = false;
 	viewport_dimensions = dimensions;
 }
 
@@ -95,6 +99,7 @@ void RenderManager::DisableScissorRegion()
 
 void RenderManager::SetScissorRegion(Rectanglei new_region)
 {
+	clipping_input_valid = false;
 	const bool old_scissor_enable = state.scissor_region.Valid();
 	const bool new_scissor_enable = new_region.Valid();
 
@@ -119,6 +124,7 @@ Rectanglei RenderManager::GetScissorRegion() const
 
 void RenderManager::DisableClipMask()
 {
+	clipping_input_valid = false;
 	if (!state.clip_mask_list.empty())
 	{
 		state.clip_mask_list.clear();
@@ -128,6 +134,7 @@ void RenderManager::DisableClipMask()
 
 void RenderManager::SetClipMask(ClipMaskOperation operation, Geometry* geometry, Vector2f translation)
 {
+	clipping_input_valid = false;
 	URUI_ASSERT(geometry && geometry->render_manager == this);
 	state.clip_mask_list = {ClipMaskGeometry{operation, geometry, translation, nullptr}};
 	ApplyClipMask(state.clip_mask_list);
@@ -135,6 +142,7 @@ void RenderManager::SetClipMask(ClipMaskOperation operation, Geometry* geometry,
 
 void RenderManager::SetClipMask(ClipMaskGeometryList in_clip_elements)
 {
+	clipping_input_valid = false;
 	if (state.clip_mask_list != in_clip_elements)
 	{
 		state.clip_mask_list = std::move(in_clip_elements);
@@ -187,11 +195,15 @@ void RenderManager::SetState(const RenderState& next)
 
 void RenderManager::ResetState()
 {
+	clipping_reuse_active = false;
+	clipping_input_valid = false;
 	SetState(RenderState{});
 }
 
 void RenderManager::AbortRender() noexcept
 {
+	clipping_reuse_active = false;
+	clipping_input_valid = false;
 	state = RenderState{};
 	render_stack.clear();
 	document_layers.clear();
@@ -221,7 +233,7 @@ CompiledGeometryHandle RenderManager::GetCompiledGeometryHandle(StableVectorInde
 	return geometry.handle;
 }
 
-void RenderManager::Render(const Geometry& geometry, Vector2f translation, Texture texture, const CompiledShader& shader)
+void RenderManager::Render(const Geometry& geometry, Vector2f translation, Texture texture, const CompiledShader& shader, const DrawParameters& parameters)
 {
 	URUI_ASSERT(geometry);
 	URUI_ASSERTMSG(translation == translation.Round(), "RenderManager::Render expects translation to be rounded");
@@ -244,9 +256,9 @@ void RenderManager::Render(const Geometry& geometry, Vector2f translation, Textu
 
 		URUI_ZoneScopedNC("RenderGeometry", 0x3E60B2);
 		if (shader)
-			render_interface->RenderShader(shader.resource_handle, geometry_handle, translation, texture_handle);
+			render_interface->RenderShader(shader.resource_handle, geometry_handle, translation, texture_handle, parameters);
 		else
-			render_interface->RenderGeometry(geometry_handle, translation, texture_handle);
+			render_interface->RenderGeometry(geometry_handle, translation, texture_handle, parameters);
 	}
 }
 

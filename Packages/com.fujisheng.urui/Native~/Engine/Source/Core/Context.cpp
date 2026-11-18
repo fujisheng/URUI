@@ -202,6 +202,19 @@ bool Context::Update()
 	return true;
 }
 
+bool Context::SynchronizeGeometry()
+{
+    root->SynchronizeGeometry();
+    if (drag_clone)
+    {
+        static_cast<ElementDocument&>(*cursor_proxy).UpdateDocument();
+        cursor_proxy->SetOffset(
+            Vector2f((float)Math::Clamp(mouse_position.x, 0, dimensions.x), (float)Math::Clamp(mouse_position.y, 0, dimensions.y)), nullptr);
+        cursor_proxy->SynchronizeGeometry();
+    }
+    return true;
+}
+
 bool Context::Render()
 try
 {
@@ -249,6 +262,7 @@ ElementDocument* Context::CreateDocument(const String& instancer_name)
 	}
 
 	document->context = this;
+	DirtyNativeRendering();
 	root->AppendChild(std::move(element));
 
 	PluginRegistry::NotifyDocumentLoad(document);
@@ -295,6 +309,7 @@ ElementDocument* Context::AttachLoadedDocument(ElementPtr element)
 	// An exception during its first update must not leave an unpublished tree attached.
 	unloaded_documents.reserve(unloaded_documents.size() + 1);
 	root->AppendChild(std::move(element));
+	DirtyNativeRendering();
 	try
 	{
 
@@ -349,6 +364,7 @@ void Context::UnloadDocument(ElementDocument* _document)
 
 	if (document->GetParentNode() == root.get())
 	{
+		DirtyNativeRendering();
 		// All storage is prepared before the host revokes old identities. Unload
 		// notifications must not interrupt the structural commit under memory pressure.
 		ReserveDocumentRetirement();
@@ -524,6 +540,7 @@ void Context::PullDocumentToFront(ElementDocument* document)
 				ElementPtr element = std::move(root->children[i]);
 				root->children.erase(root->children.begin() + i);
 				root->children.insert(root->children.begin() + root->GetNumChildren(), std::move(element));
+				DirtyNativeRendering();
 
 				root->DirtyStackingContext();
 			}
@@ -543,6 +560,7 @@ void Context::PushDocumentToBack(ElementDocument* document)
 				ElementPtr element = std::move(root->children[i]);
 				root->children.erase(root->children.begin() + i);
 				root->children.insert(root->children.begin(), std::move(element));
+				DirtyNativeRendering();
 
 				root->DirtyStackingContext();
 			}
@@ -1096,6 +1114,18 @@ RenderManager& Context::GetRenderManager()
 	return *render_manager;
 }
 
+void Context::DirtyClippingInput()
+{
+    DirtyNativeRendering();
+	if (!render_manager || !render_manager->clipping_reuse_active) return;
+	render_manager->clipping_input_valid = false;
+	// 还需识别裁剪计算过程中发生的变更，避免结束时重新发布已失效的来源。
+	if (render_manager->clipping_mutation_revision < UINT64_MAX)
+		++render_manager->clipping_mutation_revision;
+	else
+		render_manager->clipping_reuse_active = false;
+}
+
 TextInputHandler* Context::GetTextInputHandler() const
 {
 	return text_input_handler;
@@ -1408,6 +1438,28 @@ bool Context::IsDocumentBlockedByModal(const ElementDocument* document) const
 
 Element* Context::GetElementAtPoint(Vector2f point, const Element* ignore_element, Element* element) const
 {
+    const auto revision=native_render_revision;
+    // 未知命中虚函数或字体实现可自行变化；只复用已有来源证明所覆盖的普通节点。
+    const bool reusable=!ignore_element&&!element&&AllowsNativeRecordingReuse();
+    if(reusable)
+    {
+        for(const auto& query:hit_queries)
+            if(query.revision==revision&&query.point==point)return query.result;
+    }
+    else for(auto& query:hit_queries)query.revision=0;
+    Element* result=nullptr;
+    try {result=GetElementAtPointUncached(point,ignore_element,element);}
+    catch(...) {for(auto& query:hit_queries)query.revision=0;throw;}
+    if(reusable&&revision==native_render_revision&&AllowsNativeRecordingReuse())
+    {
+        auto& query=hit_queries[hit_query_cursor++%2];
+        query.point=point;query.result=result;query.revision=revision;
+    }
+    return result;
+}
+
+Element* Context::GetElementAtPointUncached(Vector2f point, const Element* ignore_element, Element* element) const
+{
 	if (!element)
 	{
 		if (ignore_element == root.get())
@@ -1451,14 +1503,14 @@ Element* Context::GetElementAtPoint(Vector2f point, const Element* ignore_elemen
 					continue;
 			}
 
-			Element* child_element = GetElementAtPoint(point, ignore_element, stacking_child);
+			Element* child_element = GetElementAtPointUncached(point, ignore_element, stacking_child);
 			if (child_element)
 				return child_element;
 		}
 	}
 
 	// A hidden element can still have visible descendants, which were visited above.
-	if (!element->IsVisible() || element->effect_input_disabled || element->GetComputedValues().pointer_events() == Style::PointerEvents::None)
+	if (!element->IsVisible() || element->IsEffectInputDisabled() || element->GetComputedValues().pointer_events() == Style::PointerEvents::None)
 		return nullptr;
 
 	// Projection may fail if we have a singular transformation matrix.
@@ -1486,7 +1538,7 @@ Element* Context::GetElementAtPoint(Vector2f point, const Element* ignore_elemen
 		}
 		hit = text->GetParentNode();
 	} else within_element = projection_result && element->IsPointWithinElement(point);
-	if (hit && hit->effect_input_disabled)
+	if (hit && hit->IsEffectInputDisabled())
 		return nullptr;
 	if (within_element)
 	{
@@ -1694,12 +1746,37 @@ const String& Context::GetDocumentsBaseTag()
 void Context::RequestNextUpdate(double delay)
 {
 	URUI_ASSERT(delay >= 0.0);
+    // 内置定时状态（例如滚动）即使不改变样式，也可能改变本帧绘制。
+    DirtyNativeRendering();
 	next_update_timeout = Math::Min(next_update_timeout, delay);
 }
 
 double Context::GetNextUpdateDelay() const
 {
 	return next_update_timeout;
+}
+
+bool Context::AllowsNativeDocumentUpdateReuse(const ElementDocument* document) const
+{
+    if(native_render_revision==UINT64_MAX||drag_clone||Factory::HasOpaqueRenderingInstancers()||!IsNativeRecordingFontEngine())return false;
+    // 隐藏输入和未知 OnUpdate 也必须执行；不能沿用只检查已呈现文档的绘制资格。
+    return document&&document->context==this&&document->GetParentNode()==root.get()&&
+        Factory::IsNativeRecordingElementInstancer(document->instancer)&&!document->opaque_native_rendering;
+}
+
+bool Context::AllowsNativeRecordingReuse() const
+{
+    if(native_render_revision==UINT64_MAX||drag_clone||Factory::HasOpaqueRenderingInstancers()||!IsNativeRecordingFontEngine())return false;
+    for(int n=0;n<GetNumDocuments();n++)
+    {
+        const auto* child=root->GetChild(n);
+        const auto* document=child?child->GetOwnerDocument():nullptr;
+        if(!document)return false;
+        // 未呈现文档及其后代不参与绘制；Update仍照常执行，Show会撤销录制复用。
+        if(!document->IsPresented())continue;
+        if(!Factory::IsNativeRecordingElementInstancer(document->instancer)||document->opaque_native_rendering)return false;
+    }
+    return true;
 }
 
 } // namespace URUI

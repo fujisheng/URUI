@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace URUI.Resources
 {
-    /// <summary>外置 CSS 和字体等文件的规范 URL；使用 TextAsset.bytes 保留原始内容。</summary>
+    /// <summary>外置 CSS 和字体等文件的规范 URL；同步借用 TextAsset 的原生只读内容，保留二进制文件字节。</summary>
     [Serializable]
     public struct TextResource
     {

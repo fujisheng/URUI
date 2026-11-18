@@ -1,0 +1,7 @@
+{
+  "name": "URUI.Authoring.Editor",
+  "rootNamespace": "URUI.Authoring",
+  "references": ["URUI.Runtime", "URUI.Editor"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

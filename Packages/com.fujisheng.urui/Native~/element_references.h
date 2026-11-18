@@ -2,6 +2,8 @@
 #include <URUI/Core/ObserverPtr.h>
 #include <URUI/Core/Element.h>
 #include <URUI/Core/ElementDocument.h>
+#include <URUI/Core/Plugin.h>
+#include <atomic>
 #include <thread>
 #include <unordered_map>
 #include <cstdint>
@@ -10,13 +12,22 @@
 
 // The document owns attached nodes; this registry owns detached roots. Tokens
 // identify objects, never IDs or recycled addresses, and are context-thread only.
-class ElementReferences
+class ElementReferences : public URUI::Plugin
 {
+    std::atomic<uint64_t> invalidation_revision{1};
+    void InvalidateReferences()
+    {
+        auto value = invalidation_revision.load(std::memory_order_relaxed);
+        while (!invalidation_revision.compare_exchange_weak(value, value == UINT64_MAX ? 1 : value + 1,
+                                                            std::memory_order_relaxed)) { }
+    }
     std::thread::id owner{};
     struct Entry
     {
         URUI::ObserverPtr<URUI::Element> observer;
         URUI::ElementDocument* document;
+        uint32_t event_interest=0x000ffffeu;
+        uint64_t interest_version=0;
         URUI::Element* get() const { return observer.get(); }
         explicit operator bool() const { return bool(observer); }
     };
@@ -32,12 +43,17 @@ class ElementReferences
     uint64_t next = 1;
 
 public:
+    int GetEventClasses() override { return EVT_BASIC | EVT_ELEMENT; }
+    // 原生内部控件也能销毁已包装节点，不能只观察托管层的 Destroy 调用。
+    void OnElementDestroy(URUI::Element*) override { InvalidateReferences(); }
+    uint64_t Revision() const { return invalidation_revision.load(std::memory_order_relaxed); }
     static constexpr size_t MaxOutstanding = 65536;
     void Begin() { owner = std::this_thread::get_id(); }
     bool Owner() const { return owner == std::this_thread::get_id(); }
     void DocumentLoaded() { available = true; }
     void Clear()
     {
+        InvalidateReferences();
         available = false;
         entries.clear();
         reverse.clear();
@@ -54,6 +70,7 @@ public:
     {
         if (!Owner()) return -3;
         if (!document) return -1;
+        InvalidateReferences();
         for (auto it = entries.begin(); it != entries.end();)
         {
             if (it->second.document != document) { ++it; continue; }
@@ -74,9 +91,9 @@ public:
         auto* root = el;
         while (root != doc && root->GetParentNode())
             root = root->GetParentNode();
+        if (root == doc) return true;
         const auto it = detached.find(root);
-        return root == doc || (it != detached.end() &&
-            it->second.document == doc && it->second.element);
+        return it != detached.end() && it->second.document == doc && it->second.element;
     }
     bool Attached(URUI::Element* el, URUI::ElementDocument* doc) const
     {
@@ -103,6 +120,22 @@ public:
             else
                 ++it;
         }
+    }
+    int SetEventInterest(uint64_t token,uint32_t mask,uint64_t version)
+    {
+        if(!Owner())return -3;auto found=entries.find(token);
+        if(found==entries.end()||!found->second)return -2;
+        if(!version||(mask&~0x000ffffeu))return -1;
+        auto& entry=found->second;if(version<=entry.interest_version)return -2;
+        entry.event_interest=mask;entry.interest_version=version;return 1;
+    }
+    bool EventInterest(URUI::Element* element,int type) const
+    {
+        const auto token=reverse.find(element);if(token==reverse.end())return true;
+        const auto entry=entries.find(token->second);
+        // Unknown/unwrapped native nodes conservatively retain publication.
+        if(entry==entries.end()||entry->second.get()!=element)return true;
+        return (entry->second.event_interest&(uint32_t(1)<<type))!=0;
     }
     uint64_t Track(URUI::Element* el, URUI::ElementDocument* doc)
     {
@@ -140,6 +173,23 @@ public:
             return nullptr;
         auto* el = it->second.get();
         return Member(el, doc) ? el : nullptr;
+    }
+    // Resolve identity and attachment with one registry lookup and ancestor walk.
+    // Detached roots still require ownership; an alive orphan is not a valid token.
+    int ResolveState(uint64_t token, URUI::ElementDocument* doc, URUI::Element*& element)
+    {
+        element = nullptr;
+        if (!Owner() || !available || !doc || !token) return 0;
+        const auto found = entries.find(token);
+        if (found == entries.end()) return 0;
+        auto* value = found->second.get();
+        if (!value) return 0;
+        auto* root = value;
+        while (root != doc && root->GetParentNode()) root = root->GetParentNode();
+        if (root == doc) { element = value; return 3; }
+        const auto detached_root = detached.find(root);
+        if (detached_root == detached.end() || detached_root->second.document != doc || !detached_root->second.element) return 0;
+        element = value; return 1;
     }
     uint64_t Create(URUI::ElementDocument* doc, const char* tag)
     {
@@ -281,6 +331,7 @@ public:
             return 0;
         if (auto* pointer = it->second.get())
             reverse.erase(pointer);
+        InvalidateReferences();
         entries.erase(it);
         return 1;
     }

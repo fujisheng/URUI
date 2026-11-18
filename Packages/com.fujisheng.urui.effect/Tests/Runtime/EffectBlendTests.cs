@@ -43,7 +43,7 @@ namespace URUI.Effect.Tests
                 var pixels=fixture.Render();var destination=pixels[0];var expected=Blend(source,destination,src,dst);var actual=pixels[128*256+128];
                 var error=Difference(expected,actual);
                 Assert.That(error,Is.LessThan(.0035f),src+"/"+dst+": "+actual+" != "+expected);
-                report.cases.Add(new BlendCase {source=src.ToString(),destination=dst.ToString(),maximumError=error});
+                report.cases.Add(new BlendCase {source=src.ToString(),destination=dst.ToString(),maximumError=error});yield return null;
             }
             File.WriteAllText(Path.Combine(fixture.Output,"blend-numeric.json"),JsonUtility.ToJson(report,true));yield return null;
         }
@@ -55,7 +55,7 @@ namespace URUI.Effect.Tests
             foreach(var type in (BlendType[])Enum.GetValues(typeof(BlendType)))
             {
                 var id="BlendType."+type+".050";
-                fixture.Load("--urui-fx-blend-type:"+EffectRenderFixture.Kebab(type.ToString())+";");fixture.Compare(id);report.cases.Add(id);
+                fixture.Load("--urui-fx-blend-type:"+EffectRenderFixture.Kebab(type.ToString())+";");fixture.Compare(id);report.cases.Add(id);yield return null;
             }
             File.WriteAllText(Path.Combine(fixture.Output,"blend-captures.json"),JsonUtility.ToJson(report,true));yield return null;
         }

@@ -24,21 +24,22 @@ namespace URUI.Tests.Editor
                 DocumentMenu.CreateMinimalScene();
                 var document = SceneManager.GetActiveScene().GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Document>()).Single();
                 var serialized = new SerializedObject(document);
-                var source = (UnityEngine.TextAsset)serialized.FindProperty("source").objectReferenceValue;
+                var compiled = (URUI.Resources.CompiledDocumentAsset)serialized.FindProperty("compiledSource").objectReferenceValue;
+                Assert.IsNotNull(compiled);
+                var source = (UnityEngine.TextAsset)new SerializedObject(compiled).FindProperty("authorSource").objectReferenceValue;
                 var path = AssetDatabase.GetAssetPath(source);
                 Assert.That(path, Does.EndWith(".html"));
-                Assert.AreEqual(path, serialized.FindProperty("sourceUrl").stringValue);
+                Assert.AreEqual("/" + path, serialized.FindProperty("sourceUrl").stringValue);
                 Assert.IsNotNull(serialized.FindProperty("surface").objectReferenceValue);
                 Assert.IsTrue(HtmlCssValidator.Validate(source.text, path, false).IsValid);
-                var resources = serialized.FindProperty("textResources");
-                Assert.AreEqual(13, resources.arraySize);
-                for (var i = 0; i < resources.arraySize; i++)
-                    Assert.IsNotNull(resources.GetArrayElementAtIndex(i).FindPropertyRelative("asset").objectReferenceValue);
+                Assert.AreEqual(13, compiled.Dependencies.Count);
+                foreach (var resource in compiled.Dependencies) Assert.IsNotNull(resource.Asset);
+                URUI.Editor.Compilation.CompiledDocumentCompiler.ValidateCurrent(compiled);
                 var original = source.text;
                 DocumentMenu.CreateMinimalScene();
                 Assert.AreEqual(original, AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>(path).text);
                 var second = SceneManager.GetActiveScene().GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Document>()).Single();
-                Assert.AreNotEqual(path, AssetDatabase.GetAssetPath(new SerializedObject(second).FindProperty("source").objectReferenceValue));
+                Assert.AreNotEqual(compiled, new SerializedObject(second).FindProperty("compiledSource").objectReferenceValue);
             }
             finally
             {

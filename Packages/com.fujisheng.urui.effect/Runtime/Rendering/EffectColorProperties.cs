@@ -16,7 +16,7 @@ namespace URUI.Effect.Rendering
             brightness = new(prefix + "-brightness-shift", StyleValueType.Number);
             alpha = new(prefix + "-alpha", StyleValueType.Number);
         }
-        internal Color Apply(ComputedStyleSnapshot style, Color color, ColorFilter mode)
+        internal Color Apply(EffectStyleView style, Color color, ColorFilter mode)
         {
             if (mode == ColorFilter.HsvModifier)
             {

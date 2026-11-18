@@ -215,9 +215,18 @@ bool ElementUtilities::SetClippingRegion(Element* element, bool force_clip_self)
 		return false;
 
 	RenderManager& render_manager = context->GetRenderManager();
+	const bool reuse = render_manager.clipping_reuse_active && !force_clip_self;
+	const auto* parent = reuse ? element->GetOffsetParent() : nullptr;
+	const auto clip = element->GetComputedValues().clip();
+	const int ignored = clip.GetNumber();
+	const bool ignores_all = clip == Style::Clip::Type::None;
+	if (reuse && render_manager.clipping_input_valid && render_manager.clipping_parent == parent &&
+		render_manager.clipping_ignored == ignored && render_manager.clipping_ignores_all == ignores_all)
+		return true;
 
 	Rectanglei clip_region;
 	ClipMaskGeometryList clip_mask_list;
+	const auto mutation_revision = render_manager.clipping_mutation_revision;
 
 	const bool scissoring_enabled = GetClippingRegion(element, clip_region, &clip_mask_list, force_clip_self);
 	if (scissoring_enabled)
@@ -226,6 +235,15 @@ bool ElementUtilities::SetClippingRegion(Element* element, bool force_clip_self)
 		render_manager.DisableScissorRegion();
 
 	render_manager.SetClipMask(std::move(clip_mask_list));
+	// 状态或几何修改都会撤销来源标记，计算中发生变更也不能重新发布旧来源。
+	render_manager.clipping_input_valid = reuse && render_manager.clipping_reuse_active &&
+		render_manager.clipping_mutation_revision == mutation_revision;
+	if (render_manager.clipping_input_valid)
+	{
+		render_manager.clipping_parent = parent;
+		render_manager.clipping_ignored = ignored;
+		render_manager.clipping_ignores_all = ignores_all;
+	}
 
 	return true;
 }

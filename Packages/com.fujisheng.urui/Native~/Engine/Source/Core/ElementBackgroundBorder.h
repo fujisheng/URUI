@@ -26,8 +26,8 @@ private:
     Background* GetBackground(BackgroundType type);
     Background& GetOrCreateBackground(BackgroundType type);
     void GenerateGeometry(Element* element);
-    bool background_dirty = false;
-    bool border_dirty = false;
+    bool background_dirty = true;
+    bool border_dirty = true;
     StableMap<BackgroundType, Background> backgrounds;
 };
 

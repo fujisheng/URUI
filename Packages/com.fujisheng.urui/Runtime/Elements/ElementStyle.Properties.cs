@@ -120,26 +120,33 @@ namespace URUI.Elements
             string value = Get(name);
             return value == null ? default : (T)Enum.Parse(typeof(T), value.Replace("-", ""), true);
         }
+        static class EnumStyleText<T> where T : struct
+        {
+            internal static readonly System.Collections.Generic.Dictionary<T, string> Values = Build();
+            static System.Collections.Generic.Dictionary<T, string> Build()
+            {
+                var values = new System.Collections.Generic.Dictionary<T, string>();
+                foreach (T value in Enum.GetValues(typeof(T)))
+                {
+                    if (Convert.ToInt32(value) == 0) { values.Add(value, null); continue; }
+                    var text = value.ToString(); var result = new System.Text.StringBuilder();
+                    for (var i = 0; i < text.Length; i++)
+                    {
+                        if (i > 0 && char.IsUpper(text[i])) { result.Append('-'); }
+                        result.Append(char.ToLowerInvariant(text[i]));
+                    }
+                    values.Add(value, result.ToString());
+                }
+                return values;
+            }
+        }
         void SetEnum<T>(string name, T value) where T : struct
         {
-            if (!Enum.IsDefined(typeof(T), value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value));
-            }
-
-            if (Convert.ToInt32(value) == 0) { Remove(name); return; }
-            string text = value.ToString();
-            var result = new System.Text.StringBuilder();
-            for (int i = 0; i < text.Length; i++)
-            {
-                if (i > 0 && char.IsUpper(text[i]))
-                {
-                    result.Append('-');
-                }
-
-                result.Append(char.ToLowerInvariant(text[i]));
-            }
-            Set(name, result.ToString());
+            // 枚举定义与 CSS 规范文本固定；避免每次动态位置写入都反射、装箱和格式化。
+            if (!EnumStyleText<T>.Values.TryGetValue(value, out var text))
+            { throw new ArgumentOutOfRangeException(nameof(value)); }
+            if (text == null) { Remove(name); return; }
+            Set(name, text);
         }
         /// <summary>width 的行内长度覆盖。</summary>
         public Length Width

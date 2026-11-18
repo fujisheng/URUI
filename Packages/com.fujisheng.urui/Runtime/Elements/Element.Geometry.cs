@@ -8,7 +8,7 @@ namespace URUI.Elements
     public partial class Element
     {
         readonly float[] metrics = new float[16];
-        Dictionary<(string property, bool local), string> styleStrings;
+        Dictionary<(string property, bool local), (string recent, string prior)> styleStrings;
         Dictionary<(int field, string name), string> strings;
         string ReadString(int field, string name = null)
         {
@@ -23,14 +23,17 @@ namespace URUI.Elements
         internal string ReadStyle(string property, bool local)
         {
             var token = CheckedToken();
-            styleStrings ??= new Dictionary<(string, bool), string>();
+            styleStrings ??= new Dictionary<(string, bool), (string, string)>();
             var key = (property, local);
             styleStrings.TryGetValue(key, out var previous);
-            var value = NativeMethods.ReadStyle(NativeHandle, token, property, local, previous);
-            if (value != null) { styleStrings[key] = value; }
-            else { styleStrings.Remove(key); }
+            var value = NativeMethods.ReadStyle(NativeHandle, token, property, local, previous.recent, previous.prior);
+            // 每个已读属性最多保留两个有限文本；空值不丢弃显隐切换前的字符串。
+            if (value != null && value.Length <= 64 * 1024 && !ReferenceEquals(value, previous.recent))
+            { styleStrings[key] = (value, previous.recent); }
             return value;
         }
+        internal ReadOnlySpan<byte> ReadStyleNumberText(string property)
+            => NativeMethods.ReadStyleNumberText(NativeHandle, CheckedToken(), property);
         readonly float[] projectedPoint = new float[2];
         float[] transformSnapshot;
         float[] viewportSnapshot;
@@ -121,6 +124,7 @@ namespace URUI.Elements
         public bool TryWorldToLocal(Vector2 point, out Vector2 localPoint)
         {
             RequireValid();
+            document.ReadGeometryBarrier();
             ElementStyle.RequireFinite(point.x); ElementStyle.RequireFinite(point.y);
             var result = NativeMethods.urui_element_point(NativeHandle, token, 0, point.x, point.y, projectedPoint);
             localPoint = default;
@@ -132,6 +136,7 @@ namespace URUI.Elements
         Vector2 ConvertPoint(Vector2 point, bool toWorld)
         {
             RequireValid();
+            document.ReadGeometryBarrier();
             ElementStyle.RequireFinite(point.x); ElementStyle.RequireFinite(point.y);
             RequireSuccess(NativeMethods.urui_element_point(NativeHandle, token, toWorld ? 1 : 0, point.x, point.y, projectedPoint), "转换坐标");
             return new Vector2(projectedPoint[0], projectedPoint[1]);
@@ -149,6 +154,35 @@ namespace URUI.Elements
         public float Width => element.Layout.width;
         /// <summary>最终边框高度，像素。</summary>
         public float Height => element.Layout.height;
+        /// <summary>读取最近计算样式中的有限数值长度或 auto，不创建托管 CSS 字符串。</summary>
+        /// <param name="property">非空且不包含 NUL 的 CSS 属性名。</param>
+        /// <param name="length">保留像素、百分比、em、rem 或 auto 单位的值。</param>
+        /// <returns>值为受支持的长度时返回 true；缺失、未解析或非长度值返回 false。</returns>
+        /// <remarks>无单位数值按像素返回；此读取不代替 CSS 属性类型校验。</remarks>
+        public bool TryGetLength(string property, out Length length)
+        {
+            URUI.Documents.Document.RequireName(property, nameof(property));
+            if (!element.HasLayout) { throw new InvalidOperationException("元素尚未完成布局。"); }
+            length = default;
+            var text = element.ReadStyleNumberText(property);
+            while (!text.IsEmpty && text[0] <= 32) { text = text.Slice(1); }
+            while (!text.IsEmpty && text[text.Length - 1] <= 32) { text = text.Slice(0, text.Length - 1); }
+            if (AsciiEquals(text, "auto")) { length = Length.Auto; return true; }
+            if (!System.Buffers.Text.Utf8Parser.TryParse(text, out float value, out var consumed) || !float.IsFinite(value)) { return false; }
+            var suffix = text.Slice(consumed);
+            if (suffix.IsEmpty || AsciiEquals(suffix, "px")) { length = Length.Pixels(value); }
+            else if (AsciiEquals(suffix, "%")) { length = Length.Percent(value); }
+            else if (AsciiEquals(suffix, "em")) { length = Length.Em(value); }
+            else if (AsciiEquals(suffix, "rem")) { length = Length.Rem(value); }
+            else { return false; }
+            return true;
+        }
+        static bool AsciiEquals(ReadOnlySpan<byte> value, string expected)
+        {
+            if (value.Length != expected.Length) { return false; }
+            for (var i = 0; i < value.Length; i++) { if (value[i] != expected[i]) { return false; } }
+            return true;
+        }
         /// <summary>读取级联与变量解析后的 CSS 值；尺寸像素请使用 Width/Height。</summary>
         public string Get(string property)
         {

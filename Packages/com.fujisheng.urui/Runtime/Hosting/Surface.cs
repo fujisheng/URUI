@@ -22,9 +22,15 @@ namespace URUI.Hosting
         RenderHost host;
         SurfaceInput input;
         IUiClock clock = UnityUiClock.Unscaled;
-        int ownerThread, dispatchDepth, transactionDepth, effectDepth;
+        int ownerThread, dispatchDepth, transactionDepth, effectDepth, documentRefreshDepth;
         bool flushing, stopping;
         Vector2Int viewport;
+        internal Camera PreviewCamera;
+        internal bool ManualDrive;
+        internal void InitializeForEditor(Camera camera)
+        { ownerThread = Thread.CurrentThread.ManagedThreadId; PreviewCamera = camera; ManualDrive = true; }
+        internal void ReleaseForEditor()
+        { CheckThread(); if (!ManualDrive) throw new InvalidOperationException("Only an explicitly owned preview can be released by the editor."); OnDisable(); }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetOwners() { owners.Clear(); }
@@ -75,9 +81,19 @@ namespace URUI.Hosting
         }
         internal bool IsDispatching => dispatchDepth != 0;
         internal bool IsBusy => dispatchDepth != 0 || transactionDepth != 0;
+        internal bool IsRefreshingDocuments => documentRefreshDepth != 0;
         internal bool IsEffectCallback => effectDepth != 0;
         /// <summary>提交同一 Surface 的完整 UI，一次调用覆盖所有活动文档。</summary>
         public bool SubmitRendering(UnityEngine.Rendering.ScriptableRenderContext context, UnityEngine.Rendering.RenderTargetIdentifier target, Rect viewport)
+            => SubmitRendering(context,target,viewport,default);
+        /// <summary>提交到真实纹理，并据其格式与采样信息选择正确的颜色累积方式。</summary>
+        public bool SubmitRendering(UnityEngine.Rendering.ScriptableRenderContext context, RenderTexture target, Rect viewport)
+        {
+            CheckThread();
+            return SubmitRendering(context,new UnityEngine.Rendering.RenderTargetIdentifier(target),viewport,URUI.Rendering.RenderTargetInfo.FromTexture(target));
+        }
+        /// <summary>由渲染管线提供实际输出信息；未知信息保持保守的颜色累积方式。</summary>
+        public bool SubmitRendering(UnityEngine.Rendering.ScriptableRenderContext context, UnityEngine.Rendering.RenderTargetIdentifier target, Rect viewport, URUI.Rendering.RenderTargetInfo targetInfo)
         {
             CheckThread();
             if (!float.IsFinite(viewport.x) || !float.IsFinite(viewport.y) ||
@@ -86,7 +102,7 @@ namespace URUI.Hosting
             if (!host || !host.Ready || !HasLoadedDocuments) return false;
             // 与 Document 提交一致，页面变更须等到命令和 fence 都已排队后再执行。
             BeginDispatch();
-            try { return host.SubmitRendering(context, target, viewport); }
+            try { return host.SubmitRendering(context, target, viewport,targetInfo); }
             finally { EndDispatch(); FinishNativeCall(); }
         }
         internal bool HasLoadedDocuments {
@@ -151,7 +167,13 @@ namespace URUI.Hosting
                 while (deferred.Count > 0) deferred.Dequeue().Invoke();
             } finally { flushing = false; }
         }
-        internal void RefreshDocuments(bool layout) { foreach (var document in DocumentsSnapshot()) if (document) document.RefreshElements(layout); }
+        internal void RefreshDocuments(bool layout)
+        {
+            // OnUpdate 不经过事件分发，仍须阻止命令借用递归进入同步准备。
+            documentRefreshDepth++;
+            try { foreach (var document in DocumentsSnapshot()) if (document) document.RefreshElements(layout); }
+            finally { documentRefreshDepth--; }
+        }
         internal void NotifyLayoutUpdated() { foreach (var document in DocumentsSnapshot()) if (document) document.NotifyLayoutUpdated(); }
         void OnDisable()
         {
@@ -159,7 +181,7 @@ namespace URUI.Hosting
             stopping = true; BeginTransaction();
             try {
                 foreach (var document in DocumentsSnapshot()) if (document) document.SuspendForSurface();
-                if (host) { host.ReleaseForSurface(); Destroy(host.gameObject); host = null; }
+                if (host) { host.ReleaseForSurface(); if (Application.isPlaying) Destroy(host.gameObject); else DestroyImmediate(host.gameObject); host = null; }
             } finally { EndTransaction(); stopping = false; FinishNativeCall(); }
         }
         void OnEnable()

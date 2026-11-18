@@ -11,17 +11,22 @@
 
 struct Draw { UruiCommand command; std::vector<UruiVertex> vertices; };
 static std::vector<Draw> Draws(uint64_t texture) {
-    urui_update(); urui_render();
-    std::vector<UruiCommand> commands(urui_command_count());
-    assert(urui_get_commands(commands.data(), int(commands.size())) == int(commands.size()));
+    urui_update(); UruiPlanInputPacket input{};assert(urui_plan_begin(&input)==1);
     std::vector<Draw> result;
-    for (const auto& command : commands) if (command.texture == texture) {
+    for (uint32_t n=0;n<input.command_count;n++) {
+        const auto& command=input.commands[n];if(command.texture!=texture)continue;
         int vertices=0, indices=0; assert(urui_get_geometry_info(command.geometry, &vertices, &indices)==1);
         Draw draw{command, std::vector<UruiVertex>(vertices)}; std::vector<int> ids(indices);
         assert(urui_copy_geometry(command.geometry, draw.vertices.data(), vertices, ids.data(), indices)==1);
+        const auto& uniform=input.uniforms[n];
+        for(auto& vertex:draw.vertices) {
+            vertex.r=uint8_t(std::lround(vertex.r*uniform.tint[0]));vertex.g=uint8_t(std::lround(vertex.g*uniform.tint[1]));
+            vertex.b=uint8_t(std::lround(vertex.b*uniform.tint[2]));vertex.a=uint8_t(std::lround(vertex.a*uniform.tint[3]));
+            vertex.u=vertex.u*uniform.uv[0]+uniform.uv[2];vertex.v=vertex.v*uniform.uv[1]+uniform.uv[3];
+        }
         if (!ids.empty()) result.push_back(std::move(draw));
     }
-    return result;
+    assert(urui_plan_release(input.lease)==1);return result;
 }
 static void Near(float actual, float expected) { assert(std::abs(actual-expected)<.001f); }
 int main() {

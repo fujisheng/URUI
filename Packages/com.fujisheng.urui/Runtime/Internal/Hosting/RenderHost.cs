@@ -52,6 +52,7 @@ namespace URUI.Internal.Hosting
         public string InitialMarkup;
 
         public bool Ready => active;
+        internal Camera InspectionCamera => targetCamera;
 
         public int UiWidth => OwnerSurface ? OwnerSurface.Width : Screen.width;
 
@@ -68,12 +69,9 @@ namespace URUI.Internal.Hosting
         readonly BorrowedTextureRegistry borrowedTextures = new BorrowedTextureRegistry();
         readonly Dictionary<ulong, Texture2D> textures = new Dictionary<ulong, Texture2D>();
         readonly List<ulong> retiredTextureIds = new List<ulong>();
-        readonly List<BatchCache> batches = new();
-        readonly List<BatchItem> batchGroup = new(128);
         readonly List<MeshCache> idleGeometry = new();
-        VertexNative[] vertexScratch = Array.Empty<VertexNative>();
         Vector2[] zeroTextureSlots = Array.Empty<Vector2>();
-        int batchCursor, pooledGeometryBytes;
+        int pooledGeometryBytes;
         CommandBuffer buffer;
         Material material;
         internal int RecordedGeometryDraws { get; private set; }

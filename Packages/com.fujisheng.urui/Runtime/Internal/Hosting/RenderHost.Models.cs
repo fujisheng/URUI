@@ -23,6 +23,7 @@ namespace URUI.Internal.Hosting
         sealed class MeshCache
         {
             public Mesh mesh;
+            public bool Shared;
             public Vector3[] positions;
             public Vector2[] uv;
             public Color32[] colors;
@@ -32,28 +33,5 @@ namespace URUI.Internal.Hosting
             public int CapacityBytes => positions.Length * 24 + indices.Length * 4;
         }
 
-        struct BatchItem
-        {
-            public CommandNative command;
-            public MeshCache geometry;
-            public Matrix4x4 transform;
-            public bool transformed;
-            public float x0;
-            public float y0;
-            public float x1;
-            public float y1;
-        }
-
-        sealed class BatchCache
-        {
-            public Mesh mesh;
-            public CommandNative[] items = System.Array.Empty<CommandNative>();
-            public int count;
-            public Vector3[] positions = System.Array.Empty<Vector3>();
-            public Vector2[] uv = System.Array.Empty<Vector2>();
-            public Vector2[] sourceSlots = System.Array.Empty<Vector2>();
-            public Color32[] colors = System.Array.Empty<Color32>();
-            public int[] indices = System.Array.Empty<int>();
-        }
     }
 }

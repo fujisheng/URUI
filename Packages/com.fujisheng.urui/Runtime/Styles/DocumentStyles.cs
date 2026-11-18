@@ -14,7 +14,8 @@ namespace URUI.Styles
         readonly List<ulong> invalid = new List<ulong>();
         NativeMethods.StyleValue[] entryScratch=Array.Empty<NativeMethods.StyleValue>();
         byte[] textScratch=Array.Empty<byte>();
-        bool checkedProtocol;
+        ComputedStyleSnapshot sharedValues;
+        bool checkedProtocol,checkedFrozenProtocol;
         public uint Generation { get; private set; } = 1;
         internal DocumentStyles(Document document)
         {
@@ -41,8 +42,41 @@ namespace URUI.Styles
             var entries=entryScratch;var names=textScratch;
             result = NativeMethods.urui_element_style_snapshot(element.NativeHandle, token, revision, entries, entries.Length, names, names.Length, out revision, out count, out bytes);
             if (result != 1 || count > entries.Length || bytes > names.Length) { throw new InvalidOperationException("计算样式快照在复制时变化：" + result); }
-            var snapshot = new ComputedStyleSnapshot(this, element, Generation, revision, entries,count,names,bytes,current);
+            var snapshot = new ComputedStyleSnapshot(this, element, Generation, revision, entries,count,names,bytes,ReuseValues(current));
+            sharedValues = snapshot;
             cache[token] = snapshot; return snapshot;
+        }
+        internal void RequireFrozenProtocol()
+        {
+            if(checkedFrozenProtocol)return;
+            if(NativeMethods.urui_style_frozen_api_version()!=1)throw new NotSupportedException("需要准备样式快照协议 v1。");
+            checkedFrozenProtocol=true;
+        }
+        internal ComputedStyleSnapshot GetFrozen(Element element,ulong owner,in NativeMethods.FrozenStyleHandle handle,ComputedStyleSnapshot previous)
+        {
+            document.CheckThread();
+            // The native handle already pins a prepared layout's values. Reading it
+            // during an effect callback must not query live DOM/layout state.
+            if(element==null||!ReferenceEquals(element.Document,document)||!element.IsValid)
+                throw new InvalidOperationException("准备样式所属元素已失效。");
+            var result=NativeMethods.urui_style_snapshot_copy(owner,handle,0,null,0,null,0,out var revision,out var count,out var bytes);
+            if(result!=-3||count<0||bytes<0)throw new InvalidOperationException("准备样式快照已失效："+result);
+            // 同一元素/版本的不可变公开快照可直接共享，避免观察 Frame 后仅因引用不同重建布局。
+            if(cache.TryGetValue(element.Token,out var current)&&current.IsValid&&current.Revision==revision)return current;
+            if(previous!=null&&previous.IsValid&&previous.Revision==revision)return previous;
+            if(entryScratch.Length<count)entryScratch=new NativeMethods.StyleValue[count];
+            if(textScratch.Length<bytes)textScratch=new byte[bytes];
+            result=NativeMethods.urui_style_snapshot_copy(owner,handle,revision,entryScratch,entryScratch.Length,textScratch,textScratch.Length,out revision,out count,out bytes);
+            if(result!=1||count>entryScratch.Length||bytes>textScratch.Length)throw new InvalidOperationException("准备样式快照复制失败："+result);
+            // 公开快照始终复制值；只有调用者实际观察它时才创建托管对象。
+            return sharedValues = new ComputedStyleSnapshot(this,element,Generation,revision,entryScratch,count,textScratch,bytes,ReuseValues(previous));
+        }
+        ComputedStyleSnapshot ReuseValues(ComputedStyleSnapshot previous)
+        {
+            if (previous != null) { return previous; }
+            // 不同元素仍有独立身份和版本；构造器只共享完全相等的不可变文本与数值块。
+            if (sharedValues != null && !sharedValues.IsValid) { sharedValues = null; }
+            return sharedValues;
         }
         /// <summary>从下一次稳定帧通知起通知；等值写入不重复通知，取消后不再回调。</summary>
         public IDisposable Subscribe(Element element, Action<ComputedStyleSnapshot> changed)
@@ -74,9 +108,10 @@ namespace URUI.Styles
             foreach (var key in invalid) { cache.Remove(key); }
             if (failures != null) { throw new AggregateException("计算样式订阅失败。", failures); }
         }
-        void OnUnloaded(Document source) { Generation++; cache.Clear(); DiscardInvalid(); }
+        void OnUnloaded(Document source) { Generation++; sharedValues = null; cache.Clear(); DiscardInvalid(); }
         internal void DiscardInvalid()
         {
+            if (sharedValues != null && !sharedValues.IsValid) { sharedValues = null; }
             foreach (var subscription in subscriptions) if (!subscription.Disposed && !subscription.Element.IsValid) subscription.Dispose();
             subscriptions.RemoveAll(subscription => subscription.Disposed);
             invalid.Clear();

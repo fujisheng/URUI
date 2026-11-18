@@ -39,7 +39,7 @@ extern "C"
         uint64_t source, target, mask;
         int blend, flags, clip_x, clip_y, clip_w, clip_h;
     } UruiLayerCommand;
-    // Bridge ABI 8 uses explicit document identities; element event protocol 2 is 80 bytes.
+    // Bridge ABI 9 adds the leased universal render-plan protocol; element event v2 remains 80 bytes.
     URUI_API int urui_bridge_abi_version(void);
     URUI_API int urui_command_protocol_version(void);
     // Surface bootstrap only: family0 serif,1 sans-serif,2 monospace; style0 normal,1 italic.
@@ -69,6 +69,26 @@ extern "C"
     // -4 budget, -5 callback/reentrancy, -8 internal, -9 strict HTML validation.
     URUI_API int urui_document_create(UruiDocumentHandle* result);
     URUI_API int urui_document_load_html(UruiDocumentHandle owner, const char* html, const char* source_url);
+    // 源文件只在同步编译调用内借用；资产保存类型化结构，不含原生地址。
+    typedef struct { const char* uri; const uint8_t* bytes; int length; } UruiCompileResource;
+    // 1 成功；-3 输出容量不足（required 为所需字节数）；其余遵循文档错误约定。
+    URUI_API int urui_compile_document(const char* html, const char* source_url, int fragment,
+        const UruiCompileResource* resources, int resource_count, uint8_t* output, int capacity, int* required);
+    URUI_API int urui_document_load_compiled(UruiDocumentHandle owner, const uint8_t* bytes, int length);
+    URUI_API int urui_compile_template(const uint8_t* parent, int parent_length, const char* html, const char* source_url,
+        uint8_t* output, int capacity, int* required);
+    URUI_API int urui_element_begin_compiled_template(UruiDocumentHandle owner, uint64_t element, const uint8_t* bytes, int length);
+    typedef struct {
+        uint64_t identity, revision;
+        uint32_t local_id, end;
+        int flags, root_match;
+    } UruiCompiledNodeInfo;
+    // flags: bit0 拓扑有效，bit1 id 索引有效，bit2 class 索引有效，bit3 动态片段宿主。
+    // query_kind: 0 只读元数据，1 id，2 class；root_match 仅用于动态宿主自身。
+    URUI_API int urui_element_compiled_info(UruiDocumentHandle owner, uint64_t element, int query_kind, const char* key, UruiCompiledNodeInfo* info);
+    URUI_API int urui_element_compiled_tokens(UruiDocumentHandle owner, uint64_t element, uint64_t identity, uint64_t revision,
+        uint64_t* output, int capacity);
+    URUI_API int urui_compiled_document_metadata(const uint8_t* bytes, int length, char* output, int capacity, int* required);
     URUI_API int urui_document_close(UruiDocumentHandle owner);
     URUI_API int urui_document_set_presentation(UruiDocumentHandle owner, int layer, int order, int visible, int modal);
     URUI_API uint64_t urui_document_root(UruiDocumentHandle owner);
@@ -106,6 +126,8 @@ extern "C"
     // applied after the transform. UruiCommand is 48 bytes.
     URUI_API int urui_get_command_transforms(float* out, int float_capacity);
     URUI_API void urui_update(void);
+    // 同步已经更新的布局/变换，不录制绘制命令。仅context线程、回调外；1成功，负值拒绝。
+    URUI_API int urui_synchronize_geometry(void);
     URUI_API void urui_render(void);
     // Read actual single text child, or empty element. required includes UTF8 NUL.
     // 1 success, 0 missing document/element, -1 invalid arguments, -2 structured
@@ -144,6 +166,15 @@ extern "C"
     typedef struct { uint64_t filter, layer; int x, y, width, height; } UruiEffectInputRegion;
     URUI_API int urui_get_effect_input_regions(UruiEffectInputRegion* regions, int capacity);
     URUI_API int urui_animation_api_version(void);
+    // Sequence v1. Capture=2 freezes baseline without publication, validate=0, apply=1, clear-values=3.
+    // Empty samples release this owner's layer. No time advancement or animation events.
+    typedef struct UruiAnimationSample { const char* name; const char* easing; float progress; } UruiAnimationSample;
+    URUI_API int urui_sequence_api_version(void);
+// Current-document style/layout synchronization only: no clock, animation advance or input/business update.
+URUI_API int urui_sequence_layout(UruiDocumentHandle document_handle);
+URUI_API int urui_keyframes_count(UruiDocumentHandle document_handle, uint64_t token, const char* name);
+    URUI_API int urui_keyframes_properties(UruiDocumentHandle document_handle, uint64_t token, const char* name, char* output, int capacity, int* required);
+    URUI_API int urui_sequence_sample(UruiDocumentHandle document_handle, uint64_t token, uint64_t owner, const UruiAnimationSample* samples, int count, int mode);
     URUI_API uint64_t urui_animation_next_identity(void);
     URUI_API int urui_animation_current_event(UruiDocumentHandle document_handle, char* name,int capacity,uint64_t* identity,int* iterations);
     URUI_API int urui_effect_api_version(void);
@@ -213,28 +244,6 @@ extern "C"
     } UruiFrameStamp;
     URUI_API int urui_render_plan_version(void);
     URUI_API int urui_render_plan_stamp(UruiFrameStamp* out);
-    // Optional synchronous, caller-owned prepared core data. Keys retain painter
-    // order; mode 1 contains final world/affine values, mode 0 contains the original
-    // matrix and tx/ty in value[0..1] for the client's existing full-math fallback.
-    // No pointer escapes this call. All capacities/stamp/thread checks precede writes.
-    typedef struct UruiCoreKey
-    {
-        uint64_t geometry, texture;
-        int32_t flags, clip_x, clip_y, clip_w, clip_h;
-        uint32_t mode;
-    } UruiCoreKey;
-    typedef struct UruiCoreValue
-    {
-        float data[8];
-    } UruiCoreValue;
-    typedef struct UruiCoreSummary
-    {
-        uint32_t ready, fallback;
-        uint64_t bytes;
-    } UruiCoreSummary;
-    URUI_API int urui_core_frame_api_version(void);
-    URUI_API int urui_core_frame_copy(const UruiFrameStamp* expected, UruiCoreKey* keys, UruiCoreValue* values,
-                                      float* worlds, int capacity, UruiCoreSummary* info);
     // Explicit weak OBJECT references, not live ID selectors. Acquire uses fresh ID
     // semantics; rename does not retarget. Unload/destroy invalidates all tokens.
     // Single context thread only (-3 for foreign-thread operations). Managed nodes
@@ -251,124 +260,10 @@ extern "C"
 
 #include "document_resources.h"
 
-// Prepared-batch API v1. Main-context-thread synchronous CPU data only.
-// Packed little-endian vertex: position float3/color RGBA8/uv float2/slot float2.
-// Slot is the original command ordinal. Index/primitive/painter order preserved.
-// copy calls own no output memory and never retain pointers. Release lease only
-// AFTER all synchronous copies; Unity GPU object retirement remains caller-owned.
-// Status 1 success; -1 invalid, -2 stale/missing, -3 foreign thread, -4 budget,
-// -5 busy/closing, -8 allocation/internal failure.
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-    typedef struct UruiPreparedVertex
-    {
-        float x, y, z;
-        uint8_t r, g, b, a;
-        float u, v, slot, pad;
-    } UruiPreparedVertex;
-    typedef struct UruiPreparedDraw
-    {
-        uint64_t batch, texture;
-        uint32_t slot, count, vertex_count, index_count, kind;
-        int32_t flags, clip_x, clip_y, clip_w, clip_h;
-    } UruiPreparedDraw;
-    // Build/reuse/copy/retained reports are zero unless URUI_DEBUG is enabled.
-    typedef struct UruiPreparedPacket
-    {
-        uint64_t lease, session, epoch, plan, resources, retained_bytes, built_bytes;
-        uint32_t draw_count, commands, built_batches, reused_batches, native_vertices_copied, native_indices_copied,
-            stride, version;
-    } UruiPreparedPacket;
-    URUI_API int urui_prepared_api_version(void);
-    URUI_API uint64_t urui_prepared_create(void);
-    // Busy destroy marks session closing; copy/release remain valid until lastlease.
-    URUI_API int urui_prepared_destroy(uint64_t session);
-    URUI_API int urui_prepared_acquire(uint64_t session, const UruiFrameStamp* expected, const uint8_t* affine_mask,
-                                       int count, UruiPreparedPacket* packet);
-    URUI_API int urui_prepared_copy_draws(uint64_t session, uint64_t lease, UruiPreparedDraw* out, int capacity);
-    URUI_API int urui_prepared_copy_batch(uint64_t session, uint64_t lease, uint64_t batch,
-                                          UruiPreparedVertex* vertices, int vertex_capacity, uint32_t* indices,
-                                          int index_capacity);
-    URUI_API int urui_prepared_release(uint64_t session, uint64_t lease);
-#ifdef __cplusplus
-}
-#endif
-
-// Optional incremental CPU copy. Caller base token asserts BOTH output arrays
-// contain that complete immutable batch and have not been modified. Unknown,
-// missing or incompatible base always falls back to a complete copy. No commit
-// acknowledgement: a lease always retains the complete final payload for retry.
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-    // Byte/range reports are debug-only; base_batch and mode are always valid.
-    typedef struct UruiPreparedDeltaInfo
-    {
-        uint64_t base_batch, full_bytes, delta_bytes, copied_bytes;
-        uint32_t mode, vertex_ranges, index_ranges, reserved;
-    } UruiPreparedDeltaInfo;
-    URUI_API int urui_prepared_delta_api_version(void);
-    URUI_API int urui_prepared_delta_enable(uint64_t session, int enabled);
-    URUI_API int urui_prepared_copy_incremental(uint64_t session, uint64_t lease, uint64_t batch, uint64_t base_batch,
-                                                UruiPreparedVertex* vertices, int vertex_capacity, uint32_t* indices,
-                                                int index_capacity, UruiPreparedDeltaInfo* info);
-#ifdef __cplusplus
-}
-#endif
-
-// Final-frame view API v1, native-width pointers. Views are READ ONLY and
-// remain valid until release; neither allocator nor GPU ownership is transferred.
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-    // Build/reuse/retained reports are debug-only. Affine/fallback counts remain
-    // production protocol fields and always sum to count.
-    typedef struct UruiNativeFramePacket
-    {
-        uint64_t session, lease, epoch, commands, resources, plan, frame, retained_bytes, built_bytes;
-        const UruiPreparedDraw* draws;
-        const float* values;
-        const float* worlds;
-        uint32_t count, draw_count, built_batches, reused_batches, affine_count, fallback_count, version, flags;
-    } UruiNativeFramePacket;
-    typedef struct UruiNativeMeshView
-    {
-        const UruiPreparedVertex* vertices;
-        const uint32_t* indices;
-        uint32_t vertex_count, index_count, vertex_stride, index_stride;
-    } UruiNativeMeshView;
-    URUI_API int urui_native_frame_api_version(void);
-    URUI_API uint64_t urui_native_frame_create(void);
-    // Arithmetic 1 = rounded binary32 operations (IL2CPP), 2 = wide intermediate
-    // operations before storing float matrix fields (observed Mono Editor).
-    URUI_API uint64_t urui_native_frame_create_mode(uint32_t arithmetic);
-    URUI_API int urui_native_frame_acquire(uint64_t session, UruiNativeFramePacket* packet);
-    URUI_API int urui_native_frame_mesh(uint64_t session, uint64_t lease, uint64_t batch, UruiNativeMeshView* view);
-    URUI_API int urui_native_frame_release(uint64_t session, uint64_t lease);
-    URUI_API int urui_native_frame_destroy(uint64_t session);
-#ifdef __cplusplus
-}
-#endif
-
-// Caller-owned arithmetic preparation used for renderer capability matching.
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-    URUI_API int urui_native_frame_prepare_matrix(const float* matrix, float tx, float ty, float* world,
-                                                  float* parameter);
-    URUI_API int urui_native_frame_prepare_matrix_mode(const float* matrix, float tx, float ty, uint32_t arithmetic,
-                                                       float* world, float* parameter);
-#ifdef __cplusplus
-}
-#endif
-
 #if defined(URUI_DEBUG)
 #include "Debug/urui_debug.h"
 #endif
 
 #include "authoring.h"
+
+#include "render_plan_protocol.h"

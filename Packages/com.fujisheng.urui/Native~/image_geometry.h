@@ -22,7 +22,7 @@ namespace urui_image
     inline bool Changed(const URUI::PropertyIdSet& changed)
     {
         for (const char* name : {"object-fit", "--urui-image-slice-top", "--urui-image-slice-right", "--urui-image-slice-bottom", "--urui-image-slice-left",
-            "--urui-graphic-tint", "--urui-image-fill-mode", "--urui-image-fill-origin", "--urui-image-fill-clockwise", "--urui-image-fill-amount", "--urui-image-fill-center"})
+            "--urui-image-fill-mode", "--urui-image-fill-origin", "--urui-image-fill-clockwise", "--urui-image-fill-amount", "--urui-image-fill-center"})
         {
             const auto* definition = URUI::StyleSheetSpecification::GetProperty(name);
             if (definition && changed.Contains(definition->GetId())) return true;

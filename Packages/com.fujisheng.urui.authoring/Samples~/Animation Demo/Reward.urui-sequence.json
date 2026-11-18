@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "name": "Reward celebration",
+  "duration": 1.4,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "reward-in",
+      "kind": "css",
+      "target": "reward",
+      "keyframes": "reward-in",
+      "start": 0,
+      "duration": 0.35,
+      "iterations": 1,
+      "alternate": false,
+      "easing": "ease-out",
+      "muted": false,
+      "locked": false,
+      "source": "",
+      "seed": 7,
+      "speed": 1
+    },
+    {
+      "id": "claim",
+      "kind": "css",
+      "target": "claim",
+      "keyframes": "claim-feedback",
+      "start": 0.45,
+      "duration": 0.4,
+      "iterations": 1,
+      "alternate": false,
+      "easing": "ease-out",
+      "muted": false,
+      "locked": false,
+      "source": "",
+      "seed": 7,
+      "speed": 1
+    }
+  ]
+}

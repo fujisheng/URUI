@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine.Rendering;
+using UnityEngine;
 
 namespace URUI.Effect.Rendering
 {
@@ -12,13 +13,13 @@ namespace URUI.Effect.Rendering
             internal UiEffectProgram Program;
             internal int References;
         }
-        static readonly Dictionary<(BlendMode, BlendMode, int), Entry> programs = new();
+        static readonly Dictionary<(BlendMode, BlendMode, int,Texture,Texture,Texture,Texture,bool), Entry> programs = new();
         internal sealed class Lease : IDisposable
         {
-            readonly (BlendMode, BlendMode, int) key;
+            readonly (BlendMode, BlendMode, int,Texture,Texture,Texture,Texture,bool) key;
             Entry entry;
             internal UiEffectProgram Program => entry.Program;
-            internal Lease((BlendMode, BlendMode, int) key, Entry entry) { this.key = key; this.entry = entry; }
+            internal Lease((BlendMode, BlendMode, int,Texture,Texture,Texture,Texture,bool) key, Entry entry) { this.key = key; this.entry = entry; }
             public void Dispose()
             {
                 if (entry == null) { return; }
@@ -26,11 +27,11 @@ namespace URUI.Effect.Rendering
                 entry = null;
             }
         }
-        internal static Lease Acquire(BlendMode source, BlendMode destination, int samplingQuality = 0)
+        internal static Lease Acquire(BlendMode source, BlendMode destination, int samplingQuality = 0,Texture transition=null,Texture detail=null,Texture gradient=null,Texture triangles=null,bool complexPixel=false)
         {
-            var key = (source, destination, samplingQuality);
+            var key = (source, destination, samplingQuality,transition,detail,gradient,triangles,complexPixel);
             if (!programs.TryGetValue(key, out var entry))
-            { entry = new Entry { Program = new UiEffectProgram(source, destination, samplingQuality) }; programs.Add(key, entry); }
+            { entry = new Entry { Program = new UiEffectProgram(source, destination, samplingQuality,transition,detail,gradient,triangles,complexPixel) }; programs.Add(key, entry); }
             entry.References++; return new Lease(key, entry);
         }
     }

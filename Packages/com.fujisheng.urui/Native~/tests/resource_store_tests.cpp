@@ -18,6 +18,17 @@ int main()
     auto first = cache.Acquire(1, "ui/shared.bin", bytes, sizeof(bytes));
     auto second = cache.Acquire(2, "ui/shared.bin", bytes, sizeof(bytes));
     assert(first->bytes.get() == second->bytes.get());
+    auto third = cache.Acquire(3, "ui/shared.bin", bytes, sizeof(bytes));
+    assert(third->bytes == first->bytes);
+    bool typeRejected = false;
+    try { cache.Acquire(4, "ui/shared.bin", bytes, sizeof(bytes), "image"); }
+    catch (const std::invalid_argument&) { typeRejected = true; }
+    assert(typeRejected);
+    const uint8_t changed[] = {1, 0, 2, 4};
+    bool contentRejected = false;
+    try { cache.Acquire(4, "ui/shared.bin", changed, sizeof(changed)); }
+    catch (const std::invalid_argument&) { contentRejected = true; }
+    assert(contentRejected);
     auto a = std::make_shared<URUI::Bridge::DocumentResources>(1, 1, 1, cache, URUI::GetFileInterface());
     auto b = std::make_shared<URUI::Bridge::DocumentResources>(2, 2, 2, cache, URUI::GetFileInterface());
     Register(*a, "#box{width:37px;}");

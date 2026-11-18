@@ -2,10 +2,6 @@
 #ifndef URUI_EFFECT_DETAIL_INCLUDED
 #define URUI_EFFECT_DETAIL_INCLUDED
 sampler2D _DetailTex;
-float4 _DetailTex_ST, _DetailColor;
-float2 _DetailTex_Speed, _DetailThreshold;
-float _DetailIntensity;
-int _DetailFilter;
 half4 UruiDetail(half4 color,float2 local)
 {
     if (_DetailFilter==0) return color;

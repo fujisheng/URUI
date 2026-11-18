@@ -1,6 +1,6 @@
 # 代码组织
 
-主包位于 Packages/com.fujisheng.urui，可选效果包位于 Packages/com.fujisheng.urui.effect。命名空间按职责组织，程序集区分 Runtime 与 Editor。
+主包位于 Packages/com.fujisheng.urui，可选效果包位于 Packages/com.fujisheng.urui.effect，Editor-only 作者工具位于 Packages/com.fujisheng.urui.authoring。命名空间按职责组织，程序集区分 Runtime 与 Editor。
 
 ## Core
 
@@ -24,6 +24,6 @@
 
 Runtime 根目录提供 EffectModule、EffectController、EffectPreset、EffectPlayback 和参数；Runtime/Elements 提供声明式粒子节点；Runtime/Rendering 提供纹理/表面及内部效果实现；Editor 提供资产与预览工具。
 
-两个包的 Documentation~ 为使用事实源，Samples~ 为可导入样例，Tests/ 与 Tests~/ 为相应测试入口。完整 API 清单见 [Core 接口参考](../Packages/com.fujisheng.urui/Documentation~/REFERENCE_ZH.md)和 [Effect 接口参考](../Packages/com.fujisheng.urui.effect/Documentation~/REFERENCE_ZH.md)。
+各包的 Documentation~ 为使用事实源，Samples~ 为可导入样例，Tests/ 与 Tests~/ 为相应测试入口。完整 API 清单见 [Core 接口参考](../Packages/com.fujisheng.urui/Documentation~/REFERENCE_ZH.md)、[Effect 接口参考](../Packages/com.fujisheng.urui.effect/Documentation~/REFERENCE_ZH.md)与 [Authoring 接口说明](../Packages/com.fujisheng.urui.authoring/Documentation~/editor-api.md)。
 
 移动脚本、资源及目录时同时处理对应 .meta，保留已有组件身份。partial 文件共享同一对象的状态和所有权，不应因拆分改变初始化、通知或退役顺序。格式与 XML 注释要求见[代码约定](../Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)。

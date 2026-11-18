@@ -337,6 +337,7 @@ bool ElementText::GenerateLine(String& line, int& line_length, float& line_width
 
 void ElementText::ClearLines()
 {
+    DirtyNativeRendering();
 	URUI_ZoneScoped;
 	lines.clear();
 	generated_decoration = Style::TextDecoration::None;
@@ -345,6 +346,7 @@ void ElementText::ClearLines()
 
 void ElementText::AddLine(Vector2f line_position, String line)
 {
+    DirtyNativeRendering();
 	if (font_effects_dirty)
 		UpdateFontEffects();
 

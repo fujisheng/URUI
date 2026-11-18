@@ -15,6 +15,7 @@ T Element::GetProperty(const String& name)
 template <typename T>
 void Element::SetAttribute(const String& name, const T& value)
 {
+    DirtyNativeRendering();
 	Variant variant(value);
 	attributes[name] = variant;
 	ElementAttributes changed_attributes;

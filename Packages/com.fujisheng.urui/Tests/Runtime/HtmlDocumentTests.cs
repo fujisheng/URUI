@@ -63,9 +63,11 @@ namespace URUI.Tests
 
         sealed class UpdatingElement : Element
         {
-            internal int Updates;
+            internal int Updates, Invalidations;
+            internal Action UpdateAction;
             internal UpdatingElement(ElementContext context) : base(context) { }
-            protected override void OnUpdate() { Updates++; }
+            protected override void OnUpdate() { Updates++; UpdateAction?.Invoke(); }
+            protected override void OnInvalidated() { Invalidations++; }
         }
 
         [Test]
@@ -80,6 +82,45 @@ namespace URUI.Tests
             a.SynchronizeLayout();
             Assert.That(first.Updates-one,Is.EqualTo(1),"A shares the host layout refresh with B.");
             Assert.That(second.Updates-two,Is.EqualTo(1));
+        }
+
+        sealed class InvalidationOnlyElement : Element
+        {
+            internal int Invalidations;
+            internal InvalidationOnlyElement(ElementContext context) : base(context) { }
+            protected override void OnInvalidated() { Invalidations++; }
+        }
+
+        [Test]
+        public void GeometryCallbackDiscardsPrefetchedStateForDestroyedLaterElement()
+        {
+            a.RegisterElementType("urui-invalidation-probe", context => new InvalidationOnlyElement(context));
+            a.LoadHtml("<!doctype html><html><head><style>div{width:12px;height:9px;}</style></head><body><div id='mutator'></div><urui-invalidation-probe id='victim'></urui-invalidation-probe></body></html>", "ui/refresh-window.html");
+            a.SynchronizeLayout();
+            var mutator = a.Q("mutator"); var victim = a.Q<InvalidationOnlyElement>("victim");
+            mutator.RegisterCallback<GeometryChangedEvent>(_ => {
+                Assert.That(URUI.Internal.Interop.NativeMethods.urui_remove_element(a.NativeHandle, "victim"), Is.EqualTo(1));
+            });
+            mutator.Style.SetWidth(20);
+            a.SynchronizeLayout();
+            Assert.That(victim.Invalidations, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void CustomUpdateInvalidatesAnAlreadyRefreshedElementBeforeReturning()
+        {
+            a.RegisterElementType("urui-update-probe", context => new UpdatingElement(context));
+            a.LoadHtml("<!doctype html><html><head></head><body><urui-update-probe id='victim'></urui-update-probe><urui-update-probe id='mutator'></urui-update-probe></body></html>", "ui/update-invalidation.html");
+            a.SynchronizeLayout();
+            var victim = a.Q<UpdatingElement>("victim");
+            var mutator = a.Q<UpdatingElement>("mutator");
+            mutator.UpdateAction = () => {
+                mutator.UpdateAction = null;
+                Assert.That(URUI.Internal.Interop.NativeMethods.urui_remove_element(a.NativeHandle, "victim"), Is.EqualTo(1));
+            };
+            a.SynchronizeLayout();
+            Assert.That(victim.Invalidations, Is.EqualTo(1), "Read no public validity getter: refresh itself must publish the invalidation.");
+            Assert.That(mutator.IsValid, Is.True);
         }
 
         [Test]

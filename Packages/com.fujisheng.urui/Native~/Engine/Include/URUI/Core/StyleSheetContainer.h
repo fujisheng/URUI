@@ -44,6 +44,7 @@ public:
 	const String& GetResourceError() const { return resource_error; }
 
 private:
+	friend class CompiledArchive;
 	String resource_error;
 	Vector<SharedPtr<PropertySpecification>> property_specifications;
 	MediaBlockList media_blocks;

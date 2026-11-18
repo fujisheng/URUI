@@ -10,12 +10,12 @@
     return lerp(source, target, strength * _BandColor.a);
    }
 
-float4 ApplyTextureFilter(float4 color,float2 uv,float time)
+float4 ApplyTextureFilter(float4 color,float2 uv,float time,float2 referenceSize,float inputRate,float saturation,float brightness)
 {
     float angle=radians(_Rotation), s=sin(angle), c=cos(angle);
-    float2 centered=(uv-0.5)*_ReferenceSize.xy/max(_ReferenceSize.x,_ReferenceSize.y);
+    float2 centered=(uv-0.5)*referenceSize/max(referenceSize.x,referenceSize.y);
     float2 local=0.5+mul(float2x2(c,-s,s,c),centered)/max(abs(c-s),abs(c+s));
-    float rate=frac(_Speed*time+_Rate*0.9999);
+    float rate=frac(_Speed*time+inputRate*0.9999);
     if (_FilterMode<1.5)
     {
      float2 uv=local*lerp(100,1,_Width)+float2(-rate*2,0)+time*_PatternSpeed.xy;
@@ -39,7 +39,10 @@ float4 ApplyTextureFilter(float4 color,float2 uv,float time)
     float coverage=max(1.0/4096.0,1-glow*intensity);
     color.rgb/=coverage;
     color.a*=coverage;
-    color.rgb=lerp(dot(color.rgb,float3(.3,.59,.11)).xxx,color.rgb,saturate(_Saturation));
-    color.rgb*=max(0,_Brightness);
+    color.rgb=lerp(dot(color.rgb,float3(.3,.59,.11)).xxx,color.rgb,saturate(saturation));
+    color.rgb*=max(0,brightness);
     return color;
 }
+
+float4 ApplyTextureFilter(float4 color,float2 uv,float time)
+{return ApplyTextureFilter(color,uv,time,_ReferenceSize.xy,_Rate,_Saturation,_Brightness);}

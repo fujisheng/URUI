@@ -102,7 +102,17 @@ extern "C"
     }
     catch (...) { return -8; }
 
-    int urui_element_api_version(void) { return 2; }
+    int urui_element_api_version(void) { return 3; }
+    uint64_t urui_element_ref_revision(void) { return element_references.Revision(); }
+    int urui_element_refresh_stamp(UruiElementRefreshStamp* out)
+    {
+        if (!out) return -1;
+        *out = {};
+        if (context_thread != std::this_thread::get_id()) return -3;
+        if (!context) return -2;
+        *out = {context->GetNativeRenderRevision(), element_references.Revision()};
+        return 1;
+    }
     int urui_transform_api_version(void) { return 1; }
 
     int urui_element_local_transform(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity)
@@ -191,14 +201,37 @@ extern "C"
     {
         if (!out || capacity < 4) return -1;
         auto* document = urui_elements::Document(document_handle);
-        auto* element = urui_elements::Get(document_handle, token);
-        if (!element) return 0;
+        URUI::Element* element = nullptr;
+        const auto state = element_references.ResolveState(token, document, element);
+        if (!state) return 0;
         const auto position = element->GetRelativeOffset(URUI::BoxArea::Border);
         const auto size = element->GetBox().GetSize(URUI::BoxArea::Border);
         out[0] = position.x; out[1] = position.y; out[2] = size.x; out[3] = size.y;
-        return element_references.Attached(element, document) ? 3 : 1;
+        return state;
     }
     catch (...) { return -8; }
+
+    int urui_element_refresh_states(UruiDocumentHandle owner, const uint64_t* tokens, UruiElementRefreshState* out, uint32_t count)
+    {
+        if (count > 65536 || (count && (!tokens || !out))) return -1;
+        if (count) std::fill_n(out, count, UruiElementRefreshState{});
+        if (context_thread != std::this_thread::get_id()) return -3;
+        if (!context) return -2;
+        try {
+            auto* document = urui_elements::Document(owner);
+            if (!document) return -2;
+            for (uint32_t n = 0; n < count; n++) {
+                URUI::Element* element = nullptr;
+                const auto state = element_references.ResolveState(tokens[n], document, element);
+                if (!state) continue;
+                const auto position = element->GetRelativeOffset(URUI::BoxArea::Border);
+                const auto size = element->GetBox().GetSize(URUI::BoxArea::Border);
+                out[n] = {state, {position.x, position.y, size.x, size.y}};
+            }
+            return 1;
+        }
+        catch (...) { if (count) std::fill_n(out, count, UruiElementRefreshState{}); return -8; }
+    }
 
     int urui_element_box(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity)
     try

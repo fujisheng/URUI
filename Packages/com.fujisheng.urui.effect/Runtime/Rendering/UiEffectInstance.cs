@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 using URUI.Rendering.Effects;
+using URUI.Rendering;
 using URUI.Styles;
 
 namespace URUI.Effect.Rendering
@@ -31,97 +32,87 @@ namespace URUI.Effect.Rendering
         public IElementEffect Create(EffectContext context) { return new UiEffectInstance(context, resources,parameters); }
     }
 
-    internal sealed class UiEffectInstance : IElementEffect, IEffectBounds
+    internal sealed class UiEffectInstance : IElementEffect, IEffectBounds, IParameterImageGeometry, IParameterImageRuntime, IParameterEffectLayout, IParameterImageResources
     {
-        static readonly EffectColorProperties colorProperties = new("--urui-fx-color");
-        readonly MaterialPropertyBlock properties = new();
-        readonly EffectContext context;
-        readonly EffectSampling sampling;
-        readonly EffectGeometry geometry;
-        readonly EffectResources resources;
-        EffectGradientCache.Lease gradientLut;
-        Gradient gradientSource;
-        readonly Gradient defaultGradient=new();
-        EffectProgramCache.Lease program;
-        int quality = -1;
-        (BlendMode,BlendMode) blendState;
-        public Rect InkBounds => geometry.Mesh ? geometry.InkBounds : sampling.InkBounds;
-        EffectParameters parameters = new();
+        readonly EffectContext context;readonly EffectResources resources;
         readonly Func<URUI.Elements.Element,EffectParameters> parameterSource;
-        internal UiEffectInstance(EffectContext context, IEffectResourceResolver resolver,Func<URUI.Elements.Element,EffectParameters> parameterSource=null)
-        { this.context = context;this.parameterSource=parameterSource; sampling = new EffectSampling(context); geometry = new EffectGeometry(context); resources = resolver == null ? null : new EffectResources(context, resolver); }
-
-        public void Prepare(EffectFrame frame)
+        readonly EffectParameters geometryParameters=new();readonly Gradient defaultGradient=new();
+        readonly Vector4[] runtime=new Vector4[14];
+        UiEffectGeometry.Lease geometry;URUI.Rendering.Effects.EffectGeometry sourceTopology;ShadowMode mode;int iterations;
+        EffectProgramCache.Lease program;(BlendMode,BlendMode) blendState;int quality=-1;bool complexPixel;Texture transition,detail,gradient,atlas;
+        EffectGradientCache.Lease gradientLut;Gradient gradientSource;
+        Vector3 resourceKeys=new(float.NaN,float.NaN,float.NaN);Vector3 resourceOrigins;
+        Texture cssTransition,cssDetail,cssGradient;
+        public Rect InkBounds {get;private set;}
+        public Material Program=>program.Program.Material;
+        public RenderTimeInput TimeInput {get;private set;}
+        public ExternalGeometryInput Geometry=>new(geometry.Mesh,1);
+        public Matrix4x4 GeometryTransform {get;private set;}
+        public int RuntimeRowCount=>runtime.Length;
+        internal UiEffectInstance(EffectContext context,IEffectResourceResolver resolver,Func<URUI.Elements.Element,EffectParameters> parameterSource=null)
+        {this.context=context;this.parameterSource=parameterSource;resources=resolver==null?null:new EffectResources(context,resolver);}
+        public void PrepareCoverage(in EffectProgramPreparation preparation,Span<Matrix4x4> transforms,out int count,out Vector4 expansion,out EffectComposite composite)
         {
-            var style = frame.Style;
-            var preset=parameterSource?.Invoke(context.Element);
-            parameters.GradationGradient=preset?.GradationGradient??defaultGradient;
-            if(style!=null)
-            {
-                EffectParameterReader.Read(style,parameters);
-                PrepareImage(style,"--urui-fx-transition-texture");PrepareImage(style,"--urui-fx-detail-texture");PrepareImage(style,"--urui-fx-gradation-gradient");
-                parameters.TransitionTexture=style.GetOrigin("--urui-fx-transition-texture")>=StyleValueOrigin.Author?resources?.GetImage("--urui-fx-transition-texture"):preset?.TransitionTexture;
-                parameters.DetailTexture=style.GetOrigin("--urui-fx-detail-texture")>=StyleValueOrigin.Author?resources?.GetImage("--urui-fx-detail-texture"):preset?.DetailTexture;
-            }
-            else
-            {
-                if(preset==null)throw new InvalidOperationException("无 DOM 预览必须显式提供参数快照。");
-                parameters=preset;
-            }
-            sampling.Prepare(frame, parameters);
-            geometry.Prepare(frame, parameters, sampling.Geometry);
-            var requestedQuality = EffectSampling.Quality(parameters.SamplingFilter);
-            var blend=style==null?EffectBlendState.Factors(parameters):(BlendMode.One,BlendMode.OneMinusSrcAlpha);
-            if (quality != requestedQuality || blendState!=blend)
-            {
-                var next = context.Own(EffectProgramCache.Acquire(blend.Item1, blend.Item2, requestedQuality));
-                if (program != null) { context.Retire(program); } program = next; quality = requestedQuality;blendState=blend;
-            }
-            properties.Clear();
-            properties.SetTexture("_MainTex", frame.Source ? frame.Source : Texture2D.whiteTexture);
-            properties.SetInt("_ToneFilter", (int)parameters.ToneFilter); properties.SetFloat("_ToneIntensity", parameters.ToneIntensity);
-            properties.SetInt("_ColorFilter", (int)parameters.ColorFilter); properties.SetFloat("_ColorIntensity", parameters.ColorIntensity);
-            properties.SetVector("_ColorValue", parameters.Color); properties.SetInt("_ColorGlow", parameters.ColorGlow ? 1 : 0);
-            properties.SetInt("_TargetMode", (int)parameters.TargetMode); properties.SetVector("_TargetColor", parameters.TargetColor);
-            properties.SetFloat("_TargetRange", parameters.TargetRange); properties.SetFloat("_TargetSoftness", parameters.TargetSoftness);
-            properties.SetFloat("_InputBottomLeft", frame.SourceIsBottomLeft ? 1 : 0);
-            properties.SetFloat("_InputPremultiplied", frame.SourceIsPremultiplied ? 1 : 0);
-            properties.SetFloat("_InputCaptured", frame.SourceIsCaptured ? 1 : 0);
-            properties.SetFloat("_UseVertexColor", frame.SourceIsCaptured && !geometry.Mesh ? 0 : 1);
-            properties.SetFloat("_UseEffectGeometry", geometry.Mesh ? 1 : 0);
-            var uv = frame.SourceUvBounds;
-            properties.SetVector("_SourceUvBounds", new Vector4(uv.xMin, uv.yMin, uv.xMax, uv.yMax));
-            properties.SetVector("_SourceTexel", new Vector4(1f / frame.SourcePixelSize.x, 1f / frame.SourcePixelSize.y, frame.SourcePixelSize.x, frame.SourcePixelSize.y));
-            properties.SetInt("_SamplingFilter", (int)parameters.SamplingFilter); properties.SetFloat("_SamplingIntensity", parameters.SamplingIntensity);
-            properties.SetFloat("_SamplingWidth", parameters.SamplingWidth); properties.SetFloat("_SamplingScale", parameters.SamplingScale);
-            EffectVisualProperties.Bind(properties, frame, parameters);
-            var gradient = resources?.GetImage("--urui-fx-gradation-gradient");
-            if (!gradient && (parameters.GradationMode == GradationMode.HorizontalGradient || parameters.GradationMode == GradationMode.VerticalGradient || parameters.GradationMode == GradationMode.AngleGradient))
-            {
-                if (gradientLut == null || !ReferenceEquals(gradientSource, parameters.GradationGradient))
-                {
-                    var next = context.Own(EffectGradientCache.Acquire(parameters.GradationGradient));
-                    if (gradientLut != null) context.Retire(gradientLut);
-                    gradientLut = next; gradientSource = parameters.GradationGradient;
-                }
-                gradient = gradientLut.Texture;
-            }
-            EffectGradation.Bind(properties, frame, parameters, gradient);
-            EffectShadowProperties.Bind(properties, parameters);
-            EffectGeometry.BindMirror(properties, frame, parameters);
+            UiEffectCoverage.Read(preparation.Parameters,geometryParameters);expansion=UiEffectCoverage.CaptureExpansion(geometryParameters);
+            count=UiEffectCoverage.Transforms(preparation.Coordinates,geometryParameters,transforms);
+            var factors=EffectBlendState.Factors(geometryParameters);composite=new EffectComposite(factors.Item1,factors.Item2);
         }
-        void PrepareImage(ComputedStyleSnapshot style, string name)
+        public void PrepareProgram(in EffectProgramPreparation preparation)
         {
-            var image = style.GetImage(name);
-            if (resources != null) { resources.PrepareImage(name, image); }
-            else if (image.Kind != ComputedImageKind.None) { throw new InvalidOperationException("效果纹理需要 EffectModule 的资源解析器：" + name); }
+            var v=preparation.Parameters;var coordinates=preparation.Coordinates;var source=preparation.Source;var preset=parameterSource?.Invoke(context.Element);
+            UiEffectCoverage.Read(v,geometryParameters);
+            if(geometry==null||!ReferenceEquals(sourceTopology,source.Topology)||mode!=geometryParameters.ShadowMode||iterations!=geometryParameters.ShadowIteration) {
+                var next=context.Own(UiEffectGeometry.Acquire(source.Topology,geometryParameters.ShadowMode,geometryParameters.ShadowIteration));
+                if(geometry!=null)context.Retire(geometry);geometry=next;sourceTopology=source.Topology;mode=geometryParameters.ShadowMode;iterations=geometryParameters.ShadowIteration;
+            }
+            var keys=new Vector3(UiEffectParameters.Number(v,UiEffectParameters.TransitionTexture),UiEffectParameters.Number(v,UiEffectParameters.DetailTexture),UiEffectParameters.Number(v,UiEffectParameters.GradationGradient));
+            var origins=new Vector3(UiEffectParameters.Number(v,UiEffectParameters.TransitionTexture+1),UiEffectParameters.Number(v,UiEffectParameters.DetailTexture+1),UiEffectParameters.Number(v,UiEffectParameters.GradationGradient+1));
+            if(context.Element!=null && (keys!=resourceKeys||origins!=resourceOrigins)) {
+                var style=preparation.Frame.Style;
+                var ready=PrepareImage(style,"--urui-fx-transition-texture") & PrepareImage(style,"--urui-fx-detail-texture") & PrepareImage(style,"--urui-fx-gradation-gradient");
+                cssTransition=resources?.GetImage("--urui-fx-transition-texture");cssDetail=resources?.GetImage("--urui-fx-detail-texture");cssGradient=resources?.GetImage("--urui-fx-gradation-gradient");if(ready){resourceKeys=keys;resourceOrigins=origins;}
+            }
+            var nextTransition=origins.x>=(float)StyleValueOrigin.Author?cssTransition:preset?.TransitionTexture;
+            var nextDetail=origins.y>=(float)StyleValueOrigin.Author?cssDetail:preset?.DetailTexture;
+            var nextGradient=cssGradient;var gradation=(GradationMode)UiEffectParameters.Number(v,UiEffectParameters.GradationMode);
+            if(!nextGradient&&(gradation==GradationMode.HorizontalGradient||gradation==GradationMode.VerticalGradient||gradation==GradationMode.AngleGradient)) {
+                var requested=preset?.GradationGradient??defaultGradient;
+                if(gradientLut==null||!ReferenceEquals(gradientSource,requested)){var next=context.Own(EffectGradientCache.Acquire(requested));if(gradientLut!=null)context.Retire(gradientLut);gradientLut=next;gradientSource=requested;}
+                nextGradient=gradientLut.Texture;
+            }
+            var nextAtlas=UiEffectGeometry.Texture;var nextQuality=EffectSampling.Quality(geometryParameters.SamplingFilter);
+            // 算法族属于固定程序身份；强度、颜色与时间仍在参数表中，不能改写在途材质。
+            var nextComplexPixel=UiEffectParameters.Number(v,UiEffectParameters.TransitionFilter)!=0||UiEffectParameters.Number(v,UiEffectParameters.DetailFilter)!=0||UiEffectParameters.Number(v,UiEffectParameters.EdgeMode)!=0||gradation!=GradationMode.None;
+            var nextBlend=context.Element==null?EffectBlendState.Factors(geometryParameters):(BlendMode.One,BlendMode.OneMinusSrcAlpha);
+            if(program==null||blendState!=nextBlend||quality!=nextQuality||complexPixel!=nextComplexPixel||transition!=nextTransition||detail!=nextDetail||gradient!=nextGradient||atlas!=nextAtlas) {
+                var next=context.Own(EffectProgramCache.Acquire(nextBlend.Item1,nextBlend.Item2,nextQuality,nextTransition,nextDetail,nextGradient,nextAtlas,nextComplexPixel));
+                if(program!=null)context.Retire(program);program=next;blendState=nextBlend;quality=nextQuality;complexPixel=nextComplexPixel;transition=nextTransition;detail=nextDetail;gradient=nextGradient;atlas=nextAtlas;
+            }
+            var transitionMode=(TransitionFilter)UiEffectParameters.Number(v,UiEffectParameters.TransitionFilter);
+            var timed=transitionMode!=TransitionFilter.None&&(UiEffectParameters.Number(v,UiEffectParameters.TransitionAutoPlaySpeed)!=0||UiEffectParameters.Number(v,UiEffectParameters.TransitionTextureSpeedX)!=0||UiEffectParameters.Number(v,UiEffectParameters.TransitionTextureSpeedY)!=0)||
+                UiEffectParameters.Number(v,UiEffectParameters.DetailFilter)!=0&&(UiEffectParameters.Number(v,UiEffectParameters.DetailTextureSpeedX)!=0||UiEffectParameters.Number(v,UiEffectParameters.DetailTextureSpeedY)!=0)||UiEffectParameters.Number(v,UiEffectParameters.EdgeMode)==2&&UiEffectParameters.Number(v,UiEffectParameters.EdgeShinyAutoPlaySpeed)!=0;
+            TimeInput=timed?RenderTimeInput.UiClock:RenderTimeInput.None;
+            Vector4 RectRow(Rect b)=>new(b.x,b.y,b.width,b.height);
+            runtime[0]=RectRow(source.CaptureBounds);var uv=source.UvBounds;runtime[1]=new Vector4(uv.xMin,uv.yMin,uv.xMax,uv.yMax);
+            runtime[2]=new Vector4(1f/source.PixelSize.x,1f/source.PixelSize.y,source.PixelSize.x,source.PixelSize.y);
+            runtime[3]=RectRow(coordinates.ContentRect);runtime[4]=RectRow(coordinates.RootContentRect);
+            var inverse=coordinates.ElementToDocument.inverse;var rootInverse=coordinates.RootToDocument.inverse;
+            for(var i=0;i<4;i++){runtime[5+i]=inverse.GetColumn(i);runtime[9+i]=rootInverse.GetColumn(i);}
+            uv=source.Topology.UvBounds;runtime[13]=new Vector4(uv.xMin,uv.yMin,uv.xMax,uv.yMax);
+            GeometryTransform=source.IsCaptured?coordinates.ElementToDocument:Matrix4x4.identity;
+            InkBounds=UiEffectCoverage.Ink(coordinates,source,geometryParameters,geometry);
         }
-        public void Record(EffectRenderContext context)
+        bool PrepareImage(ComputedStyleSnapshot style,string name)
         {
-            if (geometry.Mesh) { context.DrawGeometry(geometry.Mesh, program.Program.Material, Matrix4x4.identity, properties); }
-            else if (sampling.Geometry) { context.DrawGeometry(sampling.Geometry, program.Program.Material, Matrix4x4.identity, properties); }
-            else { context.Draw(program.Program.Material, properties); }
+            var image=style.GetImage(name);if(resources!=null)return resources.PrepareImage(name,image);
+            if(image.Kind!=ComputedImageKind.None)throw new InvalidOperationException("效果纹理需要 EffectModule 的资源解析器："+name);
+            return true;
         }
-        public void Dispose() { }
+        public void CopyRuntimeParameters(Span<Vector4> values)=>runtime.AsSpan().CopyTo(values);
+        public void CommitResources()=>UiEffectGeometry.Commit();
+        public void GetPreviewParameters(Span<Vector4> values)=>UiEffectParameters.Write(values,parameterSource?.Invoke(context.Element)??throw new InvalidOperationException("预览需要显式参数。"));
+        public void Prepare(EffectFrame frame)=>throw new InvalidOperationException("UI 程序使用固定参数准备。");
+        public void Record(EffectRenderContext context)=>throw new InvalidOperationException("UI 程序由原生计划直接提交。");
+        public void Dispose(){geometry=null;program=null;}
     }
 }

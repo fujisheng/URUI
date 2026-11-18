@@ -27,8 +27,10 @@ namespace URUI.Rendering.Effects
         public event Action ParametersPreparing;
         internal void UpdateParameters()=>Updating?.Invoke();
         internal void FreezeParameters()=>ParametersPreparing?.Invoke();
+        internal bool HasParameterBinding(ulong token)=>parameters.ContainsKey(token);
         internal EffectLayout ApplyParameters(URUI.Elements.Element element,EffectLayout layout)
             =>parameters.TryGetValue(element.Token,out var value)?value.Resolve(layout):layout;
+        internal IEffectParameterBinding ProgramBinding(ulong token)=>parameters.TryGetValue(token,out var value)?value.Program:null;
         public EffectLayout GetLayout(URUI.Elements.Element element)=>document.RawEffectLayout(element);
         public IDisposable BindParameters(URUI.Elements.Element element,Func<EffectLayout,EffectLayout> resolve)
         {
@@ -36,6 +38,13 @@ namespace URUI.Rendering.Effects
             if(element==null||!element.IsValid||!ReferenceEquals(element.Document,document)||resolve==null)throw new ArgumentException("参数绑定需要当前文档的有效节点和解析器。");
             var binding=new ParameterBinding(this,element,resolve);
             if(!parameters.TryAdd(element.Token,binding))throw new InvalidOperationException("节点已经绑定效果参数。");return binding;
+        }
+        /// <summary>绑定固定参数与惰性公开布局；绑定租约释放后恢复作者样式。</summary>
+        public IDisposable BindProgramParameters(URUI.Elements.Element element,IEffectParameterBinding resolve)
+        {
+            if(resolve==null)throw new ArgumentNullException(nameof(resolve));
+            var lease=BindParameters(element,resolve.ResolveLayout);
+            parameters[element.Token].Program=resolve;return lease;
         }
         /// <summary>声明运行时参数需要捕获及显式命中策略；不修改作者 CSS，默认两个标志均为 false。</summary>
         public void SetRuntimeState(URUI.Elements.Element element,bool captureRequired,bool inputDisabled)
@@ -47,7 +56,7 @@ namespace URUI.Rendering.Effects
         sealed class ParameterBinding:IDisposable
         {
             EffectRegistry owner;readonly URUI.Elements.Element element;
-            internal readonly Func<EffectLayout,EffectLayout> Resolve;
+            internal readonly Func<EffectLayout,EffectLayout> Resolve;internal IEffectParameterBinding Program;
             internal ParameterBinding(EffectRegistry owner,URUI.Elements.Element element,Func<EffectLayout,EffectLayout> resolve){this.owner=owner;this.element=element;Resolve=resolve;}
             public void Dispose()
             {
@@ -76,6 +85,10 @@ namespace URUI.Rendering.Effects
             document.CheckThread();document.RequireEffectDomAccess();
             if(element==null||!element.IsValid||!ReferenceEquals(element.Document,document)||clock==null)throw new ArgumentException("效果时钟需要当前文档的有效元素和非空时钟。");
             var binding=new ClockBinding(this,element,clock);if(!clocks.TryAdd(element.Token,binding))throw new InvalidOperationException("元素已经绑定效果时钟。");return binding;
+        }
+        internal void CollectClocks(Action<URUI.Animation.IUiClock> collect)
+        {
+            foreach(var binding in clocks.Values)if(binding.Element.IsValid&&binding.Element.IsAttached)collect(binding.Clock);
         }
         internal URUI.Animation.IUiClock ClockFor(URUI.Elements.Element element)=>clocks.TryGetValue(element.Token,out var binding)?binding.Clock:document.Surface.UiClock;
         public int Count => definitions.Count+filters.Count;

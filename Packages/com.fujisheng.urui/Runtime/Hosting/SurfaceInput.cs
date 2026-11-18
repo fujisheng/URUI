@@ -20,6 +20,9 @@ namespace URUI.Hosting
         static readonly KeyCode[] keys = PhysicalKeys();
         string composition = "";
         bool hadFocus = true;
+        Element clipboardFocus;
+        ulong clipboardVersion;
+
         // Shared chrome must also observe presses on empty Surface space or another document.
         internal event Action<Vector2> PointerPressed;
         internal SurfaceInput(Surface surface) { this.surface = surface; }
@@ -180,7 +183,7 @@ namespace URUI.Hosting
             if (owner == null) { throw new ArgumentNullException(nameof(owner)); }
             surface.CheckThread();
             if (!ReferenceEquals(owner.Document.Surface, surface)) { throw new ArgumentException("Pointer owner belongs to another document.", nameof(owner)); }
-            if (owner.Document.Defer(() => CancelPointers(owner), false))
+            if (owner.Document.Defer(owner.DeferredPointerCancellation, false))
             {
                 return;
             }
@@ -193,8 +196,50 @@ namespace URUI.Hosting
 
         internal void OnUnload()
         {
+            clipboardFocus=null;clipboardVersion=0;
             composition = "";
             repeating.Clear();
+        }
+
+        ulong UnityClipboardVersion()
+        {
+            var version=NativeMethods.urui_clipboard_version();
+            if(version==0)throw new InvalidOperationException("剪贴板所属上下文已失效。");
+            return version;
+        }
+        void ImportUnityClipboard()
+        {
+            var result=NativeMethods.urui_clipboard_write(GUIUtility.systemCopyBuffer??"");
+            if(result!=1)throw new InvalidOperationException("系统剪贴板同步失败。");
+        }
+        internal void SyncUnityClipboardFocus()
+        {
+            surface.CheckThread();
+            if(clipboardVersion==0)clipboardVersion=UnityClipboardVersion();
+            var focus=document?.FocusedElement;
+            if(ReferenceEquals(focus,clipboardFocus))return;
+            FlushUnityClipboard();clipboardFocus=focus;
+            if(focus is ITextInputControl)ImportUnityClipboard();
+        }
+        internal void FlushUnityClipboard()
+        {
+            surface.CheckThread();var version=UnityClipboardVersion();
+            if(clipboardVersion==0){clipboardVersion=version;return;}
+            if(version==clipboardVersion)return;
+            GUIUtility.systemCopyBuffer=NativeMethods.ReadClipboard()??"";clipboardVersion=version;
+        }
+        internal void SendUnityKey(KeyCode key,bool pressed,InputModifiers modifiers)
+        {
+            SyncUnityClipboardFocus();
+            if(pressed&&key==KeyCode.V&&(modifiers&(InputModifiers.Control|InputModifiers.Command))!=0)ImportUnityClipboard();
+            SendKey(key,pressed,modifiers);
+            if(surface.HasLoadedDocuments)FlushUnityClipboard();
+        }
+
+        internal void PollUnityPointer(Vector2 position,int pointer,bool touch,int buttons,InputModifiers modifiers)
+        {
+            RequireReady();
+            Complete(NativeMethods.urui_pointer_poll(pointer,touch?1:0,position.x,position.y,buttons,(int)modifiers));
         }
 
         internal void PollUnity()
@@ -225,7 +270,8 @@ namespace URUI.Hosting
                     var phase = touch.phase == TouchPhase.Began ? PointerPhase.Down
                         : touch.phase == TouchPhase.Ended ? PointerPhase.Up
                         : touch.phase == TouchPhase.Canceled ? PointerPhase.Cancel : PointerPhase.Move;
-                    SendPointer(phase, Position(touch.position), checked(touch.fingerId + 1), true, modifiers: modifiers);
+                    if(phase==PointerPhase.Move)PollUnityPointer(Position(touch.position),checked(touch.fingerId+1),true,0,modifiers);
+                    else SendPointer(phase, Position(touch.position), checked(touch.fingerId + 1), true, modifiers: modifiers);
                     if (!surface.HasLoadedDocuments)
                     {
                         return;
@@ -244,7 +290,7 @@ namespace URUI.Hosting
                     }
                 }
 
-                SendPointer(PointerPhase.Move, point, pressedButtons: buttons, modifiers: modifiers);
+                PollUnityPointer(point,0,false,buttons,modifiers);
                 if (!surface.HasLoadedDocuments)
                 {
                     return;
@@ -279,12 +325,12 @@ namespace URUI.Hosting
                 return;
             }
 
-            NativeMethods.urui_clipboard_write(GUIUtility.systemCopyBuffer ?? "");
+            SyncUnityClipboardFocus();
             foreach (var key in keys)
             {
                 if (UnityInput.GetKeyDown(key))
                 {
-                    SendKey(key, true, modifiers);
+                    SendUnityKey(key, true, modifiers);
                     if (!surface.HasLoadedDocuments)
                     {
                         return;
@@ -293,12 +339,12 @@ namespace URUI.Hosting
                 }
                 else if (UnityInput.GetKeyUp(key))
                 {
-                    SendKey(key, false, modifiers);
+                    SendUnityKey(key, false, modifiers);
                     repeating.Remove(key);
                 }
                 else if (repeating.TryGetValue(key, out var next) && UnityInput.GetKey(key) && Time.unscaledTime >= next)
                 {
-                    SendKey(key, true, modifiers);
+                    SendUnityKey(key, true, modifiers);
                     if (!surface.HasLoadedDocuments)
                     {
                         return;
@@ -310,11 +356,7 @@ namespace URUI.Hosting
                     return;
                 }
             }
-            string clipboard = NativeMethods.ReadClipboard();
-            if (clipboard != GUIUtility.systemCopyBuffer)
-            {
-                GUIUtility.systemCopyBuffer = clipboard;
-            }
+            FlushUnityClipboard();
 
             string nextComposition = UnityInput.compositionString ?? "";
             string committed = UnityInput.inputString ?? "";

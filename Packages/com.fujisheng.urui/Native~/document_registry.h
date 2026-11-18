@@ -2,6 +2,7 @@
 #include "element_references.h"
 #include <URUI/Core/Context.h>
 #include "Engine/Source/Core/HtmlBuilder.h"
+#include "Engine/Source/Core/CompiledDocument.h"
 #include <memory>
 #include <thread>
 #include <unordered_map>
@@ -21,6 +22,7 @@ struct DocumentState
     uint64_t resource_group = 0;
     std::shared_ptr<DocumentResources> resources, pending_resources;
     URUI::UniquePtr<URUI::InnerHtmlReplacement> fragment;
+    URUI::CompiledTemplateCache templates;
     URUI::ElementDocument* Element() const
     {
         return static_cast<URUI::ElementDocument*>(root.get());

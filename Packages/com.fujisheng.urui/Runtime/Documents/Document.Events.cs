@@ -14,6 +14,7 @@ namespace URUI.Documents
         internal static NativeMethods.ElementEventCallback NativeEventCallback => eventCallback;
         int invalidatingRequests;
         internal bool HasPendingInvalidation => invalidatingRequests > 0;
+        readonly Stack<List<(Element element,Element.EventSubscription[] callbacks)>> idleEventPaths=new();
         int eventDepth;
         int nativeDepth;
         int imageCallbackDepth;
@@ -23,9 +24,9 @@ namespace URUI.Documents
         internal void StartEvents()
         {
             if (NativeMethods.urui_animation_api_version()!=1)throw new NotSupportedException("需要 URUI 命名动画协议 v1。");
-            if (NativeMethods.urui_element_api_version() != 2 || Marshal.SizeOf<ElementEventNative>() != 80)
+            if (NativeMethods.urui_element_api_version() != 3 || Marshal.SizeOf<ElementEventNative>() != 80)
             {
-                throw new InvalidOperationException("URUI 原生插件需要元素协议版本 2 和 80 字节事件包。");
+                throw new InvalidOperationException("URUI 原生插件需要元素协议版本 3 和 80 字节事件包。");
             }
 
             if (NativeMethods.urui_document_listen(NativeHandle) != 1)
@@ -129,68 +130,72 @@ namespace URUI.Documents
                 throw new InvalidOperationException("同一事件不能重入分发。");
             }
 
-            var path = new List<(Element element, Element.EventSubscription[] callbacks)>();
-            for (var current = target; current != null; current = current.Parent)
-            {
-                path.Add((current, current.CaptureSubscriptions()));
-                if (!value.Bubbles || value is GeometryChangedEvent || value is AttachToDocumentEvent || value is DetachFromDocumentEvent)
-                {
-                    break;
-                }
-            }
-            value.Target = target;
-            value.Dispatching = true;
+            var path=idleEventPaths.Count>0?idleEventPaths.Pop():new List<(Element element,Element.EventSubscription[] callbacks)>();
             uint version = generation;
             bool wasAttached = target.IsAttached;
-            eventDepth++;
-            surface.BeginDispatch();
             try
             {
-                for (int i = path.Count - 1; i >= 0; i--)
+                for (var current = target; current != null; current = current.Parent)
                 {
-                    if (!CanDeliver())
+                    path.Add((current, current.CaptureSubscriptions()));
+                    if (!value.Bubbles || value is GeometryChangedEvent || value is AttachToDocumentEvent || value is DetachFromDocumentEvent)
                     {
-                        return;
-                    }
-
-                    var entry = path[i];
-                    if (!entry.element.IsValid || (wasAttached && !entry.element.IsAttached))
-                    {
-                        continue;
-                    }
-
-                    value.CurrentTarget = entry.element;
-                    value.PropagationPhase = i == 0 ? PropagationPhase.AtTarget : PropagationPhase.TrickleDown;
-                    entry.element.Deliver(value, TrickleDown.TrickleDown, entry.callbacks);
-                    if (value.IsPropagationStopped && i != 0)
-                    {
-                        return;
+                        break;
                     }
                 }
-                for (int i = 0; i < path.Count; i++)
+                value.Target = target;
+                value.Dispatching = true;
+                eventDepth++;
+                surface.BeginDispatch();
+                try
                 {
-                    if (!CanDeliver() || (i != 0 && value.IsPropagationStopped))
+                    for (int i = path.Count - 1; i >= 0; i--)
                     {
-                        return;
-                    }
+                        if (!CanDeliver())
+                        {
+                            return;
+                        }
 
-                    var entry = path[i];
-                    if (!entry.element.IsValid || (wasAttached && !entry.element.IsAttached))
+                        var entry = path[i];
+                        if (!entry.element.IsValid || (wasAttached && !entry.element.IsAttached))
+                        {
+                            continue;
+                        }
+
+                        value.CurrentTarget = entry.element;
+                        value.PropagationPhase = i == 0 ? PropagationPhase.AtTarget : PropagationPhase.TrickleDown;
+                        entry.element.Deliver(value, TrickleDown.TrickleDown, entry.callbacks);
+                        if (value.IsPropagationStopped && i != 0)
+                        {
+                            return;
+                        }
+                    }
+                    for (int i = 0; i < path.Count; i++)
                     {
-                        continue;
-                    }
+                        if (!CanDeliver() || (i != 0 && value.IsPropagationStopped))
+                        {
+                            return;
+                        }
 
-                    value.CurrentTarget = entry.element;
-                    value.PropagationPhase = i == 0 ? PropagationPhase.AtTarget : PropagationPhase.BubbleUp;
-                    entry.element.Deliver(value, TrickleDown.NoTrickleDown, entry.callbacks);
+                        var entry = path[i];
+                        if (!entry.element.IsValid || (wasAttached && !entry.element.IsAttached))
+                        {
+                            continue;
+                        }
+
+                        value.CurrentTarget = entry.element;
+                        value.PropagationPhase = i == 0 ? PropagationPhase.AtTarget : PropagationPhase.BubbleUp;
+                        entry.element.Deliver(value, TrickleDown.NoTrickleDown, entry.callbacks);
+                    }
+                }
+                finally
+                {
+                    eventDepth--;
+                    surface.EndDispatch();
+                    value.Dispatching = false;
                 }
             }
-            finally
-            {
-                eventDepth--;
-                surface.EndDispatch();
-                value.Dispatching = false;
-            }
+            finally{path.Clear();idleEventPaths.Push(path);}
             bool CanDeliver() => IsCurrent(version) && target.IsValid && (!wasAttached || target.IsAttached)
                 && !HasPendingInvalidation && !value.IsImmediatePropagationStopped;
         }
@@ -250,6 +255,7 @@ namespace URUI.Documents
 
         internal void FinishNativeCall()
         {
+            MarkGeometryChanged();
             if (eventDepth != 0 || nativeDepth != 0 || changingContent) return;
             if (!ReferenceEquals(surface, null)) surface.FinishNativeCall();
         }

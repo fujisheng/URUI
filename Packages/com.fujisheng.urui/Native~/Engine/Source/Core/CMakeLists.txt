@@ -7,6 +7,7 @@ add_library(urui_core
 	CssImageGeometry.cpp
 	DocumentFontContext.cpp
 	HtmlBuilder.cpp
+	CompiledDocument.cpp
 	HtmlParser.cpp
 	Box.cpp
 	BoxShadowCache.h
@@ -149,7 +150,6 @@ add_library(urui_core
 	PropertyShorthandDefinition.h
 	PropertySpecification.cpp
 	RenderInterface.cpp
-	RenderInterfaceCompatibility.cpp
 	RenderManager.cpp
 	RenderManagerAccess.cpp
 	RenderManagerAccess.h
@@ -249,6 +249,7 @@ target_sources(urui_core PRIVATE
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/FontGlyph.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/FontMetrics.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/Geometry.h"
+	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/DrawParameters.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/Header.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/ID.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/Input.h"
@@ -273,7 +274,6 @@ target_sources(urui_core PRIVATE
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/Rectangle.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/RenderBox.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/RenderInterface.h"
-	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/RenderInterfaceCompatibility.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/RenderManager.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/Object.h"
 	"${PROJECT_SOURCE_DIR}/Include/URUI/Core/ScrollTypes.h"

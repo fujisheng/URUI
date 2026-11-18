@@ -1,6 +1,6 @@
 # URUI Core 接口声明参考
 
-对应包版本 `0.7.1-preview.1`。本页根据当前 Runtime 源码整理公开类型及其直接声明的公开/受保护成员，供查参数、返回类型、默认值和继承关系；不包含 internal/private 类型，也不重复继承成员。Unity 基类接口请查 Unity 文档。
+对应包版本 `0.8.0-preview.1`。本页根据当前 Runtime 源码整理公开类型及其直接声明的公开/受保护成员，供查参数、返回类型、默认值和继承关系；不包含 internal/private 类型，也不重复继承成员。Unity 基类接口请查 Unity 文档。
 
 声明块用于查阅，省略实现体；完整使用顺序、资源释放和可运行组件见[文档导航](API_ZH.md)。同名的 partial 类型合并列出，受保护构造函数由 Document 工厂调用。成员注释来自源码，不替代专题说明中的约束。
 
@@ -897,12 +897,14 @@ public URUI.Hosting.Surface Surface { get; set; }
 public string SourceUrl { get; set; }
 // 同步预加载图片到文档纹理缓存；成功返回源像素尺寸，不修改节点或布局。
 public bool TryLoadImage(string source, out Vector2Int dimensions);
-// 下次加载使用的外置资源；数组使用副本，TextAsset.bytes 可包含字体字节。
+// 下次加载使用的外置资源；数组使用副本；注册同步借用 TextAsset 原始数据，可包含字体字节。
 public TextResource[] TextResources { get; set; }
 // 静态 Images 未匹配时，在主线程同步解析规范化的 HTML 路径。
 public Func<string, ImageLease> ImageResolver { get; set; }
 // 在启用组件时加载的 HTML TextAsset。资产由调用者持有。
 public TextAsset Source { get; set; }
+// 正式页面的 Editor 编译资产。
+public CompiledDocumentAsset CompiledSource { get; set; }
 // 下次加载使用的借用图片映射；Texture2D 无需开启 Read/Write。
 public ImageAsset[] Images { get; set; }
 public AnimationController Animations { get; }
@@ -914,6 +916,8 @@ public bool SubmitRendering(ScriptableRenderContext context);
 public bool SubmitRendering(ScriptableRenderContext context, RenderTargetIdentifier target, UnityEngine.Rect viewport);
 // 加载调用者持有的完整 HTML 资产；失败保留原页面。
 public void Load(TextAsset asset, string sourceUrl);
+// 实例化编译计划，失败保留原页面。
+public void Load(CompiledDocumentAsset asset);
 // 严格解析并加载完整 HTML；成功后才使原页面的元素与订阅失效。
 public void LoadHtml(string html, string sourceUrl);
 // 关闭当前文档；同 Surface 的其他页面和共享上下文继续工作。
@@ -929,6 +933,8 @@ public EffectRegistry Effects { get; }
 public void RetirePainterResources(IDisposable resource);
 // 绑定普通节点的作者 shader 装饰器；注销或文档卸载后，GPU 完成才调用 release。
 public IDisposable AttachPainter(Element element, string shader, Action<ElementPaintContext> paint, Action release = null);
+// 几何准备窗口仅在回调内有效；Core 持有实际 MeshData，直到原生编译消费完成。
+public IDisposable AttachGeometryProvider(Element element, string shader, Action<ExternalGeometryContext> prepare, Action<int> onRecorded = null, Action release = null, RenderParameterLayout parameters = null);
 // 文档已同步完成加载，可以查询元素。
 public bool IsLoaded { get; }
 // 每次成功加载后触发。可查询元素和注册回调，加载与卸载请求在通知结束后执行。
@@ -937,10 +943,34 @@ public event Action<Document> Loaded;
 public event Action<Document> Unloaded;
 // 所有现存元素完成本轮原生布局刷新后触发；祖先移动或滚动也会通知。
 public event Action<Document> LayoutUpdated { add; remove; }
+// 同步样式、布局与空间变换，不为普通元素生成完整绘制记录；初始化后可立即读取几何。
+public void SynchronizeGeometry();
+// 同步文档几何，并保证指定已挂载子树内的绘制器就绪。
+public void SynchronizeGeometry(Element root);
 // 同步完成当前样式、布局和空间变换，以便初始化逻辑读取几何；不采集输入或触发 LayoutUpdated。元素几何变化仍正常通知。
 public void SynchronizeLayout();
+public IDisposable BeginUpdate();
+public void RequestGeometry(Element root);
+public bool FlushPendingGeometry();
+public CompiledTemplate GetCompiledTemplate(string uri);
+public CompiledQuerySnapshot CreateCompiledQuerySnapshot(Element root);
 // 在当前同步事件和原生回调返回后执行；空闲时立即执行，不等待下一帧。
 public void RunAfterEvent(Action action);
+```
+
+### CompiledQuerySnapshot
+
+源码：[Document.CompiledQueries.cs](../Runtime/Documents/Document.CompiledQueries.cs)。
+
+```csharp
+public sealed class CompiledQuerySnapshot
+public bool TryQuery(string selector, out CompiledQueryResult result);
+public readonly struct CompiledQueryResult
+public int Count { get; }
+public Enumerator GetEnumerator();
+public struct Enumerator
+public Element Current { get; }
+public bool MoveNext();
 ```
 
 ## URUI.Elements
@@ -1007,6 +1037,7 @@ public void RemoveAttribute(string name);
 protected virtual void OnAttributeChanged(string name);
 // 严格解析 HTML 片段并原子替换内容；解析、建树或控件初始化失败时保留原子树。
 public void SetInnerHtml(string html, string sourceUrl);
+public void SetInnerHtml(CompiledTemplate template);
 // 序列化当前元素的 HTML 内容，保留标准空元素与显式结束标签。
 public string GetInnerHtml();
 // 按节点身份设置二维位移与缩放，分量必须为有限数值。
@@ -1186,6 +1217,8 @@ public void ForEach(Action<T> action);
 ```csharp
 // 原生计算样式读取器，尺寸来自已完成的布局；仅限主线程。
 public sealed class ElementResolvedStyle
+// 读取最近计算样式中的有限数值长度或 auto，不创建托管 CSS 字符串。
+public bool TryGetLength(string property, out Length length);
 // 最终边框宽度，像素。
 public float Width { get; }
 // 最终边框高度，像素。
@@ -1834,13 +1867,16 @@ public string Name { get; }
 public EffectKind Kind { get; }
 public string ProgramKey { get; }
 public string ColorContract { get; }
+// 未知用户程序保留外部操作；不能用 ColorContract 文本推测合批能力。
+public RenderProgramDescriptor RenderProgram { get; }
+public RenderParameterLayout RenderParameters { get; }
 public Vector4 Expansion { get; }
 public EffectImageCondition ImageCondition { get; }
 public bool UsesTime { get; }
 public IReadOnlyList<StylePropertyDefinition> Parameters { get; }
 public IEffectFactory Factory { get; }
-public EffectDefinition(string name, EffectKind kind, IEffectFactory factory, string programKey, string colorContract, IEnumerable<StylePropertyDefinition> parameters = null, bool usesTime = false, Vector4 expansion = default, Func<EffectLayout, Vector4> expansionResolver = null);
-public EffectDefinition(string name, EffectKind kind, IEffectFactory factory, string programKey, string colorContract, IEnumerable<StylePropertyDefinition> parameters, bool usesTime, Vector4 expansion, Func<EffectLayout, Vector4> expansionResolver, EffectImageCondition imageCondition, Func<EffectLayout, EffectComposite> compositeResolver, Func<EffectLayout, Matrix4x4[]> boundsTransforms = null);
+public EffectDefinition(string name, EffectKind kind, IEffectFactory factory, string programKey, string colorContract, IEnumerable<StylePropertyDefinition> parameters = null, bool usesTime = false, Vector4 expansion = default, Func<EffectLayout, Vector4> expansionResolver = null, RenderProgramDescriptor renderProgram = default, RenderParameterLayout renderParameters = null);
+public EffectDefinition(string name, EffectKind kind, IEffectFactory factory, string programKey, string colorContract, IEnumerable<StylePropertyDefinition> parameters, bool usesTime, Vector4 expansion, Func<EffectLayout, Vector4> expansionResolver, EffectImageCondition imageCondition, Func<EffectLayout, EffectComposite> compositeResolver, Func<EffectLayout, Matrix4x4[]> boundsTransforms = null, RenderProgramDescriptor renderProgram = default, RenderParameterLayout renderParameters = null);
 ```
 
 ### EffectFrame
@@ -1954,6 +1990,8 @@ public event Action Updating;
 public event Action ParametersPreparing;
 public EffectLayout GetLayout(URUI.Elements.Element element);
 public IDisposable BindParameters(URUI.Elements.Element element, Func<EffectLayout, EffectLayout> resolve);
+// 绑定固定参数与惰性公开布局；绑定租约释放后恢复作者样式。
+public IDisposable BindProgramParameters(URUI.Elements.Element element, IEffectParameterBinding resolve);
 // 声明运行时参数需要捕获及显式命中策略；不修改作者 CSS，默认两个标志均为 false。
 public void SetRuntimeState(URUI.Elements.Element element, bool captureRequired, bool inputDisabled);
 // 覆盖一个效果实例的时间源；调用方持有租约，解除后恢复Document时钟，不更换CSS的文档时基。
@@ -2048,6 +2086,7 @@ public void Copy(FilterBuffer source, FilterBuffer destination);
 
 ```csharp
 // Prepare 可更新资源；Record 只录制现有资源，不访问或修改 DOM。
+// 可选的 Prepare 结果：节点本地坐标中的实际绘制范围，供子树滤镜/遮罩分配区域。
 public interface IEffectBounds
 UnityEngine.Rect InkBounds { get; }
 ```
@@ -2084,6 +2123,127 @@ void Prepare(FilterInvocation invocation);
 void Record(FilterRenderContext context, FilterInvocation invocation);
 ```
 
+### EffectProgramCoordinates
+
+源码：[EffectProgramPreparation.cs](../Runtime/Rendering/Effects/EffectProgramPreparation.cs)。
+
+```csharp
+// 程序准备时的冻结坐标事实；不包含样式对象。
+public readonly struct EffectProgramCoordinates
+public Rect ContentRect { get; }
+public Rect RootContentRect { get; }
+public Matrix4x4 ElementToDocument { get; }
+public Matrix4x4 RootToDocument { get; }
+// 使用另一个布局的根坐标，保留自身内容与变换。
+public EffectProgramCoordinates WithRoot(EffectLayout root);
+```
+
+### EffectProgramSource
+
+源码：[EffectProgramPreparation.cs](../Runtime/Rendering/Effects/EffectProgramPreparation.cs)。
+
+```csharp
+// 冻结采样事实；Topology 为原始拓扑，统一乘色和 UV 变换仍由原生基础参数提供。
+public readonly struct EffectProgramSource
+public Texture Texture { get; }
+public EffectGeometry Topology { get; }
+public bool IsCaptured { get; }
+public bool IsBottomLeft { get; }
+public bool IsPremultiplied { get; }
+public Rect CaptureBounds { get; }
+public Rect UvBounds { get; }
+public Vector2Int PixelSize { get; }
+```
+
+### IEffectParameterBinding
+
+源码：[EffectProgramPreparation.cs](../Runtime/Rendering/Effects/EffectProgramPreparation.cs)。
+
+```csharp
+// 固定参数程序的私有绑定。连续值与坐标按同步回调解析；公开布局仅在请求快照时生成。
+public interface IEffectParameterBinding
+// 生成可保留的公开布局；返回值及其样式必须不可变。
+EffectLayout ResolveLayout(EffectLayout layout);
+// 解析冻结坐标事实，不得访问或修改 DOM。
+EffectProgramCoordinates ResolveCoordinates(EffectProgramCoordinates coordinates);
+// 覆盖当前程序的固定布局值；Span 仅在本次同步回调中有效，不得保留或修改 DOM。
+void ResolveProgramParameters(string program, Span<Vector4> values);
+```
+
+### EffectProgramPreparation
+
+源码：[EffectProgramPreparation.cs](../Runtime/Rendering/Effects/EffectProgramPreparation.cs)。
+
+```csharp
+// 仅在 PrepareProgram 回调中有效的连续参数视图；Frame 按需生成独立公开快照。
+public readonly ref struct EffectProgramPreparation
+public Vector2 Size { get; }
+public Vector2 ContentOffset { get; }
+public double Time { get; }
+// 声明布局中的数值；只在当前同步回调中使用，不得保存该 Span。
+public ReadOnlySpan<Vector4> Parameters { get; }
+public EffectProgramCoordinates Coordinates { get; }
+public EffectProgramSource Source { get; }
+public EffectFrame Frame { get; }
+```
+
+### IParameterImageEffect
+
+源码：[IElementEffect.cs](../Runtime/Rendering/Effects/IElementEffect.cs)。
+
+```csharp
+// 固定参数图片程序。宿主直接提交原始几何和冻结参数，不调用 Record。 材质在 Prepare 后不可变；替换材质须通过 EffectContext 退役。
+public interface IParameterImageEffect
+UnityEngine.Material Program { get; }
+// 当前不可变程序实际消费的时间源；取值为 None 或 UiClock。
+RenderTimeInput TimeInput { get; }
+void PrepareProgram(in EffectProgramPreparation preparation);
+// 无 DOM 预览的数值输入；字段含义由程序拥有，Core 不解释属性名称。
+void GetPreviewParameters(Span<UnityEngine.Vector4> values);
+```
+
+### IParameterImageResources
+
+源码：[IElementEffect.cs](../Runtime/Rendering/Effects/IElementEffect.cs)。
+
+```csharp
+// 在所有效果准备完成后上传共享资源；不能访问 DOM。
+public interface IParameterImageResources
+void CommitResources();
+```
+
+### IParameterImageRuntime
+
+源码：[IElementEffect.cs](../Runtime/Rendering/Effects/IElementEffect.cs)。
+
+```csharp
+// 程序拥有的额外运行时行，接在宿主的两行采样输入后。只复制已冻结的值。
+public interface IParameterImageRuntime
+int RuntimeRowCount { get; }
+void CopyRuntimeParameters(Span<UnityEngine.Vector4> values);
+```
+
+### IParameterEffectLayout
+
+源码：[IElementEffect.cs](../Runtime/Rendering/Effects/IElementEffect.cs)。
+
+```csharp
+// 在租用捕获图之前声明保守覆盖范围和最终混合；最多返回 64 个覆盖变换。
+public interface IParameterEffectLayout
+void PrepareCoverage(in EffectProgramPreparation preparation, Span<UnityEngine.Matrix4x4> transforms, out int count, out UnityEngine.Vector4 expansion, out EffectComposite composite);
+```
+
+### IParameterImageGeometry
+
+源码：[IElementEffect.cs](../Runtime/Rendering/Effects/IElementEffect.cs)。
+
+```csharp
+// 不可变的局部几何模板；内容变化递增版本，变换单独录入参数。
+public interface IParameterImageGeometry : IParameterImageEffect
+ExternalGeometryInput Geometry { get; }
+UnityEngine.Matrix4x4 GeometryTransform { get; }
+```
+
 ## URUI.Rendering
 
 ### ElementPaintContext
@@ -2103,7 +2263,209 @@ public Vector2 Size { get; }
 public void DrawMesh(Mesh mesh, Material material, Matrix4x4 localTransform, MaterialPropertyBlock properties = null, int submesh = 0, int pass = 0);
 ```
 
+### RenderTextureEncoding
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderTextureEncoding { Unknown, TextureDeclared, EncodedPremultiplied, LinearPremultiplied, LinearStraight }
+```
+
+### RenderColorSpace
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderColorSpace { Unknown, EncodedSrgb, Linear, Active, Target }
+```
+
+### RenderAlpha
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderAlpha { Unknown, Premultiplied, Straight, Opaque, PartialPremultiplied }
+```
+
+### RenderBlendDomain
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderBlendDomain { Unknown, EncodedSrgb, Linear, Active, Target }
+```
+
+### RenderTargetCapability
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderTargetCapability { Unknown, Ldr, Hdr }
+```
+
+### RenderSampling
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderSampling { Unknown, BilinearClamp, LocalAddressing, Neighborhood }
+```
+
+### RenderGeometry
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderGeometry { Unknown, Local, VertexDisplacement, Expanded, Captured }
+```
+
+### RenderTimeInput
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+public enum RenderTimeInput { None, UiClock, External }
+```
+
+### RenderProgramDescriptor
+
+源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
+
+```csharp
+// 程序的机器可读渲染约定；默认值表示未知用户程序，必须保持外部边界。
+public readonly struct RenderProgramDescriptor : IEquatable<RenderProgramDescriptor>
+public RenderTextureEncoding Input { get; }
+public RenderColorSpace Computation { get; }
+public RenderColorSpace Output { get; }
+public RenderAlpha Alpha { get; }
+public RenderBlendDomain Blend { get; }
+public BlendMode SourceBlend { get; }
+public BlendMode DestinationBlend { get; }
+public BlendMode SourceAlphaBlend { get; }
+public BlendMode DestinationAlphaBlend { get; }
+public CullMode Cull { get; }
+public ColorWriteMask ColorMask { get; }
+public RenderTargetCapability Target { get; }
+public RenderSampling Sampling { get; }
+public RenderGeometry Geometry { get; }
+public RenderTimeInput Time { get; }
+public bool IsKnown { get; }
+public RenderProgramDescriptor(RenderTextureEncoding input, RenderColorSpace computation, RenderColorSpace output, RenderAlpha alpha, RenderBlendDomain blend, BlendMode sourceBlend, BlendMode destinationBlend, RenderTargetCapability target, RenderSampling sampling, RenderGeometry geometry, RenderTimeInput time = RenderTimeInput.None, BlendMode? sourceAlphaBlend = null, BlendMode? destinationAlphaBlend = null, CullMode cull = CullMode.Off, ColorWriteMask colorMask = ColorWriteMask.All);
+// 共享栅格区间的必要条件；实际计划仍须核对目标、资源和有序依赖。
+public bool CanShareRaster(RenderProgramDescriptor other);
+public bool Equals(RenderProgramDescriptor other);
+public override bool Equals(object obj);
+public override int GetHashCode();
+```
+
+### RenderKeywordMapping
+
+源码：[RenderParameterLayout.cs](../Runtime/Rendering/RenderParameterLayout.cs)。
+
+```csharp
+// 把作者关键字映射为程序使用的有限数值；不依赖 CSS 枚举内部编号。
+public readonly struct RenderKeywordMapping
+public string Keyword { get; }
+public float Value { get; }
+public RenderKeywordMapping(string keyword, float value);
+```
+
+### RenderParameterField
+
+源码：[RenderParameterLayout.cs](../Runtime/Rendering/RenderParameterLayout.cs)。
+
+```csharp
+// 一个 CSS 计算属性到固定分量区间的映射；颜色占四个分量，带关键字映射的数值占两个分量（值、关键字标记）。
+public sealed class RenderParameterField
+public StylePropertyDefinition Property { get; }
+public int ComponentOffset { get; }
+// 可选的级联来源分量；-1 表示程序不读取来源。
+public int OriginOffset { get; }
+// 缺失的属性输出零；存在但类型无效的作者值仍报错。
+public bool Optional { get; }
+// 关键字的显式映射；数值可声明有限关键字，第二分量区分数值（0）和关键字（1）。图像只输出变化标识，不编码纹理。
+public IReadOnlyList<RenderKeywordMapping> Keywords { get; }
+public RenderParameterField(StylePropertyDefinition property, int componentOffset, int originOffset = -1, IEnumerable<RenderKeywordMapping> keywords = null, bool optional = false);
+```
+
+### RenderParameterLayout
+
+源码：[RenderParameterLayout.cs](../Runtime/Rendering/RenderParameterLayout.cs)。
+
+```csharp
+// 程序的不可变 float4 布局；注册时编译属性访问器，未注册自定义值保留 CSS 解析语义。
+public sealed class RenderParameterLayout
+public int RowCount { get; }
+public IReadOnlyList<RenderParameterField> Fields { get; }
+public RenderParameterLayout(int rowCount, IEnumerable<RenderParameterField> fields);
+```
+
+### ExternalGeometryInput
+
+源码：[ExternalGeometryInput.cs](../Runtime/Rendering/ExternalGeometryInput.cs)。
+
+```csharp
+// 一个子网格的只读输入声明；宿主持有 MeshData 消费租约直到当前原生输入窗口结束。
+public readonly struct ExternalGeometryInput
+public ulong GeometryVersion { get; }
+public int Submesh { get; }
+// 几何内容、索引或布局改变时必须递增 version；变换通过绘制参数独立提供。
+public ExternalGeometryInput(Mesh mesh, ulong version, int submesh = 0);
+```
+
+### ExternalGeometryProgram
+
+源码：[ExternalGeometryProgram.cs](../Runtime/Rendering/ExternalGeometryProgram.cs)。
+
+```csharp
+// 外部几何程序及渲染约定。材质由调用者持有至注册的 GPU 退役回调。
+public sealed class ExternalGeometryProgram
+public Material Material { get; }
+public RenderProgramDescriptor Descriptor { get; }
+public int Pass { get; }
+// 未在 ShaderLab 属性中声明的矩阵、缓冲等资源变化时递增；普通属性同时由宿主冻结。
+public ulong ResourceVersion { get; }
+// 已知程序读取的局部位置分量数；二维程序忽略源网格的 Z。
+public int PositionComponents { get; }
+// 已知程序使用位置、RGBA8 顶点色、UV0 和统一参数表；未知程序保留独立绘制边界。
+public ExternalGeometryProgram(Material material, RenderProgramDescriptor descriptor = default, int pass = 0, int positionComponents = 3, ulong resourceVersion = 1);
+```
+
+### ExternalGeometryContext
+
+源码：[ExternalGeometryContext.cs](../Runtime/Rendering/ExternalGeometryContext.cs)。
+
+```csharp
+// 外部几何的同步准备窗口；局部坐标从作者节点左上角起，回调结束后窗口失效。
+public readonly struct ExternalGeometryContext
+public Vector2 Size { get; }
+// 注册时声明的连续 CSS 参数，只在当前同步回调有效。
+public ReadOnlySpan<Vector4> Parameters { get; }
+// 声明节点局部坐标中的矩形及左上右下羽化距离；原生根据组语义决定直接遮罩或离屏绘制。
+public void DrawFeatheredRectangle(Rect rectangle, Vector4 feather);
+public bool IsClippedOut { get; }
+public bool IsMaskImage { get; }
+// 冻结当前只读网格输入；变换和裁剪交由原生计划与 Shader，回调不能修改文档。
+public void Draw(in ExternalGeometryInput input, ExternalGeometryProgram program, Matrix4x4 localTransform);
+```
+
 ## URUI.Resources
+
+### CompiledDocumentAsset / CompiledTemplate
+
+源码：[CompiledDocumentAsset.cs](../Runtime/Resources/CompiledDocumentAsset.cs)、[CompiledTemplate.cs](../Runtime/Resources/CompiledTemplate.cs)。
+
+```csharp
+public sealed class CompiledDocumentAsset : ScriptableObject
+public const int CompilerVersion = 2;
+public string SourceUrl { get; }
+public string Fingerprint { get; }
+public bool IsFragment { get; }
+public IReadOnlyList<TextResource> Dependencies { get; }
+public CompiledTemplate GetTemplate(string uri);
+public sealed class CompiledTemplate
+public string SourceUrl { get; }
+```
 
 ### GpuRetirement
 
@@ -2184,7 +2546,7 @@ public SpriteRegion(string name, Rect region, float displayScale = 1);
 源码：[TextResource.cs](../Runtime/Resources/TextResource.cs)。
 
 ```csharp
-// 外置 CSS 和字体等文件的规范 URL；使用 TextAsset.bytes 保留原始内容。
+// 外置 CSS 和字体等文件的规范 URL；同步借用 TextAsset 的原生只读内容，保留二进制文件字节。
 public struct TextResource
 public string Source { get; }
 public TextAsset Asset { get; }
@@ -2255,6 +2617,12 @@ public IDisposable Subscribe(Element element, Action<ComputedStyleSnapshot> chan
 ```csharp
 // 效果视图中的类型化值；不参与文档 CSS 的级联或继承。
 public readonly struct StyleOverride
+// 读取数值覆盖；不匹配时返回 false，不分配或进行类型转换。
+public bool TryGetNumber(out float number);
+// 读取颜色覆盖；不匹配时返回 false。
+public bool TryGetColor(out Color color);
+// 读取关键字覆盖；不匹配时返回 false。
+public bool TryGetKeyword(out string keyword);
 public static StyleOverride Number(float value);
 public static StyleOverride Color(Color value);
 public static StyleOverride FromKeyword(string value);

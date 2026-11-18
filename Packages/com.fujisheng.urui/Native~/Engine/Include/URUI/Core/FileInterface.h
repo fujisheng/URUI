@@ -51,6 +51,10 @@ public:
 	/// @return The length of the file in bytes.
 	virtual size_t Length(FileHandle file);
 
+	/// 返回文件的不可变共享字节；缺省文件系统继续使用 Read。
+	/// 共享对象身份必须对应固定内容，重新加载或改写内容须返回新的对象。
+	virtual SharedPtr<const Vector<byte>> GetImmutableData(FileHandle) { return {}; }
+
 	/// Load and return a file.
 	/// @param path The path to the file to load.
 	/// @param out_data The string contents of the file.

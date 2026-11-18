@@ -15,24 +15,27 @@ namespace URUI.Internal.Hosting
         {
             usedEffectGeometries.Add(id);
             if (effectGeometryCache.TryGetValue(id, out var cached)) { return cached; }
-            Vector3[] positions; Vector2[] uv; Color32[] colors; int[] indices;
-            if (meshes.TryGetValue(id, out var mesh) && mesh.positions != null)
-            { positions = mesh.positions; uv = mesh.uv; colors = mesh.colors; indices = mesh.indices; }
-            else
+            var mesh = ReadGeometry(id) ?? throw new InvalidOperationException("效果源几何已失效。");
+            var positions=mesh.positions; var uv=mesh.uv; var colors=mesh.colors; var indices=mesh.indices;
+            if(positions.Length!=mesh.vertexCount||indices.Length!=mesh.indexCount)
             {
-                if (NativeMethods.urui_get_geometry_info(id, out var vertices, out var count) != 1 || vertices < 1 || count < 1)
-                { throw new InvalidOperationException("效果的原始几何已失效。"); }
-                var source = new VertexNative[vertices]; indices = new int[count];
-                if (NativeMethods.urui_copy_geometry(id, source, vertices, indices, count) != 1)
-                { throw new InvalidOperationException("无法冻结效果几何。"); }
-                positions = new Vector3[vertices]; uv = new Vector2[vertices]; colors = new Color32[vertices];
-                for (var index = 0; index < vertices; index++)
-                {
-                    var vertex = source[index]; positions[index] = new Vector3(vertex.x, vertex.y, 0);
-                    uv[index] = new Vector2(vertex.u, vertex.v); colors[index] = new Color32(vertex.r, vertex.g, vertex.b, vertex.a);
-                }
+                positions=positions.AsSpan(0,mesh.vertexCount).ToArray();uv=uv.AsSpan(0,mesh.vertexCount).ToArray();
+                colors=colors.AsSpan(0,mesh.vertexCount).ToArray();indices=indices.AsSpan(0,mesh.indexCount).ToArray();
             }
+            else {mesh.Shared=true;}
             cached = new EffectGeometry(id, positions, uv, colors, indices); effectGeometryCache.Add(id, cached); return cached;
+        }
+        VertexNative[] originalSourceScratch=Array.Empty<VertexNative>();
+        EffectGeometry FreezeOriginalEffectGeometry(ulong id)
+        {
+            usedEffectGeometries.Add(id);
+            if(effectGeometryCache.TryGetValue(id,out var previous))return previous;
+            if(NativeMethods.urui_get_geometry_info(id,out var vertices,out var indices)!=1||vertices<=0||indices<=0)throw new InvalidOperationException("程序原始几何已失效。");
+            if(originalSourceScratch.Length<vertices)originalSourceScratch=new VertexNative[vertices];
+            var positions=new Vector3[vertices];var uv=new Vector2[vertices];var colors=new Color32[vertices];var triangles=new int[indices];
+            if(NativeMethods.urui_copy_geometry(id,originalSourceScratch,originalSourceScratch.Length,triangles,triangles.Length)!=1)throw new InvalidOperationException("程序原始几何复制失败。");
+            for(var i=0;i<vertices;i++){var vertex=originalSourceScratch[i];positions[i]=new Vector3(vertex.x,vertex.y,0);uv[i]=new Vector2(vertex.u,vertex.v);colors[i]=new Color32(vertex.r,vertex.g,vertex.b,vertex.a);}
+            var result=new EffectGeometry(id,positions,uv,colors,triangles);effectGeometryCache.Add(id,result);return result;
         }
         void PruneEffectGeometries()
         {

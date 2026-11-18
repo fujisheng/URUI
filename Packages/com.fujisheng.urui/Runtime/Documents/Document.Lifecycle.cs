@@ -11,10 +11,16 @@ namespace URUI.Documents
         void OnEnable()
         {
             if (!loadRequested) return;
-            if (requestedMarkup != null) LoadContent(requestedMarkup, source, sourceUrl);
+            if (compiledSource) Load(compiledSource);
+            else if (requestedMarkup != null) LoadContent(requestedMarkup, source, sourceUrl);
             else if (source) Load(source, sourceUrl);
         }
-        void Start() { if (loadRequested && !IsLoaded && source) Load(source, sourceUrl); }
+        void Start()
+        {
+            if (!loadRequested || IsLoaded) return;
+            if (compiledSource) Load(compiledSource);
+            else if (source) Load(source, sourceUrl);
+        }
         void OnDisable() { ReleaseContent(); }
         void OnDestroy()
         {

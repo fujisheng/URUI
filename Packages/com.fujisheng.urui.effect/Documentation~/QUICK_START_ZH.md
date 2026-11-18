@@ -1,6 +1,6 @@
 # Effect 快速开始
 
-当前包 `0.4.1-preview.1`，要求 Core `0.7.1-preview.1`。先按 [Core 安装](../../com.fujisheng.urui/Documentation~/INSTALL_ZH.md)准备 Unity、MainCamera、输入和配套 native 插件。
+当前包 `0.5.0-preview.1`，要求 Core `0.8.0-preview.1`。先按 [Core 安装](../../com.fujisheng.urui/Documentation~/INSTALL_ZH.md)准备 Unity、MainCamera、输入和配套 native 插件。
 
 ## 安装与程序集
 

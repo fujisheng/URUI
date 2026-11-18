@@ -141,6 +141,7 @@ namespace URUI.Tests
         [UnityTest]
         public IEnumerator SharedAuthoredSliderSkinPaintsAndTracksPointerInput()
         {
+            var clock = new SkinClock(); surface.UiClock = clock;
             a.TextResources = new[] { new URUI.Resources.TextResource("/urui/controls.css",
                 UnityEngine.Resources.Load<TextAsset>("URUI/controls")) };
             a.Load(UnityEngine.Resources.Load<TextAsset>("URUI/Tests/SliderSkin"), "/urui/tests/slider.html");
@@ -152,14 +153,22 @@ namespace URUI.Tests
             using var callback = control.RegisterValueChangedCallback(_ => changes++);
             surface.Input.SendPointer(PointerPhase.Down, new Vector2(89, 30), pressedButtons: 1);
             surface.Input.SendPointer(PointerPhase.Up, new Vector2(89, 30));
+            // 先提交状态变更，再推进到100ms过渡结束；像素断言不依赖测试帧率。
+            a.SynchronizeGeometry(); clock.Now += .2;
             yield return null; yield return null;
             Assert.That(control.Value, Is.EqualTo(75).Within(.01f)); Assert.AreEqual(1, changes);
             Assert.That(a.Q("fill").Layout.width, Is.EqualTo(75).Within(.01f));
-            Rgb(Pixel(64, 30), Color.red); Rgb(Pixel(89, 30), Color.white);
+            Rgb(Pixel(64, 30), Color.red); Rgb(Pixel(89, 30), Css(new Color(245f/255, 245f/255, 245f/255)));
             control.SetEnabled(false);
             surface.Input.SendPointer(PointerPhase.Down, new Vector2(34, 30), pressedButtons: 1);
             surface.Input.SendPointer(PointerPhase.Up, new Vector2(34, 30));
             Assert.That(control.Value, Is.EqualTo(75).Within(.01f)); Assert.AreEqual(1, changes);
+        }
+
+        sealed class SkinClock : URUI.Animation.IUiClock
+        {
+            public double Now { get; set; } = 1;
+            public float Delta => 0;
         }
 
         [UnityTest]

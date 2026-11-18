@@ -1,0 +1,1 @@
+{"name":"URUI.Effect.PlayerValidation.Editor","references":["URUI.Effect.PlayerValidation","URUI.Effect.Gallery","URUI.Runtime","URUI.Effect"],"includePlatforms":["Editor"],"autoReferenced":true}

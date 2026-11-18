@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using URUI.Documents;
 using URUI.Events;
@@ -13,6 +14,9 @@ namespace URUI.Elements
     {
         uint createdLayoutVersion;
         bool observedAttached, initialized;
+        bool customUpdateHook = true;
+        internal bool HasUpdateHook => customUpdateHook;
+        static readonly Dictionary<Type, bool> updateHookTypes = new();
         Rect? observedLayout;
 
         /// <summary>供派生控件使用的构造入口；上下文只能由 Document 工厂提供。</summary>
@@ -135,24 +139,42 @@ namespace URUI.Elements
             }
 
             initialized = true;
+            var type = GetType();
+            if (!updateHookTypes.TryGetValue(type, out customUpdateHook))
+            {
+                var method = type.GetMethod(nameof(OnUpdate), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                customUpdateHook = method == null || method.DeclaringType != typeof(Element);
+                updateHookTypes.Add(type, customUpdateHook);
+            }
             createdLayoutVersion = document.LayoutVersion;
             observedAttached = IsAttached;
             OnInitialize();
+            RefreshEventInterest();
         }
-        internal void Refresh(bool layout)
+        internal bool TryObservedRefreshState(out NativeMethods.ElementRefreshState state)
         {
-            if(invalid)return;
-            if(!document.IsCurrent(generation)){Invalidate();return;}
-            var state=NativeMethods.urui_element_refresh_state(NativeHandle,token,out var current,4);
-            if(state<0)throw new InvalidOperationException("元素刷新状态读取失败："+NativeMethods.LastError());
-            if((state&1)==0){Invalidate();return;}
+            state = default;
+            if (invalid || !initialized || !observedLayout.HasValue) return false;
+            state.State = observedAttached ? 3 : 1;
+            state.Layout = observedLayout.Value;
+            return true;
+        }
+        internal bool Refresh(bool layout, int state, Rect current)
+        {
+            if(invalid)return false;
+            // The owning document validates this snapshot before iteration and
+            // again after every callback; the read-only native query cannot reload it.
+            if((state&1)==0){Invalidate();return true;}
             bool attached = (state&2)!=0;
             var delivered=false;
             if (attached != observedAttached)
             {
                 observedAttached = attached;
-                SendEvent(attached ? (EventBase)new AttachToDocumentEvent() : new DetachFromDocumentEvent());
-                delivered=true;
+                if(HasLocalNotificationConsumer(attached?typeof(AttachToDocumentEvent):typeof(DetachFromDocumentEvent)))
+                {
+                    SendEvent(attached ? (EventBase)new AttachToDocumentEvent() : new DetachFromDocumentEvent());
+                    delivered=true;
+                }
             }
             if (layout && attached)
             {
@@ -162,14 +184,20 @@ namespace URUI.Elements
                 {
                     var previous = observedLayout ?? default;
                     observedLayout = current;
-                    SendEvent(new GeometryChangedEvent { OldRect = previous, NewRect = current });
-                    delivered=true;
+                    if(HasLocalNotificationConsumer(typeof(GeometryChangedEvent)))
+                    {
+                        SendEvent(new GeometryChangedEvent { OldRect = previous, NewRect = current });
+                        delivered=true;
+                    }
                 }
                 if (!delivered || IsValid)
                 {
                     OnUpdate();
+                    // Any custom update may mutate an earlier element. The base hook is empty.
+                    delivered |= customUpdateHook;
                 }
             }
+            return delivered;
         }
         internal ulong CheckedToken()
         {
@@ -183,7 +211,10 @@ namespace URUI.Elements
             if(createdLayoutVersion==document.LayoutVersion)createdLayoutVersion=document.LayoutVersion-1;
         }
         /// <summary>节点已经参与至少一次完成的文档布局。</summary>
-        public bool HasLayout => IsValid && IsAttached && document.LayoutVersion > createdLayoutVersion;
+        public bool HasLayout
+        {
+            get { document.ReadGeometryBarrier(); return IsValid && IsAttached && document.LayoutVersion > createdLayoutVersion; }
+        }
         /// <summary>查询当前节点及后代中的首个有类型元素。</summary>
         public T Q<T>(string name = null, string className = null) where T : Element => Query<T>(name, className).First();
         /// <summary>构造当前节点及后代的有类型查询。</summary>

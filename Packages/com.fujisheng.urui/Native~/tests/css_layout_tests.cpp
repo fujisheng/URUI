@@ -83,22 +83,23 @@ int main()
     assert(context->GetElementAtPoint({230, 20}) == visibility->GetElementById("layer-child"));
     assert(context->GetElementAtPoint({5, 5}) != parent);
     assert(context->GetElementAtPoint({5, 5}) != inherited);
-    urui_update(); urui_render();
+    urui_update(); UruiPlanInputPacket input_frame{};assert(urui_plan_begin(&input_frame)==1);
     bool green = false, blue = false;
-    std::vector<UruiCommand> commands(urui_command_count());
-    urui_get_commands(commands.data(), int(commands.size()));
-    for (const auto& draw : commands) {
+    for (uint32_t command=0;command<input_frame.command_count;command++) {
+        const auto& draw=input_frame.commands[command];
         int vertices = 0, indices = 0;
         assert(urui_get_geometry_info(draw.geometry, &vertices, &indices) == 1);
         std::vector<UruiVertex> painted(vertices); std::vector<int> triangles(indices);
         assert(urui_copy_geometry(draw.geometry, painted.data(), vertices, triangles.data(), indices) == 1);
+        const auto& tint=input_frame.uniforms[command].tint;
+        for(auto& vertex:painted) {vertex.r=uint8_t(std::lround(vertex.r*tint[0]));vertex.g=uint8_t(std::lround(vertex.g*tint[1]));vertex.b=uint8_t(std::lround(vertex.b*tint[2]));vertex.a=uint8_t(std::lround(vertex.a*tint[3]));}
         for (const auto& vertex : painted) {
             assert(!(vertex.r == 255 && vertex.g == 0 && vertex.b == 0));
             green |= vertex.r == 0 && vertex.g == 255 && vertex.b == 0;
             blue |= vertex.r == 0 && vertex.g == 0 && vertex.b == 255;
         }
     }
-    assert(green && blue);
+    assert(green && blue);assert(urui_plan_release(input_frame.lease)==1);
     parent->SetProperty("display", "none"); context->Update();
     assert(!shown->IsVisible(true) && !shown->Focus());
     assert(context->GetElementAtPoint({30, 30}) != shown);

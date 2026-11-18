@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using UnityEngine.TestTools;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
@@ -26,6 +28,15 @@ namespace URUI.Effect.Tests
             public IElementEffect Create(EffectContext context) { throw new NotSupportedException(); }
         }
 
+        [UnityTest]
+        public IEnumerator UiRetriesAnUnchangedImageUrlAfterItBecomesAvailable()
+        {
+            using var fixture=new EffectRenderFixture();fixture.Missing=true;
+            fixture.Load("--urui-fx-transition-filter:dissolve;--urui-fx-transition-texture:url('pattern.png');");fixture.Render();
+            Assert.That(fixture.ImageAcquisitions,Is.Zero);fixture.Missing=false;fixture.Render();
+            Assert.That(fixture.ImageAcquisitions,Is.EqualTo(1),"失败的解析不能确认资源键；同一个 URL 可在之后变为可用。");
+            yield return null;
+        }
         [Test]
         public void InvalidImageKeepsPreviousLease()
         {

@@ -1,6 +1,6 @@
 {
   "name": "com.fujisheng.urui",
-  "version": "0.7.1-preview.1",
+  "version": "0.8.0-preview.1",
   "displayName": "URUI",
   "description": "Text-based HTML/CSS UI for AI-assisted Unity development, powered by URUI with a managed C# API.",
   "unity": "6000.3",
@@ -12,7 +12,8 @@
     "com.unity.modules.jsonserialize": "1.0.0",
     "com.unity.modules.imgui": "1.0.0",
     "com.unity.modules.audio": "1.0.0",
-    "com.unity.modules.video": "1.0.0"
+    "com.unity.modules.video": "1.0.0",
+    "com.unity.modules.imageconversion": "1.0.0"
   },
   "samples": [
     {

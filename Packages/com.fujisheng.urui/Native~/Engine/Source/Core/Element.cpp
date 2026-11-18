@@ -45,6 +45,25 @@
 #include <cmath>
 
 namespace URUI {
+namespace {
+// 类型化声明只对应当前那次属性通知；重入产生的新 style 必须正常解析。
+struct CompiledAttributeScope {
+	static thread_local CompiledAttributeScope* current;
+	Element* element;
+	const Variant* style = nullptr;
+	const PropertyDictionary* properties;
+	CompiledAttributeScope* previous;
+	CompiledAttributeScope(Element* element, const ElementAttributes& attributes, const PropertyDictionary* properties) :
+		element(element), properties(properties), previous(current)
+	{
+		auto found = attributes.find("style");
+		if (found != attributes.end()) style = &found->second;
+		current = this;
+	}
+	~CompiledAttributeScope() { current = previous; }
+};
+thread_local CompiledAttributeScope* CompiledAttributeScope::current = nullptr;
+}
 
 // Determines how many levels up in the hierarchy the OnChildAdd and OnChildRemove are called (starting at the child itself)
 static constexpr int ChildNotifyLevels = 2;
@@ -130,6 +149,31 @@ void Element::Update(float dp_ratio, Vector2f vp_dimensions)
 	URUI_ZoneText(name.c_str(), name.size());
 #endif
 
+    ElementDocument* idle_document=nullptr;
+    Context* idle_context=nullptr;
+    uint64_t idle_revision=0;
+    if(owner_document.get()==this)
+    {
+        auto* document=static_cast<ElementDocument*>(this);
+        auto* context=document->context;
+        if(context&&context->AllowsNativeDocumentUpdateReuse(document))
+        {
+            const auto revision=context->GetNativeRenderRevision();
+            if(document->native_idle_update_revision==revision)return;
+            if(document->native_idle_update_revision==UINT64_MAX)
+            {
+                // 重入或上次异常都撤销证明；内层不能替外层发布未完成的更新。
+                document->native_idle_update_revision=0;
+            }
+            else
+            {
+                document->native_idle_update_revision=UINT64_MAX;
+                idle_document=document;idle_context=context;idle_revision=revision;
+            }
+        }
+        else document->native_idle_update_revision=0;
+    }
+
 	OnUpdate();
 
 	HandleTransitionProperty();
@@ -153,11 +197,20 @@ void Element::Update(float dp_ratio, Vector2f vp_dimensions)
 	for (size_t i = 0; i < children.size(); i++)
 		children[i]->Update(dp_ratio, vp_dimensions);
 
-	if (!animations.empty() && IsVisible(true))
+	if (!animations.empty())
 	{
-		if (Context* ctx = GetContext())
-			ctx->RequestNextUpdate(0);
+        // 隐藏和延迟动画仍需推进并发送事件，不能只依赖可见绘制的定时请求。
+        if(auto* document=GetOwnerDocument())document->native_idle_update_revision=0;
+        if(IsVisible(true))
+        {
+		    if (Context* ctx = GetContext())ctx->RequestNextUpdate(0);
+        }
 	}
+    if(idle_document&&idle_document->native_idle_update_revision==UINT64_MAX)
+    {
+        idle_document->native_idle_update_revision=idle_document->context==idle_context&&
+            idle_context->AllowsNativeDocumentUpdateReuse(idle_document)?idle_revision:0;
+    }
 }
 
 void Element::UpdateProperties(const float dp_ratio, const Vector2f vp_dimensions)
@@ -178,15 +231,20 @@ void Element::UpdateProperties(const float dp_ratio, const Vector2f vp_dimension
 		// Computed values are just calculated and can safely be used in OnPropertyChange.
 		// However, new properties set during this call will not be available until the next update loop.
 		if (!dirty_properties.Empty())
-			OnPropertyChange(dirty_properties);
+        {
+            DirtyNativeRendering();
+            OnPropertyChange(dirty_properties);
+        }
 	}
 }
 
 static bool NeedsDocumentBackdropLayer(Element* element)
 {
     if (element->GetDisplay() == Style::Display::None) return false;
-    const auto* scope = element->GetProperty(PropertyId::BackdropScope);
-    if (element->IsVisible() && element->GetComputedValues().has_backdrop_filter() && (!scope || scope->Get<int>() == 0)) return true;
+    if (element->IsVisible() && element->GetComputedValues().has_backdrop_filter()) {
+        const auto* scope = element->GetProperty(PropertyId::BackdropScope);
+        if (!scope || scope->Get<int>() == 0) return true;
+    }
     for (int index = 0; index < element->GetNumChildren(); ++index)
         if (NeedsDocumentBackdropLayer(element->GetChild(index))) return true;
     return false;
@@ -306,9 +364,37 @@ ElementPtr Element::Clone() const
 				clone->AppendChild(std::move(child));
 			}
 		}
+        auto flags = compiled_query_flags;
+        if (clone->GetId() != GetId()) flags &= ~2u;
+        if (clone->GetStyle()->GetClassNameList() != GetStyle()->GetClassNameList()) flags &= ~4u;
+        for (int i = 0; i < clone->GetNumChildren(); ++i) {
+            const auto* child = clone->GetChild(i);
+            if (child->GetCompiledBlueprint() != compiled_blueprint) flags &= ~7u;
+            flags &= child->GetCompiledQueryFlags() | ~7u;
+        }
+        clone->SetCompiledNodeIdentity(compiled_blueprint, compiled_node_id, compiled_subtree_end, flags);
 	}
 
 	return clone;
+}
+
+void Element::SetCompiledNodeIdentity(uint64_t blueprint, uint32_t id, uint32_t end, unsigned flags)
+{
+	compiled_blueprint = blueprint;
+	compiled_node_id = id;
+	compiled_subtree_end = end;
+	compiled_query_flags = flags;
+}
+
+void Element::InvalidateCompiledQueries(unsigned parts)
+{
+	for (auto* current = this; current; current = current->parent)
+	{
+		// 动态片段宿主自身的 id/class 不在作者索引内，由查询时单独匹配。
+		const auto dirty = current == this && (current->compiled_query_flags & 8) && parts != 7 ? 0 : parts;
+		current->compiled_query_flags &= ~dirty;
+		if (++current->compiled_query_revision == 0) ++current->compiled_query_revision;
+	}
 }
 
 void Element::SetClass(const String& class_name, bool activate)
@@ -463,6 +549,7 @@ void Element::UpdateAbsoluteOffsetAndRenderBoxData()
 
 void Element::SetClipArea(BoxArea _clip_area)
 {
+    if(auto* context=GetContext())context->DirtyHitTest();
 	clip_area = _clip_area;
 }
 
@@ -475,14 +562,17 @@ void Element::SetScrollableOverflowRectangle(Vector2f _scrollable_overflow_recta
 {
 	if (scrollable_overflow_rectangle != _scrollable_overflow_rectangle)
 	{
+		if (auto* context = GetContext()) context->DirtyClippingInput();
 		scrollable_overflow_rectangle = _scrollable_overflow_rectangle;
 		if (clamp_scroll_offset)
 			ClampScrollOffset();
+		if (auto* context = GetContext()) context->DirtyClippingInput();
 	}
 }
 
 void Element::SetBox(const Box& box)
 {
+    if(auto* context=GetContext())context->DirtyHitTest();
 	if (box != main_box || additional_boxes.size() > 0)
 	{
 #ifdef URUI_ENGINE_DEBUG
@@ -505,16 +595,19 @@ void Element::SetBox(const Box& box)
 
 		if (transform_state)
 			DirtyTransformState(true, true);
+		if (auto* context = GetContext()) context->DirtyClippingInput();
 	}
 }
 
 void Element::AddBox(const Box& box, Vector2f offset)
 {
+	if (auto* context = GetContext()) context->DirtyClippingInput();
 	additional_boxes.emplace_back(PositionedBox{box, offset});
 	OnResize();
 	meta->background_border.DirtyBackground();
 	meta->background_border.DirtyBorder();
 	meta->effects.DirtyEffectsData();
+	if (auto* context = GetContext()) context->DirtyClippingInput();
 }
 
 const Box& Element::GetBox()
@@ -940,6 +1033,7 @@ void Element::RemoveAttribute(const String& name)
 	auto it = attributes.find(name);
 	if (it != attributes.end())
 	{
+        DirtyNativeRendering();
 		attributes.erase(it);
 
 		ElementAttributes changed_attributes;
@@ -980,8 +1074,10 @@ RenderManager* Element::GetRenderManager() const
 	return nullptr;
 }
 
-void Element::SetAttributes(const ElementAttributes& _attributes)
+void Element::SetAttributes(const ElementAttributes& _attributes, const PropertyDictionary* compiled_style)
 {
+    DirtyNativeRendering();
+	CompiledAttributeScope compiled(this, _attributes, compiled_style);
 	attributes.reserve(attributes.size() + _attributes.size());
 	for (auto& pair : _attributes)
 		attributes[pair.first] = pair.second;
@@ -1424,6 +1520,7 @@ Element* Element::AppendChild(ElementPtr child, bool dom_element)
 	}
 	// Set parent just after inserting into children. This allows us to eg. get our previous sibling in SetParent.
 	child_ptr->SetParent(this);
+	if (dom_element) InvalidateCompiledQueries(7);
 
 	Element* ancestor = child_ptr;
 	for (int i = 0; i <= ChildNotifyLevels && ancestor; i++, ancestor = ancestor->GetParentNode())
@@ -1473,6 +1570,7 @@ Element* Element::InsertBefore(ElementPtr child, Element* adjacent_element)
 			DirtyLayout();
 
 		children.insert(children.begin() + child_index, std::move(child));
+		if (child_index < children.size() - num_non_dom_children) InvalidateCompiledQueries(7);
 		child_ptr->SetParent(this);
 
 		Element* ancestor = child_ptr;
@@ -1528,6 +1626,7 @@ ElementPtr Element::RemoveChild(Element* child)
 		// Add the element to the delete list
 		if (itr->get() == child)
 		{
+			if (child_index < children.size() - num_non_dom_children) InvalidateCompiledQueries(7);
 			Element* ancestor = child;
 			for (int i = 0; i <= ChildNotifyLevels && ancestor; i++, ancestor = ancestor->GetParentNode())
 				ancestor->OnChildRemove(child);
@@ -1775,7 +1874,9 @@ void Element::OnAttributeChange(const ElementAttributes& changed_attributes)
 		const auto& value = element_attribute.second;
 		if (attribute == "id")
 		{
-			id = value.Get<String>();
+			auto next = value.Get<String>();
+			if (id != next) InvalidateCompiledQueries(2);
+			id = std::move(next);
             if (auto* document = GetOwnerDocument()) document->NotifyEffectStructureChange();
 		}
 		else if (attribute == "class")
@@ -1794,8 +1895,13 @@ void Element::OnAttributeChange(const ElementAttributes& changed_attributes)
 			if (value.GetType() == Variant::STRING)
 			{
 				PropertyDictionary properties;
-				StyleSheetParser parser(const_cast<PropertySpecification*>(&GetPropertySpecification()));
-				parser.ParseProperties(properties, value.GetReference<String>());
+				const auto* compiled = CompiledAttributeScope::current;
+				if (compiled && compiled->element == this && compiled->style == &value && compiled->properties)
+					properties = *compiled->properties;
+				else {
+					StyleSheetParser parser(const_cast<PropertySpecification*>(&GetPropertySpecification()));
+					parser.ParseProperties(properties, value.GetReference<String>());
+				}
 
 				for (const auto& name_value : properties.GetProperties())
 					meta->style.SetProperty(name_value.first, name_value.second);
@@ -1847,6 +1953,10 @@ void Element::OnAttributeChange(const ElementAttributes& changed_attributes)
 void Element::OnPropertyChange(const PropertyIdSet& changed_properties)
 {
 	URUI_ZoneScoped;
+    if(changed_properties.Contains(PropertyId::PointerEvents)||changed_properties.Contains(PropertyId::Visibility)||
+        changed_properties.Contains(PropertyId::Display)||changed_properties.Contains(PropertyId::OverflowX)||
+        changed_properties.Contains(PropertyId::OverflowY)||changed_properties.Contains(PropertyId::Clip))
+        if(auto* context=GetContext())context->DirtyHitTest();
 	const bool top_right_bottom_left_changed = (           //
 		changed_properties.Contains(PropertyId::Top) ||    //
 		changed_properties.Contains(PropertyId::Right) ||  //
@@ -1971,11 +2081,7 @@ void Element::OnPropertyChange(const PropertyIdSet& changed_properties)
         changed_properties.Contains(PropertyId::MaskOrigin) ||
         changed_properties.Contains(PropertyId::MaskClip));
 	// Dirty the background if it's changed.
-	if (graphic_tint_changed || css_image_changed || border_radius_changed ||               //
-		changed_properties.Contains(PropertyId::BackgroundColor) || //
-		changed_properties.Contains(PropertyId::Opacity) ||         //
-		changed_properties.Contains(PropertyId::ImageColor) ||      //
-		changed_properties.Contains(PropertyId::BoxShadow))         //
+	if (css_image_changed || border_radius_changed || changed_properties.Contains(PropertyId::BoxShadow))         //
 	{
 		meta->background_border.DirtyBackground();
 	}
@@ -2031,6 +2137,11 @@ void Element::OnPropertyChange(const PropertyIdSet& changed_properties)
 	{
 		dirty_transition = true;
 	}
+	if (changed_properties.Contains(PropertyId::OverflowX) || changed_properties.Contains(PropertyId::OverflowY) ||
+		changed_properties.Contains(PropertyId::Clip) || changed_properties.Contains(PropertyId::BorderTopLeftRadius) ||
+		changed_properties.Contains(PropertyId::BorderTopRightRadius) || changed_properties.Contains(PropertyId::BorderBottomRightRadius) ||
+		changed_properties.Contains(PropertyId::BorderBottomLeftRadius))
+		if (auto* context = GetContext()) context->DirtyClippingInput();
 }
 
 void Element::OnPseudoClassChange(const String& /*pseudo_class*/, bool /*activate*/) {}
@@ -2041,6 +2152,7 @@ void Element::OnChildRemove(Element* /*child*/) {}
 
 void Element::DirtyLayout()
 {
+    if(auto* context=GetContext())context->DirtyHitTest();
 	if (Element* document = GetOwnerDocument())
 		document->DirtyLayout();
 }
@@ -2178,6 +2290,7 @@ void Element::SetOwnerDocument(ElementDocument* document, bool force_set)
 {
 	if (owner_document == document)
 		return;
+    DirtyNativeRendering();
 
 	if (owner_document && !document)
 	{
@@ -2190,10 +2303,36 @@ void Element::SetOwnerDocument(ElementDocument* document, bool force_set)
 	if (!(owner_document == this) || force_set)
 	{
 		owner_document = document ? document->GetObserverPtr() : ObserverPtr<Element>();
+        if(document)
+        {
+            // 文档构造时尚未分配instancer；根节点由Context在完整实例化后单独核验。
+            if(this!=document&&!Factory::IsNativeRecordingElementInstancer(instancer))document->opaque_native_rendering=true;
+            DirtyNativeRendering();
+        }
 		if (document) document_specification = document->GetStyleSpecificationStorage();
 		for (ElementPtr& child : children)
 			child->SetOwnerDocument(document, false);
 	}
+	else if (document)
+	{
+		// 独立文档保留自己的 ownerDocument，外层证明无法覆盖其控件和定时状态。
+		document->opaque_native_rendering = true;
+	}
+}
+
+void Element::DirtyNativeRendering()
+{
+    if(auto* context=GetContext())context->DirtyNativeRendering();
+}
+
+void Element::SetEffectState(bool capture_required, bool input_disabled)
+{
+    // GPU效果需要捕获时，原来的直接图像绘制必须改为隔离组；未变化的状态不产生失效。
+    if(effect_capture_required!=capture_required)DirtyNativeRendering();
+    if(effect_input_disabled!=input_disabled)
+        if(auto* context=GetContext())context->DirtyHitTest();
+    effect_capture_required=capture_required;
+    effect_input_disabled=input_disabled;
 }
 
 void Element::Release()
@@ -2206,6 +2345,7 @@ void Element::Release()
 
 void Element::SetParent(Element* _parent)
 {
+    if(auto* context=GetContext())context->DirtyHitTest();
 	// Assumes we are already detached from the hierarchy or we are detaching now.
 	URUI_ASSERT(!parent || !_parent);
 
@@ -2226,6 +2366,7 @@ void Element::SetParent(Element* _parent)
 
 	if (parent) {
         SetOwnerDocument(parent->GetOwnerDocument(), false);
+        if(auto* context=GetContext())context->DirtyHitTest();
         if (auto* document = GetOwnerDocument(); document && document != previous_document) document->NotifyEffectStructureChange();
     }
 	else if (auto* document = GetOwnerDocument()) {
@@ -2237,8 +2378,12 @@ void Element::SetParent(Element* _parent)
 
 void Element::DirtyAbsoluteOffset()
 {
+    // 相对布局可在绝对偏移尚未读取时再次变化；合并递归脏标记不能合并变化代际。
+    if(auto* context=GetContext())context->DirtyHitTest();
 	if (!absolute_offset_dirty)
-		DirtyAbsoluteOffsetRecursive();
+    {
+        DirtyAbsoluteOffsetRecursive();
+    }
 }
 
 void Element::DirtyAbsoluteOffsetRecursive()
@@ -2519,6 +2664,7 @@ void Element::AddToStackingContext(Vector<StackingContextChild>& stacking_childr
 
 void Element::DirtyStackingContext()
 {
+    if(auto* context=GetContext())context->DirtyHitTest();
 	if (Element* stacking_context_parent = ClosestStackingContextContainer())
 		stacking_context_parent->stacking_context_dirty = true;
 }
@@ -2537,6 +2683,7 @@ Element* Element::ClosestStackingContextContainer()
 
 void Element::DirtyDefinition(DirtyNodes dirty_nodes)
 {
+    DirtyNativeRendering();
 	switch (dirty_nodes)
 	{
 	case DirtyNodes::Self: dirty_definition = true; break;
@@ -2619,6 +2766,8 @@ bool Element::AddAnimationKey(PropertyId id, const Property& target_value, float
 ElementAnimationList::iterator Element::StartAnimation(PropertyId property_id, const Property* start_value, int num_iterations,
 	bool alternate_direction, float delay, bool initiated_by_animation_property)
 {
+    // 延迟动画尚未写入样式时，也必须唤醒拥有它的文档。
+    DirtyNativeRendering();
 	auto it = std::find_if(animations.begin(), animations.end(), [&](const ElementAnimation& el) { return el.GetPropertyId() == property_id && !el.IsTransition(); });
 
 	if (it != animations.end())
@@ -2775,6 +2924,85 @@ void Element::HandleTransitionProperty()
 	}
 }
 
+
+bool Element::GetKeyframeProperties(const String& name, PropertyIdSet& properties) const
+{
+    const auto* sheet = GetStyleSheet();
+    const auto* keyframes = sheet ? sheet->GetKeyframes(name) : nullptr;
+    if (!keyframes || keyframes->blocks.empty() || keyframes->blocks.size() > 4096) return false;
+    for (auto id : keyframes->property_ids) properties.Insert(id);
+    return true;
+}
+
+void Element::UpdateSequenceProperties(float dp_ratio, Vector2f viewport)
+{
+    UpdateProperties(dp_ratio, viewport);
+    for (int index = 0; index < GetNumChildren(true); ++index) GetChild(index)->UpdateSequenceProperties(dp_ratio, viewport);
+}
+
+int Element::GetKeyframeCount(const String& name) const
+{
+    const auto* sheet = GetStyleSheet();
+    const auto* frames = sheet ? sheet->GetKeyframes(name) : nullptr;
+    return frames && frames->blocks.size() <= 4096 ? int(frames->blocks.size()) : -1;
+}
+
+bool Element::SampleKeyframes(const String& name, float progress, const String& easing,
+    const PropertyDictionary& baseline, PropertyDictionary& output)
+{
+    const auto* sheet = GetStyleSheet();
+    const auto* frames = sheet ? sheet->GetKeyframes(name) : nullptr;
+    if (!frames || frames->blocks.empty() || frames->blocks.size() > 4096 || !std::isfinite(progress) || progress < 0 || progress > 1) return false;
+    PropertyDictionary timing;
+    if (!GetPropertySpecification().ParsePropertyDeclaration(timing, "animation", "__urui_sequence 1s " + easing)) return false;
+    const auto* control = timing.GetProperty(PropertyId::Animation);
+    if (!control) return false;
+    const auto list = control->Get<AnimationList>();
+    if (list.size() != 1 || list[0].name != "__urui_sequence" || list[0].duration != 1 || list[0].delay != 0 ||
+        list[0].num_iterations != 1 || list[0].paused || list[0].alternate) return false;
+    const Tween tween = list[0].tween;
+    const auto& blocks = frames->blocks;
+    Property storage;
+    SmallUnorderedSet<String> dependencies;
+    std::optional<ExpandedShorthands> cache;
+    int previous_block = -1;
+    auto Resolve = [&](PropertyId id, int index) -> const Property*
+    {
+        const auto* property = blocks[index].properties.GetProperty(id);
+        if (!property) return nullptr;
+        if (previous_block != index) { cache.reset(); previous_block = index; }
+        return meta->style.ResolveKeyFrameProperty(id, property, blocks[index].properties, cache, dependencies, storage);
+    };
+    auto Copy = [&](const Property& property)
+    {
+        Property result = property;
+        // Preparing interpolation may modify transform primitives. Never mutate shared stylesheet/baseline data.
+        if (result.unit == Unit::TRANSFORM)
+            if (const auto transform = result.Get<TransformPtr>()) result.value = MakeShared<Transform>(*transform);
+        return result;
+    };
+    const bool has_from = blocks.front().normalized_time == 0, has_to = blocks.back().normalized_time == 1;
+    for (PropertyId id : frames->property_ids)
+    {
+        const auto* base = baseline.GetProperty(id);
+        if (!base) return false;
+        const auto* first = has_from ? Resolve(id, 0) : nullptr;
+        ElementAnimation animation(id, ElementAnimationOrigin::User, Copy(first ? *first : *base), *this, 0, 1, 1, false);
+        if (!animation.IsInitalized()) return false;
+        for (int index = has_from ? 1 : 0; index < int(blocks.size()) - (has_to ? 1 : 0); ++index)
+        {
+            const auto* value = Resolve(id, index);
+            if (value && !animation.AddKey(blocks[index].normalized_time, Copy(*value), *this, tween, false)) return false;
+        }
+        const auto* last = has_to ? Resolve(id, int(blocks.size()) - 1) : nullptr;
+        if (!animation.AddKey(1, Copy(last ? *last : *base), *this, tween, false)) return false;
+        auto value = animation.Sample(progress, *this);
+        if (value.unit == Unit::UNKNOWN) return false;
+        output.SetProperty(id, value);
+    }
+    return true;
+}
+
 void Element::HandleAnimationProperty()
 {
 	// Note: We are effectively restarting all animations whenever 'dirty_animation' is set. Use the dirty flag with care,
@@ -2927,8 +3155,18 @@ void Element::AdvanceAnimations()
 
 void Element::DirtyTransformState(bool perspective_dirty, bool transform_dirty)
 {
+    if(auto* context=GetContext())context->DirtyHitTest();
 	dirty_perspective |= perspective_dirty;
 	dirty_transform |= transform_dirty;
+}
+
+// 复用绘制遍历的顺序更新几何，不执行effects、OnRender或GPU资源准备。
+void Element::SynchronizeGeometry()
+{
+    UpdateAbsoluteOffsetAndRenderBoxData();
+    if (stacking_context_dirty) BuildLocalStackingContext();
+    UpdateTransformState();
+    for (Element* child : stacking_context) child->SynchronizeGeometry();
 }
 
 void Element::UpdateTransformState()
@@ -3075,6 +3313,7 @@ void Element::UpdateTransformState()
 	// A change in perspective or transform will require an update to children transforms as well.
 	if (perspective_or_transform_changed)
 	{
+		if (auto* context = GetContext()) context->DirtyClippingInput();
 		for (Element* stacking_child : stacking_context)
 			stacking_child->DirtyTransformState(false, true);
 	}

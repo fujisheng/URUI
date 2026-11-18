@@ -22,6 +22,7 @@ namespace URUI.Elements
         public IReadOnlyList<Element> Children()
         {
             int count = ChildCount;
+            if (count == 0) return Array.Empty<Element>();
             var tokens = new ulong[count];
             for (int i = 0; i < count; i++)
             {
@@ -58,6 +59,7 @@ namespace URUI.Elements
                 throw new InvalidOperationException("无法清空层级。");
             }
 
+            owner.Document.MarkGeometryChanged();
             owner.Document.RefreshElements(false);
         }
     }

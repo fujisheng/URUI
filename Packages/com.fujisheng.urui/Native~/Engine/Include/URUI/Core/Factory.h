@@ -26,6 +26,7 @@ class DecoratorInstancerInterface;
 class RenderManager;
 class TextInputHandler;
 struct HtmlDocument;
+struct CompiledDocument;
 struct Diagnostic;
 enum class EventId : uint16_t;
 
@@ -66,7 +67,8 @@ public:
 	/// @param[in] tag The tag of the element to be instanced.
 	/// @param[in] attributes The attributes to instance the element with.
 	/// @return The instanced element, or nullptr if the instancing failed.
-	static ElementPtr InstanceElement(Element* parent, const String& instancer, const String& tag, const ElementAttributes& attributes);
+	static ElementPtr InstanceElement(Element* parent, const String& instancer, const String& tag, const ElementAttributes& attributes,
+		const PropertyDictionary* compiled_style = nullptr);
 
 	/// Instances one pure-text node; HTML syntax is never interpreted or decoded.
 	/// @param[in] parent The element any instanced elements will be parented to.
@@ -85,6 +87,8 @@ public:
 	/// @return The instanced document, or nullptr if an error occurred.
 	static ElementPtr InstanceDocumentStream(Context* context, Stream* stream, const String& document_base_tag);
 	static ElementPtr InstanceParsedHtmlDocument(Context* context, const HtmlDocument& document, Vector<Diagnostic>& diagnostics,
+		SharedPtr<ResourceContext> resources = nullptr);
+	static ElementPtr InstanceCompiledDocument(Context* context, CompiledDocument&& compiled, Vector<Diagnostic>& diagnostics,
 		SharedPtr<ResourceContext> resources = nullptr);
 
 	/// Registers a non-owning pointer to an instancer that will be used to instance decorators.
@@ -116,6 +120,9 @@ public:
 	/// @param[in] name The name of the desired --urui-font-effect type.
 	/// @return The --urui-font-effect instancer if it exists, nullptr otherwise.
 	static FontEffectInstancer* GetFontEffectInstancer(const String& name);
+    // 仅识别工厂自有的内置实例，不将用户派生类的OnRender副作用当作静态内容。
+    static bool IsNativeRecordingElementInstancer(const ElementInstancer* instancer);
+    static bool HasOpaqueRenderingInstancers();
 
 	/// Creates a style sheet from a user-generated string.
 	/// @param[in] string The contents of the style sheet.

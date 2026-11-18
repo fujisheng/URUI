@@ -5,6 +5,7 @@
 #include "../../Include/URUI/Core/PropertyIdSet.h"
 #include "../../Include/URUI/Core/Types.h"
 #include <optional>
+#include <map>
 
 namespace URUI {
 
@@ -30,8 +31,10 @@ public:
 
 	/// Update this definition if required
     uint64_t GetComputedRevision() const { return computed_revision; }
-    const PropertyIdSet* GetSnapshotNumericChanges(uint64_t revision) const {
-        return numeric_snapshot_revision == revision && computed_revision == revision + 1 ? &numeric_snapshot_properties : nullptr;
+    uint64_t GetVariableResolutionCount() const { return variable_resolution_count; }
+    struct SnapshotValue {PropertyId id;uint32_t kind;float values[4];};
+    const Vector<SnapshotValue>* GetSnapshotValueChanges(uint64_t revision) const {
+        return value_snapshot_revision == revision && computed_revision == revision + 1 ? &value_snapshot_values : nullptr;
     }
     void AppendCustomPropertyNames(UnorderedSet<String>& names) const;
 	void UpdateDefinition();
@@ -76,6 +79,11 @@ public:
 	void RemovePresentationalProperty(PropertyId id);
 	bool SetAnimatedProperty(PropertyId id, const Property& property, bool transition);
 	void RemoveAnimatedProperty(PropertyId id, bool transition);
+    bool PrepareSequenceBaseline(uint64_t owner, const PropertyIdSet& properties, PropertyDictionary& baseline) const;
+    const PropertyDictionary* GetSequenceBaseline(uint64_t owner) const;
+    bool CaptureSequence(uint64_t owner, const PropertyDictionary& baseline);
+    bool SetSequenceValues(uint64_t owner, const PropertyDictionary& values);
+    void RemoveSequence(uint64_t owner);
 	/// Sets a local custom property override on the element to a pre-parsed value.
 	/// @param[in] name The name of the new property.
 	/// @param[in] property The parsed property to set.
@@ -100,6 +108,8 @@ public:
 	/// @param[in] name The name of the property to fetch the value for (including "--" prefix).
 	/// @return The value of this property for this element, or nullptr if no property exists with the given name.
 	const Property* GetCustomProperty(const String& name) const;
+    /// Whether the winning unregistered value requires variable substitution.
+    bool HasCustomPropertyExpression(const String& name) const;
 	/// Returns one of this element's properties.
 	/// @param[in] id The ID of the property to fetch the value for.
 	/// @return The value of this property for this element, or nullptr if this property has not been explicitly defined for this element.
@@ -174,6 +184,7 @@ public:
 	static void Shutdown();
 
 private:
+    void RecomposeSequenceAnimations();
 	std::optional<Property> CaptureInlineTransition(PropertyId id) const;
 	void ApplyInlineTransition(PropertyId id, const Property& before);
 	struct PropertySources {
@@ -201,6 +212,8 @@ private:
 
 	const Property* ResolveVariables(PropertyId id, const Property* property, SmallUnorderedSet<String>& variable_dependencies,
 		Property& property_storage) const;
+    bool ValidateVariableReadCache() const;
+    const Property* ResolveVariableRead(PropertyId id, const Property* property) const;
 
 	void ComputeValue(Style::ComputedValues& values, float dp_ratio, Vector2f vp_dimensions, float font_size, float document_font_size,
 		bool& dirty_font_face_handle, PropertyId id, const Property* p);
@@ -244,8 +257,17 @@ private:
 
 	// The definition of this element, provides applicable properties from the stylesheet.
     uint64_t computed_revision = 0;
-    uint64_t numeric_snapshot_revision = UINT64_MAX;
-    PropertyIdSet numeric_snapshot_properties;
+    mutable uint64_t variable_resolution_count = 0;
+    struct VariableScope { const ElementStyle* style; uint64_t revision; };
+    struct VariableValue { uint64_t generation = 0; Property expression; std::optional<Property> property; };
+    mutable Vector<VariableScope> variable_scopes;
+    // map 保证后续读取其他属性时不会因扩容而移动已经返回的 Property。
+    mutable std::map<PropertyId, VariableValue> variable_values;
+    mutable uint64_t variable_generation = 0;
+    mutable int variable_viewport_width = 0, variable_viewport_height = 0;
+    mutable float variable_dp_ratio = 0;
+    uint64_t value_snapshot_revision = UINT64_MAX;
+    Vector<SnapshotValue> value_snapshot_values;
     uint64_t registered_property_revision = 0;
 	uint64_t font_context_revision = UINT64_MAX;
 	SharedPtr<const ElementDefinition> definition;
@@ -254,6 +276,9 @@ private:
 	PropertyDictionary inline_properties;
 	PropertyDictionary animation_properties;
 	PropertyDictionary transition_properties;
+    struct SequenceLayer { PropertyDictionary baseline, values; };
+    UnorderedMap<uint64_t, SequenceLayer> sequence_layers;
+    PropertyDictionary composed_animations;
 	// Properties computed from shorthands with variables, here resolved.
 	ExpandedShorthands expanded_shorthands;
 

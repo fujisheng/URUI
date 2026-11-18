@@ -30,7 +30,7 @@ namespace URUI.Effect.Rendering
                 _=>throw new InvalidOperationException("无效的 URUI Blend 模式。") };
             return new EffectComposite(pair.Item1,pair.Item2);
         }
-        internal static void Read(ComputedStyleSnapshot style,EffectParameters p)
+        internal static void Read(EffectStyleView style,EffectParameters p)
         {
             p.BlendType=style.GetKeyword("--urui-fx-blend-type") switch {
                 "custom"=>BlendType.Custom,"alpha-blend"=>BlendType.AlphaBlend,"multiply"=>BlendType.Multiply,

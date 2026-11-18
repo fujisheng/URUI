@@ -1,6 +1,6 @@
 # URUI.Effect
 
-URUI 的可选效果库，提供声明式颜色、采样、转场、渐变、阴影、粒子和纹理表面处理。当前版本 **`0.4.1-preview.1`**，依赖 **URUI Core `0.7.1-preview.1`** 与 Unity 内置粒子模块。运行程序集 `URUI.Effect` 仅引用 `URUI.Runtime`，可以独立于 FUI 使用。
+URUI 的可选效果库，提供声明式颜色、采样、转场、渐变、阴影、粒子和纹理表面处理。当前版本 **`0.5.0-preview.1`**，依赖 **URUI Core `0.8.0-preview.1`** 与 Unity 内置粒子模块。运行程序集 `URUI.Effect` 仅引用 `URUI.Runtime`，可以独立于 FUI 使用。
 
 ## 文档导航
 

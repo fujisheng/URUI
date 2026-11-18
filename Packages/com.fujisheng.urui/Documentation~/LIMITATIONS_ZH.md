@@ -6,7 +6,7 @@
 - 一个活动 Surface/原生上下文可承载多个独立 Document；节点与输入操作限主线程，需要 MainCamera。
 - 内置输入使用 Input Manager (Old) / Both；其他输入来源可设置 UseUnityInput=false 并使用 Surface.Input。
 - 图片通过 ImageAsset 借用或 ImageResolver 同步按需取得颜色 Texture2D（无需可读），字体仍需提供可读取且包含所需字形的文件。
-- 原生 ABI8，176 个正式 C 导出；style4 / effect7 / filter3 / animation1 等协议独立版本。候选与已安装插件必须区分，实际哈希、构建和运行状态见 PLUGINS.json。
+- 原生 ABI11 / render-plan8，正式 C 导出集合由头文件与二进制核对生成；style4 / effect7 / filter3 / animation1 等协议独立版本。候选与已安装插件必须区分，实际哈希、构建和运行状态见 PLUGINS.json。
 
 | 目标 | 已执行检查 | Unity 运行范围 |
 | --- | --- | --- |

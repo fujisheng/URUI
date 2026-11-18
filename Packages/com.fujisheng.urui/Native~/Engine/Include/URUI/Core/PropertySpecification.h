@@ -104,6 +104,7 @@ public:
 	String PropertiesToString(const PropertyDictionary& dictionary, bool include_name, char delimiter) const;
 
 private:
+	friend class CompiledArchive;
 	using Properties = Vector<UniquePtr<PropertyDefinition>>;
 	using Shorthands = Vector<UniquePtr<ShorthandDefinition>>;
 

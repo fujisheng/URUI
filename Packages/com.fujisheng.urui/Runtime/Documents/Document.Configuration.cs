@@ -35,18 +35,18 @@ namespace URUI.Documents
             if (result < 0) { throw new InvalidOperationException("URUI 图片预加载被拒绝：" + NativeMethods.LastError()); }
             return result == 1;
         }
-        /// <summary>下次加载使用的外置资源；数组使用副本，TextAsset.bytes 可包含字体字节。</summary>
+        /// <summary>下次加载使用的外置资源；数组使用副本；注册同步借用 TextAsset 原始数据，可包含字体字节。</summary>
         public TextResource[] TextResources
         {
             get { CheckThread(); return (TextResource[])textResources.Clone(); }
             set { CheckResourceConfiguration(); textResources = value == null ? Array.Empty<TextResource>() : (TextResource[])value.Clone(); }
         }
 
-        void ValidateTextResources()
+        void ValidateTextResources(TextResource[] requestedResources = null)
         {
             textResources ??= Array.Empty<TextResource>();
             var names = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var resource in textResources)
+            foreach (var resource in requestedResources ?? textResources)
             {
                 RequireName(resource.Source, nameof(TextResources));
                 if (!resource.Asset || !names.Add(resource.Source))
@@ -79,8 +79,22 @@ namespace URUI.Documents
             {
                 CheckConfiguration();
                 source = value;
+                compiledSource = null;
                 requestedMarkup = null;
                 loadRequested = value != null;
+            }
+        }
+
+        /// <summary>启用组件时加载的编译页面；源码变化由 Editor 自动更新资产。</summary>
+        public CompiledDocumentAsset CompiledSource
+        {
+            get { CheckThread(); return compiledSource; }
+            set
+            {
+                CheckConfiguration();
+                if (value) value.Validate(true);
+                compiledSource = value; source = null; requestedMarkup = null; loadRequested = value != null;
+                if (value) sourceUrl = value.SourceUrl;
             }
         }
 

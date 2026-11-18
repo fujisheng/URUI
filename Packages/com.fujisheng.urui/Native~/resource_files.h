@@ -133,4 +133,10 @@ public:
         if (found == open_files.end()) return 0;
         return found->second.original ? fallback->Length(found->second.original) : found->second.bytes->size();
     }
+    Data GetImmutableData(URUI::FileHandle file) override
+    {
+        const auto found = open_files.find(file);
+        if (found == open_files.end()) { return {}; }
+        return found->second.original ? fallback->GetImmutableData(found->second.original) : found->second.bytes;
+    }
 };

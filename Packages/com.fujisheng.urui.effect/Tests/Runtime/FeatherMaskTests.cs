@@ -11,6 +11,26 @@ namespace URUI.Effect.Tests
     public sealed class FeatherMaskTests
     {
         [UnityTest]
+        public IEnumerator SingleLeafFeatherUsesNoAdditionalTargetsAndOnlyUpdatesParameters()
+        {
+            using var fixture=new EffectRenderFixture();fixture.Camera.allowHDR=false;fixture.Camera.allowMSAA=false;fixture.Camera.backgroundColor=Color.black;
+            fixture.Load("--urui-effect:none;background-color:rgba(255,0,0,.5);--urui-mask-feather-top:32px;--urui-mask-feather-bottom:16px;","<div id='subject'></div>");
+            fixture.Render();var baseline=URUI.Rendering.Effects.EffectStatistics.GetTargets().LeasedTargets;
+            using var painter=new FeatherMaskPainter(fixture.Document.Q("subject"));fixture.Document.Q("subject").Style.Set("--urui-mask-image","shader(feather-mask)");
+            fixture.Render();Assert.That(URUI.Rendering.Effects.EffectStatistics.GetTargets().LeasedTargets,Is.LessThanOrEqualTo(baseline),"单叶解析羽化不能新增离屏目标。");
+            var top=fixture.Read.GetPixel(128,255-72);var center=fixture.Read.GetPixel(128,255-128);
+            Assert.That(top.r,Is.EqualTo(EffectHtmlFixtureAssets.TargetChannel(128f/255*8.5f/32)).Within(3f/255));
+            Assert.That(center.r,Is.EqualTo(EffectHtmlFixtureAssets.TargetChannel(128f/255)).Within(3f/255));
+            var node=fixture.Document.Q("subject");var index=0;System.Action cycle=()=>{node.Style.Set("--urui-mask-feather-top",++index%2==0?"32px":"40px");fixture.Document.SynchronizeLayout();};
+            for(var i=0;i<300;i++)cycle();
+            object renderer=null;foreach(var component in fixture.Surface.GetComponentsInChildren<MonoBehaviour>(true))if(component.GetType().FullName=="URUI.Internal.Hosting.RenderHost")renderer=component;
+            var upload=renderer.GetType().GetProperty("GeometryUploadBytes",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);var before=upload.GetValue(renderer);
+            using var recorder=Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Memory,"GC.Alloc",8192,Unity.Profiling.ProfilerRecorderOptions.CollectOnlyOnCurrentThread);
+            for(var i=0;i<32;i++)cycle();recorder.Stop();long count=0;for(var i=0;i<recorder.Count;i++)count+=recorder.GetSample(i).Count;
+            Assert.That(recorder.Valid&&!recorder.WrappedAround,Is.True);Assert.That(count,Is.Zero);Assert.That(upload.GetValue(renderer),Is.EqualTo(before));
+            yield return null;
+        }
+        [UnityTest]
         public IEnumerator FeatheredMaskPreservesOpacityAndFollowsResizing()=>Verify(false);
 
         [UnityTest]

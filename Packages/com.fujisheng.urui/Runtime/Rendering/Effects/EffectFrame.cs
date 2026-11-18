@@ -39,9 +39,10 @@ namespace URUI.Rendering.Effects
         internal readonly Texture source;
         internal readonly bool borrowed;
         internal readonly EffectGeometry geometry;
+        internal readonly PreparedSourceGeometry preparedSource;
         internal readonly Rect captureBounds;
         internal readonly Rect sourceInkBounds;
-        internal EffectInput(ulong token,string name,Texture source,bool borrowed,EffectGeometry geometry,Rect captureBounds=default,Rect sourceInkBounds=default,ulong input=0)
-        { this.token=token;this.input=input;this.name=name;this.source=source;this.borrowed=borrowed;this.geometry=geometry;this.captureBounds=captureBounds;this.sourceInkBounds=sourceInkBounds; }
+        internal EffectInput(ulong token,string name,Texture source,bool borrowed,EffectGeometry geometry,Rect captureBounds=default,Rect sourceInkBounds=default,ulong input=0,PreparedSourceGeometry preparedSource=default)
+        { this.token=token;this.input=input;this.name=name;this.source=source;this.borrowed=borrowed;this.geometry=geometry;this.preparedSource=preparedSource;this.captureBounds=captureBounds;this.sourceInkBounds=sourceInkBounds; }
     }
 }

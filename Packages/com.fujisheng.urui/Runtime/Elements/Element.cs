@@ -87,14 +87,18 @@ namespace URUI.Elements
                     return false;
                 }
 
-                if (document.IsCurrent(generation) && NativeMethods.urui_element_ref_valid(NativeHandle, token) == 1)
-                {
-                    return true;
-                }
-
-                Invalidate();
-                return false;
+                return ValidateSnapshot(document.IsCurrent(generation) && NativeMethods.urui_element_ref_valid(NativeHandle, token) == 1);
             }
+        }
+
+        // Document has checked the owning generation and read this validity in a
+        // callback-free window. Invalidation can reenter, so its caller discards that window.
+        internal bool ValidateSnapshot(bool valid)
+        {
+            if (invalid) return false;
+            if (valid) return true;
+            Invalidate();
+            return false;
         }
 
         /// <summary>节点当前连接到所属文档的根；有效但脱离层级的节点返回 false。</summary>
@@ -142,6 +146,7 @@ namespace URUI.Elements
                 throw new InvalidOperationException("控件类型在创建时确定，不能移除类型属性。");
             }
             RequireSuccess(NativeMethods.urui_element_erase(NativeHandle, token, 0, name), "移除属性");
+            document.MarkGeometryChanged();
             Document.FinishNativeCall();
             OnAttributeChanged(name);
         }
@@ -159,6 +164,15 @@ namespace URUI.Elements
             document.ReplaceInnerHtml(this, html, sourceUrl);
         }
 
+        /// <summary>实例化所属文档的编译片段；控件初始化失败时恢复原内容。</summary>
+        public void SetInnerHtml(URUI.Resources.CompiledTemplate template)
+        {
+            RequireValid();
+            if (template == null) throw new ArgumentNullException(nameof(template));
+            if (document.Defer(() => SetInnerHtml(template))) return;
+            document.ReplaceInnerHtml(this, null, template.SourceUrl, template);
+        }
+
         /// <summary>序列化当前元素的 HTML 内容，保留标准空元素与显式结束标签。</summary>
         public string GetInnerHtml() { RequireValid(); return NativeMethods.ReadElement(NativeHandle, token, 4); }
 
@@ -171,6 +185,7 @@ namespace URUI.Elements
             ElementStyle.RequireFinite(scale.x);
             ElementStyle.RequireFinite(scale.y);
             RequireSuccess(NativeMethods.urui_element_ref_set_translate_scale_2d(NativeHandle, token, translation.x, translation.y, scale.x, scale.y), "设置变换");
+            document.MarkGeometryChanged();
         }
 
         /// <summary>更新运行时TRS，保留作者变换原点的单位、数值与样式表来源。</summary>
@@ -195,6 +210,7 @@ namespace URUI.Elements
                 scale.x, scale.y, scale.z, originPercent.x, originPercent.y };
             foreach (var value in values) ElementStyle.RequireFinite(value);
             RequireSuccess(NativeMethods.urui_element_trs(NativeHandle, token, values, values.Length), "设置 TRS");
+            document.MarkGeometryChanged();
         }
 
         internal void SetColor(string property, Color value)
@@ -205,6 +221,7 @@ namespace URUI.Elements
             ElementStyle.RequireFinite(value.b); ElementStyle.RequireFinite(value.a);
             Color32 bytes = value;
             RequireSuccess(NativeMethods.urui_element_color(NativeHandle, token, property, bytes.r, bytes.g, bytes.b, bytes.a), "设置颜色");
+            document.MarkGeometryChanged();
         }
 
         /// <summary>查询是否具有单个 CSS 类名，区分大小写。</summary>
@@ -233,6 +250,7 @@ namespace URUI.Elements
             RequireValid();
             RequireClassName(className);
             RequireSuccess(NativeMethods.urui_element_class(NativeHandle, token, className, enabled ? 1 : 0), "更新类名");
+            document.MarkGeometryChanged();
         }
 
         internal void SetStyle(string name, string value)
@@ -247,6 +265,7 @@ namespace URUI.Elements
             RequireValid();
             Document.RequireName(name, nameof(name));
             RequireSuccess(NativeMethods.urui_element_erase(NativeHandle, token, 1, name), "移除行内样式");
+            document.MarkGeometryChanged();
         }
 
         internal void SetPixels(string name, float value)
@@ -255,18 +274,24 @@ namespace URUI.Elements
             SetNumeric(name, value, 1);
         }
 
+        static readonly Unity.Profiling.ProfilerMarker numericStyleWriteMarker = new("URUI.Style.WriteNumeric");
         internal void SetNumeric(string name, float value, int unit)
         {
             RequireValid();
             Document.RequireName(name, nameof(name));
             ElementStyle.RequireFinite(value);
-            RequireSuccess(NativeMethods.urui_element_number(NativeHandle, token, name, value, unit), "更新动态数值");
+            using (numericStyleWriteMarker.Auto())
+            {
+                RequireSuccess(NativeMethods.urui_element_number(NativeHandle, token, name, value, unit), "更新动态数值");
+            }
+            document.MarkGeometryChanged();
         }
 
         void Write(int field, string name, string value)
         {
             RequireValid();
             RequireSuccess(NativeMethods.urui_element_write(NativeHandle, token, field, name, value), "更新元素");
+            document.MarkGeometryChanged();
         }
 
         internal void RequireValid()
@@ -300,7 +325,7 @@ namespace URUI.Elements
                 subscription.Clear();
             }
 
-            subscriptions.Clear();
+            subscriptions.Clear();subscriptionSnapshot=null;
         }
 
         internal static void RequireText(string value, string parameter)

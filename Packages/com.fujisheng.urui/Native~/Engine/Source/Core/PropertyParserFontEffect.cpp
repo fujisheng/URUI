@@ -92,6 +92,7 @@ bool PropertyParserFontEffect::ParseValue(Property& property, const String& font
 					Utilities::HashCombine(fingerprint, id_value.second.ToString());
 
 				font_effect->SetFingerprint(fingerprint);
+				font_effects.declarations.push_back({type, MakeShared<PropertyDictionary>(properties)});
 
 				font_effects.list.emplace_back(std::move(font_effect));
 			}

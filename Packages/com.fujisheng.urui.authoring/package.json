@@ -1,0 +1,31 @@
+{
+  "name": "com.fujisheng.urui.authoring",
+  "version": "0.1.0-preview.1",
+  "displayName": "URUI Authoring",
+  "description": "Visual HTML/CSS authoring, unified animation timeline, live inspection and local agent editing for URUI.",
+  "unity": "6000.3",
+  "unityRelease": "22f1",
+  "author": {
+    "name": "fujisheng"
+  },
+  "dependencies": {
+    "com.fujisheng.urui": "0.8.0-preview.1"
+  },
+  "samples": [
+    {
+      "displayName": "Authoring Demo",
+      "description": "Editable equipment inventory in plain HTML/CSS.",
+      "path": "Samples~/Authoring Demo"
+    },
+    {
+      "displayName": "Animation Demo",
+      "description": "Popup and button feedback with editable CSS keyframes and a unified timeline.",
+      "path": "Samples~/Animation Demo"
+    },
+    {
+      "displayName": "Animation Effect Demo",
+      "description": "Optional Effect package: UI, effect parameters and particles on one timeline.",
+      "path": "Samples~/Animation Effect Demo"
+    }
+  ]
+}

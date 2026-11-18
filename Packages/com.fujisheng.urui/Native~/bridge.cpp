@@ -1,4 +1,5 @@
 #include "Engine/Source/Core/HtmlBuilder.h"
+#include "Engine/Source/Core/CompiledDocument.h"
 #include "Engine/Source/Core/DocumentFontContext.h"
 #include "Engine/Source/Core/HtmlParser.h"
 #include "Engine/Source/Core/CssParser.h"
@@ -14,9 +15,7 @@ namespace urui_elements {
 #include "resource_store.h"
 #include "resource_files.h"
 #include "render_plan.h"
-#include "prepared_batch.h"
-#include "core_frame.h"
-#include "native_frame.h"
+#include "render_plan_compiler.h"
 #include <URUI/Core.h>
 #include <URUI/Core/ElementText.h>
 #include <URUI/Core/RenderManager.h>
@@ -55,18 +54,6 @@ namespace urui_interaction
 }
 namespace
 {
-    // URUI leaves the HTML-like button tag generic. Register a form control so
-    // authored and dynamic disabled attributes drive :disabled and native focus.
-    class ButtonElement final : public URUI::ElementFormControl
-    {
-    public:
-        explicit ButtonElement(const URUI::String& tag) : ElementFormControl(tag) {}
-        URUI::String GetValue() const override { return GetAttribute<URUI::String>("value", ""); }
-        void SetValue(const URUI::String& value) override { SetAttribute("value", value); }
-        bool IsSubmitted() override { return false; }
-    };
-    URUI::ElementInstancerGeneric<ButtonElement> button_instancer;
-
     struct ImageCallbackScope
     {
         ImageCallbackScope() { ++urui_interaction::callback_depth; }
@@ -80,6 +67,8 @@ namespace
         std::vector<UruiVertex> vertices;
         std::vector<int> indices;
         URUI::TextureSampling texture_sampling = URUI::TextureSampling::Clamp;
+        std::array<float,4> bounds{};
+        bool bounds_valid = false;
     };
     struct Texture
     {
@@ -115,17 +104,14 @@ namespace
     }
     std::deque<URUI::ObserverPtr<URUI::Element>> clicks;
     RenderSerial render_serial;
-    std::thread::id context_thread;
-    // Sessions retain immutable CPU payloads until their last lease is released.
-    // This mutex protects registry access; it does not grant foreign-thread ownership.
-    std::unordered_map<uint64_t, std::unique_ptr<urui_prepared::Session>> prepared_sessions;
-    std::unordered_map<uint64_t, std::unique_ptr<urui_frame::Session>> frame_sessions;
-    std::mutex frame_sessions_mutex;
-    std::thread::id frame_context_owner;
+    // 外线程查询会与 Context 重建并发，所有权检查必须是无数据竞争的读取。
+    std::atomic<std::thread::id> context_thread;
     class Renderer : public URUI::RenderInterface
     {
     public:
         RenderPlan plan{render_serial};
+        urui_plan::Session draw_plan;
+        uint64_t document_generation=urui_plan::Identity();
         std::unordered_map<uint64_t, Geometry> meshes;
         std::unordered_map<uint64_t, Texture> textures;
         std::unordered_map<URUI::TextureHandle, uint64_t> borrowed_texture_handles;
@@ -141,6 +127,7 @@ namespace
             }
         }
         std::vector<UruiCommand> commands;
+        std::vector<UruiPlanUniform> command_uniforms;
         struct PaintShader
         {
             std::string name;
@@ -190,6 +177,9 @@ namespace
         uint64_t next_mesh = 1, next_texture = 1;
         bool clipped = false;
         URUI::Rectanglei clip = {};
+        URUI::Context* recorded_context=nullptr;
+        uint64_t recorded_revision=0,recorded_document=0,recorded_resources=0,recorded_epoch=0;
+        size_t recorded_command_count=0;
         uint64_t AllocateTextureHandle()
         {
             uint64_t id = AllocateTextureId<URUI::TextureHandle>(next_texture);
@@ -211,12 +201,18 @@ namespace
             URUI_DEBUG_CODE(++profile.geometry_compiles;)
             URUI_DEBUG_CODE(profile.geometry_vertices += static_cast<uint32_t>(vs.size());)
             URUI_DEBUG_CODE(profile.geometry_indices += static_cast<uint32_t>(ids.size());)
+            constexpr uint64_t geometry_limit=sizeof(URUI::CompiledGeometryHandle)==4?UINT32_MAX:((uint64_t{1}<<63)-1);
+            if(!next_mesh||next_mesh>geometry_limit)throw std::overflow_error("URUI geometry identity exhausted");
             uint64_t handle = next_mesh++;
             Geometry g;
             g.vertices.reserve(vs.size());
-            for (auto& v : vs)
+            for (auto& v : vs) {
                 g.vertices.push_back({v.position.x, v.position.y, v.tex_coord.x, v.tex_coord.y, v.colour.red,
                                       v.colour.green, v.colour.blue, v.colour.alpha});
+                if (!g.bounds_valid) { g.bounds={v.position.x,v.position.y,v.position.x,v.position.y};g.bounds_valid=true; }
+                else { g.bounds[0]=std::min(g.bounds[0],v.position.x);g.bounds[1]=std::min(g.bounds[1],v.position.y);
+                    g.bounds[2]=std::max(g.bounds[2],v.position.x);g.bounds[3]=std::max(g.bounds[3],v.position.y); }
+            }
             g.indices.assign(ids.begin(), ids.end());
             meshes.emplace(handle, std::move(g));
             plan.ResourceChanged();
@@ -230,7 +226,7 @@ namespace
                 plan.ResourceChanged();
             }
         }
-        void RenderGeometry(URUI::CompiledGeometryHandle geo, URUI::Vector2f move, URUI::TextureHandle tex) override
+        void RenderGeometry(URUI::CompiledGeometryHandle geo, URUI::Vector2f move, URUI::TextureHandle tex,const URUI::DrawParameters& parameters) override
         {
             UruiCommand c{};
             c.geometry = static_cast<uint64_t>(geo);
@@ -248,6 +244,9 @@ namespace
                 c.clip_h = clip.Height();
             }
             commands.push_back(c);
+            const auto& color=parameters.tint;
+            command_uniforms.push_back({{color.red/255.f,color.green/255.f,color.blue/255.f,color.alpha/255.f},
+                {parameters.uv_scale.x,parameters.uv_scale.y,parameters.uv_offset.x,parameters.uv_offset.y}});
             std::array<float, 16> matrix{};
             for (int col = 0; col < 4; col++)
                 for (int row = 0; row < 4; row++)
@@ -401,17 +400,20 @@ namespace
         }
         void EnableClipMask(bool enable) override
         {
+            recorded_context = nullptr;
             if (enable)
                 plan.Unsupported();
             URUI::RenderInterface::EnableClipMask(enable);
         }
         void RenderToClipMask(URUI::ClipMaskOperation op, URUI::CompiledGeometryHandle g, URUI::Vector2f t) override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             URUI::RenderInterface::RenderToClipMask(op, g, t);
         }
         URUI::LayerHandle PushLayer() override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             const auto id = next_layer_resource++;
             if (!id) { layer_valid = false; return 0; }
@@ -421,6 +423,7 @@ namespace
         void CompositeLayers(URUI::LayerHandle a, URUI::LayerHandle b, URUI::BlendMode mode,
                              URUI::Span<const URUI::CompiledFilterHandle> filters) override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             for (auto handle : filters)
             {
@@ -437,6 +440,7 @@ namespace
         }
         void PopLayer() override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             if (layer_stack.size() <= 1) { layer_valid = false; return; }
             const auto previous = layer_stack.back(); layer_stack.pop_back();
@@ -444,11 +448,13 @@ namespace
         }
         URUI::TextureHandle SaveLayerAsTexture() override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             return URUI::RenderInterface::SaveLayerAsTexture();
         }
         URUI::CompiledFilterHandle SaveLayerAsMaskImage() override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             if (layer_stack.size() <= 1 || !next_mask_filter || !next_layer_resource) { layer_valid = false; return 0; }
             const auto resource = next_layer_resource++, filter = next_mask_filter++;
@@ -458,6 +464,7 @@ namespace
         }
         URUI::CompiledFilterHandle CompileFilter(const URUI::String& name, const URUI::Dictionary& p, const URUI::SharedPtr<URUI::ResourceContext>& resources = {}) override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             if (!next_mask_filter || next_mask_filter == std::numeric_limits<uint64_t>::max()) { layer_valid=false; return 0; }
             const auto id=next_mask_filter++;
@@ -479,6 +486,7 @@ namespace
         }
         void ReleaseFilter(URUI::CompiledFilterHandle h) override
         {
+            recorded_context = nullptr;
             const auto found = mask_filters.find(static_cast<uint64_t>(h));
             if (found != mask_filters.end())
             {
@@ -493,6 +501,7 @@ namespace
         }
         URUI::CompiledShaderHandle CompileShader(const URUI::String& name, const URUI::Dictionary& p) override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             const auto value = p.find("value"), owner = p.find("element");
             if ((name == "shader" || name == "--urui-image-effect" || name == "--urui-css-color") && value != p.end() && owner != p.end())
@@ -520,34 +529,39 @@ namespace
             return URUI::RenderInterface::CompileShader(name, p);
         }
         void RenderShader(URUI::CompiledShaderHandle s, URUI::CompiledGeometryHandle g, URUI::Vector2f t,
-                          URUI::TextureHandle tex) override
+                          URUI::TextureHandle tex,const URUI::DrawParameters& parameters) override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             const auto found = paint_shaders.find(static_cast<uint64_t>(s));
             if (found != paint_shaders.end() && found->second.element)
             {
                 paint_commands.push_back({static_cast<uint64_t>(s), static_cast<int>(commands.size())});
-                RenderGeometry(g, t, tex);
+                RenderGeometry(g, t, tex,parameters);
                 return;
             }
-            URUI::RenderInterface::RenderShader(s, g, t, tex);
+            URUI::RenderInterface::RenderShader(s, g, t, tex,parameters);
         }
         void ReleaseShader(URUI::CompiledShaderHandle h) override
         {
+            recorded_context = nullptr;
             plan.Unsupported();
             if (paint_shaders.erase(static_cast<uint64_t>(h))) return;
             URUI::RenderInterface::ReleaseShader(h);
         }
         void EnableScissorRegion(bool value) override
         {
+            recorded_context = nullptr;
             clipped = value;
         }
         void SetScissorRegion(URUI::Rectanglei value) override
         {
+            recorded_context = nullptr;
             clip = value;
         }
         void SetTransform(const URUI::Matrix4f* matrix) override
         {
+            recorded_context = nullptr;
             active_transform = matrix ? *matrix : URUI::Matrix4f::Identity();
         }
     };
@@ -648,7 +662,7 @@ extern "C"
 {
     int urui_bridge_abi_version(void)
     {
-        return 8;
+        return 11;
     }
     int urui_command_protocol_version(void) { return 2; }
     int urui_surface_set_default_font_face(int family, const uint8_t* bytes, int length, int face_index, int style, int weight)
@@ -687,10 +701,6 @@ extern "C"
         if (started)
             return 0;
         context_thread = std::this_thread::get_id();
-        {
-            std::lock_guard<std::mutex> guard(frame_sessions_mutex);
-            frame_context_owner = context_thread;
-        }
         URUI_DEBUG_CODE(profile = {};)
         error_message.clear();
         render = std::make_unique<Renderer>();
@@ -707,7 +717,6 @@ extern "C"
         }
         started = true;
         URUI::DirectColorFilterRenderingEnabled = false;
-        URUI::Factory::RegisterElementInstancer("button", &button_instancer);
         urui_image::RegisterStyles();
         URUI::StyleSheetSpecification::RegisterProperty("--urui-caret-width", "1px", false, true).AddParser("length");
         URUI::StyleSheetSpecification::RegisterProperty("--urui-caret-blink-rate", "0.85", false).AddParser("number");
@@ -723,6 +732,7 @@ extern "C"
             return 0;
         }
         element_references.Begin();
+        URUI::RegisterPlugin(&element_references);
         try {
             file_resource_cache = std::make_unique<URUI::Bridge::FileResourceCache>();
             document_registry = std::make_unique<URUI::Bridge::DocumentRegistry>(*context, element_references, urui_interaction::RetireDocument);
@@ -1236,6 +1246,14 @@ extern "C"
         if (context) { urui_interaction::FlushCandidateEvents(); context->Update(); urui_styles::Prune(); }
     }
     catch (...) { try { error_message = "URUI update failed"; } catch (...) {} }
+    int urui_synchronize_geometry(void)
+    try
+    {
+        if (context_thread != std::this_thread::get_id() || urui_interaction::callback_depth) return -3;
+        if (!context) return -1;
+        return context->SynchronizeGeometry() ? 1 : -1;
+    }
+    catch (...) { ReportBridgeFailure("URUI geometry synchronization failed"); return -4; }
     void urui_render(void)
     try
     {
@@ -1243,7 +1261,18 @@ extern "C"
         URUI_DEBUG_CODE(ProfileScope timer(profile.render_ns);)
         if (!context || !render)
             return;
+        const auto revision=context->GetNativeRenderRevision();
+        const auto stamp=render->plan.Snapshot(render->commands.size());
+        const bool reusable=!render_serial.exhausted&&render->document_generation&&context->AllowsNativeRecordingReuse();
+        if(reusable&&render->recorded_context==context&&render->recorded_revision==revision&&
+            render->recorded_document==render->document_generation&&render->recorded_resources==stamp.resources&&
+            render->recorded_epoch==stamp.epoch&&render->recorded_command_count==render->commands.size()&&render->layer_valid&&render->mask_filters.empty())
+        {
+            render->plan.ReuseRecording();return;
+        }
+        render->recorded_context=nullptr;
         render->plan.Begin(render->commands, render->command_transforms);
+        render->command_uniforms.clear();
         render->paint_commands.clear();render->effect_ink_bounds.clear();
         render->PruneEffectRoots();
         render->layer_commands.clear(); render->layer_stack.assign(1, 0); render->next_layer_resource = 1;
@@ -1253,11 +1282,18 @@ extern "C"
         context->Render();
         render->layer_valid = render->layer_valid && render->layer_stack.size() == 1 && render->mask_filters.empty();
         render->plan.Finish(render->commands, render->command_transforms);
+        if(reusable&&revision==context->GetNativeRenderRevision()&&render->layer_valid&&context->AllowsNativeRecordingReuse())
+        {
+            const auto finished=render->plan.Snapshot(render->commands.size());
+            render->recorded_context=context;render->recorded_revision=revision;render->recorded_document=render->document_generation;
+            render->recorded_resources=finished.resources;render->recorded_epoch=finished.epoch;render->recorded_command_count=render->commands.size();
+        }
     }
     catch (...)
     {
         if (render) {
-            render->commands.clear(); render->command_transforms.clear();
+            render->recorded_context=nullptr;
+            render->commands.clear(); render->command_transforms.clear();render->command_uniforms.clear();
             render->paint_commands.clear(); render->layer_commands.clear();
             render->layer_stack.clear(); render->layer_valid = false;
             render->plan.NewDocument();
@@ -1267,7 +1303,7 @@ extern "C"
     }
     int urui_render_plan_version()
     {
-        return 1;
+        return 8;
     }
     int urui_render_plan_stamp(UruiFrameStamp* out)
     {
@@ -1563,361 +1599,6 @@ extern "C"
     }
 }
 
-extern "C"
-{
-    int urui_core_frame_api_version()
-    {
-        return 1;
-    }
-    int urui_core_frame_copy(const UruiFrameStamp* expected, UruiCoreKey* keys, UruiCoreValue* values, float* worlds,
-                             int capacity, UruiCoreSummary* info)
-    {
-        if (info)
-            *info = {};
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        if (!info || !expected || !render || capacity < 0)
-            return -1;
-        const auto actual = render->plan.Snapshot(render->commands.size());
-        if (actual.flags != 1 || expected->flags != 1 || actual.epoch != expected->epoch ||
-            actual.commands != expected->commands || actual.resources != expected->resources ||
-            actual.count != expected->count)
-            return -2;
-        if (actual.count > 65536 || size_t(capacity) < actual.count ||
-            render->command_transforms.size() != actual.count || (actual.count && (!keys || !values || !worlds)))
-            return -1;
-        for (size_t i = 0; i < actual.count; i++)
-        {
-            urui_core::Prepare(render->commands[i], render->command_transforms[i].data(), keys[i], values[i],
-                               worlds + i * 16);
-            if (keys[i].mode == 1)
-                ++info->ready;
-            else
-                ++info->fallback;
-        }
-        info->bytes = uint64_t(actual.count) * (sizeof(UruiCoreKey) + sizeof(UruiCoreValue) + 64);
-        return int(actual.count);
-    }
-    int urui_prepared_api_version()
-    {
-        return 1;
-    }
-    uint64_t urui_prepared_create()
-    {
-        if (!context || context_thread != std::this_thread::get_id() || prepared_sessions.size() >= 8)
-            return 0;
-        try
-        {
-            auto value = std::make_unique<urui_prepared::Session>();
-            auto id = value->id;
-            prepared_sessions.emplace(id, std::move(value));
-            return id;
-        }
-        catch (...)
-        {
-            return 0;
-        }
-    }
-    int urui_prepared_destroy(uint64_t id)
-    {
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        auto it = prepared_sessions.find(id);
-        if (it == prepared_sessions.end())
-            return -2;
-        int status = it->second->Close();
-        if (status == 1)
-            prepared_sessions.erase(it);
-        return status;
-    }
-    int urui_prepared_acquire(uint64_t id, const UruiFrameStamp* expected, const uint8_t* mask, int count,
-                              UruiPreparedPacket* out)
-    {
-        if (out)
-            *out = {};
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        if (!out || !expected || !render)
-            return -1;
-        auto it = prepared_sessions.find(id);
-        if (it == prepared_sessions.end())
-            return -2;
-        auto actual = render->plan.Snapshot(render->commands.size());
-        if (actual.flags != 1 || expected->flags != 1 || actual.epoch != expected->epoch ||
-            actual.commands != expected->commands || actual.resources != expected->resources ||
-            actual.count != expected->count)
-            return -2;
-        if (count < 0 || uint32_t(count) != actual.count || (count && !mask))
-            return -1;
-        for (int n = 0; n < count; n++)
-        {
-            const auto& c = render->commands[n];
-            if (c.geometry && !render->meshes.count(c.geometry))
-                return -2;
-            if (c.texture && !render->textures.count(c.texture))
-                return -2;
-            if (mask[n])
-            {
-                const auto& m = render->command_transforms[n];
-                for (float f : m)
-                    if (!std::isfinite(f))
-                        return -1;
-                if (!std::isfinite(c.tx) || !std::isfinite(c.ty) || m[8] != 0 || m[9] != 0 || m[2] != 0 || m[6] != 0 ||
-                    m[10] != 1 || m[14] != 0 || m[3] != 0 || m[7] != 0 || m[11] != 0 || m[15] != 1)
-                    return -1;
-            }
-        }
-        try
-        {
-            return it->second->Acquire(
-                actual, render->commands, mask, count,
-                [&](uint64_t handle)
-                {
-                    auto g = render->meshes.find(handle);
-                    if (g == render->meshes.end())
-                        return urui_prepared::View{};
-                    auto& v = g->second;
-                    return urui_prepared::View{v.vertices.data(), v.vertices.size(), v.indices.data(),
-                                               v.indices.size()};
-                },
-                *out);
-        }
-        catch (...)
-        {
-            *out = {};
-            return -8;
-        }
-    }
-    int urui_prepared_copy_draws(uint64_t id, uint64_t lease, UruiPreparedDraw* out, int capacity)
-    {
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        auto it = prepared_sessions.find(id);
-        if (it == prepared_sessions.end())
-            return -2;
-        auto plan = it->second->Get(lease);
-        if (!plan)
-            return -2;
-        if (capacity < 0 || size_t(capacity) < plan->batches.size() || (!out && !plan->batches.empty()))
-            return -1;
-        for (size_t i = 0; i < plan->batches.size(); i++)
-            out[i] = plan->batches[i]->draw;
-        return int(plan->batches.size());
-    }
-    int urui_prepared_copy_batch(uint64_t id, uint64_t lease, uint64_t batch, UruiPreparedVertex* vertices, int vc,
-                                 uint32_t* indices, int ic)
-    {
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        auto it = prepared_sessions.find(id);
-        if (it == prepared_sessions.end())
-            return -2;
-        auto plan = it->second->Get(lease);
-        if (!plan)
-            return -2;
-        for (const auto& b : plan->batches)
-            if (b->draw.batch == batch)
-            {
-                if (vc < 0 || ic < 0 || size_t(vc) < b->vertices.size() || size_t(ic) < b->indices.size() ||
-                    !vertices || !indices)
-                    return -1;
-                std::memcpy(vertices, b->vertices.data(), b->vertices.size() * sizeof(*vertices));
-                std::memcpy(indices, b->indices.data(), b->indices.size() * sizeof(*indices));
-                return 1;
-            }
-        return -2;
-    }
-    int urui_prepared_release(uint64_t id, uint64_t lease)
-    {
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        auto it = prepared_sessions.find(id);
-        if (it == prepared_sessions.end())
-            return -2;
-        int status = it->second->Release(lease);
-        if (it->second->Closing() && !it->second->Pending())
-            prepared_sessions.erase(it);
-        return status;
-    }
-}
-
-extern "C"
-{
-    int urui_prepared_delta_api_version()
-    {
-        return 1;
-    }
-    int urui_prepared_delta_enable(uint64_t id, int enabled)
-    {
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        auto it = prepared_sessions.find(id);
-        if (it == prepared_sessions.end())
-            return -2;
-        return it->second->EnableDelta(enabled);
-    }
-    int urui_prepared_copy_incremental(uint64_t id, uint64_t lease, uint64_t batch, uint64_t base,
-                                       UruiPreparedVertex* vertices, int vc, uint32_t* indices, int ic,
-                                       UruiPreparedDeltaInfo* info)
-    {
-        if (info)
-            *info = {};
-        if (context_thread != std::this_thread::get_id())
-            return -3;
-        if (!info)
-            return -1;
-        auto it = prepared_sessions.find(id);
-        if (it == prepared_sessions.end())
-            return -2;
-        return it->second->CopyDelta(lease, batch, base, vertices, vc, indices, ic, *info);
-    }
-}
-
-extern "C"
-{
-    int urui_native_frame_api_version()
-    {
-        return 1;
-    }
-    uint64_t urui_native_frame_create()
-    {
-        return urui_native_frame_create_mode(1);
-    }
-    uint64_t urui_native_frame_create_mode(uint32_t arithmetic)
-    {
-        if (arithmetic != 1 && arithmetic != 2)
-            return 0;
-        std::lock_guard<std::mutex> guard(frame_sessions_mutex);
-        if (frame_context_owner != std::this_thread::get_id() || !context || frame_sessions.size() >= 4)
-            return 0;
-        try
-        {
-            auto value = std::make_unique<urui_frame::Session>(48u * 1024 * 1024, arithmetic);
-            auto id = value->id;
-            frame_sessions.emplace(id, std::move(value));
-            return id;
-        }
-        catch (...)
-        {
-            return 0;
-        }
-    }
-    int urui_native_frame_acquire(uint64_t id, UruiNativeFramePacket* out)
-    {
-        std::lock_guard<std::mutex> guard(frame_sessions_mutex);
-        if (out)
-            *out = {};
-        if (!out)
-            return -1;
-        auto it = frame_sessions.find(id);
-        if (it == frame_sessions.end())
-            return -2;
-        if (!it->second->Thread())
-            return -3;
-        if (frame_context_owner != std::this_thread::get_id() || !render || !context)
-            return -2;
-        try
-        {
-            return it->second->Acquire(
-                render->plan.Snapshot(render->commands.size()), render->commands, render->command_transforms,
-                [&](uint64_t handle)
-                {
-                    auto g = render->meshes.find(handle);
-                    if (g == render->meshes.end())
-                        return urui_prepared::View{};
-                    auto& v = g->second;
-                    return urui_prepared::View{v.vertices.data(), v.vertices.size(), v.indices.data(),
-                                               v.indices.size()};
-                },
-                [&](uint64_t handle) { return render->textures.count(handle) != 0; }, *out);
-        }
-        catch (...)
-        {
-            *out = {};
-            return -8;
-        }
-    }
-    int urui_native_frame_mesh(uint64_t id, uint64_t lease, uint64_t batch, UruiNativeMeshView* out)
-    {
-        std::lock_guard<std::mutex> guard(frame_sessions_mutex);
-        if (out)
-            *out = {};
-        if (!out)
-            return -1;
-        auto it = frame_sessions.find(id);
-        if (it == frame_sessions.end())
-            return -2;
-        if (!it->second->Thread())
-            return -3;
-        auto f = it->second->Get(lease);
-        if (!f)
-            return -2;
-        for (const auto& b : f->geometry->batches)
-            if (b->draw.batch == batch)
-            {
-                *out = {b->vertices.data(),
-                        b->indices.data(),
-                        uint32_t(b->vertices.size()),
-                        uint32_t(b->indices.size()),
-                        32,
-                        4};
-                return 1;
-            }
-        return -2;
-    }
-    int urui_native_frame_release(uint64_t id, uint64_t lease)
-    {
-        std::lock_guard<std::mutex> guard(frame_sessions_mutex);
-        auto it = frame_sessions.find(id);
-        if (it == frame_sessions.end())
-            return -2;
-        int status = it->second->Release(lease);
-        if (status == 1 && it->second->Closing() && !it->second->Pending())
-            frame_sessions.erase(it);
-        return status;
-    }
-    int urui_native_frame_destroy(uint64_t id)
-    {
-        std::lock_guard<std::mutex> guard(frame_sessions_mutex);
-        auto it = frame_sessions.find(id);
-        if (it == frame_sessions.end())
-            return -2;
-        int status = it->second->Close();
-        if (status == 1)
-            frame_sessions.erase(it);
-        return status;
-    }
-}
-
-// Arithmetic preparation is a production capability used to match Unity matrix semantics.
-extern "C"
-{
-    int urui_native_frame_prepare_matrix(const float* input, float tx, float ty, float* world, float* parameter)
-    {
-        return urui_native_frame_prepare_matrix_mode(input, tx, ty, 1, world, parameter);
-    }
-    int urui_native_frame_prepare_matrix_mode(const float* input, float tx, float ty, uint32_t arithmetic, float* world,
-                                              float* parameter)
-    {
-        if (arithmetic != 1 && arithmetic != 2)
-        {
-            if (world)
-                std::fill(world, world + 16, 0.f);
-            if (parameter)
-                std::fill(parameter, parameter + 8, 0.f);
-            return -1;
-        }
-        if (!input || !world || !parameter)
-            return -1;
-        float m[16];
-        std::memcpy(m, input, 64);
-        urui_frame::Value value{};
-        int status = urui_frame::Prepare(m, tx, ty, world, value, arithmetic);
-        std::memcpy(parameter, value.data, 32);
-        return status;
-    }
-}
-
 #if defined(URUI_DEBUG)
 #include "Debug/bridge_debug.inl"
 #endif
@@ -1925,10 +1606,13 @@ extern "C"
 #include "elements.inl"
 #include "element_runtime.inl"
 #include "element_events.inl"
+#include "sequence_sampling.inl"
 #include "documents.inl"
 
 
 #include "effect_layers.inl"
+#include "render_plan_bridge.inl"
 #include "effect_layout.inl"
 
 #include "authoring.inl"
+#include "compiled_assets.inl"

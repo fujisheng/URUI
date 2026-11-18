@@ -1,0 +1,11 @@
+using System;using System.Collections;using System.IO;using NUnit.Framework;using UnityEngine;using UnityEngine.TestTools;using URUI.Effect.Examples;
+namespace URUI.Effect.PlayerValidation.Tests {
+public sealed class EffectEditorMatrixTests {
+[UnityTest,Timeout(600000)]public IEnumerator CaptureEveryGalleryCardInEditor(){
+var host=new GameObject("Editor matrix");var cameraObject=new GameObject("Camera",typeof(Camera));cameraObject.tag="MainCamera";var camera=cameraObject.GetComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=Color.clear;
+try {var gallery=host.AddComponent<EffectGallery>();gallery.html=UnityEngine.Resources.Load<TextAsset>("URUI.Effect.Gallery/GalleryDocument");gallery.style=UnityEngine.Resources.Load<TextAsset>("URUI.Effect.Gallery/GalleryStyle");gallery.white=UnityEngine.Resources.Load<Texture2D>("URUI.Effect.Gallery/white");gallery.source=UnityEngine.Resources.Load<Texture2D>("URUI.Effect.Gallery/input");gallery.pattern=UnityEngine.Resources.Load<Texture2D>("URUI.Effect.Gallery/pattern");gallery.gradient=UnityEngine.Resources.Load<Texture2D>("URUI.Effect.Gallery/gradient-lut");gallery.shader=UnityEngine.Resources.Load<Shader>("URUI.Effect.Gallery/GalleryProgram");
+var validation=host.AddComponent<EffectPlayerValidation>();validation.gallery=gallery;validation.captureCamera=camera;validation.manifest=UnityEngine.Resources.Load<TextAsset>("URUI.Effect.Gallery/GalleryCoverage");validation.AutoQuit=false;validation.CaptureDirectory=Path.Combine(Environment.GetEnvironmentVariable("URUI_EFFECT_CAPTURE_OUTPUT"),QualitySettings.activeColorSpace.ToString(),"gallery-matrix");
+for(var i=0;i<2000&&!validation.Finished;i++)yield return null;
+Assert.That(validation.Finished,Is.True);Assert.That(validation.Passed,Is.True,File.Exists(Path.Combine(validation.CaptureDirectory,"acceptance.json"))?File.ReadAllText(Path.Combine(validation.CaptureDirectory,"acceptance.json")):"Missing matrix report");}
+finally{UnityEngine.Object.DestroyImmediate(host);UnityEngine.Object.DestroyImmediate(cameraObject);}
+}}}

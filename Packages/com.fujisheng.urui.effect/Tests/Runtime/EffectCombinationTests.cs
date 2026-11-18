@@ -47,6 +47,8 @@ namespace URUI.Effect.Tests
                 fixture.Load(pattern+item.Value);fixture.Document.SynchronizeLayout();
                 using var clock=fixture.Document.Effects.BindClock(fixture.Document.Q("subject"),new Clock {time=item.Key.StartsWith("Time.") ? 1.25 : 0});
                 fixture.Compare(item.Key);report.cases.Add(item.Key);
+                // 每个组合独立提交一帧，保留真实 fence 与九份参数版本的预算。
+                yield return null;
             }
             File.WriteAllText(Path.Combine(fixture.Output,"combination-captures.json"),JsonUtility.ToJson(report,true));
             yield return null;

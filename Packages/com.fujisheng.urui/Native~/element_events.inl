@@ -85,6 +85,21 @@ namespace urui_interaction
             if (!enabled || !callback || !element || pending_destroy || (type == 13 && Composing())) return;
             auto* document = urui_elements::Document(owner);
             if (!document || CandidatePending(document)) return;
+            if(whole_path)
+            {
+                bool interested=false,disabled=false;
+                for(auto* current=event.GetTargetElement();current;current=current->GetParentNode())
+                {
+                    interested|=element_references.EventInterest(current,type);
+                    disabled|=current->HasAttribute("disabled");
+                    if(current==document)break;
+                }
+                if(!interested)
+                {
+                    if(disabled&&type!=5&&type!=12&&type!=15&&type!=16&&type!=17&&type!=18&&type!=19)event.StopImmediatePropagation();
+                    return;
+                }
+            }
             auto payload = input;
             payload.document = owner;
             payload.target = element_references.Track(event.GetTargetElement(), document);
@@ -158,6 +173,10 @@ namespace urui_interaction
         int kind = 0, buttons = 0;
         bool native_touch = false;
         bool active = false;
+        bool poll_ready=false;
+        int poll_modifiers=0;
+        uint64_t poll_revision=0;
+        URUI::ObserverPtr<URUI::Element> poll_capture;
     };
     std::map<int, Pointer> pointers;
     int primary_touch = -1;
@@ -223,6 +242,7 @@ namespace urui_interaction
         double external_time=0;
         bool external_time_enabled=false;
         URUI::String clipboard;
+        uint64_t clipboard_version=1;
         bool capture_diagnostics = false;
         std::vector<URUI::String> diagnostics;
         bool LogMessage(URUI::Log::Type type, const URUI::String& message) override
@@ -236,7 +256,11 @@ namespace urui_interaction
             if(external_time_enabled)return external_time;
             return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
         }
-        void SetClipboardText(const URUI::String& value) override { clipboard = value; }
+        void SetClipboardText(const URUI::String& value) override
+        {
+            if(clipboard_version==UINT64_MAX)throw std::overflow_error("clipboard version exhausted");
+            clipboard=value;++clipboard_version;
+        }
         void GetClipboardText(URUI::String& value) override { value = clipboard; }
     } system;
 
@@ -372,6 +396,15 @@ extern "C"
         urui_interaction::callback = value; return 1;
     }
 
+    int urui_element_event_interest(UruiDocumentHandle owner,uint64_t token,uint32_t mask,uint64_t version)
+    try
+    {
+        if(!urui_interaction::Owner())return -3;
+        if(!urui_elements::Get(owner,token))return -2;
+        return element_references.SetEventInterest(token,mask,version);
+    }
+    catch(...){return -8;}
+
     int urui_document_listen(UruiDocumentHandle document_handle)
     try
     {
@@ -447,6 +480,37 @@ extern "C"
     }
     catch (...) { return 0; }
 
+    int urui_pointer_poll(int pointer,int kind,float x,float y,int buttons,int modifiers)
+    try
+    {
+        using namespace urui_interaction;
+        if(!Owner())return -3;
+        if(callback_depth||pointer<0||kind<0||kind>1||buttons<0||buttons>7||modifiers<0||modifiers>15||!std::isfinite(x)||!std::isfinite(y))return -1;
+        const auto found=pointers.find(pointer);const auto revision=context->GetHitTestRevision();
+        if(found!=pointers.end())
+        {
+            const auto& state=found->second;
+            if(state.poll_ready&&revision!=UINT64_MAX&&state.poll_revision==revision&&state.x==x&&state.y==y&&
+                state.kind==kind&&state.buttons==buttons&&state.poll_modifiers==modifiers&&state.capture.get()==state.poll_capture.get())return 1;
+        }
+        // 记录实际参与本轮分发的状态；回调内转移捕获或修改命中树后，
+        // 不能把新状态误记为已经处理，否则静止坐标永远不会通知新目标。
+        URUI::ObserverPtr<URUI::Element> dispatched_capture;
+        if(found!=pointers.end())dispatched_capture=found->second.capture;
+        const auto result=urui_pointer_event(pointer,kind,1,x,y,0,buttons,0,0,modifiers);
+        if(result==1&&context&&!pending_destroy)
+        {
+            auto current=pointers.find(pointer);
+            if(current!=pointers.end())
+            {
+                auto& state=current->second;state.poll_ready=true;state.poll_revision=revision;
+                state.poll_modifiers=modifiers;state.poll_capture=dispatched_capture;
+            }
+        }
+        return result;
+    }
+    catch(...){return -8;}
+
     int urui_pointer_event(int pointer, int kind, int phase, float x, float y, int button, int buttons, float dx, float dy, int modifiers)
     try
     {
@@ -456,7 +520,7 @@ extern "C"
             || !std::isfinite(x) || !std::isfinite(y) || !std::isfinite(dx) || !std::isfinite(dy)) return -1;
         input = {}; input.pointer = pointer; input.kind = kind; input.button = button; input.buttons = buttons;
         input.x = x; input.y = y; input.dx = dx; input.dy = dy; input.modifiers = modifiers;
-        auto& state = pointers[pointer];
+        auto& state = pointers[pointer];state.poll_ready=false;
         if (state.native_touch && (kind != 1 || phase == 0)) CancelNativeTouch(pointer, state);
         if (pending_destroy) return 1;
         state.x = x; state.y = y; state.kind = kind; state.buttons = buttons;
@@ -671,6 +735,9 @@ extern "C"
         return 1;
     }
     catch (...) { return -8; }
+
+    uint64_t urui_clipboard_version()
+    {return urui_interaction::Owner()?urui_interaction::system.clipboard_version:0;}
 
     int urui_clipboard_write(const char* text)
     try { if (!urui_interaction::Owner() || !text) return -1; urui_interaction::system.clipboard = text; return 1; }

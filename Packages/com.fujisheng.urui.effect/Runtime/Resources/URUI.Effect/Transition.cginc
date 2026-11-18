@@ -2,10 +2,6 @@
 #ifndef URUI_EFFECT_TRANSITION_INCLUDED
 #define URUI_EFFECT_TRANSITION_INCLUDED
 sampler2D _TransitionTex;
-float4 _TransitionTex_ST, _TransitionColor;
-float2 _TransitionTex_Speed, _TransitionRange;
-float _TransitionRate, _TransitionWidth, _TransitionSoftness, _TransitionAutoPlaySpeed, _EffectTime;
-int _TransitionFilter, _TransitionReverse, _TransitionColorFilter, _TransitionColorGlow, _TransitionPatternReverse, _PatternArea;
 float UruiTransitionRate() { return frac(_TransitionAutoPlaySpeed * _EffectTime + _TransitionRate * .9999); }
 float UruiTransitionAlpha(float2 local)
 {

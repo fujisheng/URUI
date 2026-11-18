@@ -1,4 +1,5 @@
 #pragma once
+#include "DrawParameters.h"
 
 #include "Header.h"
 #include "Traits.h"
@@ -46,7 +47,7 @@ public:
 	/// @param[in] geometry The geometry to render.
 	/// @param[in] translation The translation to apply to the geometry.
 	/// @param[in] texture The texture to be applied to the geometry, or zero if the geometry is untextured.
-	virtual void RenderGeometry(CompiledGeometryHandle geometry, Vector2f translation, TextureHandle texture) = 0;
+	virtual void RenderGeometry(CompiledGeometryHandle geometry, Vector2f translation, TextureHandle texture, const DrawParameters& parameters = {}) = 0;
 	/// Called by URUI when it wants to release geometry.
 	/// @param[in] geometry The geometry to release.
 	virtual void ReleaseGeometry(CompiledGeometryHandle geometry) = 0;
@@ -138,7 +139,7 @@ public:
 	/// @param[in] geometry The handle to a previously compiled geometry.
 	/// @param[in] translation The translation to apply to the geometry.
 	/// @param[in] texture The texture to use when rendering the geometry, or zero for no texture.
-	virtual void RenderShader(CompiledShaderHandle shader, CompiledGeometryHandle geometry, Vector2f translation, TextureHandle texture);
+	virtual void RenderShader(CompiledShaderHandle shader, CompiledGeometryHandle geometry, Vector2f translation, TextureHandle texture, const DrawParameters& parameters = {});
 	/// Called by URUI when it no longer needs a previously compiled shader.
 	/// @param[in] shader The handle to a previously compiled shader.
 	virtual void ReleaseShader(CompiledShaderHandle shader);

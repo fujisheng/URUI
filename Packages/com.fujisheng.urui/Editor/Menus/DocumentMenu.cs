@@ -56,16 +56,11 @@ namespace URUI.Editor.Menus
                 }
             var serialized = new SerializedObject(document);
             serialized.FindProperty("surface").objectReferenceValue = surface;
-            serialized.FindProperty("sourceUrl").stringValue = documentPath;
-            serialized.FindProperty("source").objectReferenceValue = AssetDatabase.LoadAssetAtPath<TextAsset>(documentPath);
-            var serializedResources = serialized.FindProperty("textResources");
-            serializedResources.arraySize = resources.Count;
-            for (var i = 0; i < resources.Count; i++)
-            {
-                var entry = serializedResources.GetArrayElementAtIndex(i);
-                entry.FindPropertyRelative("source").stringValue = resources[i].Source;
-                entry.FindPropertyRelative("asset").objectReferenceValue = resources[i].Asset;
-            }
+            var compiled = URUI.Editor.Compilation.CompiledDocumentCompiler.CompileAndSave(
+                AssetDatabase.LoadAssetAtPath<TextAsset>(documentPath), documentPath,
+                System.IO.Path.ChangeExtension(documentPath, "compiled.asset"), resources);
+            serialized.FindProperty("sourceUrl").stringValue = compiled.SourceUrl;
+            serialized.FindProperty("compiledSource").objectReferenceValue = compiled;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorSceneManager.SaveScene(scene, scenePath);
             Selection.activeObject = document;

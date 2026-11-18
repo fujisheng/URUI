@@ -24,12 +24,10 @@ namespace URUI.Internal.Hosting
         }
         void InvalidateRecording(bool clear)
         {
-            InvalidateOrdinaryCache();
-            InvalidateLayerCache();
             if(!clear)return;
             effectSubmitted.Clear();
             if(buffer==null)return;
-            try{buffer.Clear();}
+            try{ClearNativeRecording();buffer.Clear();}
             catch(Exception error)
             {
                 blockedRecording=buffer;blockedRecordingFrame=Time.frameCount;

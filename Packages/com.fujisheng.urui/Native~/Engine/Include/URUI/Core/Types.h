@@ -112,9 +112,15 @@ using ElementAttributes = Dictionary;
 
 using AnimationList = Vector<Animation>;
 using FontEffectList = Vector<SharedPtr<const FontEffect>>;
+class PropertyDictionary;
+struct FontEffectDeclaration {
+	String type;
+	SharedPtr<const PropertyDictionary> properties;
+};
 struct FontEffects {
 	FontEffectList list;
 	String value;
+	Vector<FontEffectDeclaration> declarations;
 };
 using ColorStopList = Vector<ColorStop>;
 using BoxShadowList = Vector<BoxShadow>;

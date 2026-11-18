@@ -44,6 +44,6 @@
 
 ## 验证
 
-在 Source 运行 `python3 Tools/Tests/GameFlow/verify_assets.py` 与 `dotnet run --project Tools/Tests/GameFlow/GameFlowTests.csproj`。`python3 Tools/verify-game-flow.py` 将整个Sample导入独立目录，运行现有工程短Editor验收，输出本地截图、布局JSON和报告到 Artifacts/GameFlow。当前为94项Editor断言、18项模型断言通过。没有新增Player、设备或性能验收，也没有自动发布。
+在 URUI 目录运行 `python3 Tools/Tests/GameFlow/verify_assets.py` 与 `dotnet run --project Tools/Tests/GameFlow/GameFlowTests.csproj`。Unity 验证时，在隔离工程的 Package Manager 中导入当前 Core 包的 Game Flow 样例，再复制 `Tests~/Editor/Fixtures/GameFlowSmoke.cs` 和 `Tests~/Editor/Fixtures/Editor/GameFlowValidation.cs`，运行 `URUI.Tests.Editor.GameFlowValidation.Run`。报告写入该隔离工程的 Artifacts/GameFlow。历史脚本 `Tools/verify-game-flow.py` 依赖迁移前的工程布局，在当前 ArtOfTD 中会在写入前停止。此前记录为94项Editor断言、18项模型断言通过，属于历史证据；本次迁移没有新增Player、设备或性能验收，也没有自动发布。
 
 图片由 Document 直接借用 Unity Texture2D，40张运行 PNG 默认关闭 Read/Write；不再读取像素、保留原生 RGBA 或创建第二张绘制纹理。样例仍使用同一套公开 ImageAsset 映射、外部 HTML/CSS 和资源加载流程。

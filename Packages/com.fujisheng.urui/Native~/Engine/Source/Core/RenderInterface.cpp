@@ -57,7 +57,7 @@ CompiledShaderHandle RenderInterface::CompileShader(const String& /*name*/, cons
 }
 
 void RenderInterface::RenderShader(CompiledShaderHandle /*shader*/, CompiledGeometryHandle /*geometry*/, Vector2f /*translation*/,
-	TextureHandle /*texture*/)
+	TextureHandle /*texture*/, const DrawParameters& /*parameters*/)
 {}
 
 void RenderInterface::ReleaseShader(CompiledShaderHandle /*shader*/) {}

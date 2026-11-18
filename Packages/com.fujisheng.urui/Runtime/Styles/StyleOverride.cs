@@ -9,6 +9,12 @@ namespace URUI.Styles
         internal Vector4 Value {get;}
         internal string Keyword {get;}
         StyleOverride(int kind,Vector4 value,string keyword=null){Kind=kind;Value=value;Keyword=keyword;}
+        /// <summary>读取数值覆盖；不匹配时返回 false，不分配或进行类型转换。</summary>
+        public bool TryGetNumber(out float number){number=Value.x;return Kind==1;}
+        /// <summary>读取颜色覆盖；不匹配时返回 false。</summary>
+        public bool TryGetColor(out Color color){color=Value;return Kind==4;}
+        /// <summary>读取关键字覆盖；不匹配时返回 false。</summary>
+        public bool TryGetKeyword(out string keyword){keyword=Keyword;return Kind==8;}
         public static StyleOverride Number(float value)
         {if(!float.IsFinite(value))throw new ArgumentOutOfRangeException(nameof(value));return new(1,new Vector4(value,0,0,0));}
         public static StyleOverride Color(Color value)

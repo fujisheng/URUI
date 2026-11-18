@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompiledFilterShader.h"
+#include "DrawParameters.h"
 #include "Header.h"
 #include "Mesh.h"
 #include "Texture.h"
@@ -21,7 +22,7 @@ public:
 
 	Geometry() = default;
 
-	void Render(Vector2f translation, Texture texture = {}, const CompiledShader& shader = {}) const;
+	void Render(Vector2f translation, Texture texture = {}, const CompiledShader& shader = {}, const DrawParameters& parameters = {}) const;
 
 	Mesh Release(ReleaseMode mode = ReleaseMode::ReturnMesh);
 

@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="stylesheet" href="/urui/base.css">
+  <link rel="stylesheet" href="Inventory.css">
+</head>
+<body>
+  <div id="inventory-screen" class="screen">
+    <div class="header">
+      <div class="heading"><div class="eyebrow">NORTH / 07</div><div id="page-title" class="title">Equipment</div></div>
+      <div class="balance"><span class="muted">GOLD</span><span id="gold">2,480</span></div>
+    </div>
+    <div class="content">
+      <div id="categories" class="sidebar">
+        <div class="section-title">COLLECTION</div>
+        <button id="all-items" class="category selected">All equipment</button>
+        <button id="weapons" class="category">Weapons</button>
+        <button id="armor" class="category">Armor</button>
+        <button id="accessories" class="category">Accessories</button>
+        <div class="spacer"></div>
+        <div class="muted">Capacity</div><div id="capacity">18 / 40 slots</div>
+      </div>
+      <div id="item-list" class="items">
+        <div class="section-title">RECENTLY ACQUIRED</div>
+        <div class="item-row"><div class="item-icon cyan">01</div><div class="item-info"><div class="item-name">Frostbound Blade</div><div class="muted">Epic · Level 24</div></div><button id="equip-blade" class="small-button">Equip</button></div>
+        <div class="item-row"><div class="item-icon amber">02</div><div class="item-info"><div class="item-name">Guardian's Mantle</div><div class="muted">Rare · Level 18</div></div><button class="small-button">Equip</button></div>
+        <div class="item-row"><div class="item-icon purple">03</div><div class="item-info"><div class="item-name">Twilight Signet</div><div class="muted">Epic · Level 21</div></div><button class="small-button">Equip</button></div>
+        <div class="spacer"></div>
+        <input id="search-items" class="search" type="text" placeholder="Search equipment…">
+      </div>
+      <div id="item-details" class="details">
+        <div class="section-title">SELECTED ITEM</div><div class="hero-icon cyan">I</div>
+        <div id="selected-name" class="item-name">Frostbound Blade</div><div class="rarity">EPIC SWORD</div>
+        <div class="divider"></div><div class="stat"><span class="muted">Attack</span><span id="attack-value">+128</span></div>
+        <div class="stat"><span class="muted">Critical chance</span><span>+8.5%</span></div>
+        <div class="description">A blade tempered beneath the northern ice. Its edge carries the stillness of winter.</div>
+        <div class="spacer"></div><button id="upgrade-item" class="primary">Upgrade · 450 Gold</button>
+      </div>
+    </div>
+    <div class="footer"><span class="muted">OUTPOST / INVENTORY</span><button id="close-inventory" class="small-button">Close</button></div>
+  </div>
+</body>
+</html>

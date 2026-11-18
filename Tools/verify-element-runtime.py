@@ -12,7 +12,12 @@ parser.add_argument("--method", default="URUI.Tests.Editor.ElementRuntimeValidat
 parser.add_argument("--playground", action="store_true")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[1]
-project = (args.project or repo.parent / "Tests/ElementRuntime").resolve()
+project = (args.project or repo / "Tests~/ElementRuntime").resolve()
+game = (repo.parent / "Client").resolve()
+if project in (repo, *repo.parents, repo / "Packages") or project == game or game in project.parents or (repo / "Packages") in project.parents:
+    parser.error("Use an isolated validation project; the repository, package sources and Client are protected.")
+if args.playground:
+    parser.error("The historical playground is not part of this checkout; import a current package sample in an isolated Unity project.")
 project.mkdir(parents=True, exist_ok=True)
 package = repo / "Packages/com.fujisheng.urui"
 embedded = project / "Packages/com.fujisheng.urui"
@@ -23,6 +28,9 @@ for name in ["Runtime", "Editor"]:
         shutil.rmtree(embedded / name)
     shutil.copytree(package / name, embedded / name)
 shutil.copy2(package / "package.json", embedded / "package.json")
+# Editor 编译指纹使用当前包的原生构建清单。
+(embedded / "Documentation~").mkdir(exist_ok=True)
+shutil.copy2(package / "Documentation~/PLUGINS.json", embedded / "Documentation~/PLUGINS.json")
 if args.native:
     shutil.copy2(args.native, embedded / "Runtime/Plugins/macOS/libURUIBridge.dylib")
 (project / "Packages/manifest.json").write_text(json.dumps({"dependencies": {
@@ -34,7 +42,7 @@ if args.native:
 settings = project / "ProjectSettings"
 settings.mkdir(exist_ok=True)
 for name in ["ProjectVersion.txt", "ProjectSettings.asset"]:
-    shutil.copy2(repo.parent / "ProjectSettings" / name, settings / name)
+    shutil.copy2(game / "ProjectSettings" / name, settings / name)
 fixtures = project / "Assets/ElementRuntimeChecks"
 fixtures.mkdir(parents=True, exist_ok=True)
 source_fixtures = package / "Tests~/Editor/Fixtures"

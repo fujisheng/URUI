@@ -62,6 +62,9 @@ URUI_CORE_API void SetFontEngineInterface(FontEngineInterface* font_interface);
 /// Returns URUI's font interface.
 URUI_CORE_API FontEngineInterface* GetFontEngineInterface();
 
+/// 仅内置字体引擎可证明静态录制安全；外部引擎保留每帧版本查询。
+URUI_CORE_API bool IsNativeRecordingFontEngine();
+
 /// Sets the implementation for handling text input events. This is not required to be called.
 /// @param[in] text_input_handler A non-owning pointer to the application-specified implementation of a text input handler.
 /// @lifetime The instance must be kept alive until after the call to URUI::Shutdown.

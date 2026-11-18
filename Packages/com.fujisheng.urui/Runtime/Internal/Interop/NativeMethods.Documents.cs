@@ -7,7 +7,7 @@ namespace URUI.Internal.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_document_set_replacement(ulong owner, ulong previous);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_document_register_resource(ulong owner, [MarshalAs(UnmanagedType.LPUTF8Str)] string source, byte[] bytes, int length);
+        internal static extern int urui_document_register_resource(ulong owner, [MarshalAs(UnmanagedType.LPUTF8Str)] string source, System.IntPtr bytes, int length);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_document_register_external_texture(ulong owner, [MarshalAs(UnmanagedType.LPUTF8Str)] string source, int width, int height, ulong resource);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
@@ -22,6 +22,22 @@ namespace URUI.Internal.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_document_load_html(ulong owner,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string html, [MarshalAs(UnmanagedType.LPUTF8Str)] string sourceUrl);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_document_load_compiled(ulong owner, System.IntPtr bytes, int length);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_element_begin_compiled_template(ulong owner, ulong root, System.IntPtr bytes, int length);
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct CompiledNodeInfo
+        {
+            internal ulong Identity, Revision;
+            internal uint LocalId, End;
+            internal int Flags, RootMatch;
+        }
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_element_compiled_info(ulong owner, ulong root, int queryKind,
+            [MarshalAs(UnmanagedType.LPUTF8Str)] string key, out CompiledNodeInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_element_compiled_tokens(ulong owner, ulong root, ulong identity, ulong revision, [Out] ulong[] output, int capacity);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_document_close(ulong owner);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]

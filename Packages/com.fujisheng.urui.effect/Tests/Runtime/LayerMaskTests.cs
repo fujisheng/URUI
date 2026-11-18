@@ -11,6 +11,13 @@ namespace URUI.Effect.Tests
 {
     public sealed class LayerMaskTests
     {
+        sealed class OriginalMaskReference : URUI.Rendering.Effects.IEffectFactory, URUI.Rendering.Effects.IElementEffect
+        {
+            public URUI.Rendering.Effects.IElementEffect Create(URUI.Rendering.Effects.EffectContext context)=>this;
+            public void Prepare(URUI.Rendering.Effects.EffectFrame frame) { }
+            public void Record(URUI.Rendering.Effects.EffectRenderContext context)=>context.DrawOriginal();
+            public void Dispose() { }
+        }
         internal sealed class IntermediatePipelineAsset:RenderPipelineAsset
         {
             internal System.Action<ScriptableRenderContext> draw;
@@ -24,11 +31,137 @@ namespace URUI.Effect.Tests
             protected override void Render(ScriptableRenderContext context,List<Camera> cameras)
             { asset.draw?.Invoke(context); context.Submit(); }
         }
+        [Test]
+        public void UnsubmittedComplexMaskParameterChangesKeepTheirTargetStorage()
+        {
+            var host=new GameObject("Unsubmitted mask storage");var cameraObject=new GameObject("Mask camera",typeof(Camera));cameraObject.tag="MainCamera";
+            var target=new RenderTexture(128,128,0);target.Create();cameraObject.GetComponent<Camera>().targetTexture=target;
+            try {
+                var document=EffectHtmlFixtureAssets.Create(host);document.Surface.Viewport=new Vector2Int(128,128);document.Surface.Input.UseUnityInput=false;
+                document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}#masked{width:96px;height:96px;--urui-mask-image:shader(feather-mask);--urui-mask-feather-top:32px;}.red{position:absolute;width:80px;height:96px;background:rgba(255,0,0,.5);}.green{position:absolute;left:16px;width:80px;height:96px;background:rgba(0,255,0,.5);}</style></head><body><div id='masked'><div class='red'></div><div class='green'></div></div></body></html>","/unsubmitted-mask.html");
+                var node=document.Q("masked");using var painter=new FeatherMaskPainter(node);
+                void Cycle(int i){node.Style.Set("--urui-mask-feather-top",i%2==0?"32px":"40px");document.SynchronizeLayout();}
+                for(var i=0;i<64;i++)Cycle(i);
+                var before=URUI.Rendering.Effects.EffectStatistics.GetTargets();
+                using var allocations=Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Memory,"GC.Alloc",8192,Unity.Profiling.ProfilerRecorderOptions.CollectOnlyOnCurrentThread);
+                for(var i=0;i<32;i++)Cycle(i);allocations.Stop();
+                var after=URUI.Rendering.Effects.EffectStatistics.GetTargets();
+                Assert.That(after.CreatedTargets+after.Reuses-before.CreatedTargets-before.Reuses,Is.Zero,"Re-recording private unsubmitted content needs no new target lease.");
+                Assert.That(allocations.Valid&&!allocations.WrappedAround,Is.True);long events=0;for(var i=0;i<allocations.Count;i++)events+=allocations.GetSample(i).Count;Assert.That(events,Is.Zero);
+            }
+            finally {UnityEngine.Object.DestroyImmediate(host);cameraObject.GetComponent<Camera>().targetTexture=null;UnityEngine.Object.DestroyImmediate(cameraObject);target.Release();UnityEngine.Object.DestroyImmediate(target);}
+        }
+
         [UnityTest]
         public IEnumerator MaskImagePreservesNestedAlphaAndFollowingSibling()=>Verify(false);
 
         [UnityTest]
         public IEnumerator MaskImagePreservesSrpIntermediateTargetAndFollowingSibling()=>Verify(true);
+
+        [UnityTest]
+        public IEnumerator TerminalMaskClipsLongContentStorageAndPreservesFractionalFeatherPixels()
+        {
+            var existingTargets=new HashSet<int>();
+            foreach(var texture in UnityEngine.Resources.FindObjectsOfTypeAll<RenderTexture>())existingTargets.Add(texture.GetInstanceID());
+            var host=new GameObject("Bounded terminal mask");
+            var cameraObject=new GameObject("Terminal mask camera",typeof(Camera));cameraObject.tag="MainCamera";
+            var camera=cameraObject.GetComponent<Camera>();camera.allowHDR=false;
+            camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=Color.blue;
+            var target=new RenderTexture(256,128,0,RenderTextureFormat.ARGB32);target.Create();camera.targetTexture=target;
+            var read=new Texture2D(256,128,TextureFormat.RGBA32,false,true);
+            try
+            {
+                var document=EffectHtmlFixtureAssets.Create(host);document.Surface.Viewport=new Vector2Int(256,128);
+                document.Surface.Input.UseUnityInput=false;
+                document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}"+
+                    ".mask{position:absolute;top:16px;width:64px;height:64px;transform-origin:0 0;--urui-mask-image:shader(feather-mask);--urui-mask-feather-top:12px;}"+
+                    "#long{left:16px;}#reference{left:144px;}.red,.green{position:absolute;top:0;height:64px;width:64px;}"+
+                    ".red{background:rgba(255,0,0,.5);}.green{background:rgba(0,255,0,.5);}"+
+                    "#long .red,#long .green{left:-1024px;width:2100px;}"+
+                    "</style></head><body><div id='long' class='mask'><div class='red'></div><div class='green'></div></div>"+
+                    "<div id='reference' class='mask'><div class='red'></div><div class='green'></div></div></body></html>","/terminal-mask.html");
+                var large=document.Q("long");var reference=document.Q("reference");
+                using var largePainter=new FeatherMaskPainter(large);using var referencePainter=new FeatherMaskPainter(reference);
+                foreach(var scale in new[]{1f,1.13f})
+                {
+                    large.SetTransform(new Vector2(.25f,.5f),Vector2.one*scale);
+                    reference.SetTransform(new Vector2(.25f,.5f),Vector2.one*scale);
+                    document.SynchronizeLayout();for(var frame=0;frame<5;frame++)yield return null;
+                    camera.Render();var previous=RenderTexture.active;
+                    try{RenderTexture.active=target;read.ReadPixels(new Rect(0,0,256,128),0,0);read.Apply();}
+                    finally{RenderTexture.active=previous;}
+                    Assert.That(read.GetPixel(48,128-48-1).g,Is.GreaterThan(.1f),"阳性像素必须证明内容已实际绘制。");
+                    // 相同遮罩内的长内容与紧凑参考应保持相同像素，包括羽化和亚像素边缘。
+                    for(var y=8;y<104;y++)for(var x=8;x<104;x++)
+                    {
+                        var actual=read.GetPixel(x,128-y-1);var expected=read.GetPixel(x+128,128-y-1);
+                        Assert.That(Mathf.Max(Mathf.Abs(actual.r-expected.r),Mathf.Abs(actual.g-expected.g),Mathf.Abs(actual.b-expected.b),Mathf.Abs(actual.a-expected.a)),Is.LessThanOrEqualTo(2f/255),$"scale={scale} pixel=({x},{y})");
+                    }
+                    foreach(var texture in UnityEngine.Resources.FindObjectsOfTypeAll<RenderTexture>())
+                    {
+                        if(existingTargets.Contains(texture.GetInstanceID())||!texture.name.StartsWith("URUI pooled effect target"))continue;
+                        Assert.That(texture.width,Is.LessThanOrEqualTo(256),"最终遮罩之外的滚动内容不应扩大离屏目标。");
+                        Assert.That(texture.height,Is.LessThanOrEqualTo(128));
+                    }
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);camera.targetTexture=null;Object.DestroyImmediate(cameraObject);
+                target.Release();Object.DestroyImmediate(target);Object.DestroyImmediate(read);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ScaledRootTerminalMaskMatchesAnUncroppedSource()
+        {
+            var host=new GameObject("Scaled terminal mask");
+            var cameraObject=new GameObject("Scaled mask camera",typeof(Camera));cameraObject.tag="MainCamera";
+            var camera=cameraObject.GetComponent<Camera>();camera.allowHDR=false;
+            var target=new RenderTexture(512,256,0,RenderTextureFormat.ARGB32);target.Create();camera.targetTexture=target;
+            var read=new Texture2D(512,256,TextureFormat.RGBA32,false,true);
+            var previous=GraphicsSettings.defaultRenderPipeline;var quality=QualitySettings.renderPipeline;
+            var pipeline=ScriptableObject.CreateInstance<IntermediatePipelineAsset>();var submissions=0;
+            try
+            {
+                var document=EffectHtmlFixtureAssets.Create(host);document.Surface.Viewport=new Vector2Int(256,128);
+                document.Surface.Input.UseUnityInput=false;
+                document.Effects.Register(new URUI.Rendering.Effects.EffectDefinition("mask-reference",URUI.Rendering.Effects.EffectKind.Element,new OriginalMaskReference(),"mask-reference","premultiplied"));
+                document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}"+
+                    ".mask{position:absolute;top:16px;width:64px;height:64px;--urui-mask-image:shader(feather-mask);}"+
+                    "#actual{left:16px;}#reference{left:144px;--urui-effect:mask-reference;}"+
+                    ".red,.green{position:absolute;left:-1024px;top:0;width:2100px;height:64px;}"+
+                    ".red{background:rgba(255,0,0,.5);}.green{background:rgba(0,255,0,.5);}"+
+                    "</style></head><body><div id='actual' class='mask'><div class='red'></div><div class='green'></div></div>"+
+                    "<div id='reference' class='mask'><div class='red'></div><div class='green'></div></div></body></html>","/scaled-terminal-mask.html");
+                using var actualPainter=new FeatherMaskPainter(document.Q("actual"));
+                using var referencePainter=new FeatherMaskPainter(document.Q("reference"));
+                pipeline.draw=context=>{
+                    context.SetupCameraProperties(camera);using var setup=new CommandBuffer();
+                    setup.SetRenderTarget(target);setup.ClearRenderTarget(false,true,Color.blue);context.ExecuteCommandBuffer(setup);
+                    if(document.SubmitRendering(context,target,new Rect(0,0,512,256)))submissions++;
+                };
+                QualitySettings.renderPipeline=null;GraphicsSettings.defaultRenderPipeline=pipeline;
+                for(var frame=0;frame<6;frame++)yield return null;
+                Assert.That(submissions,Is.GreaterThan(0));
+                var active=RenderTexture.active;
+                try{RenderTexture.active=target;read.ReadPixels(new Rect(0,0,512,256),0,0);read.Apply();}
+                finally{RenderTexture.active=active;}
+                Assert.That(read.GetPixel(96,256-96-1).g,Is.GreaterThan(.1f));
+                // 参考含明确的原图捕获消费者，保留完整输入；比较真正2倍输出下的硬边两侧。
+                for(var y=16;y<208;y++)for(var x=16;x<208;x++)
+                {
+                    var actual=read.GetPixel(x,256-y-1);var expected=read.GetPixel(x+256,256-y-1);
+                    Assert.That(Mathf.Max(Mathf.Abs(actual.r-expected.r),Mathf.Abs(actual.g-expected.g),Mathf.Abs(actual.b-expected.b),Mathf.Abs(actual.a-expected.a)),Is.LessThanOrEqualTo(2f/255),$"pixel=({x},{y})");
+                }
+            }
+            finally
+            {
+                pipeline.draw=null;GraphicsSettings.defaultRenderPipeline=previous;QualitySettings.renderPipeline=quality;
+                Object.DestroyImmediate(host);camera.targetTexture=null;Object.DestroyImmediate(cameraObject);
+                target.Release();Object.DestroyImmediate(target);Object.DestroyImmediate(read);Object.DestroyImmediate(pipeline);
+            }
+        }
 
         [UnityTest]
         public IEnumerator SrpOffsetAndScaledViewportUseItsActualBackdrop()

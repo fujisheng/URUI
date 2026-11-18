@@ -76,7 +76,16 @@ namespace URUI.Styles
                 else{chunks[chunk]=new NativeMethods.StyleValue[length];Array.Copy(entries,start,chunks[chunk],0,length);}
             }
             if(sameText){keywords=previous.keywords;indices=previous.indices;return;}
-            indices=new Dictionary<string,int>(count,StringComparer.Ordinal);keywords=new(StringComparer.Ordinal);
+            keywords=new(StringComparer.Ordinal);
+            var sameNames=previous!=null&&previous.entryCount==count;
+            for(var i=0;sameNames&&i<count;i++)
+            {
+                sameNames=NameBytes(textBuffer,entries[i].NameOffset).SequenceEqual(
+                    NameBytes(previous.textBuffer,previous.GetEntry(i).NameOffset));
+            }
+            for(var i=0;i<count;i++)if((entries[i].Kind&255)==8)NameBytes(textBuffer,entries[i].TextOffset);
+            if(sameNames){indices=previous.indices;return;}
+            indices=new Dictionary<string,int>(count,StringComparer.Ordinal);
             for(var i=0;i<count;i++)
             {
                 var entry=entries[i];var start=entry.NameOffset;
@@ -84,8 +93,14 @@ namespace URUI.Styles
                 var end=Array.IndexOf(textBuffer,(byte)0,start);
                 if(end<0)throw new InvalidOperationException("原生样式名称缺少结束符。");
                 var name=Encoding.UTF8.GetString(textBuffer,start,end-start);indices.Add(name,i);
-                if((entry.Kind&255)==8)keywords.Add(name,ReadText(textBuffer,entry.TextOffset));
             }
+        }
+        static ReadOnlySpan<byte> NameBytes(byte[] text,int offset)
+        {
+            if(offset<0||offset>=text.Length)throw new InvalidOperationException("原生样式名称偏移越界。");
+            var end=Array.IndexOf(text,(byte)0,offset);
+            if(end<0)throw new InvalidOperationException("原生样式名称缺少结束符。");
+            return text.AsSpan(offset,end-offset);
         }
         NativeMethods.StyleValue Get(string name, int kind)
         {
@@ -95,7 +110,12 @@ namespace URUI.Styles
             { throw new InvalidOperationException("计算样式不存在或类型不匹配：" + name); }
             return GetEntry(index);
         }
-        public string GetKeyword(string name){Get(name,8);return keywords[name];}
+        public string GetKeyword(string name)
+        {
+            var value=Get(name,8);
+            if(!keywords.TryGetValue(name,out var keyword)){keyword=ReadText(textBuffer,value.TextOffset);keywords.Add(name,keyword);}
+            return keyword;
+        }
         /// <summary>计算值的级联来源；注册初始值不算作者覆盖，动画、important 与 transition 保留各自优先级。</summary>
         public StyleValueOrigin GetOrigin(string name) => (StyleValueOrigin)(Get(name,255).Kind >> 8);
         public ComputedImageValue GetImage(string name)
@@ -127,6 +147,7 @@ namespace URUI.Styles
             if (end < 0) { throw new InvalidOperationException("原生图像文本缺少结束符。"); }
             return Encoding.UTF8.GetString(names, offset, end - offset);
         }
+        internal bool HasValue(string name)=>indices.ContainsKey(name);
         public bool Contains(StylePropertyDefinition property)
         {
             if (!IsValid) { throw new InvalidOperationException("计算样式快照的文档代际已失效。"); }

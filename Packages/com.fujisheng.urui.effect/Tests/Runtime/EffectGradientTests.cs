@@ -49,13 +49,13 @@ namespace URUI.Effect.Tests
             foreach(var mode in (GradationMode[])Enum.GetValues(typeof(GradationMode)))
             {
                 var id="GradationMode."+mode+".050";
-                fixture.Load(colors+"--urui-fx-gradation-mode:"+EffectRenderFixture.Kebab(mode.ToString())+";");fixture.Compare(id);report.cases.Add(id);
+                fixture.Load(colors+"--urui-fx-gradation-mode:"+EffectRenderFixture.Kebab(mode.ToString())+";");fixture.Compare(id);report.cases.Add(id);yield return null;
             }
             foreach(var mode in (GradationColorFilter[])Enum.GetValues(typeof(GradationColorFilter)))
             {
                 var id="GradationColorFilter."+mode+".050";
                 fixture.Load(colors+"--urui-fx-gradation-mode:horizontal-gradient;--urui-fx-gradation-color-filter:"+EffectRenderFixture.Kebab(mode.ToString())+";");
-                fixture.Compare(id);report.cases.Add(id);
+                fixture.Compare(id);report.cases.Add(id);yield return null;
             }
             File.WriteAllText(Path.Combine(fixture.Output,"gradation-captures.json"),JsonUtility.ToJson(report,true));yield return null;
         }

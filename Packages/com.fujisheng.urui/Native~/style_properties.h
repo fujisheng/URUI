@@ -20,6 +20,16 @@ extern "C" {
     // -3 容量探测，-4 版本变化；所有值及名称均复制到调用者缓冲区。
     URUI_API int urui_element_style_snapshot(UruiDocumentHandle document_handle, uint64_t token, uint64_t expected_revision, UruiStyleValue* values, int capacity,
         char* names, int names_capacity, uint64_t* revision, int* value_count, int* name_bytes);
+    // Internal prepared-frame handle. A replacement invalidates the old version;
+    // live computed-style reads cannot change the retained prepared values.
+    typedef struct UruiFrozenStyleHandle { uint64_t slot,version; } UruiFrozenStyleHandle;
+    URUI_API int urui_style_frozen_api_version(void);
+    // Once validated, previous is consumed even if preparing the replacement fails.
+    // output is zero on error. Callers must clear their old handle before replacement.
+    URUI_API int urui_style_snapshot_freeze(UruiDocumentHandle document_handle,uint64_t token,const UruiFrozenStyleHandle* previous,UruiFrozenStyleHandle* output);
+    URUI_API int urui_style_snapshot_release(UruiDocumentHandle document_handle,const UruiFrozenStyleHandle* snapshot);
+    URUI_API int urui_style_snapshot_copy(UruiDocumentHandle document_handle,const UruiFrozenStyleHandle* snapshot,uint64_t expected_revision,
+        UruiStyleValue* values,int capacity,char* names,int names_capacity,uint64_t* revision,int* value_count,int* name_bytes);
     // snapshot build / string read / typed copy / retained nodes.
     URUI_API int urui_style_diagnostics(uint64_t* values, int capacity);
 #ifdef __cplusplus

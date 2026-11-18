@@ -85,7 +85,19 @@ void ElementImage::OnRender()
 	if (geometry_dirty)
 		GenerateGeometry();
 
-	geometry.Render(GetAbsoluteOffset(BoxArea::Border), texture, image_effect.Resolve(this));
+	DrawParameters parameters;
+    const auto revision = GetStyle()->GetComputedRevision();
+    if (tint_revision != revision) {
+        render_tint = urui_graphic::Tint(*this, GetComputedValues().image_color()).ToPremultiplied();
+        tint_revision = revision;
+    }
+    parameters.tint = render_tint;
+    if (rect_source != RectSource::None) {
+        const auto texture_dimensions = Vector2f(Math::Max(texture.GetDimensions(), Vector2i(1)));
+        parameters.uv_scale = rect.Size() / texture_dimensions;
+        parameters.uv_offset = rect.TopLeft() / texture_dimensions;
+    }
+    geometry.Render(GetAbsoluteOffset(BoxArea::Border), texture, image_effect.Resolve(this), parameters);
 }
 
 void ElementImage::OnAttributeChange(const ElementAttributes& changed_attributes)
@@ -133,7 +145,7 @@ void ElementImage::OnPropertyChange(const PropertyIdSet& changed_properties)
 		DirtyLayout();
 	}
 
-	if (changed_properties.Contains(PropertyId::ImageColor) || changed_properties.Contains(PropertyId::Opacity) || urui_image::Changed(changed_properties))
+	if (urui_image::Changed(changed_properties))
 		geometry_dirty = true;
 }
 
@@ -171,23 +183,9 @@ void ElementImage::GenerateGeometry()
 	// Release the old geometry before specifying the new vertices.
 	Mesh mesh = geometry.Release(Geometry::ReleaseMode::ClearMesh);
 
-	// Generate the texture coordinates.
-	Vector2f texcoords[2];
-	if (rect_source != RectSource::None)
-	{
-		Vector2f texture_dimensions = Vector2f(Math::Max(texture.GetDimensions(), Vector2i(1)));
-		texcoords[0] = rect.TopLeft() / texture_dimensions;
-		texcoords[1] = rect.BottomRight() / texture_dimensions;
-	}
-	else
-	{
-		texcoords[0] = Vector2f(0, 0);
-		texcoords[1] = Vector2f(1, 1);
-	}
-
-	const ComputedValues& computed = GetComputedValues();
-	// 交互反馈独立乘色，保留作者颜色及透明区域；不作用于兄弟装饰。
-    const ColourbPremultiplied quad_colour = urui_graphic::Tint(*this, computed.image_color()).ToPremultiplied();
+    // Unit UV and white vertices remain stable under source-rect offsets and tint.
+    const Vector2f texcoords[2] = {{0,0},{1,1}};
+    const ColourbPremultiplied quad_colour(255,255,255,255);
 	const RenderBox render_box = GetRenderBox(BoxArea::Content);
 
 	const Vector2f source_size = rect_source == RectSource::None ? Vector2f(texture.GetDimensions()) : rect.Size();
@@ -290,18 +288,18 @@ void ElementImage::UpdateRect()
 			{
 				const Vector2f position = {FromString(coords_list[0], 0.f), FromString(coords_list[1], 0.f)};
 				const Vector2f size = {FromString(coords_list[2], 0.f), FromString(coords_list[3], 0.f)};
-				rect = Rectanglef::FromPositionSize(position, size);
-
-				// We have new, valid coordinates; force the geometry to be regenerated.
-				valid_rect = true;
-				geometry_dirty = true;
+                const bool changed_size = rect_source == RectSource::None || rect.Size() != size;
+                rect = Rectanglef::FromPositionSize(position, size);
+                valid_rect = true;
+                geometry_dirty = geometry_dirty || changed_size;
 				rect_source = RectSource::Attribute;
 			}
 		}
 
-		if (!valid_rect)
-		{
-			rect = {};
+        if (!valid_rect)
+        {
+            if (rect_source != RectSource::None) geometry_dirty = true;
+            rect = {};
 			rect_source = RectSource::None;
 		}
 	}

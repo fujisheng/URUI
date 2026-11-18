@@ -247,6 +247,11 @@ FontEngineInterface* GetFontEngineInterface()
 	return font_interface;
 }
 
+bool IsNativeRecordingFontEngine()
+{
+    return core_data && font_interface && font_interface == core_data->default_font_interface.get();
+}
+
 void SetTextInputHandler(TextInputHandler* _text_input_handler)
 {
 	text_input_handler = _text_input_handler;

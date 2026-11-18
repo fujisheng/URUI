@@ -42,7 +42,7 @@ namespace URUI.Internal.Hosting
                 return;
             }
 
-            targetCamera = Camera.main;
+            targetCamera = OwnerSurface && OwnerSurface.PreviewCamera ? OwnerSurface.PreviewCamera : Camera.main;
             if (!targetCamera)
             {
                 Debug.LogError("URUI: camera missing.");
@@ -62,14 +62,13 @@ namespace URUI.Internal.Hosting
             {
                 name = "URUI UI"
             };
-            targetCamera.AddCommandBuffer(CameraEvent.AfterEverything, buffer);
             lastWidth = Screen.width;
             lastHeight = Screen.height;
             try
             {
-                if (NativeMethods.urui_bridge_abi_version() != 8)
+                if (NativeMethods.urui_bridge_abi_version() != 11)
                 {
-                    throw new Exception("URUIBridge ABI version 8 is required");
+                    throw new Exception("URUIBridge ABI version 11 is required");
                 }
                 if (NativeMethods.urui_effect_api_version() != 7)
                     throw new NotSupportedException("URUI 效果协议 v7 必需，请重建当前目标插件。");
@@ -102,7 +101,7 @@ namespace URUI.Internal.Hosting
             }
             catch (EntryPointNotFoundException ex)
             {
-                Debug.LogError("Update Native/URUIBridge to ABI8 with texture protocol v1: " + ex.Message);
+                Debug.LogError("Update Native/URUIBridge to ABI11 with texture protocol v1: " + ex.Message);
                 AbortStartup();
             }
             catch (Exception ex)
@@ -114,28 +113,23 @@ namespace URUI.Internal.Hosting
 
         bool RestoreSceneCamera()
         {
+            if (OwnerSurface && OwnerSurface.ManualDrive) return targetCamera;
             if (targetCamera && targetCamera.isActiveAndEnabled) return true;
             var replacement = Camera.main;
             if (!replacement || !replacement.isActiveAndEnabled) return false;
             // Surface 可比场景相机存活更久；重录沿用现有 GPU 退役保护。
-            if (targetCamera && buffer != null)
-                targetCamera.RemoveCommandBuffer(CameraEvent.AfterEverything, buffer);
+            DetachRecordedBuffers();
             InvalidateRecording(true);
             submissionTarget = null;
             submissionViewport = default;
             targetCamera = replacement;
-            if (buffer != null) targetCamera.AddCommandBuffer(CameraEvent.AfterEverything, buffer);
             return true;
         }
 
         void AbortStartup()
         {
             ReleaseLayerRendering();
-            if (targetCamera && buffer != null)
-            {
-                targetCamera.RemoveCommandBuffer(CameraEvent.AfterEverything, buffer);
-            }
-
+            ReleaseNativePlanRendering();
             if (buffer != null)
             {
                 buffer.Release();
@@ -144,7 +138,7 @@ namespace URUI.Internal.Hosting
 
             if (material)
             {
-                Destroy(material);
+                DestroyRenderObject(material);
                 material = null;
             }
 
@@ -198,13 +192,8 @@ namespace URUI.Internal.Hosting
             if (this) enabled = false;
             InvalidateRecording(true);
 
-            ClearFrameScratch();
-            ClearBatches();
-            if (targetCamera && buffer != null)
-            {
-                targetCamera.RemoveCommandBuffer(CameraEvent.AfterEverything, buffer);
-            }
-
+            frameUsedGeometry.Clear(); frameStaleGeometry.Clear();
+            ReleaseNativePlanRendering();
             if (buffer != null)
             {
                 buffer.Release();
@@ -215,7 +204,7 @@ namespace URUI.Internal.Hosting
             {
                 if (item.mesh)
                 {
-                    Destroy(item.mesh);
+                    DestroyRenderObject(item.mesh);
                 }
             }
 
@@ -225,7 +214,7 @@ namespace URUI.Internal.Hosting
             {
                 if (item)
                 {
-                    Destroy(item);
+                    DestroyRenderObject(item);
                 }
             }
 
@@ -233,7 +222,7 @@ namespace URUI.Internal.Hosting
             ReleaseLayerRendering();
             if (material)
             {
-                Destroy(material);
+                DestroyRenderObject(material);
             }
 
             if (active)

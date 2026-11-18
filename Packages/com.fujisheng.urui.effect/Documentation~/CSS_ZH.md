@@ -1,6 +1,6 @@
 # Effect CSS 参数参考
 
-对应 Effect `0.4.1-preview.1`。本页的注册参数类型和初始值取自包内 [Effect.css](../Runtime/Resources/URUI.Effect/Effect.css)，C# 字段取自 [EffectParameters](../Runtime/EffectParameters.cs)。使用前挂载并链接 `/urui-effect/Effect.css`，模块在 Load 前注册，见[快速开始](QUICK_START_ZH.md)。
+对应 Effect `0.5.0-preview.1`。本页的注册参数类型和初始值取自包内 [Effect.css](../Runtime/Resources/URUI.Effect/Effect.css)，C# 字段取自 [EffectParameters](../Runtime/EffectParameters.cs)。使用前挂载并链接 `/urui-effect/Effect.css`，模块在 Load 前注册，见[快速开始](QUICK_START_ZH.md)。
 
 ## 激活方式
 

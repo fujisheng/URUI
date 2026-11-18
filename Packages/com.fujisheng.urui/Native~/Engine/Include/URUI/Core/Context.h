@@ -57,6 +57,18 @@ public:
 	/// Updates all elements in the context's documents.
 	/// This must be called before Context::Render, but after any elements have been changed, added, or removed.
 	bool Update();
+    /// 同步偏移、stacking与空间变换，不生成绘制命令或触发paint。
+    bool SynchronizeGeometry();
+    // Input observers need layout/hit changes even when the physical mouse is stationary.
+    uint64_t GetHitTestRevision() const {return hit_test_revision;}
+    void DirtyHitTest() {if(hit_test_revision<UINT64_MAX)++hit_test_revision;DirtyClippingInput();}
+    // 绘制回调仍可更新几何；独立撤销当前裁剪来源，不改变输入观察版本。
+    void DirtyClippingInput();
+    /// 原生绘制记录的输入代际；不保留额外的节点或几何快照。
+    uint64_t GetNativeRenderRevision() const {return native_render_revision;}
+    void DirtyNativeRendering() {if(native_render_revision<UINT64_MAX)++native_render_revision;}
+    bool AllowsNativeRecordingReuse() const;
+    bool AllowsNativeDocumentUpdateReuse(const ElementDocument* document) const;
 	/// Renders all visible elements in the context's documents.
 	bool Render();
 
@@ -281,6 +293,7 @@ protected:
 	void Release() override;
 
 private:
+    uint64_t hit_test_revision=1;
 	int GetTopModalIndex() const;
 	String name;
 	Vector2i dimensions;
@@ -418,6 +431,13 @@ private:
 
 	// Sends the specified event to all elements in new_items that don't appear in old_items.
 	static void SendEvents(const ElementSet& old_items, const ElementSet& new_items, EventId id, const Dictionary& parameters);
+
+    uint64_t native_render_revision=1;
+    // 浮点输入和原生整数鼠标位置可交替查询；固定两项，不持有节点所有权。
+    struct HitQuery { uint64_t revision=0;Vector2f point;Element* result=nullptr; };
+    mutable HitQuery hit_queries[2]{};
+    mutable uint32_t hit_query_cursor=0;
+    Element* GetElementAtPointUncached(Vector2f point,const Element* ignore_element,Element* element) const;
 
 	friend class URUI::Element;
 };

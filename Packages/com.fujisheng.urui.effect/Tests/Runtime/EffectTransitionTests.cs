@@ -24,7 +24,7 @@ namespace URUI.Effect.Tests
                     fixture.Load("--urui-fx-transition-filter:"+EffectRenderFixture.Kebab(mode.ToString())+";--urui-fx-transition-progress:"+
                         phase.ToString(CultureInfo.InvariantCulture)+";--urui-fx-transition-texture:url('pattern.png');"+
                         "--urui-fx-transition-width:.25;--urui-fx-transition-softness:.4;");
-                    fixture.Compare(id); report.cases.Add(id);
+                    fixture.Compare(id); report.cases.Add(id);yield return null;
                 }
             File.WriteAllText(Path.Combine(fixture.Output,"transition-captures.json"),JsonUtility.ToJson(report,true));
             yield return null;

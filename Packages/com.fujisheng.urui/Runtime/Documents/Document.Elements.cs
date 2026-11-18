@@ -12,6 +12,12 @@ namespace URUI.Documents
         readonly Dictionary<Type, ElementFactory> factories = new Dictionary<Type, ElementFactory>();
         readonly Dictionary<string, ElementFactory> tags = new Dictionary<string, ElementFactory>(StringComparer.Ordinal);
         bool factoriesInitialized;
+        const int RefreshWindowSize = 64;
+        const int UpdatingHookSet = -2;
+        static readonly Unity.Profiling.ProfilerMarker readStatesMarker = new("URUI.Elements.ReadStates");
+        static readonly Unity.Profiling.ProfilerMarker updateHooksMarker = new("URUI.Elements.UpdateHooks");
+        ulong[] refreshTokens;
+        NativeMethods.ElementRefreshState[] refreshStates;
         sealed class FragmentChange { internal bool Committed; }
         FragmentChange fragmentChange;
         bool changingFragment => fragmentChange != null;
@@ -226,7 +232,7 @@ namespace URUI.Documents
             }
 
             elements.Add(token, value);
-            state.ElementSnapshot = null;
+            state.AppendElementSnapshot(value);
             try { value.Initialize(); }
             catch { elements.Remove(token); state.ElementSnapshot = null; value.Invalidate(); throw; }
             return value;
@@ -238,23 +244,28 @@ namespace URUI.Documents
             InitializeSubtree(DocumentElement);
         }
 
+        static readonly Unity.Profiling.ProfilerMarker initializeSubtreeMarker = new("URUI.Elements.InitializeSubtree");
         internal void InitializeSubtree(Element root)
         {
+            using var sample = initializeSubtreeMarker.Auto();
             var pending = new Stack<Element>();
             pending.Push(root);
             while (pending.Count > 0)
             {
                 var current = pending.Pop();
-                foreach (var child in current.Hierarchy.Children())
+                var children = current.Hierarchy.Children();
+                for (var index = 0; index < children.Count; index++)
                 {
-                    pending.Push(child);
+                    pending.Push(children[index]);
                 }
             }
         }
 
-        internal void ReplaceInnerHtml(Element target, string html, string sourceUrl)
+        internal void ReplaceInnerHtml(Element target, string html, string sourceUrl, URUI.Resources.CompiledTemplate template = null)
         {
-            if (changingFragment) { EnqueueDeferred(() => target.SetInnerHtml(html, sourceUrl), true); return; }
+            if (changingFragment) { EnqueueDeferred(() => { if (template == null) target.SetInnerHtml(html, sourceUrl); else target.SetInnerHtml(template); }, true); return; }
+            if (template != null && (content?.CompiledAsset == null || content.CompiledFingerprint != template.ParentFingerprint))
+                throw new InvalidOperationException("编译片段不属于当前页面资产，请重新加载页面：" + sourceUrl);
             var previousChangingContent = changingContent;
             var change = fragmentChange = new FragmentChange();
             changingContent = true;
@@ -262,7 +273,8 @@ namespace URUI.Documents
             var began = false;
             try
             {
-                Element.RequireSuccess(NativeMethods.urui_element_begin_inner_html(NativeHandle, target.Token, html, sourceUrl), "准备 HTML 内容");
+                var status = template == null ? NativeMethods.urui_element_begin_inner_html(NativeHandle, target.Token, html, sourceUrl) : template.Begin(NativeHandle, target.Token);
+                Element.RequireSuccess(status, "准备 HTML 内容");
                 began = true;
                 InitializeSubtree(target);
                 Element.RequireSuccess(NativeMethods.urui_element_end_inner_html(NativeHandle, target.Token, 1), "提交 HTML 内容");
@@ -283,7 +295,7 @@ namespace URUI.Documents
             }
         }
 
-        internal void RefreshElements(bool layout)
+        internal unsafe void RefreshElements(bool layout)
         {
             using var profile = URUI.Internal.Hosting.RenderHost.ElementRefreshPhase.Auto();
             if (!IsLoaded)
@@ -297,16 +309,140 @@ namespace URUI.Documents
             }
 
             var selected = content;
-            foreach (var value in selected.GetElements())
+            var initialStamp = ReadRefreshStamp();
+            var reuseObserved = selected.ObservedRefreshStamp.Matches(initialStamp);
+            var cachedHooks = selected.CachedUpdateHookCount;
+            if (reuseObserved && cachedHooks >= 0 && (!layout || cachedHooks == 0)) return;
+            var ownsHookPublication = cachedHooks != UpdatingHookSet;
+            // 只有完整成功、且没有变化的布局刷新才能发布新证明。
+            selected.ObservedRefreshStamp = default;
+            selected.CachedUpdateHookCount = UpdatingHookSet;
+            var completed = false;
+            var publishedHooks = false;
+            try
             {
-                if (!IsLoaded || !ReferenceEquals(content, selected))
+                var callbacksRan = false;
+                var invalidTokens = false;
+                var mayHaveChanged = false;
+                var snapshot = selected.GetElements();
+                var tail = snapshot.Offset + snapshot.Count;
+                var cacheUpdateHooks = layout && ownsHookPublication;
+                var updateHookCount = 0;
+                var firstIndex = 0;
+                if (reuseObserved && cachedHooks > 0)
                 {
-                    break;
+                    using var sample = updateHooksMarker.Auto();
+                    var reusedAll = true;
+                    for (var hook = 0; hook < cachedHooks; hook++)
+                    {
+                        var element = snapshot.Array[tail + hook];
+                        var refreshed = element.TryObservedRefreshState(out var state);
+                        if (refreshed)
+                        {
+                            mayHaveChanged = element.Refresh(true, state.State, state.Layout);
+                            callbacksRan |= mayHaveChanged;
+                        }
+                        if (!refreshed || !IsLoaded || !ReferenceEquals(content, selected) ||
+                            !ReferenceEquals(selected.ElementSnapshot, snapshot.Array) || selected.Elements.Count != snapshot.Count ||
+                            !initialStamp.Matches(ReadRefreshStamp()))
+                        {
+                            // 回调追加节点可覆盖钩子尾部；立即停止读取，并沿原来的固定快照继续。
+                            reusedAll = false; cacheUpdateHooks = false; reuseObserved = false;
+                            while (firstIndex < snapshot.Count && !ReferenceEquals(snapshot.Array[snapshot.Offset + firstIndex], element)) firstIndex++;
+                            if (firstIndex == snapshot.Count) throw new InvalidOperationException("更新钩子不属于已发布的节点快照。");
+                            if (refreshed) firstIndex++;
+                            break;
+                        }
+                    }
+                    if (reusedAll)
+                    {
+                        selected.ObservedRefreshStamp = initialStamp;
+                        if (ownsHookPublication && selected.CachedUpdateHookCount == UpdatingHookSet)
+                        {
+                            selected.CachedUpdateHookCount = cachedHooks;
+                            publishedHooks = true;
+                        }
+                        completed = true;
+                        return;
+                    }
                 }
-
-                value.Refresh(layout);
+                var windowStart = 0; var windowEnd = 0;
+                for (var index = firstIndex; index < snapshot.Count; index++)
+                {
+                    if (mayHaveChanged)
+                    {
+                        if (!IsLoaded || !ReferenceEquals(content, selected)) { break; }
+                        // 回调可改任意节点，也可重入并覆盖共享的批读缓冲。
+                        windowEnd = index;
+                        if (reuseObserved && !initialStamp.Matches(ReadRefreshStamp())) reuseObserved = false;
+                    }
+                    var element = snapshot.Array[snapshot.Offset + index];
+                    NativeMethods.ElementRefreshState state;
+                    if (!reuseObserved || !element.TryObservedRefreshState(out state))
+                    {
+                        if (index >= windowEnd)
+                        {
+                            refreshTokens ??= new ulong[RefreshWindowSize];
+                            refreshStates ??= new NativeMethods.ElementRefreshState[RefreshWindowSize];
+                            windowStart = index; windowEnd = Math.Min(snapshot.Count, index + RefreshWindowSize);
+                            for (var item = index; item < windowEnd; item++)
+                            {
+                                refreshTokens[item - index] = snapshot.Array[snapshot.Offset + item].Token;
+                                if (layout && snapshot.Array[snapshot.Offset + item].HasUpdateHook) { windowEnd = item + 1; break; }
+                            }
+                            fixed (ulong* tokens = refreshTokens)
+                            fixed (NativeMethods.ElementRefreshState* states = refreshStates)
+                            {
+                                using var readSample = readStatesMarker.Auto();
+                                if (NativeMethods.urui_element_refresh_states(selected.Handle, tokens, states, (uint)(windowEnd - index)) != 1)
+                                { throw new InvalidOperationException("元素刷新状态读取失败：" + NativeMethods.LastError()); }
+                            }
+                        }
+                        state = refreshStates[index - windowStart];
+                    }
+                    invalidTokens |= (state.State & 1) == 0;
+                    if (cacheUpdateHooks && element.HasUpdateHook && (state.State & 2) != 0)
+                    {
+                        if (selected.CachedUpdateHookCount != UpdatingHookSet ||
+                            !ReferenceEquals(selected.ElementSnapshot, snapshot.Array) || selected.Elements.Count != snapshot.Count ||
+                            tail + updateHookCount >= snapshot.Array.Length) cacheUpdateHooks = false;
+                        else snapshot.Array[tail + updateHookCount++] = element;
+                    }
+                    mayHaveChanged = element.Refresh(layout, state.State, state.Layout);
+                    callbacksRan |= mayHaveChanged;
+                }
+                var current = IsLoaded && ReferenceEquals(content, selected);
+                var finalStamp = current ? ReadRefreshStamp() : default;
+                var sweep = invalidTokens || callbacksRan && (!current || finalStamp.References != initialStamp.References);
+                if (sweep) SweepInvalidElements();
+                if (!sweep && current && initialStamp.Matches(finalStamp) && (layout || reuseObserved))
+                {
+                    selected.ObservedRefreshStamp = finalStamp;
+                    if (cacheUpdateHooks && selected.CachedUpdateHookCount == UpdatingHookSet &&
+                        snapshot.Count == selected.Elements.Count && ReferenceEquals(selected.ElementSnapshot, snapshot.Array))
+                    {
+                        selected.CachedUpdateHookCount = updateHookCount;
+                        publishedHooks = true;
+                    }
+                }
+                completed = true;
             }
-            SweepInvalidElements();
+            finally
+            {
+                if (!completed)
+                {
+                    selected.ObservedRefreshStamp = default;
+                }
+                // 重入会共享暂存尾部；没有独占发布的外层或内层均不能留下那份证明。
+                if (!publishedHooks) selected.CachedUpdateHookCount = -1;
+            }
+        }
+
+        static NativeMethods.ElementRefreshStamp ReadRefreshStamp()
+        {
+            if (NativeMethods.urui_element_refresh_stamp(out var stamp) != 1)
+                throw new InvalidOperationException("元素刷新代际读取失败：" + NativeMethods.LastError());
+            return stamp;
         }
 
         internal void NotifyLayoutUpdated()
@@ -327,14 +463,46 @@ namespace URUI.Documents
             }
         }
 
-        internal void SweepInvalidElements()
+        static readonly Unity.Profiling.ProfilerMarker sweepMarker = new("URUI.Elements.Sweep");
+        internal unsafe void SweepInvalidElements()
         {
+            using var sample = sweepMarker.Auto();
             var selected = content;
             if (selected == null) { return; }
-            foreach (var value in selected.GetElements())
+            CheckThread();
+            var snapshot = selected.GetElements();
+            var windowStart = 0;
+            var windowEnd = 0;
+            var current = false;
+            var individualChecks = false;
+            for (var index = 0; index < snapshot.Count; index++)
             {
-                if (!value.IsValid)
+                if (!individualChecks && index >= windowEnd)
                 {
+                    windowStart = index;
+                    windowEnd = Math.Min(snapshot.Count, index + RefreshWindowSize);
+                    current = IsCurrent(selected.Generation);
+                    if (current)
+                    {
+                        refreshTokens ??= new ulong[RefreshWindowSize];
+                        refreshStates ??= new NativeMethods.ElementRefreshState[RefreshWindowSize];
+                        for (var item = index; item < windowEnd; item++)
+                            refreshTokens[item - index] = snapshot.Array[snapshot.Offset + item].Token;
+                        fixed (ulong* tokens = refreshTokens)
+                        fixed (NativeMethods.ElementRefreshState* states = refreshStates)
+                        {
+                            if (NativeMethods.urui_element_refresh_states(selected.Handle, tokens, states, (uint)(windowEnd - index)) != 1)
+                                throw new InvalidOperationException("元素清扫状态读取失败：" + NativeMethods.LastError());
+                        }
+                    }
+                }
+                var value = snapshot.Array[snapshot.Offset + index];
+                if (!(individualChecks ? value.IsValid : value.ValidateSnapshot(current && (refreshStates[index - windowStart].State & 1) != 0)))
+                {
+                    // The base element only clears managed fields and subscriptions.
+                    // A subclass can reenter from OnInvalidated; after that, check the
+                    // rest individually rather than repeatedly prefetching stale windows.
+                    individualChecks |= value.GetType() != typeof(Element);
                     selected.Elements.Remove(value.Token);
                     selected.EffectLayouts.Remove(value.Token);
                     selected.ElementSnapshot = null;

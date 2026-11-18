@@ -36,6 +36,16 @@ static void RegistryContracts(URUI::Context& context)
     auto tokenB = references.Acquire(documentB, "same");
     assert(tokenA && tokenB && tokenA != tokenB);
     assert(registry.OwnerOf(tokenA) == a && registry.OwnerOf(tokenB) == b);
+    auto* interested=references.Resolve(tokenA,documentA);
+    assert(references.EventInterest(interested,3)); // Unknown native consumer stays conservative.
+    assert(references.SetEventInterest(tokenA,0,1)==1&&!references.EventInterest(interested,3));
+    assert(references.SetEventInterest(tokenA,1u<<3,2)==1&&references.EventInterest(interested,3));
+    assert(!references.EventInterest(interested,1));
+    assert(references.SetEventInterest(tokenA,0,2)==-2&&references.EventInterest(interested,3));
+    assert(references.SetEventInterest(tokenA,1,3)==-1);
+    int interest_thread=0;std::thread interest_foreign([&]{interest_thread=references.SetEventInterest(tokenA,0,3);});interest_foreign.join();
+    assert(interest_thread==-3&&references.EventInterest(interested,3));
+
     auto detached = references.Create(documentA, "div");
     assert(detached && references.Resolve(detached, documentB) == nullptr);
     assert(registry.Close(a) == 1);

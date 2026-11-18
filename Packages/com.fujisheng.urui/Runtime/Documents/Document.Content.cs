@@ -10,29 +10,59 @@ namespace URUI.Documents
         {
             internal ulong Handle;
             internal uint Generation, LayoutVersion;
+            internal URUI.Internal.Interop.NativeMethods.ElementRefreshStamp ObservedRefreshStamp;
             internal string SourceUrl;
+            internal string SourceMarkup;
+            internal URUI.Resources.CompiledDocumentAsset CompiledAsset;
+            internal string CompiledFingerprint;
             internal bool Retired;
+            // -1 表示没有完整证明，-2 表示正在更新；非负值索引快照尾部的有序钩子。
+            internal int CachedUpdateHookCount = -1;
             internal URUI.Resources.TextResource[] TextResources;
             internal URUI.Resources.ImageAsset[] Images;
             internal System.Func<string, URUI.Resources.ImageLease> ImageResolver;
             internal readonly Dictionary<ulong, Element> Elements = new();
-            // 回调可能增删元素或重载文档；只在成员变化时替换快照，正在遍历的数组保持独立。
+            // 追加只写入已发布区间以外；每次遍历固定长度，回调新建节点不会进入旧快照。
+            static readonly Unity.Profiling.ProfilerMarker snapshotCopyMarker = new("URUI.Elements.Snapshot.Copy");
             internal Element[] ElementSnapshot;
-            internal Element[] GetElements()
+            int elementSnapshotCount;
+            internal void AppendElementSnapshot(Element element)
+            {
+                // 初始化可以重入刷新；新包装器尚未被完整观察，先撤销整份文档的证明。
+                ObservedRefreshStamp = default;
+                CachedUpdateHookCount = -1;
+                if (ElementSnapshot == null) return;
+                if (elementSnapshotCount == ElementSnapshot.Length) { ElementSnapshot = null; return; }
+                ElementSnapshot[elementSnapshotCount++] = element;
+            }
+            internal System.ArraySegment<Element> GetElements()
             {
                 if (ElementSnapshot == null)
                 {
-                    ElementSnapshot = new Element[Elements.Count];
+                    using var sample = snapshotCopyMarker.Auto();
+                    elementSnapshotCount = Elements.Count;
+                    ElementSnapshot = new Element[System.Math.Max(16, elementSnapshotCount + elementSnapshotCount / 2)];
                     Elements.Values.CopyTo(ElementSnapshot, 0);
                 }
-                return ElementSnapshot;
+                return new System.ArraySegment<Element>(ElementSnapshot, 0, elementSnapshotCount);
             }
             internal readonly Dictionary<(ulong element, string shader), PaintRegistration> Painters = new();
             internal readonly Dictionary<(ulong token, EffectKind kind, ulong input), EffectEntry> EffectInstances = new();
             internal readonly Dictionary<ulong,EffectLayout> EffectLayouts = new();
+            internal readonly Dictionary<string,URUI.Internal.Rendering.NativeProgramLayout> ImageLayouts = new(System.StringComparer.Ordinal);
             internal readonly Dictionary<string, ILayerFilterProgram> FilterPrograms = new(System.StringComparer.Ordinal);
         }
         ContentState content, activeContent, candidateContent;
+        internal string LoadedMarkup
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (content?.CompiledAsset && content.CompiledAsset.AuthorSource) return content.CompiledAsset.AuthorSource.text;
+#endif
+                return content?.SourceMarkup;
+            }
+        }
         internal System.Func<string, URUI.Resources.ImageLease> ResolverFor(ulong handle)
         {
             if (candidateContent != null && candidateContent.Handle == handle && !candidateContent.Retired) return candidateContent.ImageResolver;

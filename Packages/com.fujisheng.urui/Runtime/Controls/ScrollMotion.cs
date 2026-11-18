@@ -17,7 +17,7 @@ namespace URUI.Controls
         readonly string previousX,previousY;
         readonly Action publishPosition;
         Vector2 position,velocity,previousPosition,previousNative,startPosition,startPointer,startWorld;
-        Vector2 publishedCorrection;
+        Vector2 publishedCorrection,publishedRequest;
         int pointerId=-1;
         bool initialized,dragging,disposed,scrolling;
         bool published,publishPending;
@@ -96,7 +96,8 @@ namespace URUI.Controls
         {
             if(publishPending)return;
             var desired=Clamp(position);
-            if(published&&desired.Equals(previousNative)&&(desired-position).Equals(publishedCorrection)&&viewport.ScrollOffset.Equals(desired))return;
+            // 原生偏移会取整；比较上次请求与实际补偿，保留小数定位且不重复提交静止状态。
+            if(published&&desired.Equals(publishedRequest)&&(previousNative-position).Equals(publishedCorrection)&&viewport.ScrollOffset.Equals(previousNative))return;
             // Native style writes are deferred until the synchronous input dispatch has unwound.
             publishPending=true;document.RunAfterEvent(publishPosition);
         }
@@ -104,11 +105,19 @@ namespace URUI.Controls
         {
             publishPending=false;
             if(!Ready)return;
-            viewport.ScrollOffset=Clamp(position);previousNative=viewport.ScrollOffset;
+            published=false;
+            var requested=Clamp(position);
+            viewport.ScrollOffset=requested;
+            // 同步滚动事件可销毁控制器，或已经完成/排队一个更新的请求。
+            if(!Ready||published||publishPending)return;
+            previousNative=viewport.ScrollOffset;
+            if(!Ready||published||publishPending)return;
             publishedCorrection=previousNative-position;
             content.Style.SetPixels("--urui-scroll-motion-x",publishedCorrection.x);
             content.Style.SetPixels("--urui-scroll-motion-y",publishedCorrection.y);
-            published=true;
+            publishedRequest=requested;
+            // 只缓存本次原生取整结果；回调改写或额外夹紧仍按原路径在下次更新重试。
+            published=previousNative.x==Mathf.Floor(requested.x+.5f)&&previousNative.y==Mathf.Floor(requested.y+.5f);
         }
         bool ChildCaptured(PointerEventBase evt)
         {

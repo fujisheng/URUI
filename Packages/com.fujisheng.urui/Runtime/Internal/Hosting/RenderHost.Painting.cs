@@ -11,13 +11,10 @@ namespace URUI.Internal.Hosting
     {
         // 空绘制回调不改变颜色目标；未知自定义材质第一次真正写入前再结束编码域。
         readonly PaintContextPool paintContexts = new();
-        PhaseFrame painterPhase;
-        bool painterWrote;
         internal void BeginPainterDraw()
         {
-            FlushGroup(ref painterPhase);
+            if (preRecordingPainter) { return; }
             EndEncodedRaster();
-            painterWrote = true;
         }
         readonly Dictionary<int, PaintCommandNative> paintCommands = new();
         PaintCommandNative[] paintScratch = Array.Empty<PaintCommandNative>();
@@ -35,26 +32,12 @@ namespace URUI.Internal.Hosting
             paintCommands.Clear();livePaintShaders.Clear();
             var count = NativeMethods.urui_get_paint_commands(null, 0);
             if (count < 0) { throw new InvalidOperationException("外部绘制命令读取失败。"); }
-            if (count == 0) { paintShaderNames.Clear();PrepareDirectColorFilters(); return; }
+            if (count == 0) { paintShaderNames.Clear(); return; }
             if (paintScratch.Length < count) { paintScratch = new PaintCommandNative[count]; }
             var read = NativeMethods.urui_get_paint_commands(paintScratch, count);
             if (read != count) { throw new InvalidOperationException("外部绘制命令数量变化。"); }
             for (var index = 0; index < read; index++) { paintCommands.Add(paintScratch[index].command_index, paintScratch[index]);livePaintShaders.Add(paintScratch[index].shader); }
             PrunePaintNames();
-            PrepareDirectColorFilters();
-        }
-        void DrawPaint(PaintCommandNative paint, CommandNative command, Matrix4x4 transform, ref PhaseFrame phase)
-        {
-            var owner = OwnerSurface.ElementOwner(paint.element) ?? throw new InvalidOperationException("绘制器所属文档已失效。");
-            var element = owner.WrapElement(paint.element);
-            var context = paintContexts.Open(element, buffer,
-                transform * Matrix4x4.Translate(new Vector3(command.tx, command.ty, 0)),
-                new Vector4(command.clip_x, command.clip_y, command.clip_x + command.clip_w, command.clip_y + command.clip_h),
-                command.ClipEnabled,maskSourceLayers.Contains(activeLayer));
-            painterPhase = phase;
-            painterWrote = false;
-            try { owner.InvokePainter(paint.element, PaintName(paint.shader), context); }
-            finally { context.Close(); phase = painterPhase; }
         }
     }
 }

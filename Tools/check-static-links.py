@@ -13,7 +13,8 @@ repo = Path(__file__).resolve().parents[1]
 package = repo / "Packages/com.fujisheng.urui"
 output = (args.output or repo.parent / "Artifacts/ElementRuntime/StaticLinks").resolve()
 output.mkdir(parents=True, exist_ok=True)
-em = Path("/Volumes/FData/MacStorage/Applications/Unity/6000.3.22f1/PlaybackEngines/WebGLSupport/BuildTools/Emscripten")
+engine = Path(os.environ.get("URUI_UNITY_PLAYBACK_ENGINES", "/Applications/Unity/Hub/Editor/6000.3.22f1/Unity.app/Contents/PlaybackEngines"))
+em = Path(os.environ.get("URUI_EMSCRIPTEN_ROOT", str(engine / "WebGLSupport/BuildTools/Emscripten")))
 env = os.environ.copy()
 env.update(DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer", EM_CONFIG=str(em / ".emscripten"), EMCC_SKIP_SANITY_CHECK="1")
 results = {}
@@ -48,8 +49,8 @@ if status == 0:
     script.write_text('''const assert = require('node:assert/strict');
 const create = require('./element-runtime.js');
 create().then(m => {
-  assert.equal(m._urui_bridge_abi_version(), 3);
-  assert.equal(m._urui_element_api_version(), 1);
+  assert.equal(m._urui_bridge_abi_version(), 11);
+  assert.equal(m._urui_element_api_version(), 3);
   assert.equal(m._urui_texture_protocol_version(), 1);
   assert.equal(m._urui_create(640, 480, 0), 1);
   const id = (1n << 63n) + 1n;

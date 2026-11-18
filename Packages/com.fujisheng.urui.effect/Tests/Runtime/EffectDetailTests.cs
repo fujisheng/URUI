@@ -20,14 +20,14 @@ namespace URUI.Effect.Tests
                 var id="DetailFilter."+mode+"."+Mathf.RoundToInt(phase*100).ToString("000");
                 fixture.Load("--urui-fx-detail-filter:"+EffectRenderFixture.Kebab(mode.ToString())+";--urui-fx-detail-texture:url('pattern.png');"+
                     "--urui-fx-detail-intensity:"+phase.ToString(CultureInfo.InvariantCulture)+";");
-                fixture.Compare(id);report.cases.Add(id);
+                fixture.Compare(id);report.cases.Add(id);yield return null;
             }
             foreach(var mode in (EdgeMode[])Enum.GetValues(typeof(EdgeMode))) foreach(var phase in new[]{0f,.5f,1f})
             {
                 var id="EdgeMode."+mode+"."+Mathf.RoundToInt(phase*100).ToString("000");
                 fixture.Load("--urui-fx-edge-mode:"+EffectRenderFixture.Kebab(mode.ToString())+";--urui-fx-edge-shiny-auto-play-speed:0;"+
                     "--urui-fx-edge-shiny-progress:"+phase.ToString(CultureInfo.InvariantCulture)+";");
-                fixture.Compare(id);report.cases.Add(id);
+                fixture.Compare(id);report.cases.Add(id);yield return null;
             }
             File.WriteAllText(Path.Combine(fixture.Output,"detail-captures.json"),JsonUtility.ToJson(report,true));
             yield return null;

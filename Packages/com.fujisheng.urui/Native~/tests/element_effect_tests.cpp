@@ -41,7 +41,7 @@ struct CountingEffectResources : URUI::ResourceContext {
 int main() {
     static_assert(sizeof(UruiStyleValue) == 32, "style v3 layout");
     static_assert(sizeof(UruiFilter) == 48, "filter v3 layout");
-    assert(urui_bridge_abi_version() == 8);
+    assert(urui_bridge_abi_version() == 11);
     assert(urui_style_api_version() == 4 && urui_effect_api_version() == 7 && urui_filter_api_version() == 3);
     assert(urui_create(400, 200) == 1);
     assert(urui_set_image_resolver(ResolveEffectImage, ReleaseEffectImage) == 1);

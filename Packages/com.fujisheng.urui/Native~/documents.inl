@@ -241,21 +241,30 @@ extern "C"
         return status == 1 ? document_registry->Create(result) : status;
     } catch (...) { return urui_documents::Failure(); }
 
-    int urui_document_load_html(UruiDocumentHandle owner, const char* html, const char* source_url)
+    static int LoadDocumentImpl(UruiDocumentHandle owner, const char* html, const char* source_url, const uint8_t* bytes, int length)
     try {
         URUI::Bridge::DocumentState* state = nullptr;
         const int status = urui_documents::Find(owner, state, false, true);
         if (status != 1) return status;
         if (state->fragment) return -5;
-        if (!html || !source_url || !*source_url) return -1;
+        if (bytes ? length <= 0 : (!html || !source_url || !*source_url)) return -1;
         auto resources = urui_resources::Pending(*state);
         urui_resources::LoadScope loading(*state);
-        auto parsed = URUI::ParseHtmlDocument(html, source_url);
-        if (!parsed) return urui_documents::InvalidHtml(parsed.diagnostics);
+        URUI::HtmlParseResult parsed;
+        URUI::CompiledDocument compiled;
+        if (bytes) {
+            URUI::String error;
+            if (!URUI::ReadCompiledDocument(bytes, size_t(length), compiled, error)) { error_message = error; return -9; }
+            if (compiled.html.kind != URUI::HtmlDocumentKind::Document) return -1;
+        } else {
+            parsed = URUI::ParseHtmlDocument(html, source_url);
+            if (!parsed) return urui_documents::InvalidHtml(parsed.diagnostics);
+        }
         auto events = std::make_unique<urui_interaction::CandidateEvents>(owner);
         urui_interaction::pending_documents.reserve(urui_interaction::pending_documents.size() + 1);
         URUI::Vector<URUI::Diagnostic> diagnostics;
-        auto tree = URUI::Factory::InstanceParsedHtmlDocument(context, *parsed.document, diagnostics, resources);
+        auto tree = bytes ? URUI::Factory::InstanceCompiledDocument(context, std::move(compiled), diagnostics, resources) :
+            URUI::Factory::InstanceParsedHtmlDocument(context, *parsed.document, diagnostics, resources);
         if (!tree) {
             if (!diagnostics.empty()) urui_documents::InvalidHtml(diagnostics);
             return -8;
@@ -283,6 +292,7 @@ extern "C"
         candidate_scope.document = nullptr;
         urui_interaction::pending_documents.push_back(std::move(events));
         render->plan.DocumentsChanged();
+        render->draw_plan.Invalidate(render->document_generation=urui_plan::Identity());
         // From here the new tree is committed. Notification/focus failures cannot
         // turn a successful commit into a reported load failure with stale tokens.
         try {
@@ -293,13 +303,18 @@ extern "C"
         return 1;
     } catch (...) { return urui_documents::Failure(); }
 
+    int urui_document_load_html(UruiDocumentHandle owner, const char* html, const char* source_url)
+    {
+        return LoadDocumentImpl(owner, html, source_url, nullptr, 0);
+    }
+
     int urui_document_close(UruiDocumentHandle owner)
     try {
         const int status = urui_documents::Check(true);
         if (status != 1) return status;
         if (!owner) return -1;
         const int closed = document_registry->Close(owner);
-        if (closed == 1) render->plan.DocumentsChanged();
+        if (closed == 1) { render->plan.DocumentsChanged(); render->draw_plan.Invalidate(render->document_generation=urui_plan::Identity()); }
         return closed;
     } catch (...) { return urui_documents::Failure(); }
 

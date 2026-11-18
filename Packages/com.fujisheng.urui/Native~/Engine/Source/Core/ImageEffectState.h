@@ -12,7 +12,7 @@ public:
     const CompiledShader& Resolve(Element* element)
     {
         const auto current = element->GetStyle()->GetComputedRevision();
-        if (!initialized || current != revision || capture != element->effect_capture_required) {
+        if (!initialized || current != revision || capture != element->IsEffectCaptureRequired()) {
             const auto* property = element->GetProperty("--urui-image-effect");
             String next = property ? property->Get<String>() : "none";
             if (next.empty() || next == "none") {
@@ -31,7 +31,7 @@ public:
                 }
             }
             revision = current;
-            capture = element->effect_capture_required;
+            capture = element->IsEffectCaptureRequired();
             initialized = true;
         }
         return shader;

@@ -6,7 +6,7 @@ namespace URUI.Effect.Rendering
     internal static class EffectParameterReader
     {
         static readonly EffectColorProperties colorProperties=new("--urui-fx-color");
-        internal static void Read(ComputedStyleSnapshot style,EffectParameters p)
+        internal static void Read(EffectStyleView style,EffectParameters p)
         {
             p.ToneFilter = (ToneFilter)Mode(style.GetKeyword("--urui-fx-tone-filter"), "tone");
             p.ColorFilter = (ColorFilter)Mode(style.GetKeyword("--urui-fx-color-filter"), "color");

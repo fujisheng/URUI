@@ -3,6 +3,7 @@
 #include <vector>
 
 namespace URUI {
+class PropertyDictionary;
 
 enum class DiagnosticSeverity { Warning, Error };
 struct SourceSpan {
@@ -27,12 +28,16 @@ struct HtmlNode {
     std::vector<HtmlAttribute> attributes;
     std::vector<HtmlNode> children;
     SourceSpan start, end;
+    SharedPtr<const PropertyDictionary> compiledStyle;
+    uint32_t localId = UINT32_MAX, subtreeEnd = 0;
+    StringList compiledClasses;
 };
 enum class HtmlDocumentKind { Document, Fragment };
 struct HtmlDocument {
     HtmlDocumentKind kind = HtmlDocumentKind::Document;
     String sourceUrl;
     std::vector<HtmlNode> nodes;
+    uint64_t blueprintIdentity = 0;
 };
 struct HtmlParseStats {
     size_t allocationCount = 0;

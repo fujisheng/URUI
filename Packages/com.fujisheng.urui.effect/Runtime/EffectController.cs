@@ -11,29 +11,50 @@ namespace URUI.Effect
     public enum EffectApplyMode { Replace,MergeActiveGroups }
     public enum TransitionInputPolicy { Standard,DisableWhenComplete }
     /// <summary>作者节点的预设、独立播放与快照联动；不拥有 DOM 或每节点 MonoBehaviour。</summary>
-    public sealed class EffectController:IDisposable
+    public sealed class EffectController:IDisposable,IEffectParameterBinding
     {
         readonly EffectModule module;
         readonly IDisposable binding;
         EffectParameters parameters=new(),lastSnapshot;
-        Dictionary<string,StyleOverride> presetValues,linkedValues,playbackValues;
+        Dictionary<string,StyleOverride> presetValues,linkedValues,playbackValues,inspectionValues;
         EffectPlayback playback;
         EffectLink link;
         EffectLayout rawLayout,resolvedLayout;
         EffectParameters resolvedParameters;
         EffectParameters computedParameters,computedBasis,lastSnapshotSource;
         ComputedStyleSnapshot computedAuthor;
-        long revision,computedRevision=-1;
+        long revision,computedRevision=-1,valueVersion,computedSourceVersion;
         (bool capture,bool input)? runtimeState;
         double previousTime;
         IUiClock previousClock;
         bool disposed;
         bool available;
+        EffectParameters inspectionParameters;
+        readonly List<PresetOverride> inspectionOverrides=new();
+        sealed class PresetOverride:IDisposable
+        {
+            internal EffectParameters Parameters;
+            Action release;internal PresetOverride(Action release){this.release=release;}
+            public void Dispose(){var previous=release;release=null;previous?.Invoke();}
+        }
+        /// <summary>临时覆盖预设基础参数，保留原联动、播放与 CSS 级联；释放后恢复。</summary>
+        public IDisposable OverridePreset(EffectPreset preset)
+        {
+            RequireValid();if(!preset)throw new ArgumentNullException(nameof(preset));
+            PresetOverride lease=null;
+            lease=new PresetOverride(()=>
+            {
+                inspectionOverrides.Remove(lease);
+                inspectionParameters=inspectionOverrides.Count==0?null:inspectionOverrides[inspectionOverrides.Count-1].Parameters;
+                if(!disposed)Invalidate();
+            }){Parameters=preset.CreateParameters()};
+            inspectionOverrides.Add(lease);inspectionParameters=lease.Parameters;Invalidate();return lease;
+        }
         public Element Element {get;}
         public TransitionInputPolicy InputPolicy {get;set;}
         internal bool Alive=>!disposed&&Element.IsValid&&Element.IsAttached;
         internal EffectController(EffectModule module,Element element)
-        {this.module=module;Element=element;available=true;binding=element.Document.Effects.BindParameters(element,ResolveLayout);}
+        {this.module=module;Element=element;available=true;binding=element.Document.Effects.BindProgramParameters(element,this);}
         void RequireValid(){if(!Alive)throw new ObjectDisposedException(nameof(EffectController));}
         public void Apply(EffectPreset preset,EffectApplyMode mode=EffectApplyMode.Replace)
         {
@@ -94,31 +115,33 @@ namespace URUI.Effect
                     basis=freshSources?link.Source.Compute(link.Source.Element.Document.Styles.GetComputed(link.Source.Element),true):link.Source.ResolveParameters();
                 }
             }
-            if(ReferenceEquals(computedAuthor,author)&&ReferenceEquals(computedBasis,basis)&&computedRevision==revision)return computedParameters;
-            var p=basis.CopyForRendering();
+            if(inspectionParameters!=null)basis=inspectionParameters;
+            var sourceVersion=link?.Source.valueVersion??0;
+            if(ReferenceEquals(computedAuthor,author)&&ReferenceEquals(computedBasis,basis)&&computedRevision==revision&&computedSourceVersion==sourceVersion)return computedParameters;
+            var p=computedParameters??=basis.CopyForRendering();p.CopyValuesFrom(basis);
             if(link!=null){p.SamplingScale=parameters.SamplingScale;p.AllowToModifyMeshShape=parameters.AllowToModifyMeshShape;}
-            var values=link!=null?EffectParameterStyle.Write(p,linkedValues??=new(StringComparer.Ordinal)):presetValues;
-            var style=values==null?author:author.WithOverrides(values,StyleValueOrigin.UserAgent);
+            var values=inspectionParameters!=null?EffectParameterStyle.Write(p,inspectionValues??=new(StringComparer.Ordinal)):link!=null?EffectParameterStyle.Write(p,linkedValues??=new(StringComparer.Ordinal)):presetValues;
+            var style=new EffectStyleView(author,values);
             EffectParameterReader.Read(style,p);
             if(playback!=null&&!playback.IsCancelled)
             {
                 var rate=playback.EvaluatedProgress;var channels=playback.Channels;
                 var animated=playbackValues??=new(StringComparer.Ordinal);animated.Clear();
                 void Set(EffectTweenChannels channel,bool active,string key,float value)
-                {if(active&&(channels&channel)!=0)animated["--urui-fx-"+key]=StyleOverride.Number(value);}
-                Set(EffectTweenChannels.Tone,p.ToneFilter!=ToneFilter.None,"tone-intensity",rate);
-                Set(EffectTweenChannels.Color,p.ColorFilter!=ColorFilter.None,"color-intensity",rate);
-                Set(EffectTweenChannels.Sampling,p.SamplingFilter!=SamplingFilter.None,"sampling-intensity",rate);
-                Set(EffectTweenChannels.Transition,p.TransitionFilter!=TransitionFilter.None,"transition-progress",rate);
-                Set(EffectTweenChannels.GradationOffset,p.GradationMode!=GradationMode.None,"gradation-offset",-1+2*rate);
-                Set(EffectTweenChannels.GradationRotation,p.GradationMode is GradationMode.Angle or GradationMode.AngleGradient,"gradation-rotation",360*rate);
-                Set(EffectTweenChannels.EdgeShiny,p.EdgeMode==EdgeMode.Shiny,"edge-shiny-progress",rate);
-                style=style.WithOverrides(animated,StyleValueOrigin.Author);EffectParameterReader.Read(style,p);
+                {if(active&&(channels&channel)!=0)animated[key]=StyleOverride.Number(value);}
+                Set(EffectTweenChannels.Tone,p.ToneFilter!=ToneFilter.None,"--urui-fx-tone-intensity",rate);
+                Set(EffectTweenChannels.Color,p.ColorFilter!=ColorFilter.None,"--urui-fx-color-intensity",rate);
+                Set(EffectTweenChannels.Sampling,p.SamplingFilter!=SamplingFilter.None,"--urui-fx-sampling-intensity",rate);
+                Set(EffectTweenChannels.Transition,p.TransitionFilter!=TransitionFilter.None,"--urui-fx-transition-progress",rate);
+                Set(EffectTweenChannels.GradationOffset,p.GradationMode!=GradationMode.None,"--urui-fx-gradation-offset",-1+2*rate);
+                Set(EffectTweenChannels.GradationRotation,p.GradationMode is GradationMode.Angle or GradationMode.AngleGradient,"--urui-fx-gradation-rotation",360*rate);
+                Set(EffectTweenChannels.EdgeShiny,p.EdgeMode==EdgeMode.Shiny,"--urui-fx-edge-shiny-progress",rate);
+                style=new EffectStyleView(author,values,animated);EffectParameterReader.Read(style,p);
             }
             // Keep original CSS image declarations in the style view. Direct preset textures stay in the pure snapshot.
-            lastStyle=style;computedAuthor=author;computedBasis=basis;computedRevision=revision;computedParameters=p;return p;
+            lastStyleView=style;lastStyle=null;computedAuthor=author;computedBasis=basis;computedRevision=revision;computedSourceVersion=sourceVersion;valueVersion++;return p;
         }
-        ComputedStyleSnapshot lastStyle;
+        ComputedStyleSnapshot lastStyle;EffectStyleView lastStyleView;
         internal EffectParameters ResolveParameters()
         {
             if(rawLayout==null)return lastSnapshot??parameters;
@@ -130,10 +153,20 @@ namespace URUI.Effect
         EffectLayout ResolveLayout(EffectLayout current)
         {
             if(resolvedLayout!=null)return resolvedLayout;
-            ResolveParameters();var result=current.WithStyle(lastStyle);
+            ResolveParameters();var result=current.WithStyle(lastStyle??=lastStyleView.Materialize());
             if(link is {UseTargetRoot:true}&&link.Source.rawLayout!=null)result=result.WithRoot(link.Source.ResolveLayout(link.Source.rawLayout));
             return resolvedLayout=result;
         }
+        EffectLayout IEffectParameterBinding.ResolveLayout(EffectLayout current)=>ResolveLayout(current);
+        EffectProgramCoordinates IEffectParameterBinding.ResolveCoordinates(EffectProgramCoordinates coordinates)
+        {
+            if(link is not {UseTargetRoot:true}||link.Source.rawLayout==null)return coordinates;
+            var source=link.Source;
+            while(source.link is {UseTargetRoot:true}&&source.link.Source.rawLayout!=null)source=source.link.Source;
+            return coordinates.WithRoot(source.rawLayout);
+        }
+        void IEffectParameterBinding.ResolveProgramParameters(string program,Span<UnityEngine.Vector4> values)
+        {ResolveParameters();if(program=="ui")UiEffectParameters.ApplyOverrides(values,lastStyleView);}
         internal EffectParameters RenderingParameters=>resolvedParameters;
         public void Dispose()
         {if(disposed)return;disposed=true;playback?.Cancel();link?.Dispose();binding.Dispose();rawLayout=null;resolvedLayout=null;module.Release(this);}

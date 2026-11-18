@@ -1,6 +1,6 @@
 # Document 与 Element API
 
-对应 URUI `0.7.1-preview.1`。本页说明页面和节点的使用顺序；所有公开类型、重载、参数类型及继承关系见[接口声明参考](REFERENCE_ZH.md)。先完成[安装](INSTALL_ZH.md)与[快速开始](QUICK_START_ZH.md)。
+对应 URUI `0.8.0-preview.1`。本页说明页面和节点的使用顺序；所有公开类型、重载、参数类型及继承关系见[接口声明参考](REFERENCE_ZH.md)。先完成[安装](INSTALL_ZH.md)与[快速开始](QUICK_START_ZH.md)。
 
 ## 命名空间与入口
 
@@ -28,7 +28,8 @@
 | `Surface.UiClock : IUiClock` | 默认非缩放时钟；加载任何文档后不能切换 |
 | `Surface.Input : SurfaceInput` | 同一 Surface 的原始输入入口，跨页面分发 |
 | `Document.Surface` | 加载前关联共享宿主 |
-| `Document.Source : TextAsset` | 自动加载源；启用组件时请求加载 |
+| `Document.CompiledSource : CompiledDocumentAsset` | 正式页面的自动加载源；启用时实例化编译计划 |
+| `Document.Source : TextAsset` | 显式动态源码配置；正式构建的序列化文档使用 CompiledSource |
 | `Document.SourceUrl : string` | HTML 资源基址，例如 `/ui/panel.html` |
 | `Document.TextResources`、`Images`、`ImageResolver` | 所属文档卸载后配置资源清单 |
 | `Document.IsLoaded` | DOM 已加载可查询，不代表该帧布局/绘制已完成 |
@@ -39,6 +40,7 @@
 
 | 接口 | 结果 |
 | --- | --- |
+| `Load(CompiledDocumentAsset asset)` | 实例化 Editor 编译的 HTML/CSS、模板与节点索引 |
 | `Load(TextAsset asset, string sourceUrl)` | 同步加载资产中的完整 HTML |
 | `LoadHtml(string html, string sourceUrl)` | 同步加载字符串中的完整 HTML |
 | `Unload()` | 卸载当前页面，取消自动恢复请求 |
@@ -47,8 +49,17 @@
 | `LayoutUpdated : Action<Document>` | 本轮原生布局刷新后通知，可读布局/样式 |
 | `SynchronizeLayout()` | 显式同步；立即测量时使用，避免每个业务 Update 重复调用 |
 | `RunAfterEvent(Action)` | 当前事件/原生回调返回后执行；空闲时立即执行 |
+| `BeginUpdate()` | 合并初始化中的几何请求；嵌套作用域在最外层结束时同步 |
+| `RequestGeometry(Element root)` | 批次内延后同步，普通调用在返回前准备该子树 |
+| `FlushPendingGeometry()` | 缓存几何的适配器在读取前提交待处理布局 |
 
 加载先构建候选，失败保留旧 DOM 和资源。成功重载后重新查询，同名旧 Element 不会恢复有效。回调中的生命周期请求会排队，不会在回调内立即切页。业务组件订阅 Loaded 时还应处理已加载情况，见入门组件。
+
+Editor 使用 `URUI.Editor.Compilation.CompiledDocumentCompiler.CompileAndSave(html, sourceUrl, destination, dependencies)` 生成稳定 GUID 的资产。dependencies 提供规范 URL 到 TextAsset 的映射，编译器继续发现 HTML/CSS 的实际依赖闭包；导入器更新已有资产，构建门禁拒绝过期源码、缺失依赖与损坏字节。作者格式始终是 HTML/CSS。
+
+用 `GetCompiledTemplate(uri)` 获取当前页面作用域的模板，再调用 `element.SetInnerHtml(template)`。模板不能跨不同父文档编译计划混用。`CreateCompiledQuerySnapshot(root)` 一次映射子树节点；`TryQuery(".class", out result)` / `TryQuery("#id", out result)` 返回有序结果。结构或对应名称变化时返回 false，调用普通 DOM 查询；卸载后不能继续枚举旧结果。
+
+批次中读取 HasLayout、布局、坐标或计算样式会刷新待处理几何；布局/绘制回调仍读取当前回调快照，避免递归布局。显式 SynchronizeGeometry / SynchronizeLayout 立即执行。业务读取可以形成必要的提前同步边界。
 
 `SetPresentation(int layer, int order, bool visible, bool modal)` 配置顶层文档层级、同层顺序、显隐及模态阻断。使用 FUI 时交给适配层管理。`Focus()` 请求页面焦点，隐藏或被模态阻断时可返回 false。`FocusedElement` 无业务焦点时为 null；`Pick(Vector2)` 返回文档坐标处的实际命中节点。
 

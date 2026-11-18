@@ -13,7 +13,7 @@ namespace URUI.Effect.Rendering
             new("--urui-fx-shadow-fade",StyleValueType.Number),new("--urui-fx-shadow-mirror-scale",StyleValueType.Number),new("--urui-fx-shadow-blur-intensity",StyleValueType.Number),
             new("--urui-fx-shadow-color",StyleValueType.Color),new("--urui-fx-flip",StyleValueType.Number)
         };
-        internal static void Read(ComputedStyleSnapshot style,EffectParameters p)
+        internal static void Read(EffectStyleView style,EffectParameters p)
         {
             p.ShadowMode=ReadMode(style.GetKeyword("--urui-fx-shadow-mode"));
             p.ShadowDistance=new Vector2(Mathf.Clamp(style.GetNumber("--urui-fx-shadow-distance-x"),-600,600),Mathf.Clamp(style.GetNumber("--urui-fx-shadow-distance-y"),-600,600));
@@ -30,10 +30,5 @@ namespace URUI.Effect.Rendering
                 "none"=>ShadowMode.None,"shadow"=>ShadowMode.Shadow,"shadow3"=>ShadowMode.Shadow3,
                 "outline"=>ShadowMode.Outline,"outline8"=>ShadowMode.Outline8,"mirror"=>ShadowMode.Mirror,
                 _=>throw new InvalidOperationException("无效的 URUI 阴影模式。") };
-        internal static void Bind(MaterialPropertyBlock properties,EffectParameters p)
-        {
-            properties.SetInt("_ShadowColorFilter",(int)p.ShadowColorFilter);properties.SetInt("_ShadowColorGlow",p.ShadowColorGlow ? 1 : 0);
-            properties.SetVector("_ShadowColor",p.ShadowColor);properties.SetFloat("_ShadowBlurIntensity",p.ShadowBlurIntensity);
-        }
     }
 }

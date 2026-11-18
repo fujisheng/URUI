@@ -31,6 +31,7 @@ public:
 	String to_string() const;
 
 private:
+	friend class CompiledArchive;
 	float tween(Type type, float t) const;
 	float in(float t) const;
 	float out(float t) const;

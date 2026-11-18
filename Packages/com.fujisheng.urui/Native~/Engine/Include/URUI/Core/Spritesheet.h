@@ -48,6 +48,7 @@ public:
 	size_t NumSprites() const;
 
 private:
+	friend class CompiledArchive;
 	using Spritesheets = Vector<SharedPtr<const Spritesheet>>;
 
 	Spritesheets spritesheets;

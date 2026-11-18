@@ -61,6 +61,11 @@ public:
         complete = false;
         ClearPrevious();
     }
+    void ReuseRecording()
+    {
+        // 复用帧不进行数组比较；诊断不能继续报告上次重录的比较字节数。
+        URUI_DEBUG_CODE(compared = 0;)
+    }
     void Begin(std::vector<UruiCommand>& current, std::vector<std::array<float, 16>>& matrices)
     {
         complete = false;
