@@ -19,7 +19,7 @@ namespace URUI.Validation.DefaultControlPerformance
     /// <summary>Measures identical image-button scenes against frozen pre-change and current packages.</summary>
     public sealed class DefaultControlPerformanceTests
     {
-        sealed class Clock : IUiClock { public double Now { get; set; } public float Delta => 1f/60; }
+        sealed class Clock : IUIClock { public double Now { get; set; } public float Delta => 1f/60; }
         [Serializable] sealed class Row
         {
             public int count,round,renderTexturesBefore,renderTexturesAfter;
@@ -55,7 +55,7 @@ namespace URUI.Validation.DefaultControlPerformance
                     var host=new GameObject("Default controls workload");
                     try
                     {
-                        var surface=host.AddComponent<Surface>();surface.Viewport=new Vector2Int(1280,720);surface.Input.UseUnityInput=false;var clock=new Clock();surface.UiClock=clock;
+                        var surface=host.AddComponent<Surface>();surface.Viewport=new Vector2Int(1280,720);surface.Input.UseUnityInput=false;var clock=new Clock();surface.UIClock=clock;
                         var document=host.AddComponent<Document>();document.Surface=surface;document.Images=new[]{new ImageAsset("white.png",white)};
                         document.TextResources=new[]{new TextResource("/urui/controls.css",UnityEngine.Resources.Load<TextAsset>("URUI/controls"))};
                         var html=new StringBuilder("<!doctype html><html><head><link rel='stylesheet' href='/urui/controls.css'><style>body{margin:0;background:black;}button.bench,button.bench:hover,button.bench:focus,button.bench:active{position:absolute;width:24px;height:24px;min-width:0;min-height:0;padding:0;border:0;background-color:transparent;}img{position:absolute;left:0;top:0;width:24px;height:24px;}");

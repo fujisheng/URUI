@@ -18,15 +18,23 @@ namespace URUI.Documents
         static readonly Unity.Profiling.ProfilerMarker updateHooksMarker = new("URUI.Elements.UpdateHooks");
         ulong[] refreshTokens;
         NativeMethods.ElementRefreshState[] refreshStates;
-        sealed class FragmentChange { internal bool Committed; }
+        sealed class FragmentChange
+        {
+            internal bool Committed;
+        }
         FragmentChange fragmentChange;
         bool changingFragment => fragmentChange != null;
-        internal uint LayoutVersion { get => content?.LayoutVersion ?? 0; private set => content.LayoutVersion = value; }
+        internal uint LayoutVersion
+        {
+            get => content?.LayoutVersion ?? 0;
+            private set => content.LayoutVersion = value;
+        }
 
         internal sealed class ElementFactory
         {
             internal Type Type;
-            internal string Tag, InputType;
+            internal string Tag;
+            internal string InputType;
             internal Func<ElementContext, Element> Construct;
         }
 
@@ -44,7 +52,13 @@ namespace URUI.Documents
 
         internal void RegisterFactory<T>(string tag, Func<ElementContext, T> factory, string inputType = null) where T : Element
         {
-            var entry = new ElementFactory { Type = typeof(T), Tag = tag, InputType = inputType, Construct = context => factory(context) };
+            var entry = new ElementFactory
+            {
+                Type = typeof(T),
+                Tag = tag,
+                InputType = inputType,
+                Construct = context => factory(context)
+            };
             factories[typeof(T)] = entry;
             string key = inputType == null ? tag : tag + ":" + inputType;
             if (!tags.ContainsKey(key))
@@ -55,7 +69,9 @@ namespace URUI.Documents
 
         internal void RegisterTag(string tag, Type type) => tags[tag] = factories[type];
 
-        /// <summary>注册自定义标签和类型工厂；现有标签与已经确定的节点类型不被替换。</summary>
+        /// <summary>
+        /// 注册自定义标签和类型工厂；现有标签与已经确定的节点类型不被替换。
+        /// </summary>
         public void RegisterElementType<T>(string tag, Func<ElementContext, T> factory) where T : Element
         {
             RequireEffectDomAccess();
@@ -75,7 +91,9 @@ namespace URUI.Documents
             RegisterFactory(tag, factory);
         }
 
-        /// <summary>当前文档根；未加载时为 null，所有访问限主线程。</summary>
+        /// <summary>
+        /// 当前文档根；未加载时为 null，所有访问限主线程。
+        /// </summary>
         public Element DocumentElement
         {
             get
@@ -90,10 +108,21 @@ namespace URUI.Documents
             }
         }
 
-        /// <summary>当前文档的 body；未加载时为 null。</summary>
-        public Element Body { get { CheckThread(); return IsLoaded ? WrapElement(NativeMethods.urui_document_body(NativeHandle)) : null; } }
+        /// <summary>
+        /// 当前文档的 body；未加载时为 null。
+        /// </summary>
+        public Element Body
+        {
+            get
+            {
+                CheckThread();
+                return IsLoaded ? WrapElement(NativeMethods.urui_document_body(NativeHandle)) : null;
+            }
+        }
 
-        /// <summary>创建当前文档拥有的有类型节点；脱离层级时仍有效，卸载时失效。</summary>
+        /// <summary>
+        /// 创建当前文档拥有的有类型节点；脱离层级时仍有效，卸载时失效。
+        /// </summary>
         public T Create<T>() where T : Element
         {
             RequireEffectDomAccess();
@@ -137,7 +166,9 @@ namespace URUI.Documents
             }
         }
 
-        /// <summary>按 HTML 标签创建脱离层级的节点；文档负责其整个生命周期。</summary>
+        /// <summary>
+        /// 按 HTML 标签创建脱离层级的节点；文档负责其整个生命周期。
+        /// </summary>
         public Element CreateElement(string tag = "div")
         {
             RequireEffectDomAccess();
@@ -151,18 +182,26 @@ namespace URUI.Documents
             return WrapElement(NativeMethods.urui_element_create(NativeHandle, tag)) ?? throw new InvalidOperationException("URUI 无法创建节点。");
         }
 
-        /// <summary>在根及后代查询首个有类型节点。</summary>
+        /// <summary>
+        /// 在根及后代查询首个有类型节点。
+        /// </summary>
         public T Q<T>(string name = null, string className = null) where T : Element => DocumentElement?.Q<T>(name, className);
-        /// <summary>构造有类型查询；文档需已加载。</summary>
+        /// <summary>
+        /// 构造有类型查询；文档需已加载。
+        /// </summary>
         public ElementQuery<T> Query<T>(string name = null, string className = null) where T : Element
             => (DocumentElement ?? throw new InvalidOperationException("请先加载文档。")).Query<T>(name, className);
-        /// <summary>在根及后代查询首项；未加载时为 null。</summary>
+        /// <summary>
+        /// 在根及后代查询首项；未加载时为 null。
+        /// </summary>
         public Element Q(string name = null, string className = null)
         {
             CheckQuery(name, className);
             return DocumentElement?.Q(name, className);
         }
-        /// <summary>当前根及后代的深度优先快照；保留原有非泛型查询契约。</summary>
+        /// <summary>
+        /// 当前根及后代的深度优先快照；保留原有非泛型查询契约。
+        /// </summary>
         public IReadOnlyList<Element> Query(string name = null, string className = null)
         {
             CheckQuery(name, className);
@@ -196,7 +235,10 @@ namespace URUI.Documents
 
             var handle = NativeMethods.urui_surface_element_owner(token);
             var state = activeContent?.Handle == handle ? activeContent : candidateContent?.Handle == handle ? candidateContent : null;
-            if (state == null || state.Retired || NativeMethods.urui_element_ref_valid(handle, token) != 1) return null;
+            if (state == null || state.Retired || NativeMethods.urui_element_ref_valid(handle, token) != 1)
+            {
+                return null;
+            }
             var elements = state.Elements;
             if (elements.TryGetValue(token, out var existing))
             {
@@ -210,7 +252,11 @@ namespace URUI.Documents
             {
                 foreach (var entry in factories.Values)
                 {
-                    if (entry.Type.FullName == marker) { factory = entry; break; }
+                    if (entry.Type.FullName == marker)
+                    {
+                        factory = entry;
+                        break;
+                    }
                 }
                 if (factory == null)
                 {
@@ -221,7 +267,10 @@ namespace URUI.Documents
             {
                 string tag = NativeMethods.ReadElement(handle, token, 1);
                 string input = tag == "input" ? NativeMethods.ReadElement(handle, token, 3, "type") ?? "text" : null;
-                if (input != null) input = input.ToLowerInvariant();
+                if (input != null)
+                {
+                    input = input.ToLowerInvariant();
+                }
                 tags.TryGetValue(input == null ? tag : tag + ":" + input, out factory);
             }
             var context = new ElementContext(this, state.Generation, token, handle);
@@ -233,8 +282,17 @@ namespace URUI.Documents
 
             elements.Add(token, value);
             state.AppendElementSnapshot(value);
-            try { value.Initialize(); }
-            catch { elements.Remove(token); state.ElementSnapshot = null; value.Invalidate(); throw; }
+            try
+            {
+                value.Initialize();
+            }
+            catch
+            {
+                elements.Remove(token);
+                state.ElementSnapshot = null;
+                value.Invalidate();
+                throw;
+            }
             return value;
         }
 
@@ -263,9 +321,25 @@ namespace URUI.Documents
 
         internal void ReplaceInnerHtml(Element target, string html, string sourceUrl, URUI.Resources.CompiledTemplate template = null)
         {
-            if (changingFragment) { EnqueueDeferred(() => { if (template == null) target.SetInnerHtml(html, sourceUrl); else target.SetInnerHtml(template); }, true); return; }
+            if (changingFragment)
+            {
+                EnqueueDeferred(() =>
+                {
+                    if (template == null)
+                    {
+                        target.SetInnerHtml(html, sourceUrl);
+                    }
+                    else
+                    {
+                        target.SetInnerHtml(template);
+                    }
+                }, true);
+                return;
+            }
             if (template != null && (content?.CompiledAsset == null || content.CompiledFingerprint != template.ParentFingerprint))
+            {
                 throw new InvalidOperationException("编译片段不属于当前页面资产，请重新加载页面：" + sourceUrl);
+            }
             var previousChangingContent = changingContent;
             var change = fragmentChange = new FragmentChange();
             changingContent = true;
@@ -283,13 +357,17 @@ namespace URUI.Documents
             }
             catch
             {
-                if (began) Element.RequireSuccess(NativeMethods.urui_element_end_inner_html(NativeHandle, target.Token, 0), "回滚 HTML 内容");
+                if (began)
+                {
+                    Element.RequireSuccess(NativeMethods.urui_element_end_inner_html(NativeHandle, target.Token, 0), "回滚 HTML 内容");
+                }
                 throw;
             }
             finally
             {
                 SweepInvalidElements();
-                fragmentChange = null; changingContent = previousChangingContent;
+                fragmentChange = null;
+                changingContent = previousChangingContent;
                 surface.EndTransaction();
                 FinishNativeCall();
             }
@@ -312,7 +390,10 @@ namespace URUI.Documents
             var initialStamp = ReadRefreshStamp();
             var reuseObserved = selected.ObservedRefreshStamp.Matches(initialStamp);
             var cachedHooks = selected.CachedUpdateHookCount;
-            if (reuseObserved && cachedHooks >= 0 && (!layout || cachedHooks == 0)) return;
+            if (reuseObserved && cachedHooks >= 0 && (!layout || cachedHooks == 0))
+            {
+                return;
+            }
             var ownsHookPublication = cachedHooks != UpdatingHookSet;
             // 只有完整成功、且没有变化的布局刷新才能发布新证明。
             selected.ObservedRefreshStamp = default;
@@ -347,10 +428,21 @@ namespace URUI.Documents
                             !initialStamp.Matches(ReadRefreshStamp()))
                         {
                             // 回调追加节点可覆盖钩子尾部；立即停止读取，并沿原来的固定快照继续。
-                            reusedAll = false; cacheUpdateHooks = false; reuseObserved = false;
-                            while (firstIndex < snapshot.Count && !ReferenceEquals(snapshot.Array[snapshot.Offset + firstIndex], element)) firstIndex++;
-                            if (firstIndex == snapshot.Count) throw new InvalidOperationException("更新钩子不属于已发布的节点快照。");
-                            if (refreshed) firstIndex++;
+                            reusedAll = false;
+                            cacheUpdateHooks = false;
+                            reuseObserved = false;
+                            while (firstIndex < snapshot.Count && !ReferenceEquals(snapshot.Array[snapshot.Offset + firstIndex], element))
+                            {
+                                firstIndex++;
+                            }
+                            if (firstIndex == snapshot.Count)
+                            {
+                                throw new InvalidOperationException("更新钩子不属于已发布的节点快照。");
+                            }
+                            if (refreshed)
+                            {
+                                firstIndex++;
+                            }
                             break;
                         }
                     }
@@ -366,15 +458,22 @@ namespace URUI.Documents
                         return;
                     }
                 }
-                var windowStart = 0; var windowEnd = 0;
+                var windowStart = 0;
+                var windowEnd = 0;
                 for (var index = firstIndex; index < snapshot.Count; index++)
                 {
                     if (mayHaveChanged)
                     {
-                        if (!IsLoaded || !ReferenceEquals(content, selected)) { break; }
+                        if (!IsLoaded || !ReferenceEquals(content, selected))
+                        {
+                            break;
+                        }
                         // 回调可改任意节点，也可重入并覆盖共享的批读缓冲。
                         windowEnd = index;
-                        if (reuseObserved && !initialStamp.Matches(ReadRefreshStamp())) reuseObserved = false;
+                        if (reuseObserved && !initialStamp.Matches(ReadRefreshStamp()))
+                        {
+                            reuseObserved = false;
+                        }
                     }
                     var element = snapshot.Array[snapshot.Offset + index];
                     NativeMethods.ElementRefreshState state;
@@ -384,18 +483,27 @@ namespace URUI.Documents
                         {
                             refreshTokens ??= new ulong[RefreshWindowSize];
                             refreshStates ??= new NativeMethods.ElementRefreshState[RefreshWindowSize];
-                            windowStart = index; windowEnd = Math.Min(snapshot.Count, index + RefreshWindowSize);
+                            windowStart = index;
+                            windowEnd = Math.Min(snapshot.Count, index + RefreshWindowSize);
                             for (var item = index; item < windowEnd; item++)
                             {
                                 refreshTokens[item - index] = snapshot.Array[snapshot.Offset + item].Token;
-                                if (layout && snapshot.Array[snapshot.Offset + item].HasUpdateHook) { windowEnd = item + 1; break; }
+                                if (layout && snapshot.Array[snapshot.Offset + item].HasUpdateHook)
+                                {
+                                    windowEnd = item + 1;
+                                    break;
+                                }
                             }
                             fixed (ulong* tokens = refreshTokens)
-                            fixed (NativeMethods.ElementRefreshState* states = refreshStates)
                             {
-                                using var readSample = readStatesMarker.Auto();
-                                if (NativeMethods.urui_element_refresh_states(selected.Handle, tokens, states, (uint)(windowEnd - index)) != 1)
-                                { throw new InvalidOperationException("元素刷新状态读取失败：" + NativeMethods.LastError()); }
+                                fixed (NativeMethods.ElementRefreshState* states = refreshStates)
+                                {
+                                    using var readSample = readStatesMarker.Auto();
+                                    if (NativeMethods.urui_element_refresh_states(selected.Handle, tokens, states, (uint)(windowEnd - index)) != 1)
+                                    {
+                                        throw new InvalidOperationException("元素刷新状态读取失败：" + NativeMethods.LastError());
+                                    }
+                                }
                             }
                         }
                         state = refreshStates[index - windowStart];
@@ -405,8 +513,14 @@ namespace URUI.Documents
                     {
                         if (selected.CachedUpdateHookCount != UpdatingHookSet ||
                             !ReferenceEquals(selected.ElementSnapshot, snapshot.Array) || selected.Elements.Count != snapshot.Count ||
-                            tail + updateHookCount >= snapshot.Array.Length) cacheUpdateHooks = false;
-                        else snapshot.Array[tail + updateHookCount++] = element;
+                            tail + updateHookCount >= snapshot.Array.Length)
+                        {
+                            cacheUpdateHooks = false;
+                        }
+                        else
+                        {
+                            snapshot.Array[tail + updateHookCount++] = element;
+                        }
                     }
                     mayHaveChanged = element.Refresh(layout, state.State, state.Layout);
                     callbacksRan |= mayHaveChanged;
@@ -414,7 +528,10 @@ namespace URUI.Documents
                 var current = IsLoaded && ReferenceEquals(content, selected);
                 var finalStamp = current ? ReadRefreshStamp() : default;
                 var sweep = invalidTokens || callbacksRan && (!current || finalStamp.References != initialStamp.References);
-                if (sweep) SweepInvalidElements();
+                if (sweep)
+                {
+                    SweepInvalidElements();
+                }
                 if (!sweep && current && initialStamp.Matches(finalStamp) && (layout || reuseObserved))
                 {
                     selected.ObservedRefreshStamp = finalStamp;
@@ -434,14 +551,19 @@ namespace URUI.Documents
                     selected.ObservedRefreshStamp = default;
                 }
                 // 重入会共享暂存尾部；没有独占发布的外层或内层均不能留下那份证明。
-                if (!publishedHooks) selected.CachedUpdateHookCount = -1;
+                if (!publishedHooks)
+                {
+                    selected.CachedUpdateHookCount = -1;
+                }
             }
         }
 
         static NativeMethods.ElementRefreshStamp ReadRefreshStamp()
         {
             if (NativeMethods.urui_element_refresh_stamp(out var stamp) != 1)
+            {
                 throw new InvalidOperationException("元素刷新代际读取失败：" + NativeMethods.LastError());
+            }
             return stamp;
         }
 
@@ -455,11 +577,17 @@ namespace URUI.Documents
                 {
                     foreach (Action<Document> callback in callbacks)
                     {
-                        if (!IsLoaded || HasPendingInvalidation) { break; }
+                        if (!IsLoaded || HasPendingInvalidation)
+                        {
+                            break;
+                        }
                         callback(this);
                     }
                 }
-                finally { EndControlUpdate(); }
+                finally
+                {
+                    EndControlUpdate();
+                }
             }
         }
 
@@ -468,7 +596,10 @@ namespace URUI.Documents
         {
             using var sample = sweepMarker.Auto();
             var selected = content;
-            if (selected == null) { return; }
+            if (selected == null)
+            {
+                return;
+            }
             CheckThread();
             var snapshot = selected.GetElements();
             var windowStart = 0;
@@ -487,12 +618,18 @@ namespace URUI.Documents
                         refreshTokens ??= new ulong[RefreshWindowSize];
                         refreshStates ??= new NativeMethods.ElementRefreshState[RefreshWindowSize];
                         for (var item = index; item < windowEnd; item++)
-                            refreshTokens[item - index] = snapshot.Array[snapshot.Offset + item].Token;
-                        fixed (ulong* tokens = refreshTokens)
-                        fixed (NativeMethods.ElementRefreshState* states = refreshStates)
                         {
-                            if (NativeMethods.urui_element_refresh_states(selected.Handle, tokens, states, (uint)(windowEnd - index)) != 1)
-                                throw new InvalidOperationException("元素清扫状态读取失败：" + NativeMethods.LastError());
+                            refreshTokens[item - index] = snapshot.Array[snapshot.Offset + item].Token;
+                        }
+                        fixed (ulong* tokens = refreshTokens)
+                        {
+                            fixed (NativeMethods.ElementRefreshState* states = refreshStates)
+                            {
+                                if (NativeMethods.urui_element_refresh_states(selected.Handle, tokens, states, (uint)(windowEnd - index)) != 1)
+                                {
+                                    throw new InvalidOperationException("元素清扫状态读取失败：" + NativeMethods.LastError());
+                                }
+                            }
                         }
                     }
                 }

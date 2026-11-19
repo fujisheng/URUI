@@ -14,9 +14,16 @@ namespace URUI.Tests
             GpuRetirement.Retire(() =>
             {
                 ++releases;
-                if (releases == 1) { GpuRetirement.Collect(); }
+                if (releases == 1)
+                {
+                    GpuRetirement.Collect();
+                }
             });
-            for (var i = 0; i < 60 && releases == 0; ++i) { yield return null; GpuRetirement.Collect(); }
+            for (var i = 0; i < 60 && releases == 0; ++i)
+            {
+                yield return null;
+                GpuRetirement.Collect();
+            }
             Assert.That(releases, Is.EqualTo(1));
             GpuRetirement.Collect();
             Assert.That(releases, Is.EqualTo(1));

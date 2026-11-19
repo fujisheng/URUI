@@ -13,15 +13,27 @@ namespace URUI.Internal.Rendering
             internal readonly CommandBuffer Buffer;
             internal readonly bool RestoreParent;
             internal Segment(CommandBuffer buffer, bool restoreParent)
-            { Buffer = buffer; RestoreParent = restoreParent; }
+            {
+                Buffer = buffer;
+                RestoreParent = restoreParent;
+            }
         }
 
         readonly List<CommandBuffer> buffers = new List<CommandBuffer>();
         readonly List<Segment> segments = new List<Segment>();
         int count;
-        bool surface, needsParent;
-        internal bool WritesParent { get; private set; }
-        internal bool WritesSurface { get; private set; }
+        bool surface;
+        bool needsParent;
+        internal bool WritesParent
+        {
+            get;
+            private set;
+        }
+        internal bool WritesSurface
+        {
+            get;
+            private set;
+        }
         RenderTargetIdentifier target;
         Func<RenderTargetIdentifier> resolveTarget;
         Rect viewport;
@@ -33,10 +45,18 @@ namespace URUI.Internal.Rendering
 
         internal void Begin(RenderTargetIdentifier target, Rect viewport, Matrix4x4 projection, Func<RenderTargetIdentifier> resolveTarget = null)
         {
-            for (var i = 0; i < count; i++) { buffers[i].Clear(); }
-            count = 0; surface = false; needsParent = false;
+            for (var i = 0; i < count; i++)
+            {
+                buffers[i].Clear();
+            }
+            count = 0;
+            surface = false;
+            needsParent = false;
             WritesParent = WritesSurface = false;
-            this.target = target; this.resolveTarget = resolveTarget; this.viewport = viewport; this.projection = projection;
+            this.target = target;
+            this.resolveTarget = resolveTarget;
+            this.viewport = viewport;
+            this.projection = projection;
         }
 
         void Start(bool restoreParent)
@@ -51,7 +71,8 @@ namespace URUI.Internal.Rendering
             Buffer.SetGlobalFloat("_UruiEncodedTarget", 0);
             if (restoreParent)
             {
-                Buffer.SetRenderTarget(resolveTarget != null ? resolveTarget() : target); Buffer.SetViewport(viewport);
+                Buffer.SetRenderTarget(resolveTarget != null ? resolveTarget() : target);
+                Buffer.SetViewport(viewport);
                 Buffer.SetViewProjectionMatrices(Matrix4x4.identity, projection);
             }
         }
@@ -59,22 +80,36 @@ namespace URUI.Internal.Rendering
         internal void BeginDraw()
         {
             WritesParent = true;
-            if (count == 0 || surface || needsParent) { Start(count == 0 || needsParent); }
-            surface = false; needsParent = false;
+            if (count == 0 || surface || needsParent)
+            {
+                Start(count == 0 || needsParent);
+            }
+            surface = false;
+            needsParent = false;
         }
 
         internal void BeginSurface()
         {
             WritesSurface = true;
-            Start(false); surface = true;
+            Start(false);
+            surface = true;
         }
 
-        internal void EndSurface() { needsParent = true; }
+        internal void EndSurface()
+        {
+            needsParent = true;
+        }
 
         public void Dispose()
         {
-            for (var i = 0; i < buffers.Count; i++) { buffers[i].Release(); }
-            buffers.Clear(); segments.Clear(); count = 0; resolveTarget = null;
+            for (var i = 0; i < buffers.Count; i++)
+            {
+                buffers[i].Release();
+            }
+            buffers.Clear();
+            segments.Clear();
+            count = 0;
+            resolveTarget = null;
         }
     }
 }

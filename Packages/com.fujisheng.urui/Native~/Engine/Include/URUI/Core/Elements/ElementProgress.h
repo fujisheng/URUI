@@ -6,9 +6,10 @@
 #include "../Spritesheet.h"
 #include "../Texture.h"
 
-namespace URUI {
+namespace URUI
+{
 
-/**
+    /**
     The 'progress' element.
 
     The 'value' attribute should be a number [0, 1] where 1 means completely filled.
@@ -26,65 +27,83 @@ namespace URUI {
 
  */
 
-class URUI_CORE_API ElementProgress : public Element {
-public:
-	URUI_RTTI_DeclareWithParent(ElementProgress, Element)
+    class URUI_CORE_API ElementProgress : public Element
+    {
+    public:
+        URUI_RTTI_DeclareWithParent(ElementProgress, Element)
 
-	/// Constructs a new ElementProgress. This should not be called directly; use the Factory instead.
-	/// @param[in] tag The tag the element was declared as in HTML.
-	ElementProgress(const String& tag);
-	virtual ~ElementProgress();
+        /// Constructs a new ElementProgress. This should not be called directly; use the Factory instead.
+        /// @param[in] tag The tag the element was declared as in HTML.
+        ElementProgress(const String& tag);
+        virtual ~ElementProgress();
 
-	/// Returns the value of the progress bar.
-	float GetValue() const;
-	/// Sets the value of the progress bar.
-	void SetValue(float value);
+        /// Returns the value of the progress bar.
+        float GetValue() const;
+        /// Sets the value of the progress bar.
+        void SetValue(float value);
 
-	/// Returns the maximum value of the progress bar.
-	float GetMax() const;
-	/// Sets the maximum value of the progress bar.
-	void SetMax(float max_value);
+        /// Returns the maximum value of the progress bar.
+        float GetMax() const;
+        /// Sets the maximum value of the progress bar.
+        void SetMax(float max_value);
 
-	/// Returns the element's inherent size.
-	bool GetIntrinsicDimensions(Vector2f& dimensions, float& ratio) override;
+        /// Returns the element's inherent size.
+        bool GetIntrinsicDimensions(Vector2f& dimensions, float& ratio) override;
 
-protected:
-	void OnRender() override;
+    protected:
+        void OnRender() override;
 
-	void OnResize() override;
+        void OnResize() override;
 
-	void OnAttributeChange(const ElementAttributes& changed_attributes) override;
+        void OnAttributeChange(const ElementAttributes& changed_attributes) override;
 
-	void OnPropertyChange(const PropertyIdSet& changed_properties) override;
+        void OnPropertyChange(const PropertyIdSet& changed_properties) override;
 
-private:
-	enum class Direction { Top, Right, Bottom, Left, Clockwise, CounterClockwise, Count };
-	enum class StartEdge { Top, Right, Bottom, Left, Count };
+    private:
+        enum class Direction
+        {
+            Top,
+            Right,
+            Bottom,
+            Left,
+            Clockwise,
+            CounterClockwise,
+            Count
+        };
+        enum class StartEdge
+        {
+            Top,
+            Right,
+            Bottom,
+            Left,
+            Count
+        };
 
-	static constexpr Direction DefaultDirection = Direction::Right;
-	static constexpr StartEdge DefaultStartEdge = StartEdge::Top;
+        static constexpr Direction DefaultDirection = Direction::Right;
+        static constexpr StartEdge DefaultStartEdge = StartEdge::Top;
 
-	void GenerateGeometry();
-	bool LoadTexture();
+        void GenerateGeometry();
+        bool LoadTexture();
 
-	Direction direction;
-	StartEdge start_edge;
+        Direction direction;
+        StartEdge start_edge;
 
-	Element* fill;
+        Element* fill;
 
-	// The size of the fill geometry as if fully filled, and the offset relative to the 'progress' element.
-	Vector2f fill_size, fill_offset;
+        // The size of the fill geometry as if fully filled, and the offset relative to the 'progress' element.
+        Vector2f fill_size;
+        Vector2f fill_offset;
 
-	// The texture this element is rendering from if the '--urui-fill-image' property is set.
-	Texture texture;
+        // The texture this element is rendering from if the '--urui-fill-image' property is set.
+        Texture texture;
 
-	// The rectangle extracted from a sprite, 'rect_set' controls whether it is active.
-	Rectanglef rect;
-	bool rect_set;
+        // The rectangle extracted from a sprite, 'rect_set' controls whether it is active.
+        Rectanglef rect;
+        bool rect_set;
 
-	// The geometry used to render this element. Only applies if the '--urui-fill-image' property is set.
-	Geometry geometry;
-	bool geometry_dirty;
-};
+        // The geometry used to render this element. Only applies if the '--urui-fill-image' property is set.
+        Geometry geometry;
+        bool geometry_dirty;
+    };
 
-} // namespace URUI
+}

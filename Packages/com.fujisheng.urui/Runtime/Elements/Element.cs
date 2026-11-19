@@ -14,7 +14,10 @@ namespace URUI.Elements
         readonly Document document;
         readonly uint generation;
         readonly ulong token;
-        internal ulong NativeHandle { get; }
+        internal ulong NativeHandle
+        {
+            get;
+        }
         bool invalid;
 
         internal Element(Document document, uint generation, ulong token, ulong nativeHandle)
@@ -26,7 +29,9 @@ namespace URUI.Elements
             Style = new ElementStyle(this);
         }
 
-        /// <summary>对应 HTML id；允许空名和同名，局部 Q 返回首项，Query 返回全部。</summary>
+        /// <summary>
+        /// 对应 HTML id；允许空名和同名，局部 Q 返回首项，Query 返回全部。
+        /// </summary>
         public string Name
         {
             get
@@ -42,7 +47,9 @@ namespace URUI.Elements
             }
         }
 
-        /// <summary>原生标签名，例如 div、span；文本节点的标签为 #text。</summary>
+        /// <summary>
+        /// 原生标签名，例如 div、span；文本节点的标签为 #text。
+        /// </summary>
         public string TagName
         {
             get
@@ -52,8 +59,12 @@ namespace URUI.Elements
             }
         }
 
-        /// <summary>普通文本。读取结构化子节点会抛异常；写入会销毁原来的子节点。</summary>
-        /// <remarks>文本不会被解释成标签、实体或数据表达式，保留 UTF-8 内容与空白。</remarks>
+        /// <summary>
+        /// 普通文本。读取结构化子节点会抛异常；写入会销毁原来的子节点。
+        /// </summary>
+        /// <remarks>
+        /// 文本不会被解释成标签、实体或数据表达式，保留 UTF-8 内容与空白。
+        /// </remarks>
         public virtual string Text
         {
             get
@@ -70,13 +81,17 @@ namespace URUI.Elements
             }
         }
 
-        /// <summary>行内 CSS 写入入口；布局和样式计算仍由 URUI 完成。</summary>
+        /// <summary>
+        /// 行内 CSS 写入入口；布局和样式计算仍由 URUI 完成。
+        /// </summary>
         public ElementStyle Style
         {
             get;
         }
 
-        /// <summary>节点未销毁，且所属文档仍是当前加载世代；脱离层级的节点仍有效。</summary>
+        /// <summary>
+        /// 节点未销毁，且所属文档仍是当前加载世代；脱离层级的节点仍有效。
+        /// </summary>
         public bool IsValid
         {
             get
@@ -95,13 +110,21 @@ namespace URUI.Elements
         // callback-free window. Invalidation can reenter, so its caller discards that window.
         internal bool ValidateSnapshot(bool valid)
         {
-            if (invalid) return false;
-            if (valid) return true;
+            if (invalid)
+            {
+                return false;
+            }
+            if (valid)
+            {
+                return true;
+            }
             Invalidate();
             return false;
         }
 
-        /// <summary>节点当前连接到所属文档的根；有效但脱离层级的节点返回 false。</summary>
+        /// <summary>
+        /// 节点当前连接到所属文档的根；有效但脱离层级的节点返回 false。
+        /// </summary>
         public bool IsAttached
         {
             get
@@ -111,7 +134,9 @@ namespace URUI.Elements
             }
         }
 
-        /// <summary>读取真实属性；不存在时返回 null，存在但为空时返回空字符串。属性名区分大小写。</summary>
+        /// <summary>
+        /// 读取真实属性；不存在时返回 null，存在但为空时返回空字符串。属性名区分大小写。
+        /// </summary>
         public string GetAttribute(string name)
         {
             RequireValid();
@@ -119,10 +144,14 @@ namespace URUI.Elements
             return ReadString(3, name);
         }
 
-        /// <summary>检查真实属性是否存在，包括值为空的属性。</summary>
+        /// <summary>
+        /// 检查真实属性是否存在，包括值为空的属性。
+        /// </summary>
         public bool HasAttribute(string name) => GetAttribute(name) != null;
 
-        /// <summary>写入真实属性；小写 id 与 Name 操作相同节点，class 与类名方法保持一致。</summary>
+        /// <summary>
+        /// 写入真实属性；小写 id 与 Name 操作相同节点，class 与类名方法保持一致。
+        /// </summary>
         public void SetAttribute(string name, string value)
         {
             Document.RequireName(name, nameof(name));
@@ -136,7 +165,9 @@ namespace URUI.Elements
             OnAttributeChanged(name);
         }
 
-        /// <summary>移除属性；重复移除安全，移除 id 后 Name 为空。</summary>
+        /// <summary>
+        /// 移除属性；重复移除安全，移除 id 后 Name 为空。
+        /// </summary>
         public void RemoveAttribute(string name)
         {
             RequireValid();
@@ -151,32 +182,59 @@ namespace URUI.Elements
             OnAttributeChanged(name);
         }
 
-        /// <summary>属性成功写入或移除后，同步控件的作者呈现。</summary>
-        protected virtual void OnAttributeChanged(string name) { }
+        /// <summary>
+        /// 属性成功写入或移除后，同步控件的作者呈现。
+        /// </summary>
+        protected virtual void OnAttributeChanged(string name)
+        {
+        }
 
-        /// <summary>严格解析 HTML 片段并原子替换内容；解析、建树或控件初始化失败时保留原子树。</summary>
+        /// <summary>
+        /// 严格解析 HTML 片段并原子替换内容；解析、建树或控件初始化失败时保留原子树。
+        /// </summary>
         /// <param name="html">按当前元素上下文解析的 HTML。</param>
         /// <param name="sourceUrl">片段的真实来源，用于诊断；节点资源相对所属文档解析。</param>
         public void SetInnerHtml(string html, string sourceUrl)
         {
-            RequireValid(); RequireText(html, nameof(html)); Document.RequireName(sourceUrl, nameof(sourceUrl));
-            if (document.Defer(() => SetInnerHtml(html, sourceUrl))) return;
+            RequireValid();
+            RequireText(html, nameof(html));
+            Document.RequireName(sourceUrl, nameof(sourceUrl));
+            if (document.Defer(() => SetInnerHtml(html, sourceUrl)))
+            {
+                return;
+            }
             document.ReplaceInnerHtml(this, html, sourceUrl);
         }
 
-        /// <summary>实例化所属文档的编译片段；控件初始化失败时恢复原内容。</summary>
+        /// <summary>
+        /// 实例化所属文档的编译片段；控件初始化失败时恢复原内容。
+        /// </summary>
         public void SetInnerHtml(URUI.Resources.CompiledTemplate template)
         {
             RequireValid();
-            if (template == null) throw new ArgumentNullException(nameof(template));
-            if (document.Defer(() => SetInnerHtml(template))) return;
+            if (template == null)
+            {
+                throw new ArgumentNullException(nameof(template));
+            }
+            if (document.Defer(() => SetInnerHtml(template)))
+            {
+                return;
+            }
             document.ReplaceInnerHtml(this, null, template.SourceUrl, template);
         }
 
-        /// <summary>序列化当前元素的 HTML 内容，保留标准空元素与显式结束标签。</summary>
-        public string GetInnerHtml() { RequireValid(); return NativeMethods.ReadElement(NativeHandle, token, 4); }
+        /// <summary>
+        /// 序列化当前元素的 HTML 内容，保留标准空元素与显式结束标签。
+        /// </summary>
+        public string GetInnerHtml()
+        {
+            RequireValid();
+            return NativeMethods.ReadElement(NativeHandle, token, 4);
+        }
 
-        /// <summary>按节点身份设置二维位移与缩放，分量必须为有限数值。</summary>
+        /// <summary>
+        /// 按节点身份设置二维位移与缩放，分量必须为有限数值。
+        /// </summary>
         public void SetTransform(Vector2 translation, Vector2 scale)
         {
             RequireValid();
@@ -188,27 +246,52 @@ namespace URUI.Elements
             document.MarkGeometryChanged();
         }
 
-        /// <summary>更新运行时TRS，保留作者变换原点的单位、数值与样式表来源。</summary>
+        /// <summary>
+        /// 更新运行时TRS，保留作者变换原点的单位、数值与样式表来源。
+        /// </summary>
         public void SetTransform(Vector3 translation, Quaternion rotation, Vector3 scale)
         {
-            var originX=Style.Get("--urui-transform-origin-x");var originY=Style.Get("--urui-transform-origin-y");
-            SetTransform(translation,rotation,scale,new Vector2(50,50));
-            if(originX==null){Style.Remove("--urui-transform-origin-x");}else{Style.Set("--urui-transform-origin-x",originX);}
-            if(originY==null){Style.Remove("--urui-transform-origin-y");}else{Style.Set("--urui-transform-origin-y",originY);}
+            var originX = Style.Get("--urui-transform-origin-x");
+            var originY = Style.Get("--urui-transform-origin-y");
+            SetTransform(translation, rotation, scale, new Vector2(50, 50));
+            if (originX == null)
+            {
+                Style.Remove("--urui-transform-origin-x");
+            }
+            else
+            {
+                Style.Set("--urui-transform-origin-x", originX);
+            }
+            if (originY == null)
+            {
+                Style.Remove("--urui-transform-origin-y");
+            }
+            else
+            {
+                Style.Set("--urui-transform-origin-y", originY);
+            }
         }
 
-        /// <summary>更新运行时 TRS 与百分比变换原点；使用原生变换原语，不生成样式文本。</summary>
+        /// <summary>
+        /// 更新运行时 TRS 与百分比变换原点；使用原生变换原语，不生成样式文本。
+        /// </summary>
         public void SetTransform(Vector3 translation, Quaternion rotation, Vector3 scale, Vector2 originPercent)
         {
             RequireValid();
             var norm = (double)rotation.x * rotation.x + (double)rotation.y * rotation.y +
                 (double)rotation.z * rotation.z + (double)rotation.w * rotation.w;
-            if (double.IsNaN(norm) || double.IsInfinity(norm) || norm <= 0) throw new ArgumentOutOfRangeException(nameof(rotation));
+            if (double.IsNaN(norm) || double.IsInfinity(norm) || norm <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(rotation));
+            }
             rotation = rotation.normalized;
             rotation.ToAngleAxis(out var angle, out var axis);
             var values = new[] { translation.x, translation.y, translation.z, axis.x, axis.y, axis.z, angle,
                 scale.x, scale.y, scale.z, originPercent.x, originPercent.y };
-            foreach (var value in values) ElementStyle.RequireFinite(value);
+            foreach (var value in values)
+            {
+                ElementStyle.RequireFinite(value);
+            }
             RequireSuccess(NativeMethods.urui_element_trs(NativeHandle, token, values, values.Length), "设置 TRS");
             document.MarkGeometryChanged();
         }
@@ -217,14 +300,18 @@ namespace URUI.Elements
         {
             RequireValid();
             Document.RequireName(property, nameof(property));
-            ElementStyle.RequireFinite(value.r); ElementStyle.RequireFinite(value.g);
-            ElementStyle.RequireFinite(value.b); ElementStyle.RequireFinite(value.a);
+            ElementStyle.RequireFinite(value.r);
+            ElementStyle.RequireFinite(value.g);
+            ElementStyle.RequireFinite(value.b);
+            ElementStyle.RequireFinite(value.a);
             Color32 bytes = value;
             RequireSuccess(NativeMethods.urui_element_color(NativeHandle, token, property, bytes.r, bytes.g, bytes.b, bytes.a), "设置颜色");
             document.MarkGeometryChanged();
         }
 
-        /// <summary>查询是否具有单个 CSS 类名，区分大小写。</summary>
+        /// <summary>
+        /// 查询是否具有单个 CSS 类名，区分大小写。
+        /// </summary>
         public bool ClassListContains(string className)
         {
             RequireValid();
@@ -238,13 +325,19 @@ namespace URUI.Elements
             return result == 1;
         }
 
-        /// <summary>添加单个 CSS 类名，重复添加安全。</summary>
+        /// <summary>
+        /// 添加单个 CSS 类名，重复添加安全。
+        /// </summary>
         public void AddToClassList(string className) => EnableInClassList(className, true);
 
-        /// <summary>移除单个 CSS 类名，重复移除安全。</summary>
+        /// <summary>
+        /// 移除单个 CSS 类名，重复移除安全。
+        /// </summary>
         public void RemoveFromClassList(string className) => EnableInClassList(className, false);
 
-        /// <summary>启用或移除单个类名；不接受用空白分隔的多个类名。</summary>
+        /// <summary>
+        /// 启用或移除单个类名；不接受用空白分隔的多个类名。
+        /// </summary>
         public void EnableInClassList(string className, bool enabled)
         {
             RequireValid();
@@ -325,7 +418,8 @@ namespace URUI.Elements
                 subscription.Clear();
             }
 
-            subscriptions.Clear();subscriptionSnapshot=null;
+            subscriptions.Clear();
+            subscriptionSnapshot = null;
         }
 
         internal static void RequireText(string value, string parameter)

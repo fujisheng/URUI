@@ -22,7 +22,9 @@ namespace URUI.Authoring.Tests
                 {
                     var label = typeof(EffectPresetEditor).GetMethod("ParameterLabel", BindingFlags.NonPublic | BindingFlags.Static);
                     if (label == null)
+                    {
                         throw new Exception("Effect parameter labels do not use localization");
+                    }
                     var parameters = serialized.FindProperty("parameters");
                     LocalizationReviewValidation.WithLanguage(SystemLanguage.ChineseSimplified, () =>
                     {
@@ -31,24 +33,36 @@ namespace URUI.Authoring.Tests
                             var property = parameters.FindPropertyRelative(expected.Item1);
                             string value = (string)label.Invoke(null, new object[] { property });
                             if (value != expected.Item2)
+                            {
                                 throw new Exception("Unlocalized owned effect field: " + property.propertyPath + " => " + value);
+                            }
                         }
                     });
                     LocalizationReviewValidation.WithLanguage(SystemLanguage.ChineseSimplified, () =>
                     {
                         using (var property = parameters.Copy())
-                        using (var end = parameters.GetEndProperty())
-                            while (property.NextVisible(true) && !SerializedProperty.EqualContents(property, end))
+                        {
+                            using (var end = parameters.GetEndProperty())
                             {
-                                if (property.depth != parameters.depth + 1)
-                                    continue;
-                                string text = (string)label.Invoke(null, new object[] { property });
-                                if (!System.Text.RegularExpressions.Regex.IsMatch(text, @"[\p{IsCJKUnifiedIdeographs}]"))
-                                    throw new Exception("Unlocalized effect parameter: " + property.displayName);
+                                while (property.NextVisible(true) && !SerializedProperty.EqualContents(property, end))
+                                {
+                                    if (property.depth != parameters.depth + 1)
+                                    {
+                                        continue;
+                                    }
+                                    string text = (string)label.Invoke(null, new object[] { property });
+                                    if (!System.Text.RegularExpressions.Regex.IsMatch(text, @"[\p{IsCJKUnifiedIdeographs}]"))
+                                    {
+                                        throw new Exception("Unlocalized effect parameter: " + property.displayName);
+                                    }
+                                }
                             }
+                        }
                     });
                     if (JsonUtility.ToJson(preset) != before || serialized.hasModifiedProperties)
+                    {
                         throw new Exception("Translating a field changed serialized effect data");
+                    }
                 }
                 Directory.CreateDirectory("Evidence");
                 File.WriteAllText("Evidence/localization-review-effect.json", "{\"passed\":true,\"serializedDataChanged\":false}");
@@ -62,7 +76,13 @@ namespace URUI.Authoring.Tests
                 Debug.LogException(error);
                 EditorApplication.Exit(1);
             }
-            finally { if (preset) UnityEngine.Object.DestroyImmediate(preset); }
+            finally
+            {
+                if (preset)
+                {
+                    UnityEngine.Object.DestroyImmediate(preset);
+                }
+            }
         }
     }
 }

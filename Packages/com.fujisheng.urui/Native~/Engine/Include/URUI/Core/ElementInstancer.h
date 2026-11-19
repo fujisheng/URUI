@@ -6,11 +6,12 @@
 #include "Traits.h"
 #include "Types.h"
 
-namespace URUI {
+namespace URUI
+{
 
-class Element;
+    class Element;
 
-/**
+    /**
     An element instancer provides a method for allocating
     and deallocating elements.
 
@@ -23,72 +24,79 @@ class Element;
     in which it was instanced.
  */
 
-class URUI_CORE_API ElementInstancer : public NonCopyMoveable {
-public:
-	virtual ~ElementInstancer();
+    class URUI_CORE_API ElementInstancer : public NonCopyMoveable
+    {
+    public:
+        virtual ~ElementInstancer();
 
-	/// Instances an element given the tag name and attributes.
-	/// @param[in] parent The element the new element is destined to be parented to.
-	/// @param[in] tag The tag of the element to instance.
-	/// @param[in] attributes Dictionary of attributes.
-	/// @return A unique pointer to the instanced element.
-	virtual ElementPtr InstanceElement(Element* parent, const String& tag, const ElementAttributes& attributes) = 0;
-	/// Releases an element instanced by this instancer.
-	/// @param[in] element The element to release.
-	virtual void ReleaseElement(Element* element) = 0;
-};
+        /// Instances an element given the tag name and attributes.
+        /// @param[in] parent The element the new element is destined to be parented to.
+        /// @param[in] tag The tag of the element to instance.
+        /// @param[in] attributes Dictionary of attributes.
+        /// @return A unique pointer to the instanced element.
+        virtual ElementPtr InstanceElement(Element* parent, const String& tag, const ElementAttributes& attributes) = 0;
+        /// Releases an element instanced by this instancer.
+        /// @param[in] element The element to release.
+        virtual void ReleaseElement(Element* element) = 0;
+    };
 
-/**
+    /**
     The element instancer constructs a plain Element, and is used for most elements.
     This is a slightly faster version of the generic instancer, making use of a memory
     pool for allocations.
  */
 
-class URUI_CORE_API ElementInstancerElement : public ElementInstancer {
-public:
-	ElementPtr InstanceElement(Element* parent, const String& tag, const ElementAttributes& attributes) override;
-	void ReleaseElement(Element* element) override;
-	~ElementInstancerElement();
-};
+    class URUI_CORE_API ElementInstancerElement : public ElementInstancer
+    {
+    public:
+        ElementPtr InstanceElement(Element* parent, const String& tag, const ElementAttributes& attributes) override;
+        void ReleaseElement(Element* element) override;
+        ~ElementInstancerElement();
+    };
 
-/**
+    /**
     The element text instancer constructs ElementText.
     This is a slightly faster version of the generic instancer, making use of a memory
     pool for allocations.
  */
 
-class URUI_CORE_API ElementInstancerText : public ElementInstancer {
-public:
-	ElementPtr InstanceElement(Element* parent, const String& tag, const ElementAttributes& attributes) override;
-	void ReleaseElement(Element* element) override;
-};
+    class URUI_CORE_API ElementInstancerText : public ElementInstancer
+    {
+    public:
+        ElementPtr InstanceElement(Element* parent, const String& tag, const ElementAttributes& attributes) override;
+        void ReleaseElement(Element* element) override;
+    };
 
-/**
+    /**
     Generic Instancer that creates the provided element type using new and delete. This instancer
     is typically used for specialized element types.
  */
 
-template <typename T>
-class ElementInstancerGeneric : public ElementInstancer {
-public:
-	virtual ~ElementInstancerGeneric() {}
+    template <typename T> class ElementInstancerGeneric : public ElementInstancer
+    {
+    public:
+        virtual ~ElementInstancerGeneric()
+        {
+        }
 
-	ElementPtr InstanceElement(Element* /*parent*/, const String& tag, const ElementAttributes& /*attributes*/) override
-	{
-		URUI_ZoneScopedN("ElementGenericInstance");
-		return ElementPtr(new T(tag));
-	}
+        ElementPtr InstanceElement(Element* /*parent*/, const String& tag,
+                                   const ElementAttributes& /*attributes*/) override
+        {
+            URUI_ZoneScopedN("ElementGenericInstance");
+            return ElementPtr(new T(tag));
+        }
 
-	void ReleaseElement(Element* element) override
-	{
-		URUI_ZoneScopedN("ElementGenericRelease");
-		delete element;
-	}
-};
+        void ReleaseElement(Element* element) override
+        {
+            URUI_ZoneScopedN("ElementGenericRelease");
+            delete element;
+        }
+    };
 
-namespace Detail {
-	void InitializeElementInstancerPools();
-	void ShutdownElementInstancerPools();
-} // namespace Detail
+    namespace Detail
+    {
+        void InitializeElementInstancerPools();
+        void ShutdownElementInstancerPools();
+    }
 
-} // namespace URUI
+}

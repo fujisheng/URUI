@@ -19,11 +19,14 @@ namespace URUI.Authoring.Animation
         Vector2 scroll;
         float zoom = 1;
         double timeOffset;
-        bool dragging, scrubbing;
-        float dragStart, dragDelta;
+        bool dragging;
+        bool scrubbing;
+        float dragStart;
+        float dragDelta;
         long dragRevision;
         bool customProperty;
-        string keyProperty = "opacity", keyValue = "1";
+        string keyProperty = "opacity";
+        string keyValue = "1";
         internal TimelineView(Action repaint)
         {
             this.repaint = repaint;
@@ -48,14 +51,20 @@ namespace URUI.Authoring.Animation
                 double duration = EditorGUILayout.DelayedDoubleField(L.Tr("总时长（秒）"), definition.Duration);
                 bool loop = GUILayout.Toggle(definition.Loop, L.Tr("循环"), GUILayout.Width(55));
                 if (EditorGUI.EndChangeCheck())
+                {
                     Edit(() => workspace.SetSequence(name, duration, loop, workspace.Revision));
+                }
             }
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button("−", GUILayout.Width(26)))
+                {
                     zoom = Mathf.Max(1, zoom / 1.5f);
+                }
                 if (GUILayout.Button("＋", GUILayout.Width(26)))
+                {
                     zoom *= 1.5f;
+                }
                 if (GUILayout.Button(L.Tr("适应全部"), GUILayout.Width(68)))
                 {
                     zoom = 1;
@@ -80,31 +89,49 @@ namespace URUI.Authoring.Animation
                 GUI.Label(new Rect(x + 3, timeline.y, 58, 20), (timeOffset + visibleDuration * i / 10).ToString("0.##", CultureInfo.InvariantCulture), EditorStyles.miniLabel);
             }
             for (int i = 0; i < definition.Tracks.Count; i++)
+            {
                 DrawTrack(definition.Tracks[i], i, area, labelWidth, timeline, visibleDuration);
+            }
             float needle = timeline.x + (float)((AnimationEnvironment.Time - timeOffset) / Math.Max(.001, visibleDuration)) * timeline.width;
             if (needle >= timeline.x && needle <= timeline.xMax)
+            {
                 EditorGUI.DrawRect(new Rect(needle, timeline.y, 2, timeline.height), new Color(1, .45f, .25f));
+            }
             HandleDrop(timeline, visibleDuration);
             HandleTimeline(timeline, visibleDuration);
             EditorGUILayout.EndScrollView();
             if (zoom > 1)
+            {
                 timeOffset = GUILayout.HorizontalSlider((float)timeOffset, 0, (float)Math.Max(0, definition.Duration - visibleDuration));
+            }
             var track = definition.Tracks.FirstOrDefault(t => t.Id == AnimationEnvironment.SelectedTrack);
             if (track != null)
+            {
                 DrawSettings(track);
+            }
             if (selected.Count > 0)
+            {
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     GUILayout.Label(L.Tr("已选择 ") + selected.Count + L.Tr(" 个关键帧"), EditorStyles.miniLabel);
                     if (GUILayout.Button(L.Tr("复制到当前时间")))
+                    {
                         TransformToCurrent(definition, true);
+                    }
                     if (GUILayout.Button(L.Tr("移动到当前时间")))
+                    {
                         TransformToCurrent(definition, false);
+                    }
                     if (GUILayout.Button(L.Tr("删除关键帧")))
+                    {
                         Edit(() => workspace.TransformKeys(selected, 0, false, true, workspace.Revision));
+                    }
                     if (GUILayout.Button(L.Tr("清除选择")))
+                    {
                         selected.Clear();
+                    }
                 }
+            }
             EditorGUILayout.HelpBox(AnimationEnvironment.Recording ? L.Tr("● 录制中：在 Inspector 或画布调整当前节点，写入时间针位置的关键帧。") : L.Tr("拖动上方刻度预览；点击菱形选关键帧，Shift / Cmd 多选。拖动关键帧可整组移动，Option 拖动复制。"), MessageType.None);
         }
         void DrawToolbar(SequenceDefinition definition)
@@ -112,30 +139,71 @@ namespace URUI.Authoring.Animation
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
                 if (GUILayout.Button(AnimationEnvironment.Playing ? L.Tr("暂停") : L.Tr("▶ 播放"), EditorStyles.toolbarButton, GUILayout.Width(65)))
-                    AuthoringEnvironment.Try(() => { if (AnimationEnvironment.Playing) AnimationEnvironment.Pause(); else AnimationEnvironment.Play(); });
+                {
+                    AuthoringEnvironment.Try(() =>
+                    {
+                        if (AnimationEnvironment.Playing)
+                        {
+                            AnimationEnvironment.Pause();
+                        }
+                        else
+                        {
+                            AnimationEnvironment.Play();
+                        }
+                    });
+                }
                 if (GUILayout.Button(L.Tr("■ 停止"), EditorStyles.toolbarButton, GUILayout.Width(55)))
+                {
                     AuthoringEnvironment.Try(AnimationEnvironment.Stop);
+                }
                 if (GUILayout.Button("◀", EditorStyles.toolbarButton, GUILayout.Width(26)))
+                {
                     AuthoringEnvironment.Try(() => AnimationEnvironment.Seek(Math.Max(0, AnimationEnvironment.Time - 1 / AnimationEnvironment.FrameRate)));
+                }
                 if (GUILayout.Button("▶", EditorStyles.toolbarButton, GUILayout.Width(26)))
+                {
                     AuthoringEnvironment.Try(() => AnimationEnvironment.Seek(AnimationEnvironment.Time + 1 / AnimationEnvironment.FrameRate));
+                }
                 double time = EditorGUILayout.DelayedDoubleField(GUIContent.none, AnimationEnvironment.Time, GUILayout.Width(65));
                 if (time != AnimationEnvironment.Time)
+                {
                     AuthoringEnvironment.Try(() => AnimationEnvironment.Seek(time));
+                }
                 GUILayout.Label(L.Tr("秒"), GUILayout.Width(18));
                 AnimationEnvironment.Snap = GUILayout.Toggle(AnimationEnvironment.Snap, L.Tr("帧吸附"), EditorStyles.toolbarButton, GUILayout.Width(85));
                 if (GUILayout.Button(AnimationEnvironment.Recording ? L.Tr("● 结束录制") : L.Tr("● 录制"), EditorStyles.toolbarButton, GUILayout.Width(85)))
-                    AuthoringEnvironment.Try(() => { if (AnimationEnvironment.Recording) AnimationEnvironment.EndRecording(); else AnimationEnvironment.BeginRecording(AuthoringEnvironment.ActiveNode); });
+                {
+                    AuthoringEnvironment.Try(() =>
+                    {
+                        if (AnimationEnvironment.Recording)
+                        {
+                            AnimationEnvironment.EndRecording();
+                        }
+                        else
+                        {
+                            AnimationEnvironment.BeginRecording(AuthoringEnvironment.ActiveNode);
+                        }
+                    });
+                }
                 GUILayout.FlexibleSpace();
                 using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
                 {
                     if (GUILayout.Button(L.Tr("添加动画 ▾"), EditorStyles.toolbarDropDown))
+                    {
                         ShowAdd();
+                    }
                     if (GUILayout.Button(L.Tr("打开序列…"), EditorStyles.toolbarButton))
                     {
                         string path = EditorUtility.OpenFilePanel(L.Tr("打开 URUI 序列"), Application.dataPath, "json");
                         if (path.Length > 0)
-                            AuthoringEnvironment.Try(() => { AnimationEnvironment.Stop(); AnimationEnvironment.EnsureWorkspace(); AnimationEnvironment.Workspace.Open(path); });
+                        {
+                            AuthoringEnvironment.Try(() =>
+                            {
+                                AnimationEnvironment.Stop();
+                                AnimationEnvironment.EnsureWorkspace();
+                                AnimationEnvironment.Workspace.Open(path);
+                            });
+                        }
                     }
                 }
             }
@@ -150,7 +218,9 @@ namespace URUI.Authoring.Animation
                 {
                     var proxy = AuthoringEnvironment.ActiveNode;
                     if (!proxy || proxy.IsLive || !proxy.IsTargetValid)
+                    {
                         throw new InvalidOperationException(L.Tr("请先在节点树或画布选中一个节点。"));
+                    }
                     string id = AnimationEnvironment.Workspace.AddPreset(proxy.SourceKey, preset, 0, .3, AnimationEnvironment.Workspace.Revision);
                     AnimationEnvironment.SelectTrack(id);
                     AnimationEnvironment.Seek(0);
@@ -161,7 +231,9 @@ namespace URUI.Authoring.Animation
             {
                 var proxy = AuthoringEnvironment.ActiveNode;
                 if (!proxy || proxy.IsLive || !proxy.IsTargetValid || proxy.SourceNode.Tag != "urui-particles")
+                {
                     throw new InvalidOperationException(L.Tr("请选择 urui-particles 节点，并设置粒子 Prefab 资源路径。"));
+                }
                 string id = AnimationEnvironment.Workspace.AddParticles(proxy.SourceKey, proxy.SourceNode.Attribute("src") ?? "", 0, 1, AnimationEnvironment.Workspace.Revision);
                 AnimationEnvironment.SelectTrack(id);
             }));
@@ -172,26 +244,42 @@ namespace URUI.Authoring.Animation
             var row = new Rect(area.x, area.y + 28 * (index + 1), area.width, 26);
             bool current = AnimationEnvironment.SelectedTrack == track.Id;
             if (current)
+            {
                 EditorGUI.DrawRect(row, new Color(.2f, .3f, .42f, .6f));
+            }
             if (GUI.Button(new Rect(row.x, row.y, labelWidth - 78, 24), new GUIContent(track.Target, EditorGUIUtility.FindTexture(track.Kind == "particles" ? "ParticleSystem Icon" : "AnimationClip Icon"), L.Tr("绑定 id: ") + track.Target + L.Tr("\n轨道: ") + track.Id), EditorStyles.label))
+            {
                 AnimationEnvironment.SelectTrack(track.Id);
+            }
             if (GUI.Button(new Rect(row.x + labelWidth - 78, row.y, 24, 24), track.Muted ? "M" : "○"))
+            {
                 Edit(() => AnimationEnvironment.Workspace.SetTrack(track.Id, t => t.Muted = !t.Muted, AnimationEnvironment.Workspace.Revision));
+            }
             if (GUI.Button(new Rect(row.x + labelWidth - 52, row.y, 24, 24), new GUIContent(AnimationEnvironment.SoloTrack == track.Id ? "S" : "s", L.Tr("Solo"))))
+            {
                 AuthoringEnvironment.Try(() => AnimationEnvironment.SetSolo(track.Id));
+            }
             if (GUI.Button(new Rect(row.x + labelWidth - 26, row.y, 24, 24), track.Locked ? L.Tr("锁") : "·"))
+            {
                 Edit(() => AnimationEnvironment.Workspace.SetLocked(track.Id, !track.Locked, AnimationEnvironment.Workspace.Revision));
+            }
             float barX = timeline.x + (float)((track.Start - timeOffset) / Math.Max(.001, duration)) * timeline.width;
             float barWidth = (float)((track.End - track.Start) / Math.Max(.001, duration)) * timeline.width;
             EditorGUI.DrawRect(new Rect(Mathf.Clamp(barX, timeline.x, timeline.xMax), row.y + 5, Mathf.Max(0, Mathf.Clamp(barX + Math.Max(2, barWidth), timeline.x, timeline.xMax) - Mathf.Clamp(barX, timeline.x, timeline.xMax)), 15), track.Kind == "particles" ? new Color(.55f, .35f, .7f) : new Color(.25f, .5f, .65f));
             if (track.Kind != "css")
+            {
                 return;
+            }
             IReadOnlyList<Source.CssKeyframes.Key> keys;
             try
             {
                 keys = AnimationEnvironment.Workspace.Keys(track.Id);
             }
-            catch (Exception error) { GUI.Label(new Rect(timeline.x, row.y, timeline.width, 24), error.Message); return; }
+            catch (Exception error)
+            {
+                GUI.Label(new Rect(timeline.x, row.y, timeline.width, 24), error.Message);
+                return;
+            }
             foreach (double position in keys.Select(k => k.Position).Distinct())
             {
                 var key = new AnimationWorkspace.KeySelection(track.Id, position);
@@ -199,7 +287,9 @@ namespace URUI.Authoring.Animation
                 double offset = chosen && dragging ? dragDelta : 0;
                 float x = timeline.x + (float)((track.Start + position * track.Duration + offset - timeOffset) / Math.Max(.001, duration)) * timeline.width;
                 if (x < timeline.x || x > timeline.xMax)
+                {
                     continue;
+                }
                 var rect = new Rect(x - 7, row.y + 5, 14, 16);
                 var old = GUI.color;
                 GUI.color = chosen ? Color.yellow : Color.white;
@@ -209,11 +299,17 @@ namespace URUI.Authoring.Animation
                 if (evt.type == EventType.MouseDown && evt.button == 0 && rect.Contains(evt.mousePosition))
                 {
                     if (!evt.shift && !evt.command && !evt.control && !chosen)
+                    {
                         selected.Clear();
+                    }
                     if ((evt.shift || evt.command || evt.control) && chosen)
+                    {
                         selected.Remove(key);
+                    }
                     else if (!chosen)
+                    {
                         selected.Add(key);
+                    }
                     AnimationEnvironment.SelectTrack(track.Id);
                     AnimationEnvironment.Pause();
                     dragging = !track.Locked;
@@ -229,17 +325,23 @@ namespace URUI.Authoring.Animation
         {
             var evt = Event.current;
             if (!area.Contains(evt.mousePosition) || (evt.type != EventType.DragUpdated && evt.type != EventType.DragPerform))
+            {
                 return;
+            }
             string key = DragAndDrop.GetGenericData("URUI.SourceKey") as string;
             if (key == null)
+            {
                 return;
+            }
             bool valid = DragAndDrop.GetGenericData("URUI.SourceRevision") is long revision && revision == AnimationEnvironment.Workspace.Revision;
             DragAndDrop.visualMode = valid ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Rejected;
             if (evt.type == EventType.DragPerform && valid)
             {
                 double start = timeOffset + Mathf.Clamp01((evt.mousePosition.x - area.x) / area.width) * duration;
                 if (AnimationEnvironment.Snap)
+                {
                     start = Math.Round(start * AnimationEnvironment.FrameRate) / AnimationEnvironment.FrameRate;
+                }
                 DragAndDrop.AcceptDrag();
                 Edit(() =>
                 {
@@ -267,10 +369,14 @@ namespace URUI.Authoring.Animation
                 {
                     dragDelta = (float)((evt.mousePosition.x - dragStart) / area.width * duration);
                     if (AnimationEnvironment.Snap)
+                    {
                         dragDelta = (float)(Math.Round(dragDelta * AnimationEnvironment.FrameRate) / AnimationEnvironment.FrameRate);
+                    }
                 }
                 else
+                {
                     SetTime(evt.mousePosition.x, area, duration);
+                }
                 evt.Use();
                 repaint();
             }
@@ -301,7 +407,9 @@ namespace URUI.Authoring.Animation
         {
             double time = timeOffset + Mathf.Clamp01((x - area.x) / area.width) * duration;
             if (AnimationEnvironment.Snap)
+            {
                 time = Math.Round(time * AnimationEnvironment.FrameRate) / AnimationEnvironment.FrameRate;
+            }
             AuthoringEnvironment.Try(() => AnimationEnvironment.Seek(time));
         }
         void DrawSettings(SequenceTrack track)
@@ -316,31 +424,51 @@ namespace URUI.Authoring.Animation
                     int count = EditorGUILayout.DelayedIntField(L.Tr("次数"), track.Iterations);
                     bool alternate = GUILayout.Toggle(track.Alternate, L.Tr("往返"), GUILayout.Width(90));
                     if (EditorGUI.EndChangeCheck())
-                        Edit(() => AnimationEnvironment.Workspace.SetTrack(track.Id, t => { t.Start = start; t.Duration = duration; t.Iterations = count; t.Alternate = alternate; }, AnimationEnvironment.Workspace.Revision));
+                    {
+                        Edit(() => AnimationEnvironment.Workspace.SetTrack(track.Id, t =>
+                        {
+                            t.Start = start;
+                            t.Duration = duration;
+                            t.Iterations = count;
+                            t.Alternate = alternate;
+                        }, AnimationEnvironment.Workspace.Revision));
+                    }
                 }
                 if (track.Kind == "css")
                 {
                     string easing = CurveView.Draw(track.Easing);
                     if (easing != track.Easing)
+                    {
                         Edit(() => AnimationEnvironment.Workspace.SetTrack(track.Id, t => t.Easing = easing, AnimationEnvironment.Workspace.Revision));
+                    }
                     if (AnimationEnvironment.Workspace.IsShared(track.Id))
+                    {
                         EditorGUILayout.HelpBox(L.Tr("该关键帧被多个轨道引用，修改会影响所有引用。"), MessageType.Info);
+                    }
                     using (new EditorGUILayout.HorizontalScope())
                     {
                         if (customProperty)
+                        {
                             keyProperty = EditorGUILayout.TextField(keyProperty, GUILayout.MinWidth(90));
+                        }
                         else if (GUILayout.Button(PropertyWidgets.Label(keyProperty), EditorStyles.popup, GUILayout.MinWidth(90)))
+                        {
                             ShowPropertyMenu(track);
+                        }
                         customProperty = GUILayout.Toggle(customProperty, new GUIContent("CSS", L.Tr("直接输入真实 CSS 属性名。")), EditorStyles.miniButton, GUILayout.Width(34));
                         keyValue = PropertyWidgets.Draw("style." + keyProperty, keyValue, GUIContent.none, !customProperty);
                         if (GUILayout.Button(L.Tr("在当前时间添加关键帧")))
-                            Edit(() =>
                         {
-                            if (AnimationEnvironment.Time < track.Start || AnimationEnvironment.Time > track.Start + track.Duration)
-                                throw new InvalidOperationException(L.Tr("请选择首轮轨道范围内的时间。"));
-                            double position = track.Duration == 0 ? 1 : (AnimationEnvironment.Time - track.Start) / track.Duration;
-                            AnimationEnvironment.Workspace.SetKey(track.Id, position, keyProperty, keyValue, AnimationEnvironment.Workspace.Revision);
-                        });
+                            Edit(() =>
+                                                    {
+                                                        if (AnimationEnvironment.Time < track.Start || AnimationEnvironment.Time > track.Start + track.Duration)
+                                                        {
+                                                            throw new InvalidOperationException(L.Tr("请选择首轮轨道范围内的时间。"));
+                                                        }
+                                                        double position = track.Duration == 0 ? 1 : (AnimationEnvironment.Time - track.Start) / track.Duration;
+                                                        AnimationEnvironment.Workspace.SetKey(track.Id, position, keyProperty, keyValue, AnimationEnvironment.Workspace.Revision);
+                                                    });
+                        }
                     }
                 }
                 else
@@ -351,10 +479,23 @@ namespace URUI.Authoring.Animation
                     string seedText = EditorGUILayout.DelayedTextField(L.Tr("随机种子"), track.Seed.ToString(CultureInfo.InvariantCulture));
                     long seed = long.TryParse(seedText, NumberStyles.None, CultureInfo.InvariantCulture, out long parsed) ? parsed : 0;
                     if (EditorGUI.EndChangeCheck())
-                        Edit(() => AnimationEnvironment.Workspace.SetTrack(track.Id, t => { if (seed < 1 || seed > uint.MaxValue) throw new InvalidOperationException(L.Tr("种子必须为非零 uint。")); t.Source = source; t.Speed = speed; t.Seed = (uint)seed; }, AnimationEnvironment.Workspace.Revision));
+                    {
+                        Edit(() => AnimationEnvironment.Workspace.SetTrack(track.Id, t =>
+                        {
+                            if (seed < 1 || seed > uint.MaxValue)
+                            {
+                                throw new InvalidOperationException(L.Tr("种子必须为非零 uint。"));
+                            }
+                            t.Source = source;
+                            t.Speed = speed;
+                            t.Seed = (uint)seed;
+                        }, AnimationEnvironment.Workspace.Revision));
+                    }
                 }
                 if (GUILayout.Button(L.Tr("移除轨道")))
+                {
                     Edit(() => AnimationEnvironment.Workspace.RemoveTrack(track.Id, AnimationEnvironment.Workspace.Revision));
+                }
             }
         }
         void ShowPropertyMenu(SequenceTrack track)
@@ -366,12 +507,16 @@ namespace URUI.Authoring.Animation
                 menu.AddItem(new GUIContent(L.Tr("界面/") + PropertyWidgets.Label(property)), keyProperty == property, () => SelectProperty(property, track));
             }
             foreach (var extension in AuthoringEnvironment.Extensions)
+            {
                 foreach (var item in extension.Properties)
+                {
                     if (item.Name.StartsWith("style.", StringComparison.Ordinal))
                     {
                         string property = item.Name.Substring(6);
                         menu.AddItem(new GUIContent(L.Tr("特效/") + PropertyWidgets.Label(property)), keyProperty == property, () => SelectProperty(property, track));
                     }
+                }
+            }
             menu.ShowAsContext();
         }
         void SelectProperty(string property, SequenceTrack track)
@@ -389,8 +534,14 @@ namespace URUI.Authoring.Animation
         void TransformToCurrent(SequenceDefinition definition, bool copy)
         {
             if (selected.Count == 0)
+            {
                 return;
-            double first = selected.Min(k => { var track = definition.Tracks.First(t => t.Id == k.Track); return track.Start + k.Position * track.Duration; });
+            }
+            double first = selected.Min(k =>
+            {
+                var track = definition.Tracks.First(t => t.Id == k.Track);
+                return track.Start + k.Position * track.Duration;
+            });
             double delta = AnimationEnvironment.Time - first;
             Edit(() => AnimationEnvironment.Workspace.TransformKeys(selected, delta, copy, false, AnimationEnvironment.Workspace.Revision));
             selected.Clear();

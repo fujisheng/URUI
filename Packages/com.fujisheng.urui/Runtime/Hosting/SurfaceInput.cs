@@ -11,7 +11,9 @@ using URUI.Documents;
 
 namespace URUI.Hosting
 {
-    /// <summary>主线程同步输入适配器。默认轮询旧 Input Manager，可由外部输入系统替代。</summary>
+    /// <summary>
+    /// 主线程同步输入适配器。默认轮询旧 Input Manager，可由外部输入系统替代。
+    /// </summary>
     public sealed class SurfaceInput
     {
         readonly Surface surface;
@@ -25,15 +27,26 @@ namespace URUI.Hosting
 
         // Shared chrome must also observe presses on empty Surface space or another document.
         internal event Action<Vector2> PointerPressed;
-        internal SurfaceInput(Surface surface) { this.surface = surface; }
-        /// <summary>是否使用 Unity 旧输入后端。关闭后仍可显式发送输入。</summary>
-        public bool UseUnityInput { get; set; } = true;
+        internal SurfaceInput(Surface surface)
+        {
+            this.surface = surface;
+        }
+        /// <summary>
+        /// 是否使用 Unity 旧输入后端。关闭后仍可显式发送输入。
+        /// </summary>
+        public bool UseUnityInput
+        {
+            get;
+            set;
+        } = true;
 
         void RequireReady(bool allowCancellation = false)
         {
             surface.CheckThread();
             if (surface.IsEffectCallback || surface.IsBusy && !allowCancellation)
+            {
                 throw new InvalidOperationException("不能在 Surface 同步回调或加载事务中重新分发输入。");
+            }
             if (!surface.HasLoadedDocuments)
             {
                 throw new InvalidOperationException("请先加载文档。");
@@ -47,7 +60,9 @@ namespace URUI.Hosting
                 throw new InvalidOperationException("URUI 输入被拒绝：" + status);
             }
         }
-        /// <summary>发送文档坐标指针输入；触摸编号必须非负，且在接触期间保持稳定。</summary>
+        /// <summary>
+        /// 发送文档坐标指针输入；触摸编号必须非负，且在接触期间保持稳定。
+        /// </summary>
         public void SendPointer(PointerPhase phase, Vector2 position, int pointerId = 0, bool isTouch = false,
             int button = 0, int pressedButtons = 0, Vector2 delta = default, InputModifiers modifiers = InputModifiers.None)
         {
@@ -59,17 +74,29 @@ namespace URUI.Hosting
 
             Complete(NativeMethods.urui_pointer_event(pointerId, isTouch ? 1 : 0, (int)phase, position.x, position.y,
                             button, pressedButtons, delta.x, delta.y, (int)modifiers));
-            if (phase == PointerPhase.Down) PointerPressed?.Invoke(position);
+            if (phase == PointerPhase.Down)
+            {
+                PointerPressed?.Invoke(position);
+            }
         }
-        /// <summary>发送键盘事件；文本字符使用 SendText，修饰键随本次事件提供。</summary>
+        /// <summary>
+        /// 发送键盘事件；文本字符使用 SendText，修饰键随本次事件提供。
+        /// </summary>
         public void SendKey(KeyCode key, bool pressed, InputModifiers modifiers = InputModifiers.None)
         {
             RequireReady();
             if (key == KeyCode.Tab && pressed)
             {
-                if (!document) return;
+                if (!document)
+                {
+                    return;
+                }
                 var root = document.DocumentElement;
-                var evt = new KeyDownEvent { KeyCode = key, Modifiers = modifiers };
+                var evt = new KeyDownEvent
+                {
+                    KeyCode = key,
+                    Modifiers = modifiers
+                };
                 document.DispatchEvent(document.FocusedElement ?? root, evt);
                 surface.FinishNativeCall();
                 if (root.IsValid && !evt.IsDefaultPrevented)
@@ -121,7 +148,9 @@ namespace URUI.Hosting
                 }
             }
         }
-        /// <summary>插入已经提交的文本，原生层按 Unicode 字符更新选区和光标。</summary>
+        /// <summary>
+        /// 插入已经提交的文本，原生层按 Unicode 字符更新选区和光标。
+        /// </summary>
         public void SendText(string text)
         {
             RequireReady();
@@ -133,7 +162,9 @@ namespace URUI.Hosting
 
             Complete(NativeMethods.urui_text_input(text));
         }
-        /// <summary>更新输入法组合串，预览不产生控件值变化通知。</summary>
+        /// <summary>
+        /// 更新输入法组合串，预览不产生控件值变化通知。
+        /// </summary>
         public void SendComposition(string text)
         {
             RequireReady();
@@ -145,7 +176,9 @@ namespace URUI.Hosting
 
             Complete(NativeMethods.urui_text_composition(text, 0));
         }
-        /// <summary>提交输入法组合串并产生一次值变化通知。</summary>
+        /// <summary>
+        /// 提交输入法组合串并产生一次值变化通知。
+        /// </summary>
         public void CommitComposition(string text)
         {
             RequireReady();
@@ -157,13 +190,17 @@ namespace URUI.Hosting
 
             Complete(NativeMethods.urui_text_composition(text, 1));
         }
-        /// <summary>取消组合串，恢复原先的已提交内容和选区。</summary>
+        /// <summary>
+        /// 取消组合串，恢复原先的已提交内容和选区。
+        /// </summary>
         public void CancelComposition()
         {
             RequireReady(true);
             Complete(NativeMethods.urui_text_composition("", 2));
         }
-        /// <summary>取消全部按下/捕获状态并释放焦点；应用失焦时自动调用。</summary>
+        /// <summary>
+        /// 取消全部按下/捕获状态并释放焦点；应用失焦时自动调用。
+        /// </summary>
         public void Reset()
         {
             RequireReady();
@@ -177,12 +214,20 @@ namespace URUI.Hosting
             Complete(NativeMethods.urui_input_reset());
         }
 
-        /// <summary>取消指定子树持有的指针交互；隐藏或移除交互区域前可调用。</summary>
+        /// <summary>
+        /// 取消指定子树持有的指针交互；隐藏或移除交互区域前可调用。
+        /// </summary>
         public void CancelPointers(Element owner)
         {
-            if (owner == null) { throw new ArgumentNullException(nameof(owner)); }
+            if (owner == null)
+            {
+                throw new ArgumentNullException(nameof(owner));
+            }
             surface.CheckThread();
-            if (!ReferenceEquals(owner.Document.Surface, surface)) { throw new ArgumentException("Pointer owner belongs to another document.", nameof(owner)); }
+            if (!ReferenceEquals(owner.Document.Surface, surface))
+            {
+                throw new ArgumentException("Pointer owner belongs to another document.", nameof(owner));
+            }
             if (owner.Document.Defer(owner.DeferredPointerCancellation, false))
             {
                 return;
@@ -196,50 +241,82 @@ namespace URUI.Hosting
 
         internal void OnUnload()
         {
-            clipboardFocus=null;clipboardVersion=0;
+            clipboardFocus = null;
+            clipboardVersion = 0;
             composition = "";
             repeating.Clear();
         }
 
         ulong UnityClipboardVersion()
         {
-            var version=NativeMethods.urui_clipboard_version();
-            if(version==0)throw new InvalidOperationException("剪贴板所属上下文已失效。");
+            var version = NativeMethods.urui_clipboard_version();
+            if (version == 0)
+            {
+                throw new InvalidOperationException("剪贴板所属上下文已失效。");
+            }
             return version;
         }
         void ImportUnityClipboard()
         {
-            var result=NativeMethods.urui_clipboard_write(GUIUtility.systemCopyBuffer??"");
-            if(result!=1)throw new InvalidOperationException("系统剪贴板同步失败。");
+            var result = NativeMethods.urui_clipboard_write(GUIUtility.systemCopyBuffer ?? "");
+            if (result != 1)
+            {
+                throw new InvalidOperationException("系统剪贴板同步失败。");
+            }
         }
         internal void SyncUnityClipboardFocus()
         {
             surface.CheckThread();
-            if(clipboardVersion==0)clipboardVersion=UnityClipboardVersion();
-            var focus=document?.FocusedElement;
-            if(ReferenceEquals(focus,clipboardFocus))return;
-            FlushUnityClipboard();clipboardFocus=focus;
-            if(focus is ITextInputControl)ImportUnityClipboard();
+            if (clipboardVersion == 0)
+            {
+                clipboardVersion = UnityClipboardVersion();
+            }
+            var focus = document?.FocusedElement;
+            if (ReferenceEquals(focus, clipboardFocus))
+            {
+                return;
+            }
+            FlushUnityClipboard();
+            clipboardFocus = focus;
+            if (focus is ITextInputControl)
+            {
+                ImportUnityClipboard();
+            }
         }
         internal void FlushUnityClipboard()
         {
-            surface.CheckThread();var version=UnityClipboardVersion();
-            if(clipboardVersion==0){clipboardVersion=version;return;}
-            if(version==clipboardVersion)return;
-            GUIUtility.systemCopyBuffer=NativeMethods.ReadClipboard()??"";clipboardVersion=version;
+            surface.CheckThread();
+            var version = UnityClipboardVersion();
+            if (clipboardVersion == 0)
+            {
+                clipboardVersion = version;
+                return;
+            }
+            if (version == clipboardVersion)
+            {
+                return;
+            }
+            GUIUtility.systemCopyBuffer = NativeMethods.ReadClipboard() ?? "";
+            clipboardVersion = version;
         }
-        internal void SendUnityKey(KeyCode key,bool pressed,InputModifiers modifiers)
+        internal void SendUnityKey(KeyCode key, bool pressed, InputModifiers modifiers)
         {
             SyncUnityClipboardFocus();
-            if(pressed&&key==KeyCode.V&&(modifiers&(InputModifiers.Control|InputModifiers.Command))!=0)ImportUnityClipboard();
-            SendKey(key,pressed,modifiers);
-            if(surface.HasLoadedDocuments)FlushUnityClipboard();
+            if (pressed && key == KeyCode.V && (modifiers & (InputModifiers.Control | InputModifiers.Command)) != 0)
+            {
+                ImportUnityClipboard();
+            }
+            SendKey(key, pressed, modifiers);
+            if (surface.HasLoadedDocuments)
+            {
+                FlushUnityClipboard();
+            }
         }
 
-        internal void PollUnityPointer(Vector2 position,int pointer,bool touch,int buttons,InputModifiers modifiers)
+        internal void PollUnityPointer(Vector2 position, int pointer, bool touch, int buttons, InputModifiers modifiers)
         {
             RequireReady();
-            Complete(NativeMethods.urui_pointer_poll(pointer,touch?1:0,position.x,position.y,buttons,(int)modifiers));
+            Complete(NativeMethods.urui_pointer_poll(pointer, touch ? 1 : 0, position.x, position.y, buttons, (int)modifiers));
         }
 
         internal void PollUnity()
@@ -270,8 +347,14 @@ namespace URUI.Hosting
                     var phase = touch.phase == TouchPhase.Began ? PointerPhase.Down
                         : touch.phase == TouchPhase.Ended ? PointerPhase.Up
                         : touch.phase == TouchPhase.Canceled ? PointerPhase.Cancel : PointerPhase.Move;
-                    if(phase==PointerPhase.Move)PollUnityPointer(Position(touch.position),checked(touch.fingerId+1),true,0,modifiers);
-                    else SendPointer(phase, Position(touch.position), checked(touch.fingerId + 1), true, modifiers: modifiers);
+                    if (phase == PointerPhase.Move)
+                    {
+                        PollUnityPointer(Position(touch.position), checked(touch.fingerId + 1), true, 0, modifiers);
+                    }
+                    else
+                    {
+                        SendPointer(phase, Position(touch.position), checked(touch.fingerId + 1), true, modifiers: modifiers);
+                    }
                     if (!surface.HasLoadedDocuments)
                     {
                         return;
@@ -290,7 +373,7 @@ namespace URUI.Hosting
                     }
                 }
 
-                PollUnityPointer(point,0,false,buttons,modifiers);
+                PollUnityPointer(point, 0, false, buttons, modifiers);
                 if (!surface.HasLoadedDocuments)
                 {
                     return;
@@ -363,7 +446,11 @@ namespace URUI.Hosting
             committed = committed.Replace("\b", "").Replace("\r", "").Replace("\n", "");
             if (composition.Length > 0 && nextComposition.Length == 0)
             {
-                if (committed.Length > 0) { CommitComposition(committed); committed = ""; }
+                if (committed.Length > 0)
+                {
+                    CommitComposition(committed);
+                    committed = "";
+                }
                 else
                 {
                     CancelComposition();

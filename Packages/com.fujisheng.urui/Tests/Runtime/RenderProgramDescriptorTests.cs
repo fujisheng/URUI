@@ -10,7 +10,7 @@ namespace URUI.Tests
         static RenderProgramDescriptor Program(RenderColorSpace computation, RenderColorSpace output, RenderBlendDomain blend)
             => new RenderProgramDescriptor(RenderTextureEncoding.TextureDeclared, computation, output,
                 RenderAlpha.Premultiplied, blend, BlendMode.One, BlendMode.OneMinusSrcAlpha,
-                RenderTargetCapability.Hdr, RenderSampling.BilinearClamp, RenderGeometry.Local, RenderTimeInput.UiClock);
+                RenderTargetCapability.Hdr, RenderSampling.BilinearClamp, RenderGeometry.Local, RenderTimeInput.UIClock);
 
         [Test]
         public void RasterSharingRequiresAllColorAndBlendStagesToMatch()
@@ -29,7 +29,8 @@ namespace URUI.Tests
             Assert.Throws<ArgumentOutOfRangeException>(() => Program((RenderColorSpace)99, RenderColorSpace.Linear, RenderBlendDomain.Linear));
             Assert.Throws<ArgumentOutOfRangeException>(() => Program(RenderColorSpace.Unknown, RenderColorSpace.Linear, RenderBlendDomain.Linear));
             var program = Program(RenderColorSpace.Active, RenderColorSpace.Active, RenderBlendDomain.Active);
-            Assert.That(program.IsKnown, Is.True); Assert.That(program.Geometry, Is.EqualTo(RenderGeometry.Local));
+            Assert.That(program.IsKnown, Is.True);
+            Assert.That(program.Geometry, Is.EqualTo(RenderGeometry.Local));
         }
     }
 }

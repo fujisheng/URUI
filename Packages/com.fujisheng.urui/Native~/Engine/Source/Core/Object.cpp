@@ -1,7 +1,8 @@
 #include "../../Include/URUI/Core/Object.h"
 
-namespace URUI {
+namespace URUI
+{
 
-URUI_RTTI_Define(Object)
+    URUI_RTTI_Define(Object)
 
 }

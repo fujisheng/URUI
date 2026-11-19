@@ -35,7 +35,10 @@ namespace URUI.Effect.Tests
                     Assert.That(typeof(URUI.Elements.Element).IsAssignableFrom(field.FieldType), Is.False, field.Name);
                 }
             }
-            finally { UnityEngine.Object.DestroyImmediate(preset); }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(preset);
+            }
         }
     }
 }

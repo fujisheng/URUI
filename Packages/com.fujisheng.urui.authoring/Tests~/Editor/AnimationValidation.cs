@@ -14,7 +14,9 @@ namespace URUI.Authoring.Tests
         {
             assertions++;
             if (!value)
+            {
                 throw new Exception(message);
+            }
         }
         static void Near(float expected, float actual, string message) => Check(Mathf.Abs(expected - actual) < .003f, message + ": " + expected + " != " + actual);
         static void Rejected(Action action)
@@ -24,13 +26,22 @@ namespace URUI.Authoring.Tests
             {
                 action();
             }
-            catch (InvalidOperationException) { return; }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
             throw new Exception("Expected rejection");
         }
         public static void Run()
         {
             var errors = new System.Collections.Generic.List<string>();
-            Application.LogCallback capture = (message, stack, type) => { if (type == LogType.Error || type == LogType.Exception) errors.Add(message); };
+            Application.LogCallback capture = (message, stack, type) =>
+            {
+                if (type == LogType.Error || type == LogType.Exception)
+                {
+                    errors.Add(message);
+                }
+            };
             Application.logMessageReceived += capture;
             try
             {
@@ -39,9 +50,26 @@ namespace URUI.Authoring.Tests
                     host.Document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}#panel{position:absolute;left:10px;top:20px;width:100px;height:50px;background-color:red;opacity:.25;}@keyframes enter{from{opacity:0;transform:translateX(0px);}to{opacity:1;transform:translateX(100px);}}@keyframes fade{from{opacity:1;}to{opacity:0;}}</style></head><body><div id='panel'></div></body></html>", "ui/animation.html");
                     host.Render();
                     var panel = host.Document.Q("panel");
-                    var definition = new SequenceDefinition { Name = "弹窗", Duration = 2 };
-                    definition.Tracks.Add(new SequenceTrack { Id = "enter", Target = "panel", Keyframes = "enter", Duration = 1 });
-                    definition.Tracks.Add(new SequenceTrack { Id = "exit", Target = "panel", Keyframes = "fade", Start = 1, Duration = 1 });
+                    var definition = new SequenceDefinition
+                    {
+                        Name = "弹窗",
+                        Duration = 2
+                    };
+                    definition.Tracks.Add(new SequenceTrack
+                    {
+                        Id = "enter",
+                        Target = "panel",
+                        Keyframes = "enter",
+                        Duration = 1
+                    });
+                    definition.Tracks.Add(new SequenceTrack
+                    {
+                        Id = "exit",
+                        Target = "panel",
+                        Keyframes = "fade",
+                        Start = 1,
+                        Duration = 1
+                    });
                     using (var player = new SequencePlayer(host.Document.Body, definition))
                     {
                         foreach (float time in new[] { .8f, .2f, .8f })
@@ -101,7 +129,13 @@ namespace URUI.Authoring.Tests
                     host.Document.Body.Add(second);
                     host.Render();
                     var ambiguous = new SequenceDefinition { Duration = 1 };
-                    ambiguous.Tracks.Add(new SequenceTrack { Id = "a", Target = "a", Keyframes = "enter", Duration = 1 });
+                    ambiguous.Tracks.Add(new SequenceTrack
+                    {
+                        Id = "a",
+                        Target = "a",
+                        Keyframes = "enter",
+                        Duration = 1
+                    });
                     Rejected(() => { using (var invalid = new SequencePlayer(host.Document.Body, ambiguous)) { } });
                 }
                 Check(errors.Count == 0, "Unexpected Error/Exception: " + string.Join(";", errors));
@@ -110,8 +144,17 @@ namespace URUI.Authoring.Tests
                 Debug.Log("URUI Animation PASS " + assertions);
                 EditorApplication.Exit(0);
             }
-            catch (Exception error) { Directory.CreateDirectory("Evidence"); File.WriteAllText("Evidence/animation-failure.txt", error.ToString()); Debug.LogException(error); EditorApplication.Exit(1); }
-            finally { Application.logMessageReceived -= capture; }
+            catch (Exception error)
+            {
+                Directory.CreateDirectory("Evidence");
+                File.WriteAllText("Evidence/animation-failure.txt", error.ToString());
+                Debug.LogException(error);
+                EditorApplication.Exit(1);
+            }
+            finally
+            {
+                Application.logMessageReceived -= capture;
+            }
         }
     }
 }

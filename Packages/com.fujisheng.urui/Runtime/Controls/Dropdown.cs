@@ -5,35 +5,58 @@ using URUI.Internal.Interop;
 
 namespace URUI.Controls
 {
-    /// <summary>原生 select 下拉控件，Value 对应 option 的 value 属性。</summary>
+    /// <summary>
+    /// 原生 select 下拉控件，Value 对应 option 的 value 属性。
+    /// </summary>
     public class Dropdown : BaseField<string>
     {
         internal event Action PresentationChanged;
-        /// <summary>同步普通、静默和原生选择写入后的作者皮肤。</summary>
+        /// <summary>
+        /// 同步普通、静默和原生选择写入后的作者皮肤。
+        /// </summary>
         protected override void OnValueSynchronized()
         {
             base.OnValueSynchronized();
             PresentationChanged?.Invoke();
         }
-        /// <summary>启用状态改变时同步独立的作者触发按钮。</summary>
+        /// <summary>
+        /// 启用状态改变时同步独立的作者触发按钮。
+        /// </summary>
         protected override void OnAttributeChanged(string name)
         {
             base.OnAttributeChanged(name);
-            if (name == "disabled") PresentationChanged?.Invoke();
+            if (name == "disabled")
+            {
+                PresentationChanged?.Invoke();
+            }
         }
-        /// <summary>失效节点不保留作者呈现订阅。</summary>
+        /// <summary>
+        /// 失效节点不保留作者呈现订阅。
+        /// </summary>
         protected override void OnInvalidated()
         {
             PresentationChanged = null;
             base.OnInvalidated();
         }
-        /// <summary>文档工厂构造入口。</summary>
+        /// <summary>
+        /// 文档工厂构造入口。
+        /// </summary>
         protected internal Dropdown(ElementContext context) : base(context) { }
-        /// <summary>读取原生选择值。</summary>
+        /// <summary>
+        /// 读取原生选择值。
+        /// </summary>
         protected override string ParseValue(string value) => value;
-        /// <summary>保留选项值字符串。</summary>
-        protected override string FormatValue(string value) { RequireText(value, nameof(value)); return value; }
-        /// <summary>选项值的有序快照；设置时文本和值相同，现有 option 节点被销毁。</summary>
+        /// <summary>
+        /// 保留选项值字符串。
+        /// </summary>
+        protected override string FormatValue(string value)
+        {
+            RequireText(value, nameof(value));
+            return value;
+        }
+        /// <summary>
+        /// 选项值的有序快照；设置时文本和值相同，现有 option 节点被销毁。
+        /// </summary>
         public IReadOnlyList<string> Choices
         {
             get
@@ -86,7 +109,9 @@ namespace URUI.Controls
                                 });
             }
         }
-        /// <summary>当前选项索引，没有匹配时为 -1。</summary>
+        /// <summary>
+        /// 当前选项索引，没有匹配时为 -1。
+        /// </summary>
         public int SelectedIndex
         {
             get

@@ -10,16 +10,31 @@ namespace URUI.Effect.Tests
     {
         sealed class CountingFactory : global::URUI.Rendering.Effects.IEffectFactory
         {
-            internal int Created, Disposed;
+            internal int Created;
+            internal int Disposed;
             public global::URUI.Rendering.Effects.IElementEffect Create(global::URUI.Rendering.Effects.EffectContext context)
-            { Created++; return new Instance(this); }
+            {
+                Created++;
+                return new Instance(this);
+            }
             sealed class Instance : global::URUI.Rendering.Effects.IElementEffect
             {
                 readonly CountingFactory owner;
-                internal Instance(CountingFactory owner) { this.owner = owner; }
-                public void Prepare(global::URUI.Rendering.Effects.EffectFrame frame) { }
-                public void Record(global::URUI.Rendering.Effects.EffectRenderContext context) { context.DrawOriginal(); }
-                public void Dispose() { owner.Disposed++; }
+                internal Instance(CountingFactory owner)
+                {
+                    this.owner = owner;
+                }
+                public void Prepare(global::URUI.Rendering.Effects.EffectFrame frame)
+                {
+                }
+                public void Record(global::URUI.Rendering.Effects.EffectRenderContext context)
+                {
+                    context.DrawOriginal();
+                }
+                public void Dispose()
+                {
+                    owner.Disposed++;
+                }
             }
         }
 
@@ -46,7 +61,10 @@ namespace URUI.Effect.Tests
             }
             fixture.Document.Unload();
             for (var i = 0; i < 120 && factory.Disposed != factory.Created; i++)
-            { global::URUI.Resources.GpuRetirement.Collect(); yield return null; }
+            {
+                global::URUI.Resources.GpuRetirement.Collect();
+                yield return null;
+            }
             Assert.That(factory.Disposed, Is.EqualTo(factory.Created));
         }
 
@@ -59,8 +77,12 @@ namespace URUI.Effect.Tests
             try
             {
                 var pixels = new Color[64];
-                for (var i = 0; i < pixels.Length; i++) { pixels[i] = Color.green; }
-                border.SetPixels(pixels); border.Apply();
+                for (var i = 0; i < pixels.Length; i++)
+                {
+                    pixels[i] = Color.green;
+                }
+                border.SetPixels(pixels);
+                border.Apply();
                 fixture.Document.Images = new[] { new global::URUI.Resources.ImageAsset("input.png", fixture.Source),
                     new global::URUI.Resources.ImageAsset("border.png", border) };
                 material.SetVector("_BandColor", Vector4.one);
@@ -75,7 +97,9 @@ namespace URUI.Effect.Tests
                 for (var i = 0; i < actual.Length; i++)
                 {
                     for (var channel = 0; channel < 4; channel++)
-                    { maximum = Mathf.Max(maximum, Mathf.Abs(expected[i][channel] - actual[i][channel])); }
+                    {
+                        maximum = Mathf.Max(maximum, Mathf.Abs(expected[i][channel] - actual[i][channel]));
+                    }
                 }
                 // 调色shader和普通图片路径在Linear色彩转换时有小于2/255的舍入差。
                 Assert.That(maximum, Is.LessThan(2f / 255), "内容图和边框必须保留各自的纹理及几何输入。");
@@ -83,7 +107,11 @@ namespace URUI.Effect.Tests
                 fixture.Render();
                 fixture.Document.Unload();
             }
-            finally { Object.DestroyImmediate(material); Object.DestroyImmediate(border); }
+            finally
+            {
+                Object.DestroyImmediate(material);
+                Object.DestroyImmediate(border);
+            }
             yield return null;
         }
 
@@ -92,8 +120,12 @@ namespace URUI.Effect.Tests
         {
             using var fixture = new EffectRenderFixture();
             var pixels = new Color[fixture.Source.width * fixture.Source.height];
-            for (var i = 0; i < pixels.Length; i++) { pixels[i] = Color.white; }
-            fixture.Source.SetPixels(pixels); fixture.Source.Apply();
+            for (var i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Color.white;
+            }
+            fixture.Source.SetPixels(pixels);
+            fixture.Source.Apply();
             var material = new Material(UnityEngine.Resources.Load<Shader>("URUI.Effect/TextureFilter"));
             try
             {
@@ -121,10 +153,16 @@ namespace URUI.Effect.Tests
                 fixture.Document.Q("subject").Style.Set("--urui-image-effect", "none");
                 var plain = fixture.Render();
                 var difference = 0f;
-                for (var i = 0; i < plain.Length; i++) { difference = Mathf.Max(difference, Mathf.Abs(plain[i].r - actual[i].r)); }
+                for (var i = 0; i < plain.Length; i++)
+                {
+                    difference = Mathf.Max(difference, Mathf.Abs(plain[i].r - actual[i].r));
+                }
                 Assert.That(difference, Is.GreaterThan(.1f), "九宫格实际绘制必须应用效果。");
             }
-            finally { Object.DestroyImmediate(material); }
+            finally
+            {
+                Object.DestroyImmediate(material);
+            }
             yield return null;
         }
     }

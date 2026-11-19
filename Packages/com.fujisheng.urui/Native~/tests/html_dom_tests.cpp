@@ -11,17 +11,29 @@
 #define URUI_HAS_HTML_BUILDER 1
 #endif
 
-class FailingInstancer final : public URUI::ElementInstancer {
+class FailingInstancer final : public URUI::ElementInstancer
+{
 public:
-    URUI::ElementPtr InstanceElement(URUI::Element*, const URUI::String&, const URUI::ElementAttributes&) override { return nullptr; }
-    void ReleaseElement(URUI::Element*) override { std::abort(); }
+    URUI::ElementPtr InstanceElement(URUI::Element*, const URUI::String&, const URUI::ElementAttributes&) override
+    {
+        return nullptr;
+    }
+    void ReleaseElement(URUI::Element*) override
+    {
+        std::abort();
+    }
 };
 
-class DataAttributeLog final : public URUI::SystemInterface {
+class DataAttributeLog final : public URUI::SystemInterface
+{
 public:
     int binding_errors = 0;
-    bool LogMessage(URUI::Log::Type, const URUI::String& message) override {
-        if (message.find("data model") != URUI::String::npos) ++binding_errors;
+    bool LogMessage(URUI::Log::Type, const URUI::String& message) override
+    {
+        if (message.find("data model") != URUI::String::npos)
+        {
+            ++binding_errors;
+        }
         return true;
     }
 };
@@ -36,12 +48,14 @@ int main()
     URUI::SetSystemInterface(&data_log);
     auto* data_document = context->LoadDocumentFromMemory(
         "<!doctype html><html><head></head><body data-model='application-data'>"
-        "<span id='data' data-value='plain' data-for='literal'>{{literal}}</span></body></html>", "ui/data.html");
+        "<span id='data' data-value='plain' data-for='literal'>{{literal}}</span></body></html>",
+        "ui/data.html");
     URUI::SetSystemInterface(previous_system);
     assert(data_document && data_log.binding_errors == 0);
     assert(data_document->GetElementById("data")->GetInnerHTML() == "{{literal}}");
     assert(data_document->GetElementById("data")->GetAttribute<URUI::String>("data-value", "") == "plain");
-    data_document->Close(); context->Update();
+    data_document->Close();
+    context->Update();
     auto* document = context->LoadDocumentFromMemory(
         "<!doctype html><html id='root' lang='zh'><head><style>:root { font-size:20px; } body {font-size:10px;}"
         "#rem {width:1rem;height:1rem;}</style></head><body id='body' class='page'><div id='content'>"
@@ -51,7 +65,8 @@ int main()
         "<input id='upper-checkbox' type='CHECKBOX' checked='false'><input id='upper-range' type='RaNgE'>"
         "<div id='hidden' hidden='false'></div><div id='override-hidden' hidden style='display:block;'></div>"
         "<template id='item'><img id='inert' src='deferred.png'><span>A &amp; B</span></template>"
-        "<!--kept--></body></html>", "ui/dom.html");
+        "<!--kept--></body></html>",
+        "ui/dom.html");
     assert(document && document->GetTagName() == "html" && document->GetId() == "root");
     auto* body = document->GetElementById("body");
     assert(body && body != document && body->GetTagName() == "body" && body->IsClassSet("page"));
@@ -60,10 +75,12 @@ int main()
     assert(document->GetElementById("upper-range")->IsClassSet("range"));
     assert(!body->Matches("#urui body"));
     assert(document->Matches(":first-child:last-child:only-child"));
-    document->Show(); context->Update();
+    document->Show();
+    context->Update();
     assert(document->GetElementById("hidden")->GetComputedValues().display() == URUI::Style::Display::None);
     assert(document->GetElementById("override-hidden")->GetComputedValues().display() == URUI::Style::Display::Block);
-    document->GetElementById("hidden")->RemoveAttribute("hidden"); context->Update();
+    document->GetElementById("hidden")->RemoveAttribute("hidden");
+    context->Update();
     assert(document->GetElementById("hidden")->GetComputedValues().display() == URUI::Style::Display::Block);
     assert(std::abs(document->GetComputedValues().font_size() - 20.f) < .001f);
     assert(std::abs(body->GetComputedValues().font_size() - 10.f) < .001f);
@@ -80,16 +97,26 @@ int main()
     assert(select->GetNumChildren() == 2);
     assert(select->GetOption(0)->GetParentNode() == select);
     assert(document->QuerySelector("#select > option:nth-child(2)") == select->GetOption(1));
-    select->ShowSelectBox(); context->Update();
+    select->ShowSelectBox();
+    context->Update();
     URUI::Element* popup = nullptr;
     for (int i = select->GetNumChildren(); i < select->GetNumChildren(true); ++i)
-        if (select->GetChild(i)->GetNumChildren() == 2 && select->GetChild(i)->GetFirstChild()->GetTagName() == "option") popup = select->GetChild(i);
+    {
+        if (select->GetChild(i)->GetNumChildren() == 2 &&
+            select->GetChild(i)->GetFirstChild()->GetTagName() == "option")
+        {
+            popup = select->GetChild(i);
+        }
+    }
     assert(popup && popup->GetNumChildren() == 2 && popup->GetFirstChild() != select->GetOption(0));
     assert(popup->GetChild(1)->GetComputedValues().display() == URUI::Style::Display::None);
-    assert(select->GetNumChildren() == 2 && document->QuerySelector("#select > option:first-child") == select->GetOption(0));
+    assert(select->GetNumChildren() == 2 &&
+           document->QuerySelector("#select > option:first-child") == select->GetOption(0));
     popup->GetFirstChild()->Click();
     assert(select->GetValue() == "a" && select->GetSelection() == 0 && !select->IsSelectBoxVisible());
-    select->ShowSelectBox(); select->SetSelection(1); select->CancelSelectBox();
+    select->ShowSelectBox();
+    select->SetSelection(1);
+    select->CancelSelectBox();
     assert(select->GetValue() == "a" && !select->IsSelectBoxVisible());
     assert(select->GetInnerHTML().find("<option") != URUI::String::npos);
     auto selectClone = select->Clone();
@@ -111,7 +138,8 @@ int main()
     assert(instances.front()->GetId() == "inert" && !instances.front()->GetParentNode());
     assert(instances.back()->GetInnerHTML() == "A &amp; B");
     auto templateClone = item->Clone();
-    assert(templateClone && templateClone->GetNumChildren() == 0 && templateClone->GetInnerHTML() == static_cast<URUI::Element*>(item)->GetInnerHTML());
+    assert(templateClone && templateClone->GetNumChildren() == 0 &&
+           templateClone->GetInnerHTML() == static_cast<URUI::Element*>(item)->GetInnerHTML());
     const auto before = content->GetInnerHTML();
     auto* originalChild = content->GetFirstChild();
     content->SetInnerHTML("<div/>");
@@ -139,11 +167,13 @@ int main()
     instances.clear();
     templateClone.reset();
 #endif
-    const auto owner = LoadTestDocument("<!doctype html><html><head></head><body><div id='kept'>before</div></body></html>", "ui/transaction.html");
+    const auto owner = LoadTestDocument(
+        "<!doctype html><html><head></head><body><div id='kept'>before</div></body></html>", "ui/transaction.html");
     const auto root = urui_document_root(owner);
     const auto kept = urui_element_find(owner, root, "kept", nullptr);
     assert(kept != 0 && kept != UINT64_MAX);
-    assert(urui_document_load_html(owner, "<!doctype html><html><head></head><body><div/></body></html>", "ui/invalid.html") == -9);
+    assert(urui_document_load_html(owner, "<!doctype html><html><head></head><body><div/></body></html>",
+                                   "ui/invalid.html") == -9);
     assert(urui_document_root(owner) == root && urui_element_find(owner, root, "kept", nullptr) == kept);
     assert(urui_element_write(owner, kept, 3, nullptr, "<div/>") == -2);
     assert(urui_element_set_inner_html(owner, kept, "<p>broken", "ui/fragment.html") == -9);

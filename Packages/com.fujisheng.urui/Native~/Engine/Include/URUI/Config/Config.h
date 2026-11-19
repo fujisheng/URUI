@@ -9,128 +9,98 @@
  */
 
 #ifdef URUI_CUSTOM_CONFIGURATION_FILE
-	#include URUI_CUSTOM_CONFIGURATION_FILE
+#include URUI_CUSTOM_CONFIGURATION_FILE
 #else
-	#include <array>
-	#include <functional>
-	#include <list>
-	#include <map>
-	#include <memory>
-	#include <queue>
-	#include <stack>
-	#include <string>
-	#include <unordered_map>
-	#include <utility>
-	#include <vector>
+#include <array>
+#include <functional>
+#include <list>
+#include <map>
+#include <memory>
+#include <queue>
+#include <stack>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
-	#ifdef URUI_NO_THIRDPARTY_CONTAINERS
-		#include <set>
-		#include <unordered_set>
-	#else
-		#include "../Core/Containers/itlib/flat_map.hpp"
-		#include "../Core/Containers/itlib/flat_set.hpp"
-		#include "../Core/Containers/robin_hood.h"
-	#endif // URUI_NO_THIRDPARTY_CONTAINERS
+#ifdef URUI_NO_THIRDPARTY_CONTAINERS
+#include <set>
+#include <unordered_set>
+#else
+#include "../Core/Containers/itlib/flat_map.hpp"
+#include "../Core/Containers/itlib/flat_set.hpp"
+#include "../Core/Containers/robin_hood.h"
+#endif // URUI_NO_THIRDPARTY_CONTAINERS
 
-namespace URUI {
-
-	// Default matrix type to be used. This alias may be set to ColumnMajorMatrix4f or RowMajorMatrix4f. This alias can not
-    // be set here because matrix types are defined after this include in Core/Types.h.
-	#ifdef URUI_MATRIX_ROW_MAJOR
-		#define URUI_MATRIX4_TYPE RowMajorMatrix4f
-	#else
-		#define URUI_MATRIX4_TYPE ColumnMajorMatrix4f
-	#endif
-
-	// A way to disable 'final' specified for URUI::Releaser class. It breaks EASTL.
-	#define URUI_RELEASER_FINAL final
-
-// Containers types.
-template <typename T>
-using Vector = std::vector<T>;
-template <typename T, size_t N = 1>
-using Array = std::array<T, N>;
-template <typename T>
-using Stack = std::stack<T>;
-template <typename T>
-using List = std::list<T>;
-template <typename T>
-using Queue = std::queue<T>;
-template <typename T1, typename T2>
-using Pair = std::pair<T1, T2>;
-template <typename Key, typename Value>
-using StableMap = std::map<Key, Value>;
-template <typename Key, typename Value>
-using StableUnorderedMap = std::unordered_map<Key, Value>;
-template <typename Key, typename Value>
-using UnorderedMultimap = std::unordered_multimap<Key, Value>;
-
-	#ifdef URUI_NO_THIRDPARTY_CONTAINERS
-template <typename Key, typename Value>
-using UnorderedMap = std::unordered_map<Key, Value>;
-template <typename Key, typename Value>
-using SmallUnorderedMap = UnorderedMap<Key, Value>;
-template <typename Key, typename Value>
-using SmallOrderedMap = StableMap<Key, Value>;
-template <typename T>
-using UnorderedSet = std::unordered_set<T>;
-template <typename T>
-using SmallUnorderedSet = std::unordered_set<T>;
-template <typename T>
-using SmallOrderedSet = std::set<T>;
-	#else
-template <typename Key, typename Value>
-using UnorderedMap = robin_hood::unordered_flat_map<Key, Value>;
-template <typename Key, typename Value>
-using SmallUnorderedMap = itlib::flat_map<Key, Value>;
-template <typename Key, typename Value>
-using SmallOrderedMap = itlib::flat_map<Key, Value>;
-template <typename T>
-using UnorderedSet = robin_hood::unordered_flat_set<T>;
-template <typename T>
-using SmallUnorderedSet = itlib::flat_set<T>;
-template <typename T>
-using SmallOrderedSet = itlib::flat_set<T>;
-	#endif // URUI_NO_THIRDPARTY_CONTAINERS
-
-// Utilities.
-template <typename T>
-using Hash = std::hash<T>;
-template <typename T>
-using Function = std::function<T>;
-template <typename Iterator>
-inline std::move_iterator<Iterator> MakeMoveIterator(Iterator it)
+namespace URUI
 {
-	return std::make_move_iterator(it);
-}
 
-// Strings.
-using String = std::string;
-using StringList = Vector<String>;
+// Default matrix type to be used. This alias may be set to ColumnMajorMatrix4f or RowMajorMatrix4f. This alias can not
+// be set here because matrix types are defined after this include in Core/Types.h.
+#ifdef URUI_MATRIX_ROW_MAJOR
+#define URUI_MATRIX4_TYPE RowMajorMatrix4f
+#else
+#define URUI_MATRIX4_TYPE ColumnMajorMatrix4f
+#endif
 
-// Smart pointer types.
-template <typename T>
-using UniquePtr = std::unique_ptr<T>;
-template <typename T>
-class Releaser;
-template <typename T>
-using UniqueReleaserPtr = std::unique_ptr<T, Releaser<T>>;
-template <typename T>
-using SharedPtr = std::shared_ptr<T>;
-template <typename T>
-using WeakPtr = std::weak_ptr<T>;
-template <typename T, typename... Args>
-inline SharedPtr<T> MakeShared(Args&&... args)
-{
-	return std::make_shared<T, Args...>(std::forward<Args>(args)...);
-}
-template <typename T, typename... Args>
-inline UniquePtr<T> MakeUnique(Args&&... args)
-{
-	return std::make_unique<T, Args...>(std::forward<Args>(args)...);
-}
+// A way to disable 'final' specified for URUI::Releaser class. It breaks EASTL.
+#define URUI_RELEASER_FINAL final
 
-} // namespace URUI
+    // Containers types.
+    template <typename T> using Vector = std::vector<T>;
+    template <typename T, size_t N = 1> using Array = std::array<T, N>;
+    template <typename T> using Stack = std::stack<T>;
+    template <typename T> using List = std::list<T>;
+    template <typename T> using Queue = std::queue<T>;
+    template <typename T1, typename T2> using Pair = std::pair<T1, T2>;
+    template <typename Key, typename Value> using StableMap = std::map<Key, Value>;
+    template <typename Key, typename Value> using StableUnorderedMap = std::unordered_map<Key, Value>;
+    template <typename Key, typename Value> using UnorderedMultimap = std::unordered_multimap<Key, Value>;
+
+#ifdef URUI_NO_THIRDPARTY_CONTAINERS
+    template <typename Key, typename Value> using UnorderedMap = std::unordered_map<Key, Value>;
+    template <typename Key, typename Value> using SmallUnorderedMap = UnorderedMap<Key, Value>;
+    template <typename Key, typename Value> using SmallOrderedMap = StableMap<Key, Value>;
+    template <typename T> using UnorderedSet = std::unordered_set<T>;
+    template <typename T> using SmallUnorderedSet = std::unordered_set<T>;
+    template <typename T> using SmallOrderedSet = std::set<T>;
+#else
+    template <typename Key, typename Value> using UnorderedMap = robin_hood::unordered_flat_map<Key, Value>;
+    template <typename Key, typename Value> using SmallUnorderedMap = itlib::flat_map<Key, Value>;
+    template <typename Key, typename Value> using SmallOrderedMap = itlib::flat_map<Key, Value>;
+    template <typename T> using UnorderedSet = robin_hood::unordered_flat_set<T>;
+    template <typename T> using SmallUnorderedSet = itlib::flat_set<T>;
+    template <typename T> using SmallOrderedSet = itlib::flat_set<T>;
+#endif // URUI_NO_THIRDPARTY_CONTAINERS
+
+    // Utilities.
+    template <typename T> using Hash = std::hash<T>;
+    template <typename T> using Function = std::function<T>;
+    template <typename Iterator> inline std::move_iterator<Iterator> MakeMoveIterator(Iterator it)
+    {
+        return std::make_move_iterator(it);
+    }
+
+    // Strings.
+    using String = std::string;
+    using StringList = Vector<String>;
+
+    // Smart pointer types.
+    template <typename T> using UniquePtr = std::unique_ptr<T>;
+    template <typename T> class Releaser;
+    template <typename T> using UniqueReleaserPtr = std::unique_ptr<T, Releaser<T>>;
+    template <typename T> using SharedPtr = std::shared_ptr<T>;
+    template <typename T> using WeakPtr = std::weak_ptr<T>;
+    template <typename T, typename... Args> inline SharedPtr<T> MakeShared(Args&&... args)
+    {
+        return std::make_shared<T, Args...>(std::forward<Args>(args)...);
+    }
+    template <typename T, typename... Args> inline UniquePtr<T> MakeUnique(Args&&... args)
+    {
+        return std::make_unique<T, Args...>(std::forward<Args>(args)...);
+    }
+
+}
 
 /***
 // The following defines should be used for inserting custom type cast operators for conversion of URUI types

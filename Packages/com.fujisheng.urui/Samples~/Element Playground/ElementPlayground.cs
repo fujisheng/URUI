@@ -8,7 +8,9 @@ using URUI.Events;
 
 namespace URUI.Samples
 {
-    /// <summary>显式调用节点 API 的小型控制器，不使用数据绑定或外部 UI 框架。</summary>
+    /// <summary>
+    /// 显式调用节点 API 的小型控制器，不使用数据绑定或外部 UI 框架。
+    /// </summary>
     [RequireComponent(typeof(Document))]
     public sealed class ElementPlayground : MonoBehaviour
     {
@@ -60,7 +62,8 @@ namespace URUI.Samples
             items = root.Q("items");
             status = root.Q("status");
             subscriptions.Add(root.Q("add").RegisterCallback<ClickEvent>(_ => AddItem()));
-            subscriptions.Add(root.Q("detach").RegisterCallback<ClickEvent>(_ => {
+            subscriptions.Add(root.Q("detach").RegisterCallback<ClickEvent>(_ =>
+            {
                 if (selected != null && selected.IsValid)
                 {
                     selected.RemoveFromHierarchy();
@@ -68,7 +71,8 @@ namespace URUI.Samples
 
                 RefreshStatus();
             }));
-            subscriptions.Add(root.Q("attach").RegisterCallback<ClickEvent>(_ => {
+            subscriptions.Add(root.Q("attach").RegisterCallback<ClickEvent>(_ =>
+            {
                 if (selected != null && selected.IsValid)
                 {
                     items.Insert(0, selected);
@@ -76,7 +80,8 @@ namespace URUI.Samples
 
                 RefreshStatus();
             }));
-            subscriptions.Add(root.Q("destroy").RegisterCallback<ClickEvent>(_ => {
+            subscriptions.Add(root.Q("destroy").RegisterCallback<ClickEvent>(_ =>
+            {
                 if (selected != null && selected.IsValid)
                 {
                     selected.Destroy();
@@ -85,7 +90,8 @@ namespace URUI.Samples
                 selected = null;
                 RefreshStatus();
             }));
-            subscriptions.Add(root.Q("clear").RegisterCallback<ClickEvent>(_ => {
+            subscriptions.Add(root.Q("clear").RegisterCallback<ClickEvent>(_ =>
+            {
                 items.Clear();
                 RefreshStatus();
             }));

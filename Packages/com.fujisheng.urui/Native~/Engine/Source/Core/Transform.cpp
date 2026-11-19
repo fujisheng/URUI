@@ -3,37 +3,42 @@
 #include "../../Include/URUI/Core/StyleSheetSpecification.h"
 #include "../../Include/URUI/Core/TransformPrimitive.h"
 
-namespace URUI {
-
-Transform::Transform() {}
-
-Transform::Transform(PrimitiveList primitives) : primitives(std::move(primitives)) {}
-
-Property Transform::MakeProperty(PrimitiveList primitives)
+namespace URUI
 {
-	Property p(MakeShared<Transform>(std::move(primitives)), Unit::TRANSFORM);
-	p.definition = StyleSheetSpecification::GetProperty(PropertyId::Transform);
-	return p;
-}
 
-void Transform::ClearPrimitives()
-{
-	primitives.clear();
-}
+    Transform::Transform()
+    {
+    }
 
-void Transform::AddPrimitive(const TransformPrimitive& p)
-{
-	primitives.push_back(p);
-}
+    Transform::Transform(PrimitiveList primitives) : primitives(std::move(primitives))
+    {
+    }
 
-int Transform::GetNumPrimitives() const noexcept
-{
-	return (int)primitives.size();
-}
+    Property Transform::MakeProperty(PrimitiveList primitives)
+    {
+        Property p(MakeShared<Transform>(std::move(primitives)), Unit::TRANSFORM);
+        p.definition = StyleSheetSpecification::GetProperty(PropertyId::Transform);
+        return p;
+    }
 
-const TransformPrimitive& Transform::GetPrimitive(int i) const noexcept
-{
-	return primitives[i];
-}
+    void Transform::ClearPrimitives()
+    {
+        primitives.clear();
+    }
 
-} // namespace URUI
+    void Transform::AddPrimitive(const TransformPrimitive& p)
+    {
+        primitives.push_back(p);
+    }
+
+    int Transform::GetNumPrimitives() const noexcept
+    {
+        return (int)primitives.size();
+    }
+
+    const TransformPrimitive& Transform::GetPrimitive(int i) const noexcept
+    {
+        return primitives[i];
+    }
+
+}

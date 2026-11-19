@@ -1,7 +1,10 @@
 #include "../../Include/URUI/Core/EventInstancer.h"
 
-namespace URUI {
+namespace URUI
+{
 
-EventInstancer::~EventInstancer() {}
+    EventInstancer::~EventInstancer()
+    {
+    }
 
-} // namespace URUI
+}

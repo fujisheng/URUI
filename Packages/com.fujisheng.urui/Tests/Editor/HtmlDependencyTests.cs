@@ -12,12 +12,18 @@ namespace URUI.Tests.Editor
         readonly Dictionary<string, TextAsset> files = new Dictionary<string, TextAsset>(StringComparer.Ordinal);
         TextAsset Add(string uri, string content)
         {
-            var asset = new TextAsset(content); files.Add(uri, asset); return asset;
+            var asset = new TextAsset(content);
+            files.Add(uri, asset);
+            return asset;
         }
         TextAsset Load(string uri) => files.TryGetValue(uri, out var asset) ? asset : null;
-        [TearDown] public void Cleanup()
+        [TearDown]
+        public void Cleanup()
         {
-            foreach (var asset in files.Values) { UnityEngine.Object.DestroyImmediate(asset); }
+            foreach (var asset in files.Values)
+            {
+                UnityEngine.Object.DestroyImmediate(asset);
+            }
             files.Clear();
         }
         [Test]
@@ -38,7 +44,8 @@ namespace URUI.Tests.Editor
             Add("/ui/page.html", "<!doctype html><html><head><link rel=stylesheet href=\"a.css\"><link rel=stylesheet href=\"./a.css\"></head><body></body></html>");
             var css = Add("/ui/a.css", "body{color:red;}");
             var graph = HtmlResourceDependencies.Collect("/ui/page.html", Load);
-            Assert.AreEqual(1, graph.TextFiles.Count); Assert.AreSame(css, graph.TextFiles[0].Asset);
+            Assert.AreEqual(1, graph.TextFiles.Count);
+            Assert.AreSame(css, graph.TextFiles[0].Asset);
         }
         [TestCase("missing.css", "", false)]
         [TestCase("bad.css", "body{unknown-style:1;}", true)]
@@ -48,7 +55,10 @@ namespace URUI.Tests.Editor
         public void RejectsMissingInvalidLegacyAndForeignDependencies(string uri, string content, bool exists)
         {
             Add("/ui/page.html", "<!doctype html><html><head><link rel=stylesheet href=\"" + uri + "\"></head><body></body></html>");
-            if (exists) { Add("/ui/" + uri, content); }
+            if (exists)
+            {
+                Add("/ui/" + uri, content);
+            }
             Assert.Throws<InvalidOperationException>(() => HtmlResourceDependencies.Collect("/ui/page.html", Load));
         }
         [Test]

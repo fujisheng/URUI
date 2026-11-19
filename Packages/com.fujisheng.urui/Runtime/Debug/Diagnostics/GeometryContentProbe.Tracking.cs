@@ -52,7 +52,14 @@ namespace URUI.Internal.Diagnostics
 
             if (events.Count < maxEvents)
             {
-                events.Add(new Event { t = token, vertices = n, indices = k, snapshot = snapshotTicks, mesh = meshTicks });
+                events.Add(new Event
+                {
+                    t = token,
+                    vertices = n,
+                    indices = k,
+                    snapshot = snapshotTicks,
+                    mesh = meshTicks
+                });
             }
             else
             {

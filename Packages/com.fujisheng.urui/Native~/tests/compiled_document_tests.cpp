@@ -11,8 +11,11 @@
 class ReentrantStyleElement : public URUI::Element
 {
     bool setting = false;
+
 public:
-    explicit ReentrantStyleElement(const URUI::String& tag) : Element(tag) {}
+    explicit ReentrantStyleElement(const URUI::String& tag) : Element(tag)
+    {
+    }
     void OnAttributeChange(const URUI::ElementAttributes& attributes) override
     {
         Element::OnAttributeChange(attributes);
@@ -30,11 +33,19 @@ void PoisonSource(URUI::Vector<URUI::HtmlNode>& nodes)
     for (auto& node : nodes)
     {
         if (node.tag == "style")
+        {
             for (auto& text : node.children)
+            {
                 text.text = "broken {";
+            }
+        }
         for (auto& attribute : node.attributes)
+        {
             if (attribute.name == "style")
+            {
                 attribute.value = "color:red;width:999px;";
+            }
+        }
         PoisonSource(node.children);
     }
 }
@@ -120,7 +131,7 @@ int main()
     bytes.resize(required);
     assert(urui_compile_document(html, "ui/compiled.html", 0, nullptr, 0, bytes.data(), int(bytes.size()), &required) ==
            1);
-    UruiDocumentHandle owner = 0;
+    URUIDocumentHandle owner = 0;
     assert(urui_document_create(&owner) == 1);
     assert(urui_document_load_html(owner, "<!doctype html><html><head></head><body><div id='old'></div></body></html>",
                                    "ui/old.html") == 1);
@@ -131,15 +142,18 @@ int main()
     assert(urui_document_root(owner) != oldRoot && urui_element_exists(owner, "box") == 1);
     const char* fragment = "<div id='template-child' style='display:block;width:var(--length);height:10px;'></div>";
     int templateSize = 0;
-    assert(urui_compile_template(bytes.data(), int(bytes.size()), fragment, "ui/row.html", nullptr, 0, &templateSize) == -3);
+    assert(urui_compile_template(bytes.data(), int(bytes.size()), fragment, "ui/row.html", nullptr, 0, &templateSize) ==
+           -3);
     std::vector<uint8_t> templateBytes(templateSize);
-    assert(urui_compile_template(bytes.data(), int(bytes.size()), fragment, "ui/row.html", templateBytes.data(), templateSize, &templateSize) == 1);
+    assert(urui_compile_template(bytes.data(), int(bytes.size()), fragment, "ui/row.html", templateBytes.data(),
+                                 templateSize, &templateSize) == 1);
     {
         URUI::CompiledDocument parent;
         assert(URUI::ReadCompiledDocument(bytes.data(), bytes.size(), parent, error));
         URUI::CompiledTemplateCache cache;
         const auto original = cache.Read(templateBytes.data(), templateBytes.size(), *parent.specification, error);
-        assert(original && cache.Read(templateBytes.data(), templateBytes.size(), *parent.specification, error) == original);
+        assert(original &&
+               cache.Read(templateBytes.data(), templateBytes.size(), *parent.specification, error) == original);
         auto corrupted = templateBytes;
         corrupted.back() ^= 1;
         assert(!cache.Read(corrupted.data(), corrupted.size(), *parent.specification, error));
@@ -151,22 +165,27 @@ int main()
         assert(cache.Read(templateBytes.data(), templateBytes.size(), *parent.specification, error) != revised);
         cache.Clear();
         const auto oldest = cache.Read(templateBytes.data(), templateBytes.size(), *parent.specification, error);
-        for (int i = 0; i < 9; ++i) {
+        for (int i = 0; i < 9; ++i)
+        {
             URUI::Vector<URUI::byte> next;
-            assert(URUI::CompileTemplate("<div id='entry-" + std::to_string(i) + "'></div>", "ui/cache.html", bytes.data(), bytes.size(), next, diagnostics));
+            assert(URUI::CompileTemplate("<div id='entry-" + std::to_string(i) + "'></div>", "ui/cache.html",
+                                         bytes.data(), bytes.size(), next, diagnostics));
             assert(cache.Read(next.data(), next.size(), *parent.specification, error));
         }
         assert(cache.Read(templateBytes.data(), templateBytes.size(), *parent.specification, error) != oldest);
     }
     const auto body = urui_document_body(owner);
-    UruiCompiledNodeInfo nodeInfo{};
+    URUICompiledNodeInfo nodeInfo{};
     assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 7) == 7);
     std::vector<uint64_t> mapped(nodeInfo.end - nodeInfo.local_id);
-    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(), int(mapped.size())) == 1);
+    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
+                                        int(mapped.size())) == 1);
     assert(std::find(mapped.begin(), mapped.end(), body) != mapped.end());
     assert(urui_set_attribute(owner, "box", "class", "a off") == 1);
-    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(), int(mapped.size())) == 0);
-    assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 3) == 3 && !(nodeInfo.flags & 4));
+    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
+                                        int(mapped.size())) == 0);
+    assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 3) == 3 &&
+           !(nodeInfo.flags & 4));
     assert(urui_element_begin_compiled_template(owner, body, templateBytes.data(), templateSize) == 1);
     urui_update();
     float rectangle[6];
@@ -175,15 +194,19 @@ int main()
     assert(urui_element_exists(owner, "box") == 1 && urui_element_exists(owner, "template-child") == 0);
     assert(urui_element_begin_compiled_template(owner, body, templateBytes.data(), templateSize) == 1);
     assert(urui_element_end_inner_html(owner, body, 1) == 1);
-    assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 15) == 15 && nodeInfo.local_id == UINT32_MAX);
+    assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 15) == 15 &&
+           nodeInfo.local_id == UINT32_MAX);
     const auto clonedHost = urui_element_clone(owner, body);
     assert(clonedHost);
-    UruiCompiledNodeInfo clonedInfo{};
-    assert(urui_element_compiled_info(owner, clonedHost, 0, nullptr, &clonedInfo) == 1 && (clonedInfo.flags & 15) == 15);
+    URUICompiledNodeInfo clonedInfo{};
+    assert(urui_element_compiled_info(owner, clonedHost, 0, nullptr, &clonedInfo) == 1 &&
+           (clonedInfo.flags & 15) == 15);
     std::vector<uint64_t> clonedTokens(clonedInfo.end, 0);
-    assert(urui_element_compiled_tokens(owner, clonedHost, clonedInfo.identity, clonedInfo.revision, clonedTokens.data(), int(clonedTokens.size())) == 1);
+    assert(urui_element_compiled_tokens(owner, clonedHost, clonedInfo.identity, clonedInfo.revision,
+                                        clonedTokens.data(), int(clonedTokens.size())) == 1);
     mapped.assign(nodeInfo.end, 0);
-    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(), int(mapped.size())) == 1);
+    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
+                                        int(mapped.size())) == 1);
     assert(urui_set_style(owner, "template-child", "--length", "37px") == 1);
     urui_update();
     assert(urui_get_element_box(owner, "template-child", rectangle) == 1 && rectangle[2] == 37);
@@ -194,7 +217,8 @@ int main()
     int metadataSize = 0;
     assert(urui_compiled_document_metadata(templateBytes.data(), templateSize, nullptr, 0, &metadataSize) == -3);
     std::vector<char> metadata(metadataSize);
-    assert(urui_compiled_document_metadata(templateBytes.data(), templateSize, metadata.data(), metadataSize, &metadataSize) == 1);
+    assert(urui_compiled_document_metadata(templateBytes.data(), templateSize, metadata.data(), metadataSize,
+                                           &metadataSize) == 1);
     assert(std::string(metadata.data()).find("\"name\":\"template-child\"") != std::string::npos);
     assert(urui_document_close(owner) == 1);
     assert(!URUI::CompileDocument("<!doctype html><html><head></head><body><div></body></html>", "bad.html", nullptr,

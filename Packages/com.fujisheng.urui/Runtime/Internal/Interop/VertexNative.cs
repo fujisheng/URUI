@@ -2,7 +2,9 @@ using System.Runtime.InteropServices;
 
 namespace URUI.Internal.Interop
 {
-    /// <summary>跨 ABI 复制的紧凑顶点；颜色为预乘 alpha，字段顺序与原生顶点布局一致。</summary>
+    /// <summary>
+    /// 跨 ABI 复制的紧凑顶点；颜色为预乘 alpha，字段顺序与原生顶点布局一致。
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal struct VertexNative
     {

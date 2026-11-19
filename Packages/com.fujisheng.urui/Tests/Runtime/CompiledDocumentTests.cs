@@ -14,59 +14,83 @@ namespace URUI.Tests
         [Test]
         public void BatchedGeometryFlushesOnReadAndNestedCompletion()
         {
-            var camera = new GameObject("Batch camera", typeof(Camera)); camera.tag = "MainCamera";
+            var camera = new GameObject("Batch camera", typeof(Camera));
+            camera.tag = "MainCamera";
             var root = new GameObject("Batch surface");
             try
             {
-                var surface = root.AddComponent<Surface>(); surface.Input.UseUnityInput = false;
-                var document = root.AddComponent<Document>(); document.Surface = surface;
+                var surface = root.AddComponent<Surface>();
+                surface.Input.UseUnityInput = false;
+                var document = root.AddComponent<Document>();
+                document.Surface = surface;
                 document.LoadHtml("<!doctype html><html><head></head><body><div id='box' style='width:10px;height:10px;'></div></body></html>", "/batch.html");
                 var box = document.Q("box");
                 using (document.BeginUpdate())
                 {
                     box.Style.SetWidth(20);
-                    using (document.BeginUpdate()) box.Style.SetWidth(30);
+                    using (document.BeginUpdate())
+                    {
+                        box.Style.SetWidth(30);
+                    }
                     Assert.That(box.Layout.width, Is.EqualTo(30).Within(.01), "几何读取必须刷新嵌套批次中的改动。");
                     box.Style.SetWidth(40);
                 }
                 Assert.That(box.Layout.width, Is.EqualTo(40).Within(.01));
-                var scope = document.BeginUpdate(); document.Unload();
+                var scope = document.BeginUpdate();
+                document.Unload();
                 Assert.DoesNotThrow(() => scope.Dispose(), "卸载中的批次结束不能访问失效文档。");
             }
-            finally { UnityEngine.Object.DestroyImmediate(root); UnityEngine.Object.DestroyImmediate(camera); }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(camera);
+            }
         }
 
         [Test]
         public void CompiledQueryKeepsIdLookupWhenClassesChangeAndRejectsStructuralChanges()
         {
-            var camera = new GameObject("Compiled Query Camera", typeof(Camera)); camera.tag = "MainCamera";
+            var camera = new GameObject("Compiled Query Camera", typeof(Camera));
+            camera.tag = "MainCamera";
             var root = new GameObject("Compiled Query Surface");
             CompiledDocumentAsset asset = null;
             try
             {
-                var surface = root.AddComponent<Surface>(); surface.Input.UseUnityInput = false;
-                var document = root.AddComponent<Document>(); document.Surface = surface;
+                var surface = root.AddComponent<Surface>();
+                surface.Input.UseUnityInput = false;
+                var document = root.AddComponent<Document>();
+                document.Surface = surface;
                 asset = Compile("<!doctype html><html><head></head><body><div id='box' class='entry'></div></body></html>");
                 document.Load(asset);
                 Assert.AreEqual(1, NativeMethods.urui_element_compiled_info(document.NativeHandle, document.Body.Token, 0, null, out var info));
                 var index = new CompiledNodeIndex();
                 index.Initialize(info.Identity, new[] { 4, 2, 4, 4 }, new[] {
-                    new CompiledNodeIndex.Selector { key = "#box", nodes = new[] { 3 } },
-                    new CompiledNodeIndex.Selector { key = ".entry", nodes = new[] { 3 } }
+                    new CompiledNodeIndex.Selector {
+key = "#box",
+nodes = new[] { 3 }
+},
+                    new CompiledNodeIndex.Selector {
+key = ".entry",
+nodes = new[] { 3 }
+}
                 });
                 asset.SetBlueprints(index, null);
                 var query = document.CreateCompiledQuerySnapshot(document.Body);
                 Assert.IsNotNull(query);
-                Assert.IsTrue(query.TryQuery(".entry", out var matches)); Assert.AreEqual(1, matches.Count);
+                Assert.IsTrue(query.TryQuery(".entry", out var matches));
+                Assert.AreEqual(1, matches.Count);
                 document.Q("box").AddToClassList("changed");
                 Assert.IsFalse(query.TryQuery(".changed", out _));
-                Assert.IsTrue(query.TryQuery("#box", out matches)); Assert.AreEqual(1, matches.Count);
+                Assert.IsTrue(query.TryQuery("#box", out matches));
+                Assert.AreEqual(1, matches.Count);
                 document.Body.Add(document.CreateElement("div"));
                 Assert.IsFalse(query.TryQuery("#box", out _));
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(root); UnityEngine.Object.DestroyImmediate(camera); UnityEngine.Object.DestroyImmediate(asset);
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(camera);
+                UnityEngine.Object.DestroyImmediate(asset);
             }
         }
         [DllImport("URUIBridge", CallingConvention = CallingConvention.Cdecl)]
@@ -93,18 +117,25 @@ namespace URUI.Tests
         [Test]
         public void CompiledLoadPreservesDynamicLayoutAndFailedReplacement()
         {
-            var camera = new GameObject("Compiled Camera", typeof(Camera)); camera.tag = "MainCamera";
+            var camera = new GameObject("Compiled Camera", typeof(Camera));
+            camera.tag = "MainCamera";
             var root = new GameObject("Compiled Surface");
-            CompiledDocumentAsset asset = null, broken = null;
+            CompiledDocumentAsset asset = null;
+            CompiledDocumentAsset broken = null;
             try
             {
-                var surface = root.AddComponent<Surface>(); surface.Viewport = new Vector2Int(400, 200); surface.Input.UseUnityInput = false;
-                var document = root.AddComponent<Document>(); document.Surface = surface;
+                var surface = root.AddComponent<Surface>();
+                surface.Viewport = new Vector2Int(400, 200);
+                surface.Input.UseUnityInput = false;
+                var document = root.AddComponent<Document>();
+                document.Surface = surface;
                 asset = Compile("<!doctype html><html><head><style>body{--w:25px;}#box{width:var(--w);height:10px;}</style></head><body><div id='box'></div></body></html>");
-                document.Load(asset); document.SynchronizeGeometry();
+                document.Load(asset);
+                document.SynchronizeGeometry();
                 var box = document.Q("box");
                 Assert.That(box.Layout.width, Is.EqualTo(25).Within(.01));
-                box.Style.Set("--w", "50px"); document.SynchronizeGeometry();
+                box.Style.Set("--w", "50px");
+                document.SynchronizeGeometry();
                 Assert.That(box.Layout.width, Is.EqualTo(50).Within(.01));
                 broken = Compile("<!doctype html><html><head></head><body></body></html>");
                 broken.EncodedData[broken.EncodedData.Length - 1] ^= 1;
@@ -114,8 +145,10 @@ namespace URUI.Tests
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(root); UnityEngine.Object.DestroyImmediate(camera);
-                UnityEngine.Object.DestroyImmediate(asset); UnityEngine.Object.DestroyImmediate(broken);
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(camera);
+                UnityEngine.Object.DestroyImmediate(asset);
+                UnityEngine.Object.DestroyImmediate(broken);
             }
         }
     }

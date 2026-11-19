@@ -9,9 +9,9 @@ int main()
 
     RenderSerial serial;
     RenderPlan plan(serial);
-    std::vector<UruiCommand> commands;
+    std::vector<URUICommand> commands;
     std::vector<std::array<float, 16>> matrices;
-    UruiCommand command{};
+    URUICommand command{};
     command.geometry = 1;
     std::array<float, 16> matrix{};
 
@@ -30,7 +30,7 @@ int main()
 
 #if defined(URUI_DEBUG)
     assert(diagnosticEvaluations == 1 && unchanged.retained_bytes > 0);
-    assert(unchanged.compare_bytes == sizeof(UruiCommand) + sizeof(matrix));
+    assert(unchanged.compare_bytes == sizeof(URUICommand) + sizeof(matrix));
 #else
     // Disabled instrumentation must not evaluate its arguments or count work.
     assert(diagnosticEvaluations == 0 && unchanged.compare_bytes == 0 && unchanged.retained_bytes == 0);

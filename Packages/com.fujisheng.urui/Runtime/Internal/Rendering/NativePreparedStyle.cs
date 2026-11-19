@@ -14,29 +14,57 @@ namespace URUI.Internal.Rendering
         ComputedStyleSnapshot materialized;
         internal void Replace(Element value)
         {
-            if(value==null)throw new ArgumentNullException(nameof(value));
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
             value.Document.CheckThread();
-            if(!value.IsValid||!value.HasLayout)throw new InvalidOperationException("准备样式需要已完成布局的节点。");
+            if (!value.IsValid || !value.HasLayout)
+            {
+                throw new InvalidOperationException("准备样式需要已完成布局的节点。");
+            }
             value.Document.Styles.RequireFrozenProtocol();
-            if(element!=null&&(!ReferenceEquals(element.Document,value.Document)||element.Token!=value.Token))Dispose();
-            var previous=handle;handle=default;owner=value.NativeHandle;element=value;
-            var pointer=previous.Slot==0?IntPtr.Zero:(IntPtr)(&previous);
-            var result=NativeMethods.urui_style_snapshot_freeze(owner,value.CheckedToken(),pointer,out handle);
-            if(result!=1)throw new InvalidOperationException("准备样式冻结失败："+result);
+            if (element != null && (!ReferenceEquals(element.Document, value.Document) || element.Token != value.Token))
+            {
+                Dispose();
+            }
+            var previous = handle;
+            handle = default;
+            owner = value.NativeHandle;
+            element = value;
+            var pointer = previous.Slot == 0 ? IntPtr.Zero : (IntPtr)(&previous);
+            var result = NativeMethods.urui_style_snapshot_freeze(owner, value.CheckedToken(), pointer, out handle);
+            if (result != 1)
+            {
+                throw new InvalidOperationException("准备样式冻结失败：" + result);
+            }
         }
         internal ComputedStyleSnapshot Materialize(Element value)
         {
-            if(handle.Slot==0||element==null||value==null||!ReferenceEquals(element.Document,value.Document)||element.Token!=value.Token)
+            if (handle.Slot == 0 || element == null || value == null || !ReferenceEquals(element.Document, value.Document) || element.Token != value.Token)
+            {
                 throw new InvalidOperationException("准备样式不属于该节点或已失效。");
-            return materialized=value.Document.Styles.GetFrozen(value,owner,handle,materialized);
+            }
+            return materialized = value.Document.Styles.GetFrozen(value, owner, handle, materialized);
         }
         public void Dispose()
         {
             element?.Document.CheckThread();
-            var previous=handle;var document=owner;handle=default;owner=0;element=null;materialized=null;
-            if(previous.Slot==0)return;
-            var result=NativeMethods.urui_style_snapshot_release(document,previous);
-            if(result!=1&&result!=-2)throw new InvalidOperationException("准备样式释放失败："+result);
+            var previous = handle;
+            var document = owner;
+            handle = default;
+            owner = 0;
+            element = null;
+            materialized = null;
+            if (previous.Slot == 0)
+            {
+                return;
+            }
+            var result = NativeMethods.urui_style_snapshot_release(document, previous);
+            if (result != 1 && result != -2)
+            {
+                throw new InvalidOperationException("准备样式释放失败：" + result);
+            }
         }
     }
 }

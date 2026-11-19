@@ -5,7 +5,8 @@ using URUI.Authoring.Animation;
 using URUI.Authoring.Sessions;
 namespace URUI.Authoring.Windows
 {
-    public sealed class UruiAnimationWindow : EditorWindow
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "URUI.Authoring.Windows", sourceClassName: "UruiAnimationWindow")]
+    public sealed class AnimationWindow : EditorWindow
     {
         TimelineView timeline;
         [InitializeOnLoadMethod]
@@ -17,7 +18,7 @@ namespace URUI.Authoring.Windows
             };
         }
         [MenuItem("Window/URUI/Animation")]
-        public static void Open() => GetWindow<UruiAnimationWindow>(L.Tr("URUI 动画"));
+        public static void Open() => GetWindow<AnimationWindow>(L.Tr("URUI 动画"));
         void OnEnable()
         {
             AuthoringEnvironment.SetMode(WorkspaceMode.Animation);
@@ -37,7 +38,9 @@ namespace URUI.Authoring.Windows
         void Tick()
         {
             if (AnimationEnvironment.Playing)
+            {
                 Repaint();
+            }
         }
         void OnGUI()
         {

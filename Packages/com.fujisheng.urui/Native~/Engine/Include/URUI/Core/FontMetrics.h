@@ -2,21 +2,31 @@
 
 #include "Header.h"
 
-namespace URUI {
+namespace URUI
+{
 
-struct FontMetrics {
-	float size;                  // Specified font size [px].
+    struct FontMetrics
+    {
+        // Specified font size [px].
+        float size;
 
-	float ascent;              // Distance above the baseline to the upper grid coordinate [px, positive above baseline].
-	float descent;             // Distance below the baseline to the lower grid coordinate [px, positive below baseline].
-	float line_spacing;        // Font-specified distance between two consecutive baselines [px].
+        // Distance above the baseline to the upper grid coordinate [px, positive above baseline].
+        float ascent;
+        // Distance below the baseline to the lower grid coordinate [px, positive below baseline].
+        float descent;
+        // Font-specified distance between two consecutive baselines [px].
+        float line_spacing;
 
-	float x_height;            // Height of the lowercase 'x' character [px].
+        // Height of the lowercase 'x' character [px].
+        float x_height;
 
-	float underline_position;  // Position of the underline relative to the baseline [px, positive below baseline].
-	float underline_thickness; // Width of underline [px].
+        // Position of the underline relative to the baseline [px, positive below baseline].
+        float underline_position;
+        // Width of underline [px].
+        float underline_thickness;
 
-	bool has_ellipsis;         // True if the ellipsis character (U+2026) is available in this font.
-};
+        // True if the ellipsis character (U+2026) is available in this font.
+        bool has_ellipsis;
+    };
 
-} // namespace URUI
+}

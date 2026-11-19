@@ -14,11 +14,14 @@ namespace URUI.Authoring.Tests
 {
     public static class ReviewValidation
     {
-        static readonly List<string> failures = new List<string>(); static int passed;
+        static readonly List<string> failures = new List<string>();
+        static int passed;
         static void Check(bool value, string message)
         {
             if (!value)
+            {
                 throw new Exception(message);
+            }
         }
         static bool Reject(Action action)
         {
@@ -26,7 +29,10 @@ namespace URUI.Authoring.Tests
             {
                 action();
             }
-            catch (InvalidOperationException) { return true; }
+            catch (InvalidOperationException)
+            {
+                return true;
+            }
             return false;
         }
         static void Case(string name, Action action)
@@ -36,7 +42,10 @@ namespace URUI.Authoring.Tests
                 action();
                 passed++;
             }
-            catch (Exception error) { failures.Add(name + ": " + error); }
+            catch (Exception error)
+            {
+                failures.Add(name + ": " + error);
+            }
         }
         public static void Run()
         {
@@ -62,9 +71,22 @@ namespace URUI.Authoring.Tests
                 host.Document.LoadHtml("<!doctype html><html><head><style>#p{width:100px;height:100px;}#c{width:10px;height:10px;}@keyframes parent{from{width:100px;}to{width:300px;}}@keyframes child{from{width:10px;transform:translateX(0px);}to{width:100%;transform:translateX(100%);}}</style></head><body><div id='p'><div id='c'></div></div></body></html>", "ui/relative.html");
                 host.Render();
                 var definition = new SequenceDefinition { Duration = 1 };
-                definition.Tracks.Add(new SequenceTrack { Id = "c", Target = "c", Keyframes = "child", Duration = 1 });
-                definition.Tracks.Add(new SequenceTrack { Id = "p", Target = "p", Keyframes = "parent", Duration = 1 });
+                definition.Tracks.Add(new SequenceTrack
+                {
+                    Id = "c",
+                    Target = "c",
+                    Keyframes = "child",
+                    Duration = 1
+                });
+                definition.Tracks.Add(new SequenceTrack
+                {
+                    Id = "p",
+                    Target = "p",
+                    Keyframes = "parent",
+                    Duration = 1
+                });
                 using (var player = new SequencePlayer(host.Document.Body, definition))
+                {
                     foreach (double time in new[] { .8, .2, .8, .8 })
                     {
                         player.Sample(time);
@@ -73,6 +95,7 @@ namespace URUI.Authoring.Tests
                         Check(Math.Abs(host.Document.Q("c").Layout.width - expected) < .01, "Mixed units used previous layout at " + time + ": " + host.Document.Q("c").Layout.width + " expected " + expected);
                         Check(Math.Abs(host.Document.Q("c").WorldBound.x - host.Document.Q("p").WorldBound.x - time * expected) < .02, "Mixed transform used stale self geometry");
                     }
+                }
             }
         }
         static void TotalLimit()
@@ -82,7 +105,9 @@ namespace URUI.Authoring.Tests
             {
                 css.Append("@keyframes " + name + "{");
                 for (int i = 0; i < 2049; i++)
+                {
                     css.Append((i * 100.0 / 2048).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%{opacity:1;}");
+                }
                 css.Append('}');
             }
             using (var host = RuntimeInspectionBridge.CreatePreview(200, 100))
@@ -91,7 +116,15 @@ namespace URUI.Authoring.Tests
                 host.Render();
                 var definition = new SequenceDefinition { Duration = 1 };
                 foreach (string name in new[] { "a", "b" })
-                    definition.Tracks.Add(new SequenceTrack { Id = name, Target = name, Keyframes = name, Duration = 1 });
+                {
+                    definition.Tracks.Add(new SequenceTrack
+                    {
+                        Id = name,
+                        Target = name,
+                        Keyframes = name,
+                        Duration = 1
+                    });
+                }
                 Check(Reject(() => { using (var player = new SequencePlayer(host.Document.Body, definition)) { } }), "4098 total keys accepted");
             }
         }
@@ -102,7 +135,13 @@ namespace URUI.Authoring.Tests
                 host.Document.LoadHtml("<!doctype html><html><head><style>div{width:30px;height:30px;}@keyframes a{from{opacity:0;}to{opacity:1;}}</style></head><body><div id='root'><div id='a'></div></div><div id='other'></div></body></html>", "ui/binding.html");
                 host.Render();
                 var definition = new SequenceDefinition { Duration = 1 };
-                definition.Tracks.Add(new SequenceTrack { Id = "a", Target = "a", Keyframes = "a", Duration = 1 });
+                definition.Tracks.Add(new SequenceTrack
+                {
+                    Id = "a",
+                    Target = "a",
+                    Keyframes = "a",
+                    Duration = 1
+                });
                 using (var player = new SequencePlayer(host.Document.Q("root"), definition))
                 {
                     player.Sample(.4);
@@ -118,7 +157,9 @@ namespace URUI.Authoring.Tests
             AnimationEnvironment.Stop();
             var author = AuthoringEnvironment.Author;
             if (author.File != null)
+            {
                 author.Save();
+            }
             string path = "Assets/ReviewChecks/" + name + ".html";
             File.Delete(Path.ChangeExtension(path, ".urui-sequence.json"));
             File.Delete(Path.ChangeExtension(path, ".animations.css"));
@@ -133,7 +174,12 @@ namespace URUI.Authoring.Tests
             Open("A", "<link rel='stylesheet' href='A.css'>");
             string path = Open("B", "<style>@keyframes pop{from{opacity:0;}to{opacity:1;}}</style>");
             var definition = new SequenceDefinition();
-            definition.Tracks.Add(new SequenceTrack { Id = "t", Target = "node", Keyframes = "pop" });
+            definition.Tracks.Add(new SequenceTrack
+            {
+                Id = "t",
+                Target = "node",
+                Keyframes = "pop"
+            });
             string sequence = Path.ChangeExtension(path, ".urui-sequence.json");
             File.WriteAllText(sequence, definition.ToJson());
             var workspace = new AnimationWorkspace(AuthoringEnvironment.Author);
@@ -160,14 +206,14 @@ namespace URUI.Authoring.Tests
             var proxy = ElementSelectionProxy.ForAuthor(author.Model.Nodes.First(n => n.Tag == "div").Key);
             string original = author.File.Text;
             long revision = author.Revision;
-            UruiEditorWindow.OpenAnimation();
+            AuthoringWindow.OpenAnimation();
             try
             {
                 proxy.Set("style.opacity", ".3");
                 Check(author.File.Text == original && author.Revision == revision, "Non-record animation edit changed base source");
                 using (var gesture = new CanvasGesture(proxy))
                 {
-                    var type = typeof(UruiCanvasWindow).Assembly.GetType("URUI.Authoring.Windows.CanvasView");
+                    var type = typeof(CanvasWindow).Assembly.GetType("URUI.Authoring.Windows.CanvasView");
                     var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
                     var view = Activator.CreateInstance(type, flags, null, new object[] { (Action)(() => { }) }, null);
                     type.GetField("gesture", flags).SetValue(view, gesture);
@@ -180,7 +226,11 @@ namespace URUI.Authoring.Tests
                 }
 
             }
-            finally { AnimationEnvironment.Stop(); EditorWindow.GetWindow<UruiEditorWindow>().Close(); }
+            finally
+            {
+                AnimationEnvironment.Stop();
+                EditorWindow.GetWindow<AuthoringWindow>().Close();
+            }
         }
         static void GestureContext()
         {
@@ -197,7 +247,11 @@ namespace URUI.Authoring.Tests
             long revision = author.Revision;
             using (var gesture = new CanvasGesture(proxy))
             {
-                gesture.Preview(new[] { new AuthoringEdit { Node = proxy.SourceKey, Property = "style.opacity", Value = ".3" } });
+                gesture.Preview(new[] { new AuthoringEdit {
+Node = proxy.SourceKey,
+Property = "style.opacity",
+Value = ".3"
+} });
                 AnimationEnvironment.EndRecording();
                 Check(Reject(gesture.Commit), "Cancelled recording gesture fell back to base source");
             }
@@ -222,8 +276,20 @@ namespace URUI.Authoring.Tests
             File.WriteAllText("Assets/ReviewChecks/muted.css", "@keyframes a{from{opacity:0;}to{opacity:1;}}");
             string path = Open("muted", "<link rel='stylesheet' href='muted.css'>");
             var definition = new SequenceDefinition();
-            definition.Tracks.Add(new SequenceTrack { Id = "a", Target = "node", Keyframes = "a" });
-            definition.Tracks.Add(new SequenceTrack { Id = "p", Target = "absent", Kind = "particles", Source = "missing", Muted = true });
+            definition.Tracks.Add(new SequenceTrack
+            {
+                Id = "a",
+                Target = "node",
+                Keyframes = "a"
+            });
+            definition.Tracks.Add(new SequenceTrack
+            {
+                Id = "p",
+                Target = "absent",
+                Kind = "particles",
+                Source = "missing",
+                Muted = true
+            });
             string sequence = Path.ChangeExtension(path, ".urui-sequence.json");
             File.WriteAllText(sequence, definition.ToJson());
             var workspace = new AnimationWorkspace(AuthoringEnvironment.Author);

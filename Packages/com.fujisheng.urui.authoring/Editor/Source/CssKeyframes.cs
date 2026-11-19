@@ -5,7 +5,9 @@ using System.Linq;
 
 namespace URUI.Authoring.Source
 {
-    /// <summary>保真关键帧编辑。位置归一化到 0..1；只改命名动画内的目标规则，保留无关源码。</summary>
+    /// <summary>
+    /// 保真关键帧编辑。位置归一化到 0..1；只改命名动画内的目标规则，保留无关源码。
+    /// </summary>
     public static class CssKeyframes
     {
         public sealed class Key
@@ -20,17 +22,28 @@ namespace URUI.Authoring.Source
             var parent = Find(rules, name);
             var result = new List<Key>();
             if (parent == null)
+            {
                 return result;
+            }
             foreach (var rule in rules)
             {
                 if (rule.Start <= parent.Start || rule.BodyEnd >= parent.BodyEnd)
+                {
                     continue;
+                }
                 foreach (string part in rule.Prelude.Split(','))
                 {
                     double position = ParsePosition(part.Trim());
-                    result.Add(new Key { Position = position, Declarations = text.Substring(rule.BodyStart, rule.BodyEnd - rule.BodyStart), Rule = rule });
+                    result.Add(new Key
+                    {
+                        Position = position,
+                        Declarations = text.Substring(rule.BodyStart, rule.BodyEnd - rule.BodyStart),
+                        Rule = rule
+                    });
                     if (result.Count > 4096)
+                    {
                         throw new InvalidOperationException("关键帧数量不能超过 4096。");
+                    }
                 }
             }
             return result;
@@ -43,12 +56,18 @@ namespace URUI.Authoring.Source
             if (target == null)
             {
                 if (value == null)
+                {
                     return text;
+                }
                 var parent = Find(CssSource.Rules(text), name);
                 if (parent == null)
+                {
                     throw new InvalidOperationException("animation_not_found: " + name);
+                }
                 if (keys.Count >= 4096)
+                {
                     throw new InvalidOperationException("关键帧数量不能超过 4096。");
+                }
                 string newline = text.Contains("\r\n") ? "\r\n" : "\n";
                 string key = "    " + Label(position) + " { " + CssSource.SetDeclaration("", property, value) + " }" + newline;
                 return text.Insert(parent.BodyEnd, key);
@@ -81,13 +100,19 @@ namespace URUI.Authoring.Source
             RequirePosition(from);
             RequirePosition(to);
             if (Same(from, to))
+            {
                 return text;
+            }
             var keys = Read(text, name);
             if (keys.Any(k => Same(k.Position, to)))
+            {
                 throw new InvalidOperationException("目标位置已有关键帧，请先合并或删除。");
+            }
             var moving = keys.Where(k => Same(k.Position, from)).GroupBy(k => k.Rule.Start).Select(g => g.First()).OrderByDescending(k => k.Rule.Start).ToArray();
             if (moving.Length == 0)
+            {
                 throw new InvalidOperationException("关键帧已失效。");
+            }
             foreach (var key in moving)
             {
                 text = Separate(text, key, from, out int start);
@@ -100,7 +125,9 @@ namespace URUI.Authoring.Source
         {
             SourceDocument.RequireName(name);
             if (Find(CssSource.Rules(text), name) != null)
+            {
                 throw new InvalidOperationException("动画名称已存在。");
+            }
             string body;
             switch (preset)
             {
@@ -133,10 +160,14 @@ namespace URUI.Authoring.Source
             start = key.Rule.Start;
             var parts = key.Rule.Prelude.Split(',');
             if (parts.Length == 1)
+            {
                 return text;
+            }
             string remaining = string.Join(", ", parts.Where(p => !Same(ParsePosition(p.Trim()), position)).Select(p => p.Trim()));
             if (remaining.Length == 0)
+            {
                 return text;
+            }
             string prefix = remaining + " {" + key.Declarations + "} ";
             string selected = Label(position) + " {" + key.Declarations + "}";
             text = text.Substring(0, key.Rule.Start) + prefix + selected + text.Substring(key.Rule.BodyEnd + 1);
@@ -149,22 +180,32 @@ namespace URUI.Authoring.Source
         {
             CssSource.Rule result = null;
             foreach (var rule in rules)
+            {
                 if (rule.Prelude == "@keyframes " + name)
                 {
                     if (result != null)
+                    {
                         throw new InvalidOperationException("同名关键帧定义不唯一：" + name);
+                    }
                     result = rule;
                 }
+            }
             return result;
         }
         static double ParsePosition(string text)
         {
             if (text == "from")
+            {
                 return 0;
+            }
             if (text == "to")
+            {
                 return 1;
+            }
             if (!text.EndsWith("%", StringComparison.Ordinal) || !double.TryParse(text.Substring(0, text.Length - 1), NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
+            {
                 throw new InvalidOperationException("无法可视化此关键帧位置：" + text);
+            }
             value /= 100;
             RequirePosition(value);
             return value;
@@ -172,7 +213,9 @@ namespace URUI.Authoring.Source
         static void RequirePosition(double value)
         {
             if (double.IsNaN(value) || double.IsInfinity(value) || value < 0 || value > 1)
+            {
                 throw new InvalidOperationException("关键帧位置必须在 0..1。");
+            }
         }
         static string Label(double value) => (value * 100).ToString("0.########", CultureInfo.InvariantCulture) + "%";
         static bool Same(double a, double b) => Math.Abs(a - b) < .000000001;

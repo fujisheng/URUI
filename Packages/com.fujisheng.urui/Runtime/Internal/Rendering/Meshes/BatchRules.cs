@@ -3,7 +3,9 @@ using UnityEngine;
 
 namespace URUI.Internal.Rendering.Meshes
 {
-    /// <summary>批处理共享的变换与边界判定，保持绘制混合顺序。</summary>
+    /// <summary>
+    /// 批处理共享的变换与边界判定，保持绘制混合顺序。
+    /// </summary>
     internal static class BatchRules
     {
         public static bool EquivalentAffine2D(Matrix4x4 a, Matrix4x4 b)

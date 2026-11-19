@@ -15,7 +15,7 @@ namespace URUI.Internal.Hosting
 
             if (URUI.Internal.Resources.BorrowedTextureRegistry.IsBorrowed(id))
             {
-                legacyImagePins.AcquireOne(borrowedTextures,id,out var borrowed);
+                legacyImagePins.AcquireOne(borrowedTextures, id, out var borrowed);
                 return borrowed;
             }
 

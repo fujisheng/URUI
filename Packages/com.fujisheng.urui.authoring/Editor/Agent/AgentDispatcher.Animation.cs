@@ -12,7 +12,9 @@ namespace URUI.Authoring.Agent
         object AnimationCommand(string operation, Dictionary<string, object> request, bool live)
         {
             if (operation != "animation.read" && (operation == "animation.sample" || operation == "animation.play" || operation == "animation.pause" || operation == "animation.stop" || operation == "animation.record") && live != UnityEditor.EditorApplication.isPlaying)
+            {
                 throw new InvalidOperationException("preview_unavailable: 动画预览 mode 与当前 Edit/Play 状态不一致。");
+            }
             AnimationEnvironment.EnsureWorkspace();
             var workspace = AnimationEnvironment.Workspace;
             void Edit(Action action)
@@ -34,15 +36,25 @@ namespace URUI.Authoring.Agent
                     break;
                 case "animation.preset":
                     string target = Target(request, live).SourceKey;
-                    Edit(() => { string id = workspace.AddPreset(target, Text(request, "preset"), OptionalNumber(request, "start", 0), OptionalNumber(request, "duration", .3), workspace.Revision); AnimationEnvironment.SelectTrack(id); });
+                    Edit(() =>
+                    {
+                        string id = workspace.AddPreset(target, Text(request, "preset"), OptionalNumber(request, "start", 0), OptionalNumber(request, "duration", .3), workspace.Revision);
+                        AnimationEnvironment.SelectTrack(id);
+                    });
                     break;
                 case "animation.particles":
                     string particleTarget = Target(request, live).SourceKey;
-                    Edit(() => { string id = workspace.AddParticles(particleTarget, Text(request, "source", false) ?? "", OptionalNumber(request, "start", 0), OptionalNumber(request, "duration", 1), workspace.Revision); AnimationEnvironment.SelectTrack(id); });
+                    Edit(() =>
+                    {
+                        string id = workspace.AddParticles(particleTarget, Text(request, "source", false) ?? "", OptionalNumber(request, "start", 0), OptionalNumber(request, "duration", 1), workspace.Revision);
+                        AnimationEnvironment.SelectTrack(id);
+                    });
                     break;
                 case "animation.track":
                     if (!(request.TryGetValue("changes", out var raw) && raw is Dictionary<string, object> changes))
+                    {
                         throw new InvalidOperationException("bad_request: changes must be an object");
+                    }
                     Edit(() => workspace.SetTrack(Text(request, "track"), track =>
                     {
                         foreach (var pair in changes)
@@ -100,19 +112,29 @@ namespace URUI.Authoring.Agent
                     {
                         var rows = new List<Dictionary<string, object>>();
                         if (request.TryGetValue("keys", out var rawKeys) && rawKeys is List<object> list)
+                        {
                             foreach (var row in list)
+                            {
                                 rows.Add(row as Dictionary<string, object> ?? throw new InvalidOperationException("bad_request: keys must contain objects"));
+                            }
+                        }
                         else
+                        {
                             rows.Add(request);
+                        }
                         if (rows.Count == 0 || rows.Count > 4096)
+                        {
                             throw new InvalidOperationException("bad_request: key limit");
+                        }
                         var candidates = new Dictionary<SourceFile, string>();
                         var definition = workspace.Definition ?? throw new InvalidOperationException("请先创建序列。");
                         foreach (var row in rows)
                         {
                             var track = definition.Tracks.FirstOrDefault(t => t.Id == Text(row, "track")) ?? throw new InvalidOperationException("stale_track");
                             if (track.Locked || track.Kind != "css")
+                            {
                                 throw new InvalidOperationException("轨道已锁定或不支持 CSS 关键帧。");
+                            }
                             var file = workspace.KeyframeFile(track);
                             string text = candidates.TryGetValue(file, out var previous) ? previous : file.Text;
                             candidates[file] = CssKeyframes.SetKey(text, track.Keyframes, Number(row, "position"), Text(row, "property"), Boolean(row, "unset") ? null : Text(row, "value"));
@@ -125,7 +147,9 @@ namespace URUI.Authoring.Agent
                     Edit(() =>
                     {
                         if (!(request.TryGetValue("keys", out var rawKeys) && rawKeys is List<object> list) || list.Count == 0 || list.Count > 4096)
+                        {
                             throw new InvalidOperationException("bad_request: keys are required");
+                        }
                         var keys = new List<AnimationWorkspace.KeySelection>();
                         foreach (var item in list)
                         {
@@ -155,7 +179,9 @@ namespace URUI.Authoring.Agent
                         AnimationEnvironment.BeginRecording(Target(request, false));
                     }
                     else
+                    {
                         AnimationEnvironment.EndRecording();
+                    }
                     break;
                 default:
                     throw new InvalidOperationException("unsupported_operation: " + operation);

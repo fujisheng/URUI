@@ -14,7 +14,9 @@ namespace URUI.Internal.Hosting
         {
             RecoverAbortedBuiltinCamera();
             if (OwnerSurface && OwnerSurface.ManualDrive)
+            {
                 return;
+            }
             if (!active)
             {
                 return;
@@ -29,7 +31,7 @@ namespace URUI.Internal.Hosting
                 {
                     lastWidth = Screen.width;
                     lastHeight = Screen.height;
-                    NativeMethods.urui_resize(UiWidth, UiHeight);
+                    NativeMethods.urui_resize(UIWidth, UIHeight);
                 }
                 OwnerSurface.Input.PollUnity();
             }
@@ -54,10 +56,14 @@ namespace URUI.Internal.Hosting
             using (updateMarker.Auto())
 #endif
             {
-                SynchronizeUiClock();
+                SynchronizeUIClock();
                 foreach (var document in OwnerSurface.DocumentsSnapshot())
+                {
                     if (document)
+                    {
                         document.AdvanceSequences();
+                    }
+                }
                 using (nativeUpdatePhase.Auto())
                 {
                     NativeMethods.urui_update();
@@ -89,9 +95,13 @@ namespace URUI.Internal.Hosting
             }
 
             if (!DrawFrame(ref phase))
+            {
                 return;
+            }
             if (!active || !isActiveAndEnabled)
+            {
                 return;
+            }
             // URUI 在录制绘制时更新变换矩阵；此后才可同步屏幕空间值。
             OwnerSurface.NotifyLayoutUpdated();
 #if URUI_DEBUG
@@ -117,10 +127,14 @@ namespace URUI.Internal.Hosting
         void DrainEvents()
         {
             foreach (var document in OwnerSurface.DocumentsSnapshot())
+            {
                 if (document && document.IsLoaded)
+                {
                     while (active && NativeMethods.urui_element_pop_click(document.NativeHandle, out _) > 0)
                     {
                     }
+                }
+            }
             OwnerSurface.RefreshDocuments(true);
             OwnerSurface.FinishNativeCall();
         }
@@ -128,12 +142,18 @@ namespace URUI.Internal.Hosting
         public string HitTestId(float logicalX, float logicalY)
         {
             if (!active)
+            {
                 return null;
+            }
             var token = NativeMethods.urui_surface_pick(logicalX, logicalY, out var handle);
             var owner = URUI.Hosting.Surface.FindDocument(handle);
             for (var element = owner?.WrapElement(token); element != null; element = element.Parent)
+            {
                 if (!string.IsNullOrEmpty(element.Name))
+                {
                     return element.Name;
+                }
+            }
             return null;
         }
 
@@ -144,9 +164,16 @@ namespace URUI.Internal.Hosting
                 return;
             }
 
-            float x = mouse.x * UiWidth / Screen.width;
-            float y = UiHeight - 1 - mouse.y * UiHeight / Screen.height;
-            PointerInput(new PointerInputEvent { phase = pointerPhase, pointerId = 0, x = x, y = y, hitId = HitTestId(x, y) });
+            float x = mouse.x * UIWidth / Screen.width;
+            float y = UIHeight - 1 - mouse.y * UIHeight / Screen.height;
+            PointerInput(new PointerInputEvent
+            {
+                phase = pointerPhase,
+                pointerId = 0,
+                x = x,
+                y = y,
+                hitId = HitTestId(x, y)
+            });
         }
     }
 }

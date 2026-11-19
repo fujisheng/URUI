@@ -12,24 +12,36 @@ namespace URUI.Internal.Interop
         [StructLayout(LayoutKind.Sequential)]
         internal struct ElementRefreshStamp
         {
-            internal ulong Mutation, References;
+            internal ulong Mutation;
+            internal ulong References;
             internal bool Reusable => Mutation != 0 && Mutation != ulong.MaxValue && References != 0 && References != ulong.MaxValue;
             internal bool Matches(ElementRefreshStamp other) => Reusable && Mutation == other.Mutation && References == other.References;
         }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_element_refresh_stamp(out ElementRefreshStamp stamp);
 
-        [DllImport(Dll,CallingConvention=CallingConvention.Cdecl)]
-        internal static extern int urui_element_event_interest(ulong owner,ulong token,uint mask,ulong version);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int urui_element_event_interest(ulong owner, ulong token, uint mask, ulong version);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_element_refresh_state(ulong documentHandle, ulong token, out UnityEngine.Rect layout, int capacity);
         [StructLayout(LayoutKind.Sequential)]
-        internal struct ElementRefreshState { internal int State; internal UnityEngine.Rect Layout; }
+        internal struct ElementRefreshState
+        {
+            internal int State;
+            internal UnityEngine.Rect Layout;
+        }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern unsafe int urui_element_refresh_states(ulong owner, ulong* tokens, ElementRefreshState* states, uint count);
         [StructLayout(LayoutKind.Sequential)]
-        internal struct RangeInfo { public float Min, Max, Step, StepBase; public int Flags; }
+        internal struct RangeInfo
+        {
+            public float Min;
+            public float Max;
+            public float Step;
+            public float StepBase;
+            public int Flags;
+        }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_control_range_info(ulong owner, ulong token, out RangeInfo info);
 

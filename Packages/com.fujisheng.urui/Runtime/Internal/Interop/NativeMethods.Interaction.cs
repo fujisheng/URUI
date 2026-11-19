@@ -7,9 +7,21 @@ namespace URUI.Internal.Interop
     [StructLayout(LayoutKind.Sequential)]
     internal struct ElementEventNative
     {
-        internal ulong document, target, current;
-        internal int type, phase, pointer, button, buttons, modifiers, key, kind;
-        internal float x, y, dx, dy;
+        internal ulong document;
+        internal ulong target;
+        internal ulong current;
+        internal int type;
+        internal int phase;
+        internal int pointer;
+        internal int button;
+        internal int buttons;
+        internal int modifiers;
+        internal int key;
+        internal int kind;
+        internal float x;
+        internal float y;
+        internal float dx;
+        internal float dy;
         internal IntPtr text;
     }
 
@@ -66,7 +78,7 @@ namespace URUI.Internal.Interop
         internal static extern int urui_element_style_read(ulong documentHandle, ulong token, int local, [MarshalAs(UnmanagedType.LPUTF8Str)] string property, [Out] byte[] value, int capacity, out int required);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_pointer_poll(int pointer,int kind,float x,float y,int buttons,int modifiers);
+        internal static extern int urui_pointer_poll(int pointer, int kind, float x, float y, int buttons, int modifiers);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_pointer_event(int pointer, int kind, int phase, float x, float y, int button, int buttons, float dx, float dy, int modifiers);
@@ -149,13 +161,17 @@ namespace URUI.Internal.Interop
         internal static string ReadControl(ulong documentHandle, ulong token) => ReadUtf8Snapshot(
             (byte[] bytes, int capacity, out int required) => urui_control_value_read(documentHandle, token, bytes, capacity, out required));
 
-        [ThreadStatic] static byte[] styleNumberScratch;
+        [ThreadStatic]
+        static byte[] styleNumberScratch;
         internal static ReadOnlySpan<byte> ReadStyleNumberText(ulong documentHandle, ulong token, string property)
         {
             // 原生有限 float 的规范文本和单位可放入固定缓冲；复杂 CSS 值不是长度。
             var bytes = styleNumberScratch ??= new byte[64];
             var result = urui_element_style_read(documentHandle, token, 0, property, bytes, bytes.Length, out var required);
-            if (result == 0 || (result == -3 && required > bytes.Length)) { return default; }
+            if (result == 0 || (result == -3 && required > bytes.Length))
+            {
+                return default;
+            }
             ValidateSnapshot(result, required, required, bytes);
             return new ReadOnlySpan<byte>(bytes, 0, required - 1);
         }
@@ -163,7 +179,10 @@ namespace URUI.Internal.Interop
         internal static string ReadStyle(ulong documentHandle, ulong token, string property, bool local, string previous = null, string alternate = null)
         {
             var result = urui_element_style_read(documentHandle, token, local ? 1 : 0, property, null, 0, out var required);
-            if (result == 0) { return null; }
+            if (result == 0)
+            {
+                return null;
+            }
             var bytes = SnapshotBuffer(result, required);
             ValidateSnapshot(urui_element_style_read(documentHandle, token, local ? 1 : 0, property, bytes, required, out var actual), actual, required, bytes);
             return SnapshotText(bytes, actual - 1, previous, alternate);
@@ -172,40 +191,71 @@ namespace URUI.Internal.Interop
         internal static string ReadOption(ulong documentHandle, ulong token, int index) => ReadUtf8Snapshot(
             (byte[] bytes, int capacity, out int required) => urui_select_option_read(documentHandle, token, index, bytes, capacity, out required));
 
-        [ThreadStatic] static string clipboardSnapshot;
+        [ThreadStatic]
+        static string clipboardSnapshot;
         internal static string ReadClipboard()
         {
             var result = urui_clipboard_read(null, 0, out var required);
-            if (result == 0) { clipboardSnapshot = null; return null; }
+            if (result == 0)
+            {
+                clipboardSnapshot = null;
+                return null;
+            }
             var bytes = SnapshotBuffer(result, required);
             ValidateSnapshot(urui_clipboard_read(bytes, required, out var actual), actual, required, bytes);
             return clipboardSnapshot = SnapshotText(bytes, actual - 1, clipboardSnapshot);
         }
 
-        [ThreadStatic] static byte[] snapshotScratch, snapshotComparison;
+        [ThreadStatic]
+        static byte[] snapshotScratch;
+        [ThreadStatic]
+        static byte[] snapshotComparison;
         static byte[] SnapshotBuffer(int result, int required, int maximum = 16 * 1024 * 1024)
         {
             if (result != -3 || required <= 0 || required > maximum)
-            { throw new InvalidOperationException("URUI 字符串读取失败：" + LastError()); }
-            if (required > 256 * 1024) { return new byte[required]; }
-            if (snapshotScratch == null || snapshotScratch.Length < required) { snapshotScratch = new byte[required]; }
+            {
+                throw new InvalidOperationException("URUI 字符串读取失败：" + LastError());
+            }
+            if (required > 256 * 1024)
+            {
+                return new byte[required];
+            }
+            if (snapshotScratch == null || snapshotScratch.Length < required)
+            {
+                snapshotScratch = new byte[required];
+            }
             return snapshotScratch;
         }
         static void ValidateSnapshot(int result, int actual, int expected, byte[] bytes)
         {
-            if (result != 1 || actual != expected || bytes[actual - 1] != 0) { throw new InvalidOperationException("URUI 字符串快照失效。"); }
+            if (result != 1 || actual != expected || bytes[actual - 1] != 0)
+            {
+                throw new InvalidOperationException("URUI 字符串快照失效。");
+            }
         }
         static string SnapshotText(byte[] bytes, int count, string previous, string alternate = null)
         {
             // 每次仍读取原生的真实值；只复用相同文本，不依赖可能尚未推进的布局版本。
-            if (MatchesSnapshot(bytes, count, previous)) { return previous; }
-            if (MatchesSnapshot(bytes, count, alternate)) { return alternate; }
+            if (MatchesSnapshot(bytes, count, previous))
+            {
+                return previous;
+            }
+            if (MatchesSnapshot(bytes, count, alternate))
+            {
+                return alternate;
+            }
             return Encoding.UTF8.GetString(bytes, 0, count);
         }
         static bool MatchesSnapshot(byte[] bytes, int count, string value)
         {
-            if (value == null || Encoding.UTF8.GetByteCount(value) != count) { return false; }
-            if (snapshotComparison == null || snapshotComparison.Length < count) { snapshotComparison = new byte[count]; }
+            if (value == null || Encoding.UTF8.GetByteCount(value) != count)
+            {
+                return false;
+            }
+            if (snapshotComparison == null || snapshotComparison.Length < count)
+            {
+                snapshotComparison = new byte[count];
+            }
             Encoding.UTF8.GetBytes(value, 0, value.Length, snapshotComparison, 0);
             return new ReadOnlySpan<byte>(bytes, 0, count).SequenceEqual(new ReadOnlySpan<byte>(snapshotComparison, 0, count));
         }

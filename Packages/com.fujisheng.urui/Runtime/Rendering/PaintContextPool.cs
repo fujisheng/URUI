@@ -14,7 +14,10 @@ namespace URUI.Rendering
             readonly PaintContextPool owner;
             internal Scope Next;
             internal ulong Generation;
-            internal bool Active, UsesOriginal, Clipped, WritesParent;
+            internal bool Active;
+            internal bool UsesOriginal;
+            internal bool Clipped;
+            internal bool WritesParent;
             internal CommandBuffer DirectBuffer;
             internal ExternalCommandRecording Recording;
             internal CommandBuffer Buffer => Recording != null ? Recording.Buffer : DirectBuffer;
@@ -22,7 +25,10 @@ namespace URUI.Rendering
             internal Vector4 Clip;
             MaterialPropertyBlock defaults;
 
-            internal Scope(PaintContextPool owner) { this.owner = owner; }
+            internal Scope(PaintContextPool owner)
+            {
+                this.owner = owner;
+            }
             internal MaterialPropertyBlock DefaultProperties()
             {
                 defaults ??= new MaterialPropertyBlock();
@@ -31,7 +37,10 @@ namespace URUI.Rendering
             }
             internal void Close(ulong generation)
             {
-                if (!Active || Generation != generation) { return; }
+                if (!Active || Generation != generation)
+                {
+                    return;
+                }
                 Active = false;
                 DirectBuffer = null;
                 Recording = null;
@@ -44,10 +53,20 @@ namespace URUI.Rendering
         ulong generation;
         internal ElementPaintContext Open(Element element, CommandBuffer buffer, Matrix4x4 transform, Vector4 clip, bool clipped, bool isMaskImage = false, ExternalCommandRecording recording = null)
         {
-            if (generation == ulong.MaxValue) { throw new InvalidOperationException("绘制窗口代际已耗尽。"); }
+            if (generation == ulong.MaxValue)
+            {
+                throw new InvalidOperationException("绘制窗口代际已耗尽。");
+            }
             var scope = idle;
-            if (scope == null) { scope = new Scope(this); }
-            else { idle = scope.Next; scope.Next = null; }
+            if (scope == null)
+            {
+                scope = new Scope(this);
+            }
+            else
+            {
+                idle = scope.Next;
+                scope.Next = null;
+            }
             scope.Generation = ++generation;
             scope.Active = true;
             scope.UsesOriginal = false;

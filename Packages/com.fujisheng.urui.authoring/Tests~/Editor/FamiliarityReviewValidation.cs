@@ -19,7 +19,9 @@ namespace URUI.Authoring.Tests
         static void Check(bool condition, string message)
         {
             if (!condition)
+            {
                 throw new Exception(message);
+            }
         }
         static void Call(object target, string name, params object[] values) => target.GetType().GetMethod(name, Hidden).Invoke(target, values);
         public static void Run()
@@ -65,7 +67,7 @@ namespace URUI.Authoring.Tests
                     }
                     else if (name == "reveal")
                     {
-                        var type = typeof(UruiHierarchyWindow).GetNestedType("NodeTree", BindingFlags.NonPublic);
+                        var type = typeof(HierarchyWindow).GetNestedType("NodeTree", BindingFlags.NonPublic);
                         var tree = (TreeView)Activator.CreateInstance(type, new object[] { new TreeViewState() });
                         tree.searchString = "Picture";
                         Call(tree, "Reveal", a);
@@ -85,14 +87,16 @@ namespace URUI.Authoring.Tests
                         var workspace = AnimationEnvironment.Workspace;
                         string track = workspace.AddPreset(proxy.SourceKey, "popup", 0, .3, author.Revision);
                         if (root)
+                        {
                             workspace.SetTrack(track, t => t.Target = "$root", workspace.Revision);
+                        }
                         AnimationEnvironment.SelectTrack(track);
                         AuthoringEnvironment.SetMode(WorkspaceMode.Animation);
                         AnimationEnvironment.Seek(.1);
                         Selection.activeObject = proxy;
                         if (name == "root-menu")
                         {
-                            var type = typeof(UruiEditorWindow).Assembly.GetType("URUI.Authoring.Animation.TimelineView");
+                            var type = typeof(AuthoringWindow).Assembly.GetType("URUI.Authoring.Animation.TimelineView");
                             var timeline = Activator.CreateInstance(type, Hidden, null, new object[] { (Action)(() => { }) }, null);
                             type.GetField("keyValue", Hidden).SetValue(timeline, "stale");
                             Call(timeline, "SelectProperty", "width", workspace.Definition.Tracks.First());
@@ -112,7 +116,13 @@ namespace URUI.Authoring.Tests
                         AnimationEnvironment.Stop();
                     }
                 }
-                finally { if (inspector) UnityEngine.Object.DestroyImmediate(inspector); }
+                finally
+                {
+                    if (inspector)
+                    {
+                        UnityEngine.Object.DestroyImmediate(inspector);
+                    }
+                }
                 Directory.CreateDirectory("Evidence");
                 File.WriteAllText("Evidence/familiarity-review-" + name + ".json", "{\"passed\":true}");
                 Debug.Log("URUI Familiarity review PASS " + name);

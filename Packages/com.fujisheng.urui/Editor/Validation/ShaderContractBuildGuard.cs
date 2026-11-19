@@ -12,7 +12,9 @@ namespace URUI.Editor.Validation
     /// <summary>
     /// 构建前验证 shader 源码与依赖契约一致，阻止使用未重新审计的渲染资源。
     /// </summary>
-    /// <remarks>该检查保证构建正确性，始终启用，不属于可关闭的诊断采样。</remarks>
+    /// <remarks>
+    /// 该检查保证构建正确性，始终启用，不属于可关闭的诊断采样。
+    /// </remarks>
     internal sealed class ShaderContractBuildGuard : IProcessSceneWithReport
     {
         public int callbackOrder => 0;
@@ -46,7 +48,10 @@ namespace URUI.Editor.Validation
         public void OnProcessScene(Scene scene, BuildReport report)
         {
             var contract = UnityEngine.Resources.Load<ShaderPropertyContract>("URUI/BuiltinShaderPropertyContract");
-            if (!contract) throw new BuildFailedException("URUI builtin shader contract resource is missing.");
+            if (!contract)
+            {
+                throw new BuildFailedException("URUI builtin shader contract resource is missing.");
+            }
             Validate(contract);
         }
 

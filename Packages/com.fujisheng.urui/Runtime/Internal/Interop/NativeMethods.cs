@@ -143,7 +143,7 @@ namespace URUI.Internal.Interop
         internal static extern int urui_render_plan_version();
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_render_plan_stamp(out UruiFrameStampNative stamp);
+        internal static extern int urui_render_plan_stamp(out FrameStampNative stamp);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern ulong urui_element_ref_acquire(ulong documentHandle, [MarshalAs(UnmanagedType.LPUTF8Str)] string id);

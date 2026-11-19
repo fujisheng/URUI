@@ -7,21 +7,25 @@
 #include <URUI/Core/ComputedValues.h>
 #include <URUI/Core/TransformPrimitive.h>
 
-namespace urui_interaction
+namespace URUI::Interaction
 {
     void CancelCompositionFor(URUI::Element* element);
     bool Owner()
     {
-        return context && std::this_thread::get_id() == context_thread;
+        return context && std::this_thread::get_id() == contextThread;
     }
 
     int Copy(const URUI::String& value, char* out, int capacity, int* required)
     {
         if (!required || capacity < 0 || (!out && capacity > 0) || value.size() >= INT32_MAX)
+        {
             return -1;
+        }
         *required = static_cast<int>(value.size()) + 1;
         if (!out || capacity < *required)
+        {
             return -3;
+        }
         std::memcpy(out, value.c_str(), *required);
         return 1;
     }
@@ -35,7 +39,9 @@ namespace urui_interaction
             {
                 const auto p = *transform * URUI::Vector4f(point.x, point.y, 0, 1);
                 if (std::abs(p.w) > 1e-8f)
+                {
                     point = {p.x / p.w, p.y / p.w};
+                }
             }
         }
         return point;
@@ -47,82 +53,134 @@ namespace urui_interaction
         return el->GetTagName() == "input" && (type == "checkbox" || type == "radio");
     }
 
-
 }
 
 extern "C"
 {
-    int urui_select_option_count(UruiDocumentHandle document_handle, uint64_t token)
+    int urui_select_option_count(URUIDocumentHandle document_handle, uint64_t token)
     try
     {
-        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(urui_elements::Get(document_handle, token));
+        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(URUI::Elements::Get(document_handle, token));
         return el ? el->GetNumOptions() : -1;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_select_option_read(UruiDocumentHandle document_handle, uint64_t token, int index, char* out, int capacity, int* required)
+    int urui_select_option_read(URUIDocumentHandle document_handle, uint64_t token, int index, char* out, int capacity,
+                                int* required)
     try
     {
-        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(urui_elements::Get(document_handle, token));
+        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(URUI::Elements::Get(document_handle, token));
         auto* option = el ? el->GetOption(index) : nullptr;
-        if (!option) return -1;
-        return urui_interaction::Copy(option->GetAttribute<URUI::String>("value", ""), out, capacity, required);
+        if (!option)
+        {
+            return -1;
+        }
+        return URUI::Interaction::Copy(option->GetAttribute<URUI::String>("value", ""), out, capacity, required);
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_select_option_add(UruiDocumentHandle document_handle, uint64_t token, const char* value)
+    int urui_select_option_add(URUIDocumentHandle document_handle, uint64_t token, const char* value)
     try
     {
-        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(urui_elements::Get(document_handle, token));
-        if (!el || !value) return -1;
-        return el->Add(safe_html(value), value) >= 0 ? 1 : -2;
+        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(URUI::Elements::Get(document_handle, token));
+        if (!el || !value)
+        {
+            return -1;
+        }
+        return el->Add(SafeHtml(value), value) >= 0 ? 1 : -2;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_select_options_clear(UruiDocumentHandle document_handle, uint64_t token)
+    int urui_select_options_clear(URUIDocumentHandle document_handle, uint64_t token)
     try
     {
-        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(urui_elements::Get(document_handle, token));
-        if (!el) return -1;
-        el->RemoveAll(); return 1;
+        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(URUI::Elements::Get(document_handle, token));
+        if (!el)
+        {
+            return -1;
+        }
+        el->RemoveAll();
+        return 1;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_select_selection(UruiDocumentHandle document_handle, uint64_t token, int index)
+    int urui_select_selection(URUIDocumentHandle document_handle, uint64_t token, int index)
     try
     {
-        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(urui_elements::Get(document_handle, token));
-        if (!el) return -2;
+        auto* el = urui_dynamic_cast<URUI::ElementFormControlSelect*>(URUI::Elements::Get(document_handle, token));
+        if (!el)
+        {
+            return -2;
+        }
         if (index >= 0)
         {
-            if (index >= el->GetNumOptions()) return -2;
+            if (index >= el->GetNumOptions())
+            {
+                return -2;
+            }
             el->SetSelection(index);
         }
         return el->GetSelection();
     }
-    catch (...) { return -8; }
-
-    int urui_element_api_version(void) { return 3; }
-    uint64_t urui_element_ref_revision(void) { return element_references.Revision(); }
-    int urui_element_refresh_stamp(UruiElementRefreshStamp* out)
+    catch (...)
     {
-        if (!out) return -1;
+        return -8;
+    }
+
+    int urui_element_api_version(void)
+    {
+        return 3;
+    }
+    uint64_t urui_element_ref_revision(void)
+    {
+        return elementReferences.Revision();
+    }
+    int urui_element_refresh_stamp(URUIElementRefreshStamp* out)
+    {
+        if (!out)
+        {
+            return -1;
+        }
         *out = {};
-        if (context_thread != std::this_thread::get_id()) return -3;
-        if (!context) return -2;
-        *out = {context->GetNativeRenderRevision(), element_references.Revision()};
+        if (contextThread != std::this_thread::get_id())
+        {
+            return -3;
+        }
+        if (!context)
+        {
+            return -2;
+        }
+        *out = {context->GetNativeRenderRevision(), elementReferences.Revision()};
         return 1;
     }
-    int urui_transform_api_version(void) { return 1; }
+    int urui_transform_api_version(void)
+    {
+        return 1;
+    }
 
-    int urui_element_local_transform(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity)
+    int urui_element_local_transform(URUIDocumentHandle document_handle, uint64_t token, float* out, int capacity)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el || !out || capacity < 32) return -1;
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el || !out || capacity < 32)
+        {
+            return -1;
+        }
         auto local = URUI::Matrix4f::Identity();
         auto rotation = URUI::Matrix4f::Identity();
-        bool separate_rotation = true;
+        bool separateRotation = true;
         if (auto transform = el->GetComputedValues().transform())
         {
             for (int i = 0; i < transform->GetNumPrimitives(); ++i)
@@ -142,9 +200,10 @@ extern "C"
                 case URUI::TransformPrimitive::MATRIX2D:
                 case URUI::TransformPrimitive::MATRIX3D:
                 case URUI::TransformPrimitive::DECOMPOSEDMATRIX4:
-                    separate_rotation = false;
+                    separateRotation = false;
                     break;
-                default: break;
+                default:
+                    break;
                 }
             }
         }
@@ -159,223 +218,415 @@ extern "C"
                 out[16 + column * 4 + row] = b[row];
             }
         }
-        return separate_rotation ? 1 : 2;
+        return separateRotation ? 1 : 2;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_element_style_read(UruiDocumentHandle document_handle, uint64_t token, int local, const char* property, char* out, int capacity, int* required)
+    int urui_element_style_read(URUIDocumentHandle document_handle, uint64_t token, int local, const char* property,
+                                char* out, int capacity, int* required)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el || !property || !*property || (local != 0 && local != 1)) return -1;
-        urui_styles::RecordStringRead();
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el || !property || !*property || (local != 0 && local != 1))
+        {
+            return -1;
+        }
+        URUI::Styles::RecordStringRead();
         URUI::String keyword;
-        if (!local && urui_styles::ComputedKeyword(el, property, keyword))
-            return urui_interaction::Copy(keyword, out, capacity, required);
+        if (!local && URUI::Styles::ComputedKeyword(el, property, keyword))
+        {
+            return URUI::Interaction::Copy(keyword, out, capacity, required);
+        }
         // GetLocalProperty also includes matched stylesheet definitions in URUI.
         // The public Style contract requires inline overrides only.
         const URUI::Property* value = nullptr;
         if (local)
         {
-            if (std::strncmp(property, "--", 2) == 0 && el->GetPropertySpecification().GetPropertyId(property) == URUI::PropertyId::Invalid)
+            if (std::strncmp(property, "--", 2) == 0 &&
+                el->GetPropertySpecification().GetPropertyId(property) == URUI::PropertyId::Invalid)
             {
                 const auto& properties = el->GetStyle()->GetLocalStyleProperties().GetCustomProperties();
                 auto found = properties.find(property);
-                if (found != properties.end()) value = &found->second;
+                if (found != properties.end())
+                {
+                    value = &found->second;
+                }
             }
             else
             {
                 const auto& properties = el->GetLocalStyleProperties();
                 auto found = properties.find(el->GetPropertySpecification().GetPropertyId(property));
-                if (found != properties.end()) value = &found->second;
+                if (found != properties.end())
+                {
+                    value = &found->second;
+                }
             }
         }
-        else value = el->GetProperty(property);
-        if (!value) { if (required) *required = 0; return 0; }
-        return urui_interaction::Copy(value->ToString(), out, capacity, required);
+        else
+        {
+            value = el->GetProperty(property);
+        }
+        if (!value)
+        {
+            if (required)
+            {
+                *required = 0;
+            }
+            return 0;
+        }
+        return URUI::Interaction::Copy(value->ToString(), out, capacity, required);
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_element_refresh_state(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity)
+    int urui_element_refresh_state(URUIDocumentHandle document_handle, uint64_t token, float* out, int capacity)
     try
     {
-        if (!out || capacity < 4) return -1;
-        auto* document = urui_elements::Document(document_handle);
+        if (!out || capacity < 4)
+        {
+            return -1;
+        }
+        auto* document = URUI::Elements::Document(document_handle);
         URUI::Element* element = nullptr;
-        const auto state = element_references.ResolveState(token, document, element);
-        if (!state) return 0;
+        const auto state = elementReferences.ResolveState(token, document, element);
+        if (!state)
+        {
+            return 0;
+        }
         const auto position = element->GetRelativeOffset(URUI::BoxArea::Border);
         const auto size = element->GetBox().GetSize(URUI::BoxArea::Border);
-        out[0] = position.x; out[1] = position.y; out[2] = size.x; out[3] = size.y;
+        out[0] = position.x;
+        out[1] = position.y;
+        out[2] = size.x;
+        out[3] = size.y;
         return state;
     }
-    catch (...) { return -8; }
-
-    int urui_element_refresh_states(UruiDocumentHandle owner, const uint64_t* tokens, UruiElementRefreshState* out, uint32_t count)
+    catch (...)
     {
-        if (count > 65536 || (count && (!tokens || !out))) return -1;
-        if (count) std::fill_n(out, count, UruiElementRefreshState{});
-        if (context_thread != std::this_thread::get_id()) return -3;
-        if (!context) return -2;
-        try {
-            auto* document = urui_elements::Document(owner);
-            if (!document) return -2;
-            for (uint32_t n = 0; n < count; n++) {
+        return -8;
+    }
+
+    int urui_element_refresh_states(URUIDocumentHandle owner, const uint64_t* tokens, URUIElementRefreshState* out,
+                                    uint32_t count)
+    {
+        if (count > 65536 || (count && (!tokens || !out)))
+        {
+            return -1;
+        }
+        if (count)
+        {
+            std::fill_n(out, count, URUIElementRefreshState{});
+        }
+        if (contextThread != std::this_thread::get_id())
+        {
+            return -3;
+        }
+        if (!context)
+        {
+            return -2;
+        }
+        try
+        {
+            auto* document = URUI::Elements::Document(owner);
+            if (!document)
+            {
+                return -2;
+            }
+            for (uint32_t n = 0; n < count; n++)
+            {
                 URUI::Element* element = nullptr;
-                const auto state = element_references.ResolveState(tokens[n], document, element);
-                if (!state) continue;
+                const auto state = elementReferences.ResolveState(tokens[n], document, element);
+                if (!state)
+                {
+                    continue;
+                }
                 const auto position = element->GetRelativeOffset(URUI::BoxArea::Border);
                 const auto size = element->GetBox().GetSize(URUI::BoxArea::Border);
                 out[n] = {state, {position.x, position.y, size.x, size.y}};
             }
             return 1;
         }
-        catch (...) { if (count) std::fill_n(out, count, UruiElementRefreshState{}); return -8; }
+        catch (...)
+        {
+            if (count)
+            {
+                std::fill_n(out, count, URUIElementRefreshState{});
+            }
+            return -8;
+        }
     }
 
-    int urui_element_box(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity)
+    int urui_element_box(URUIDocumentHandle document_handle, uint64_t token, float* out, int capacity)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el || !out || capacity < 16) return -1;
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el || !out || capacity < 16)
+        {
+            return -1;
+        }
         const auto& box = el->GetBox();
         const auto layout = el->GetRelativeOffset(URUI::BoxArea::Border);
         const auto size = box.GetSize(URUI::BoxArea::Border);
         const auto content = box.GetPosition(URUI::BoxArea::Content) - box.GetPosition(URUI::BoxArea::Border);
         const auto content_size = box.GetSize(URUI::BoxArea::Content);
-        auto a = urui_interaction::ToWorld(el, {0, 0});
-        auto b = urui_interaction::ToWorld(el, {size.x, 0});
-        auto c = urui_interaction::ToWorld(el, {0, size.y});
-        auto d = urui_interaction::ToWorld(el, size);
+        auto a = URUI::Interaction::ToWorld(el, {0, 0});
+        auto b = URUI::Interaction::ToWorld(el, {size.x, 0});
+        auto c = URUI::Interaction::ToWorld(el, {0, size.y});
+        auto d = URUI::Interaction::ToWorld(el, size);
         const float left = std::min({a.x, b.x, c.x, d.x});
         const float top = std::min({a.y, b.y, c.y, d.y});
-        const float values[16] = {layout.x, layout.y, size.x, size.y, content.x, content.y, content_size.x, content_size.y,
-            left, top, std::max({a.x, b.x, c.x, d.x}) - left, std::max({a.y, b.y, c.y, d.y}) - top,
-            el->GetScrollLeft(), el->GetScrollTop(), el->GetScrollWidth(), el->GetScrollHeight()};
+        const float values[16] = {layout.x,
+                                  layout.y,
+                                  size.x,
+                                  size.y,
+                                  content.x,
+                                  content.y,
+                                  content_size.x,
+                                  content_size.y,
+                                  left,
+                                  top,
+                                  std::max({a.x, b.x, c.x, d.x}) - left,
+                                  std::max({a.y, b.y, c.y, d.y}) - top,
+                                  el->GetScrollLeft(),
+                                  el->GetScrollTop(),
+                                  el->GetScrollWidth(),
+                                  el->GetScrollHeight()};
         std::copy(values, values + 16, out);
         return 1;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_element_viewport(UruiDocumentHandle document_handle, uint64_t token, float* out, int capacity)
+    int urui_element_viewport(URUIDocumentHandle document_handle, uint64_t token, float* out, int capacity)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el || !out || capacity < 4) return -1;
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el || !out || capacity < 4)
+        {
+            return -1;
+        }
         const auto& box = el->GetBox();
         const auto origin = box.GetPosition(URUI::BoxArea::Content) - box.GetPosition(URUI::BoxArea::Border);
-        out[0] = origin.x; out[1] = origin.y;
-        out[2] = std::max(0.f, el->GetClientWidth() - box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Left) - box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Right));
-        out[3] = std::max(0.f, el->GetClientHeight() - box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Top) - box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Bottom));
+        out[0] = origin.x;
+        out[1] = origin.y;
+        out[2] = std::max(0.f, el->GetClientWidth() - box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Left) -
+                                   box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Right));
+        out[3] = std::max(0.f, el->GetClientHeight() - box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Top) -
+                                   box.GetEdge(URUI::BoxArea::Padding, URUI::BoxEdge::Bottom));
         return 1;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_element_point(UruiDocumentHandle document_handle, uint64_t token, int to_world, float x, float y, float* out)
+    int urui_element_point(URUIDocumentHandle document_handle, uint64_t token, int to_world, float x, float y,
+                           float* out)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el || !out || !std::isfinite(x) || !std::isfinite(y)) return -1;
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el || !out || !std::isfinite(x) || !std::isfinite(y))
+        {
+            return -1;
+        }
         URUI::Vector2f point{x, y};
-        if (to_world) point = urui_interaction::ToWorld(el, point);
+        if (to_world)
+        {
+            point = URUI::Interaction::ToWorld(el, point);
+        }
         else
         {
-            if (!el->Project(point)) return -2;
+            if (!el->Project(point))
+            {
+                return -2;
+            }
             point -= el->GetAbsoluteOffset(URUI::BoxArea::Border);
         }
-        out[0] = point.x; out[1] = point.y;
+        out[0] = point.x;
+        out[1] = point.y;
         return 1;
     }
-    catch (...) { return -8; }
-
-    uint64_t urui_element_pick(UruiDocumentHandle document_handle, float x, float y)
-    try
+    catch (...)
     {
-        auto* document = urui_elements::Document(document_handle);
-        if (!urui_interaction::Owner() || !document || !std::isfinite(x) || !std::isfinite(y)) return 0;
-        auto* el = context->GetElementAtPoint({x, y});
-        return el ? element_references.Track(el, document) : 0;
+        return -8;
     }
-    catch (...) { return 0; }
 
-    int urui_element_focus(UruiDocumentHandle document_handle, uint64_t token, int focus)
+    uint64_t urui_element_pick(URUIDocumentHandle document_handle, float x, float y)
     try
     {
-        auto* document = urui_elements::Document(document_handle);
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el) return -1;
-        if (focus) return el->Focus(true) ? 1 : 0;
+        auto* document = URUI::Elements::Document(document_handle);
+        if (!URUI::Interaction::Owner() || !document || !std::isfinite(x) || !std::isfinite(y))
+        {
+            return 0;
+        }
+        auto* el = context->GetElementAtPoint({x, y});
+        return el ? elementReferences.Track(el, document) : 0;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+
+    int urui_element_focus(URUIDocumentHandle document_handle, uint64_t token, int focus)
+    try
+    {
+        auto* document = URUI::Elements::Document(document_handle);
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el)
+        {
+            return -1;
+        }
+        if (focus)
+        {
+            return el->Focus(true) ? 1 : 0;
+        }
         // URUI Blur focuses the immediate parent; URUI must release focus outside
         // a disabled subtree instead of silently moving it to a disabled ancestor.
-        if (context->GetFocusElement() == el) document->Focus();
-        else el->Blur();
+        if (context->GetFocusElement() == el)
+        {
+            document->Focus();
+        }
+        else
+        {
+            el->Blur();
+        }
         return 1;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    uint64_t urui_focused_element(UruiDocumentHandle document_handle)
+    uint64_t urui_focused_element(URUIDocumentHandle document_handle)
     try
     {
-        auto* document = urui_elements::Document(document_handle);
-        if (!urui_interaction::Owner() || !document) return 0;
+        auto* document = URUI::Elements::Document(document_handle);
+        if (!URUI::Interaction::Owner() || !document)
+        {
+            return 0;
+        }
         auto* focused = context->GetFocusElement();
-        return focused && focused != document && focused->IsVisible(true) && !context->IsDocumentBlockedByModal(document)
-            ? element_references.Track(focused, document) : 0;
+        return focused && focused != document && focused->IsVisible(true) &&
+                       !context->IsDocumentBlockedByModal(document)
+                   ? elementReferences.Track(focused, document)
+                   : 0;
     }
-    catch (...) { return 0; }
+    catch (...)
+    {
+        return 0;
+    }
 
-    int urui_element_scroll(UruiDocumentHandle document_handle, uint64_t token, float x, float y)
+    int urui_element_scroll(URUIDocumentHandle document_handle, uint64_t token, float x, float y)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el || !std::isfinite(x) || !std::isfinite(y)) return -1;
-        el->SetScrollLeft(x); el->SetScrollTop(y); return 1;
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el || !std::isfinite(x) || !std::isfinite(y))
+        {
+            return -1;
+        }
+        el->SetScrollLeft(x);
+        el->SetScrollTop(y);
+        return 1;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_control_value_read(UruiDocumentHandle document_handle, uint64_t token, char* out, int capacity, int* required)
+    int urui_control_value_read(URUIDocumentHandle document_handle, uint64_t token, char* out, int capacity,
+                                int* required)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el) return -1;
-        if (urui_interaction::Checkable(el))
-            return urui_interaction::Copy(el->HasAttribute("checked") ? "true" : "false", out, capacity, required);
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el)
+        {
+            return -1;
+        }
+        if (URUI::Interaction::Checkable(el))
+        {
+            return URUI::Interaction::Copy(el->HasAttribute("checked") ? "true" : "false", out, capacity, required);
+        }
         auto* control = urui_dynamic_cast<URUI::ElementFormControl*>(el);
-        if (!control) return -2;
-        return urui_interaction::Copy(control->GetValue(), out, capacity, required);
+        if (!control)
+        {
+            return -2;
+        }
+        return URUI::Interaction::Copy(control->GetValue(), out, capacity, required);
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_control_range_info(UruiDocumentHandle owner, uint64_t token, UruiRangeInfo* info)
-    try {
-        if (!info) return -1;
+    int urui_control_range_info(URUIDocumentHandle owner, uint64_t token, URUIRangeInfo* info)
+    try
+    {
+        if (!info)
+        {
+            return -1;
+        }
         *info = {};
-        auto* element = urui_elements::Get(owner, token);
-        if (!element) return -1;
+        auto* element = URUI::Elements::Get(owner, token);
+        if (!element)
+        {
+            return -1;
+        }
         auto* input = urui_dynamic_cast<URUI::ElementFormControlInput*>(element);
         URUI::RangeControlInfo values{};
-        if (!input || !input->GetRangeInfo(values)) return -2;
+        if (!input || !input->GetRangeInfo(values))
+        {
+            return -2;
+        }
         *info = {values.minimum, values.maximum, values.step, values.step_base, values.flags};
         return 1;
-    } catch (...) { return -8; }
+    }
+    catch (...)
+    {
+        return -8;
+    }
 
-    int urui_control_value_write(UruiDocumentHandle document_handle, uint64_t token, const char* value)
+    int urui_control_value_write(URUIDocumentHandle document_handle, uint64_t token, const char* value)
     try
     {
-        auto* el = urui_elements::Get(document_handle, token);
-        if (!el || !value) return -1;
-        urui_interaction::CancelCompositionFor(el);
-        if (urui_interaction::Checkable(el))
+        auto* el = URUI::Elements::Get(document_handle, token);
+        if (!el || !value)
         {
-            if (std::strcmp(value, "true") == 0) el->SetAttribute("checked", "");
-            else if (std::strcmp(value, "false") == 0) el->RemoveAttribute("checked");
-            else return -1;
+            return -1;
+        }
+        URUI::Interaction::CancelCompositionFor(el);
+        if (URUI::Interaction::Checkable(el))
+        {
+            if (std::strcmp(value, "true") == 0)
+            {
+                el->SetAttribute("checked", "");
+            }
+            else if (std::strcmp(value, "false") == 0)
+            {
+                el->RemoveAttribute("checked");
+            }
+            else
+            {
+                return -1;
+            }
             return 1;
         }
         auto* control = urui_dynamic_cast<URUI::ElementFormControl*>(el);
-        if (!control) return -2;
+        if (!control)
+        {
+            return -2;
+        }
         control->SetValue(value);
         return 1;
     }
-    catch (...) { return -8; }
+    catch (...)
+    {
+        return -8;
+    }
 }

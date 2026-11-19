@@ -18,7 +18,10 @@ namespace URUI.Tests.Editor
         static TextAsset AuthorSource(Document document)
         {
             var compiled = new SerializedObject(document).FindProperty("compiledSource").objectReferenceValue;
-            if (!compiled) throw new Exception("Menu document must use a compiled asset.");
+            if (!compiled)
+            {
+                throw new Exception("Menu document must use a compiled asset.");
+            }
             return (TextAsset)new SerializedObject(compiled).FindProperty("authorSource").objectReferenceValue;
         }
         /// <summary>

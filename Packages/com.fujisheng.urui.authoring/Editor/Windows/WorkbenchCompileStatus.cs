@@ -62,8 +62,17 @@ namespace URUI.Authoring.Windows
                 compiledCurrent = false;
                 validationError = null;
                 if (compiled)
-                    try { CompiledDocumentCompiler.ValidateCurrent(compiled); compiledCurrent = true; }
-                    catch (InvalidOperationException error) { validationError = error.Message; }
+                {
+                    try
+                    {
+                        CompiledDocumentCompiler.ValidateCurrent(compiled);
+                        compiledCurrent = true;
+                    }
+                    catch (InvalidOperationException error)
+                    {
+                        validationError = error.Message;
+                    }
+                }
             }
             if (!compiled)
             {

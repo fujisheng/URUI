@@ -7,7 +7,9 @@ using URUI.Resources;
 
 namespace URUI.Tests
 {
-    /// <summary>独立验收场景显式提供 Surface 与作者 CSS、原始字体资源。</summary>
+    /// <summary>
+    /// 独立验收场景显式提供 Surface 与作者 CSS、原始字体资源。
+    /// </summary>
     internal static class AcceptanceDocuments
     {
         internal static Document Create(GameObject owner, Surface surface = null)
@@ -21,11 +23,13 @@ namespace URUI.Tests
             Add("/urui/base.css", "URUI/base");
             Add("/urui/controls.css", "URUI/controls");
             foreach (var family in new[] { "Serif", "Sans", "Mono" })
+            {
                 foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
                 {
                     var name = "Liberation" + family + "-" + face + ".ttf";
                     Add("/urui/Fonts/" + name + ".bytes", "URUI/Fonts/" + name);
                 }
+            }
             document.TextResources = files.ToArray();
             return document;
 

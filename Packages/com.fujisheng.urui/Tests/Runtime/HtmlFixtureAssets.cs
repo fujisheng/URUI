@@ -17,11 +17,13 @@ namespace URUI.Tests
                 new TextResource("/urui/base.css", UnityEngine.Resources.Load<TextAsset>("URUI/base"))
             };
             foreach (var family in new[] { "Serif", "Sans", "Mono" })
+            {
                 foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
                 {
                     var name = "Liberation" + family + "-" + face + ".ttf";
                     resources.Add(new TextResource("/urui/Fonts/" + name + ".bytes", UnityEngine.Resources.Load<TextAsset>("URUI/Fonts/" + name)));
                 }
+            }
             document.TextResources = resources.ToArray();
             return document;
         }

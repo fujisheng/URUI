@@ -2,25 +2,28 @@
 
 #include "../../Include/URUI/Core/ContextInstancer.h"
 
-namespace URUI {
+namespace URUI
+{
 
-/**
+    /**
     Default instancer for instancing contexts.
  */
 
-class ContextInstancerDefault : public ContextInstancer {
-public:
-	ContextInstancerDefault();
-	virtual ~ContextInstancerDefault();
+    class ContextInstancerDefault : public ContextInstancer
+    {
+    public:
+        ContextInstancerDefault();
+        virtual ~ContextInstancerDefault();
 
-	/// Instances a context.
-	ContextPtr InstanceContext(const String& name, RenderManager* render_manager, TextInputHandler* text_input_handler) override;
+        /// Instances a context.
+        ContextPtr InstanceContext(const String& name, RenderManager* render_manager,
+                                   TextInputHandler* text_input_handler) override;
 
-	/// Releases a context previously created by this context.
-	void ReleaseContext(Context* context) override;
+        /// Releases a context previously created by this context.
+        void ReleaseContext(Context* context) override;
 
-	/// Releases this context instancer.
-	void Release() override;
-};
+        /// Releases this context instancer.
+        void Release() override;
+    };
 
-} // namespace URUI
+}

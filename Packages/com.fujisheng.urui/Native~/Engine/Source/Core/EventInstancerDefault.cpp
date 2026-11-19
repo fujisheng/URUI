@@ -1,25 +1,31 @@
 #include "EventInstancerDefault.h"
 #include "../../Include/URUI/Core/Event.h"
 
-namespace URUI {
-
-EventInstancerDefault::EventInstancerDefault() {}
-
-EventInstancerDefault::~EventInstancerDefault() {}
-
-EventPtr EventInstancerDefault::InstanceEvent(Element* target, EventId id, const String& type, const Dictionary& parameters, bool interruptible)
+namespace URUI
 {
-	return EventPtr(new Event(target, id, type, parameters, interruptible));
-}
 
-void EventInstancerDefault::ReleaseEvent(Event* event)
-{
-	delete event;
-}
+    EventInstancerDefault::EventInstancerDefault()
+    {
+    }
 
-void EventInstancerDefault::Release()
-{
-	delete this;
-}
+    EventInstancerDefault::~EventInstancerDefault()
+    {
+    }
 
-} // namespace URUI
+    EventPtr EventInstancerDefault::InstanceEvent(Element* target, EventId id, const String& type,
+                                                  const Dictionary& parameters, bool interruptible)
+    {
+        return EventPtr(new Event(target, id, type, parameters, interruptible));
+    }
+
+    void EventInstancerDefault::ReleaseEvent(Event* event)
+    {
+        delete event;
+    }
+
+    void EventInstancerDefault::Release()
+    {
+        delete this;
+    }
+
+}

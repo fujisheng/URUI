@@ -2,32 +2,34 @@
 
 #include "../../../Include/URUI/Core/Element.h"
 
-namespace URUI {
+namespace URUI
+{
 
-class WidgetTextInput;
+    class WidgetTextInput;
 
-/**
+    /**
     A stub element used by the WidgetTextInput to query the CSS-specified text colour and
     background colour for selected text.
  */
 
-class ElementTextSelection : public Element {
-public:
-	URUI_RTTI_DeclareWithParent(ElementTextSelection, Element)
+    class ElementTextSelection : public Element
+    {
+    public:
+        URUI_RTTI_DeclareWithParent(ElementTextSelection, Element)
 
-	ElementTextSelection(const String& tag);
-	virtual ~ElementTextSelection();
+        ElementTextSelection(const String& tag);
+        virtual ~ElementTextSelection();
 
-	/// Set the widget that this selection element was created for. This is the widget that will be
-	/// notified when this element's properties are altered.
-	void SetWidget(WidgetTextInput* widget);
+        /// Set the widget that this selection element was created for. This is the widget that will be
+        /// notified when this element's properties are altered.
+        void SetWidget(WidgetTextInput* widget);
 
-protected:
-	/// Processes 'color' and 'background-color' property changes.
-	void OnPropertyChange(const PropertyIdSet& changed_properties) override;
+    protected:
+        /// Processes 'color' and 'background-color' property changes.
+        void OnPropertyChange(const PropertyIdSet& changed_properties) override;
 
-private:
-	WidgetTextInput* widget;
-};
+    private:
+        WidgetTextInput* widget;
+    };
 
-} // namespace URUI
+}

@@ -17,7 +17,9 @@ namespace URUI.Authoring.Tests
         {
             count++;
             if (!condition)
+            {
                 throw new Exception(message);
+            }
         }
         static string Copy(string name)
         {
@@ -25,14 +27,22 @@ namespace URUI.Authoring.Tests
             string path = "Assets/" + name.Replace(" ", "");
             Directory.CreateDirectory(path);
             foreach (string file in Directory.GetFiles(Path.Combine(root, "Samples~/" + name)))
+            {
                 File.Copy(file, Path.Combine(path, Path.GetFileName(file)), true);
+            }
             AssetDatabase.Refresh();
             return path;
         }
         public static void Run()
         {
             var errors = new List<string>();
-            Application.LogCallback log = (message, stack, type) => { if (type == LogType.Error || type == LogType.Exception) errors.Add(message); };
+            Application.LogCallback log = (message, stack, type) =>
+            {
+                if (type == LogType.Error || type == LogType.Exception)
+                {
+                    errors.Add(message);
+                }
+            };
             Application.logMessageReceived += log;
             try
             {
@@ -83,8 +93,17 @@ namespace URUI.Authoring.Tests
                 Debug.Log("URUI Animation Samples PASS " + count);
                 EditorApplication.Exit(0);
             }
-            catch (Exception error) { Directory.CreateDirectory("Evidence"); File.WriteAllText("Evidence/animation-samples-failure.txt", error.ToString()); Debug.LogException(error); EditorApplication.Exit(1); }
-            finally { Application.logMessageReceived -= log; }
+            catch (Exception error)
+            {
+                Directory.CreateDirectory("Evidence");
+                File.WriteAllText("Evidence/animation-samples-failure.txt", error.ToString());
+                Debug.LogException(error);
+                EditorApplication.Exit(1);
+            }
+            finally
+            {
+                Application.logMessageReceived -= log;
+            }
         }
         [Serializable]
         sealed class AssetState

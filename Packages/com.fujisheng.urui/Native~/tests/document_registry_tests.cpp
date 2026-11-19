@@ -25,7 +25,8 @@ static void RegistryContracts(URUI::Context& context)
     ElementReferences references;
     references.Begin();
     URUI::Bridge::DocumentRegistry registry(context, references);
-    uint64_t a = 0, b = 0;
+    uint64_t a = 0;
+    uint64_t b = 0;
     assert(registry.Create(&a) == 1 && registry.Create(&b) == 1 && a != b);
     assert(registry.Find(a) && registry.Find(a)->Element() == nullptr);
     auto* documentA = MakeDocument(context);
@@ -36,15 +37,18 @@ static void RegistryContracts(URUI::Context& context)
     auto tokenB = references.Acquire(documentB, "same");
     assert(tokenA && tokenB && tokenA != tokenB);
     assert(registry.OwnerOf(tokenA) == a && registry.OwnerOf(tokenB) == b);
-    auto* interested=references.Resolve(tokenA,documentA);
-    assert(references.EventInterest(interested,3)); // Unknown native consumer stays conservative.
-    assert(references.SetEventInterest(tokenA,0,1)==1&&!references.EventInterest(interested,3));
-    assert(references.SetEventInterest(tokenA,1u<<3,2)==1&&references.EventInterest(interested,3));
-    assert(!references.EventInterest(interested,1));
-    assert(references.SetEventInterest(tokenA,0,2)==-2&&references.EventInterest(interested,3));
-    assert(references.SetEventInterest(tokenA,1,3)==-1);
-    int interest_thread=0;std::thread interest_foreign([&]{interest_thread=references.SetEventInterest(tokenA,0,3);});interest_foreign.join();
-    assert(interest_thread==-3&&references.EventInterest(interested,3));
+    auto* interested = references.Resolve(tokenA, documentA);
+    // Unknown native consumer stays conservative.
+    assert(references.EventInterest(interested, 3));
+    assert(references.SetEventInterest(tokenA, 0, 1) == 1 && !references.EventInterest(interested, 3));
+    assert(references.SetEventInterest(tokenA, 1u << 3, 2) == 1 && references.EventInterest(interested, 3));
+    assert(!references.EventInterest(interested, 1));
+    assert(references.SetEventInterest(tokenA, 0, 2) == -2 && references.EventInterest(interested, 3));
+    assert(references.SetEventInterest(tokenA, 1, 3) == -1);
+    int interest_thread = 0;
+    std::thread interest_foreign([&] { interest_thread = references.SetEventInterest(tokenA, 0, 3); });
+    interest_foreign.join();
+    assert(interest_thread == -3 && references.EventInterest(interested, 3));
 
     auto detached = references.Create(documentA, "div");
     assert(detached && references.Resolve(detached, documentB) == nullptr);
@@ -56,7 +60,12 @@ static void RegistryContracts(URUI::Context& context)
     uint64_t reopened = 0;
     assert(registry.Create(&reopened) == 1 && reopened != a && reopened != b);
     int foreignResult = 0;
-    std::thread foreign([&] { uint64_t handle = 0; foreignResult = registry.Create(&handle); });
+    std::thread foreign(
+        [&]
+        {
+            uint64_t handle = 0;
+            foreignResult = registry.Create(&handle);
+        });
     foreign.join();
     assert(foreignResult == -3);
     assert(registry.Close(b) == 1 && registry.Close(reopened) == 1);
@@ -71,7 +80,7 @@ int main()
     assert(context);
     std::thread foreign_destroy([] { urui_destroy(); });
     foreign_destroy.join();
-    UruiDocumentHandle after_foreign_destroy = 0;
+    URUIDocumentHandle after_foreign_destroy = 0;
     assert(urui_document_create(&after_foreign_destroy) == 1);
     assert(urui_document_close(after_foreign_destroy) == 1);
     assert(URUI::GetContext("urui") == context);

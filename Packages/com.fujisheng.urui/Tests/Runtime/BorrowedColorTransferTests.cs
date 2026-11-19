@@ -3,7 +3,9 @@ using UnityEngine;
 
 namespace URUI.Tests
 {
-    /// <summary>Opaque texel-center sampling must preserve the image's encoded sRGB values.</summary>
+    /// <summary>
+    /// Opaque texel-center sampling must preserve the image's encoded sRGB values.
+    /// </summary>
     public sealed class BorrowedColorTransferTests
     {
         [TestCase(false)]
@@ -20,7 +22,9 @@ namespace URUI.Tests
             };
             var colors = new Color32[width];
             for (var i = 0; i < width; i++)
+            {
                 colors[i] = new Color32((byte)i, (byte)((i * 37) % 256), (byte)(255 - i), 255);
+            }
             texture.SetPixels32(colors);
             texture.Apply();
             Assert.That(texture.isDataSRGB, Is.EqualTo(borrowed));
@@ -52,7 +56,10 @@ namespace URUI.Tests
                     var error = Mathf.Max(Mathf.Abs(actual[i].r - expected.r),
                         Mathf.Abs(actual[i].g - expected.g), Mathf.Abs(actual[i].b - expected.b));
                     maximumError = Mathf.Max(maximumError, error);
-                    if (error > 1e-6f) mismatches++;
+                    if (error > 1e-6f)
+                    {
+                        mismatches++;
+                    }
                 }
                 TestContext.WriteLine($"borrowed={borrowed} mismatches={mismatches} maxEncodedError={maximumError} code1={actual[1].r}");
                 Assert.That(maximumError, Is.LessThanOrEqualTo(1e-6f),
@@ -61,7 +68,10 @@ namespace URUI.Tests
             finally
             {
                 RenderTexture.active = previous;
-                if (pixels) Object.DestroyImmediate(pixels);
+                if (pixels)
+                {
+                    Object.DestroyImmediate(pixels);
+                }
                 target.Release();
                 Object.DestroyImmediate(texture);
                 Object.DestroyImmediate(target);

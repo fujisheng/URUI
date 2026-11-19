@@ -11,7 +11,9 @@ using URUI.Hosting;
 
 namespace URUI.Samples
 {
-    /// <summary>导入样例并添加到空 GameObject，展示设置、表单与可复用列表。</summary>
+    /// <summary>
+    /// 导入样例并添加到空 GameObject，展示设置、表单与可复用列表。
+    /// </summary>
     [RequireComponent(typeof(Document))]
     public sealed class RuntimeControls : MonoBehaviour
     {
@@ -77,17 +79,22 @@ namespace URUI.Samples
             AddFile("/urui/base.css", "URUI/base");
             AddFile("/urui/controls.css", "URUI/controls");
             foreach (var family in new[] { "Serif", "Sans", "Mono" })
+            {
                 foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
                 {
                     var name = "Liberation" + family + "-" + face + ".ttf";
                     AddFile("/urui/Fonts/" + name + ".bytes", "URUI/Fonts/" + name);
                 }
+            }
             document.TextResources = files.ToArray();
             document.Load(source, "samples/runtime-controls/RuntimeControls.html");
 
             void AddFile(string uri, string resource)
             {
-                if (files.Exists(file => file.Source == uri)) { return; }
+                if (files.Exists(file => file.Source == uri))
+                {
+                    return;
+                }
                 files.Add(new TextResource(uri, UnityResources.Load<TextAsset>(resource)
                     ?? throw new InvalidOperationException("样例缺少作者依赖：" + resource)));
             }

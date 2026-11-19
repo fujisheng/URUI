@@ -93,12 +93,18 @@ namespace URUI.Internal.Rendering.Shaders
         {
             // Sampling reads the geometry-local addressing flag; command-state equality includes all flag bits.
             // Audit the whole shared source closure before allowing recorded parameter reuse.
-            foreach(var source in new[]{(SamplingPath,SamplingHash),(ColorPath,ColorHash),(PalettePath,PaletteHash),(ParametersPath,ParametersHash),(CssColorPath,CssColorHash),(MaskPath,MaskHash),(ProgramPath,ProgramHash),(FetchPath,FetchHash),(FramebufferPath,FramebufferHash)})
+            foreach (var source in new[] { (SamplingPath, SamplingHash), (ColorPath, ColorHash), (PalettePath, PaletteHash), (ParametersPath, ParametersHash), (CssColorPath, CssColorHash), (MaskPath, MaskHash), (ProgramPath, ProgramHash), (FetchPath, FetchHash), (FramebufferPath, FramebufferHash) })
             {
-                string path=ShaderSources.ResolveAssetPath(source.Item1);
-                if(!System.IO.File.Exists(path)){return false;}
-                using var hash=System.Security.Cryptography.SHA256.Create();
-                if(System.BitConverter.ToString(hash.ComputeHash(System.IO.File.ReadAllBytes(path))).Replace("-","").ToLowerInvariant()!=source.Item2){return false;}
+                string path = ShaderSources.ResolveAssetPath(source.Item1);
+                if (!System.IO.File.Exists(path))
+                {
+                    return false;
+                }
+                using var hash = System.Security.Cryptography.SHA256.Create();
+                if (System.BitConverter.ToString(hash.ComputeHash(System.IO.File.ReadAllBytes(path))).Replace("-", "").ToLowerInvariant() != source.Item2)
+                {
+                    return false;
+                }
             }
             return true;
         }

@@ -4,38 +4,43 @@
 #include "../../Include/URUI/Core/ID.h"
 #include "../../Include/URUI/Core/Spritesheet.h"
 
-namespace URUI {
+namespace URUI
+{
 
-class DecoratorNinePatch : public Decorator {
-public:
-	DecoratorNinePatch();
-	virtual ~DecoratorNinePatch();
+    class DecoratorNinePatch : public Decorator
+    {
+    public:
+        DecoratorNinePatch();
+        virtual ~DecoratorNinePatch();
 
-	bool Initialise(const Rectanglef& rect_outer, const Rectanglef& rect_inner, const Array<NumericValue, 4>* _edges, Texture texture,
-		float display_scale);
+        bool Initialise(const Rectanglef& rect_outer, const Rectanglef& rect_inner,
+                        const Array<NumericValue, 4>* _edges, Texture texture, float display_scale);
 
-	DecoratorDataHandle GenerateElementData(Element* element, BoxArea paint_area) const override;
-	void ReleaseElementData(DecoratorDataHandle element_data) const override;
+        DecoratorDataHandle GenerateElementData(Element* element, BoxArea paint_area) const override;
+        void ReleaseElementData(DecoratorDataHandle element_data) const override;
 
-	void RenderElement(Element* element, DecoratorDataHandle element_data) const override;
+        void RenderElement(Element* element, DecoratorDataHandle element_data) const override;
 
-private:
-	Rectanglef rect_outer, rect_inner;
-	float display_scale = 1;
-	UniquePtr<Array<NumericValue, 4>> edges;
-};
+    private:
+        Rectanglef rect_outer;
+        Rectanglef rect_inner;
+        float display_scale = 1;
+        UniquePtr<Array<NumericValue, 4>> edges;
+    };
 
-class DecoratorNinePatchInstancer : public DecoratorInstancer {
-public:
-	DecoratorNinePatchInstancer();
-	~DecoratorNinePatchInstancer();
+    class DecoratorNinePatchInstancer : public DecoratorInstancer
+    {
+    public:
+        DecoratorNinePatchInstancer();
+        ~DecoratorNinePatchInstancer();
 
-	SharedPtr<Decorator> InstanceDecorator(const String& name, const PropertyDictionary& properties,
-		const DecoratorInstancerInterface& instancer_interface) override;
+        SharedPtr<Decorator> InstanceDecorator(const String& name, const PropertyDictionary& properties,
+                                               const DecoratorInstancerInterface& instancer_interface) override;
 
-private:
-	PropertyId sprite_outer_id, sprite_inner_id;
-	PropertyId edge_ids[4];
-};
+    private:
+        PropertyId sprite_outer_id;
+        PropertyId sprite_inner_id;
+        PropertyId edge_ids[4];
+    };
 
-} // namespace URUI
+}

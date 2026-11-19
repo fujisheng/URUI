@@ -10,13 +10,23 @@ using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace URUI.Tests.Editor
 {
-    /// <summary>Independent bootstrap: compiles before any sample has been imported.</summary>
+    /// <summary>
+    /// Independent bootstrap: compiles before any sample has been imported.
+    /// </summary>
     public static class GameFlowPackageImport
     {
-        [Serializable] sealed class Report
+        [Serializable]
+        sealed class Report
         {
-            public bool passed, nativeUpmImport, importedNow;
-            public string packageName, packageVersion, displayName, resolvedPath, importPath, sceneAssetPath;
+            public bool passed;
+            public bool nativeUpmImport;
+            public bool importedNow;
+            public string packageName;
+            public string packageVersion;
+            public string displayName;
+            public string resolvedPath;
+            public string importPath;
+            public string sceneAssetPath;
         }
 
         public static void Run()
@@ -27,18 +37,36 @@ namespace URUI.Tests.Editor
                 var sample = GameFlowSampleMenu.FindDefaultSample();
                 bool importedNow = !sample.isImported;
                 if (importedNow && !sample.Import())
+                {
                     throw new Exception("Unity Sample.Import returned false.");
+                }
                 string scene = GameFlowSampleMenu.SceneAssetPath(sample);
-                if (!File.Exists(scene)) throw new Exception("Imported scene is absent: " + scene);
-                var report = new Report { passed = true, nativeUpmImport = true, importedNow = importedNow,
-                    packageName = package.name, packageVersion = package.version, displayName = sample.displayName,
-                    resolvedPath = sample.resolvedPath, importPath = sample.importPath, sceneAssetPath = scene };
+                if (!File.Exists(scene))
+                {
+                    throw new Exception("Imported scene is absent: " + scene);
+                }
+                var report = new Report
+                {
+                    passed = true,
+                    nativeUpmImport = true,
+                    importedNow = importedNow,
+                    packageName = package.name,
+                    packageVersion = package.version,
+                    displayName = sample.displayName,
+                    resolvedPath = sample.resolvedPath,
+                    importPath = sample.importPath,
+                    sceneAssetPath = scene
+                };
                 Directory.CreateDirectory("Artifacts/GameFlow");
                 File.WriteAllText("Artifacts/GameFlow/package-import.json", JsonUtility.ToJson(report, true));
                 Debug.Log("GAME_FLOW_PACKAGE_IMPORT_PASS " + scene);
                 EditorApplication.Exit(0);
             }
-            catch (Exception error) { Debug.LogException(error); EditorApplication.Exit(1); }
+            catch (Exception error)
+            {
+                Debug.LogException(error);
+                EditorApplication.Exit(1);
+            }
         }
     }
 }

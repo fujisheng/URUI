@@ -15,7 +15,9 @@ namespace URUI.Authoring.Windows
     {
         sealed class Item
         {
-            internal string Identity, Label, Hint;
+            internal string Identity;
+            internal string Label;
+            internal string Hint;
             internal int Id;
             internal SourceDocument.Node Node
             {
@@ -28,13 +30,22 @@ namespace URUI.Authoring.Windows
             }
         }
 
-        readonly TreeView tree = new TreeView { name = "urui-node-tree", selectionType = SelectionType.Multiple, fixedItemHeight = 25, viewDataKey = "urui-authoring-tree" };
+        readonly TreeView tree = new TreeView
+        {
+            name = "urui-node-tree",
+            selectionType = SelectionType.Multiple,
+            fixedItemHeight = 25,
+            viewDataKey = "urui-authoring-tree"
+        };
         readonly Dictionary<string, int> rowIds = new Dictionary<string, int>();
         readonly Dictionary<string, Item> visible = new Dictionary<string, Item>();
         readonly Label noLayers = new Label(L.Tr("未找到匹配的图层"));
-        string query = "", path;
-        long structure = -1, revision = -1;
-        bool rebuilding, showMetadata;
+        string query = "";
+        string path;
+        long structure = -1;
+        long revision = -1;
+        bool rebuilding;
+        bool showMetadata;
         int nextId;
         Label dropRow;
 
@@ -45,19 +56,35 @@ namespace URUI.Authoring.Windows
             var toolbar = new VisualElement();
             toolbar.AddToClassList("urui-layers-options");
             var full = new Toggle(L.Tr("完整结构"));
-            full.RegisterValueChangedCallback(evt => { showMetadata = evt.newValue; Rebuild(); });
+            full.RegisterValueChangedCallback(evt =>
+            {
+                showMetadata = evt.newValue;
+                Rebuild();
+            });
             toolbar.Add(full);
-            var search = new UnityEditor.UIElements.ToolbarSearchField { name = "urui-node-search", tooltip = L.Tr("搜索节点") };
+            var search = new UnityEditor.UIElements.ToolbarSearchField
+            {
+                name = "urui-node-search",
+                tooltip = L.Tr("搜索节点")
+            };
             search.AddToClassList("urui-search");
-            WorkbenchUi.SetPlaceholder(search, L.Tr("搜索图层…"));
-            search.RegisterValueChangedCallback(evt => { query = evt.newValue.Trim(); Rebuild(); });
+            WorkbenchUI.SetPlaceholder(search, L.Tr("搜索图层…"));
+            search.RegisterValueChangedCallback(evt =>
+            {
+                query = evt.newValue.Trim();
+                Rebuild();
+            });
             search.RegisterCallback<KeyDownEvent>(evt =>
             {
                 if (evt.keyCode is not (KeyCode.Return or KeyCode.KeypadEnter) || query.Length == 0)
+                {
                     return;
+                }
                 var match = visible.Values.FirstOrDefault()?.Node;
                 if (match == null)
+                {
                     return;
+                }
                 AuthoringEnvironment.Select(ElementSelectionProxy.ForAuthor(match.Key));
                 tree.Focus();
                 evt.StopImmediatePropagation();
@@ -79,9 +106,17 @@ namespace URUI.Authoring.Windows
             tree.RegisterCallback<ValidateCommandEvent>(evt =>
             {
                 if (evt.commandName == "Copy" || evt.commandName == "Paste" || evt.commandName == "Delete" || evt.commandName == "SoftDelete")
+                {
                     evt.StopPropagation();
+                }
             });
-            tree.RegisterCallback<ExecuteCommandEvent>(evt => { if (RunCommand(evt.commandName)) evt.StopPropagation(); });
+            tree.RegisterCallback<ExecuteCommandEvent>(evt =>
+            {
+                if (RunCommand(evt.commandName))
+                {
+                    evt.StopPropagation();
+                }
+            });
             tree.RegisterCallback<KeyDownEvent>(evt =>
             {
                 if ((evt.commandKey || evt.ctrlKey) && evt.keyCode == KeyCode.D && RunCommand("Duplicate"))
@@ -92,7 +127,9 @@ namespace URUI.Authoring.Windows
                 if (evt.keyCode == KeyCode.Delete || evt.keyCode == KeyCode.Backspace)
                 {
                     if (RunCommand("Delete"))
+                    {
                         evt.StopPropagation();
+                    }
                 }
             });
             Add(tree);
@@ -112,13 +149,17 @@ namespace URUI.Authoring.Windows
                 Rebuild();
             }
             else if (structure != author.StructureRevision)
+            {
                 Rebuild();
+            }
             else if (revision != author.Revision)
             {
                 revision = author.Revision;
                 if (author.PropertyEditsRevision == revision && author.LastPropertyEdits?.Any(edit =>
                     edit.Property == "text" || edit.Property == "attr.class" || edit.Property == "attr.id" || edit.Property == "attr.type") == true)
+                {
                     Rebuild();
+                }
             }
         }
 
@@ -130,8 +171,12 @@ namespace URUI.Authoring.Windows
             visible.Clear();
             var items = new List<TreeViewItemData<Item>>();
             if (author.Model != null)
+            {
                 foreach (var node in author.Model.Roots)
+                {
                     AddNode(items, node, author.Model);
+                }
+            }
             rebuilding = true;
             try
             {
@@ -141,10 +186,15 @@ namespace URUI.Authoring.Windows
                 tree.SetRootItems(items);
                 tree.Rebuild();
                 foreach (var root in items)
+                {
                     tree.ExpandItem(root.id);
+                }
                 Reveal(false);
             }
-            finally { rebuilding = false; }
+            finally
+            {
+                rebuilding = false;
+            }
         }
 
         void AddNode(List<TreeViewItemData<Item>> rows, SourceDocument.Node node, SourceDocument model)
@@ -153,13 +203,18 @@ namespace URUI.Authoring.Windows
             if (!full && node.Tag == "html")
             {
                 foreach (var child in node.Children)
+                {
                     AddNode(rows, child, model);
+                }
                 return;
             }
             if (!NodePresentation.Visible(node.Tag, node.Attribute("id"), full) && !node.Children.Any(HasNamedNode))
+            {
                 return;
+            }
 
-            string id = node.Attribute("id"), classes = node.Attribute("class");
+            string id = node.Attribute("id");
+            string classes = node.Attribute("class");
             string text = !node.IsVoid && node.Children.Count == 0 && !NodePresentation.IsMetadata(node.Tag)
                 ? System.Net.WebUtility.HtmlDecode(model.Text.Substring(node.OpenEnd, node.CloseStart - node.OpenEnd)).Trim() : "";
             string type = L.Tr(NodePresentation.TypeLabel(node.Tag, node.Attribute("type")));
@@ -167,22 +222,32 @@ namespace URUI.Authoring.Windows
             if (query.Length == 0)
             {
                 foreach (var child in node.Children)
+                {
                     AddNode(children, child, model);
+                }
                 AddRow(rows, children, node, id, classes, type, text);
                 return;
             }
             if (Matches(id, classes, node.Tag, type, text))
+            {
                 AddRow(rows, children, node, id, classes, type, text);
+            }
             foreach (var child in node.Children)
+            {
                 AddNode(rows, child, model);
+            }
         }
 
         bool Matches(string id, string classes, string tag, string type, string text)
         {
             if (query.StartsWith("#", StringComparison.Ordinal))
+            {
                 return id?.IndexOf(query.Substring(1), StringComparison.OrdinalIgnoreCase) >= 0;
+            }
             if (query.StartsWith(".", StringComparison.Ordinal))
+            {
                 return classes?.IndexOf(query.Substring(1), StringComparison.OrdinalIgnoreCase) >= 0;
+            }
             return new[] { id, classes, tag, type, text }.Any(value => value?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
@@ -191,20 +256,36 @@ namespace URUI.Authoring.Windows
         {
             string identity = AuthoringEnvironment.Author.NodeIdentity(node.Key);
             if (!rowIds.TryGetValue(identity, out int treeId))
+            {
                 rowIds.Add(identity, treeId = ++nextId);
-            string title = WorkbenchUi.NodeTitle(node.Tag, id, classes, text, node.Attribute("type"));
+            }
+            string title = WorkbenchUI.NodeTitle(node.Tag, id, classes, text, node.Attribute("type"));
             var ancestors = new Stack<string>();
             for (var parent = node.Parent; parent != null; parent = parent.Parent)
+            {
                 ancestors.Push(parent.Attribute("id") ?? parent.Attribute("class") ?? parent.Tag);
+            }
             string hint = type + "  ·  <" + node.Tag + ">\n" + title;
             if (!string.IsNullOrEmpty(id))
+            {
                 hint += "\n#" + id;
+            }
             if (!string.IsNullOrEmpty(classes))
+            {
                 hint += "\n." + classes.Replace(" ", " .");
+            }
             if (ancestors.Count != 0)
+            {
                 hint += "\n" + string.Join(" › ", ancestors);
-            string label = WorkbenchUi.Glyph(node.Tag == "input" ? node.Attribute("type") ?? node.Tag : node.Tag) + "   " + title;
-            var item = new Item { Identity = identity, Id = treeId, Label = label, Hint = hint };
+            }
+            string label = WorkbenchUI.Glyph(node.Tag == "input" ? node.Attribute("type") ?? node.Tag : node.Tag) + "   " + title;
+            var item = new Item
+            {
+                Identity = identity,
+                Id = treeId,
+                Label = label,
+                Hint = hint
+            };
             visible[identity] = item;
             rows.Add(new TreeViewItemData<Item>(treeId, item, children));
         }
@@ -215,7 +296,9 @@ namespace URUI.Authoring.Windows
         void SelectItems(IEnumerable<object> items)
         {
             if (rebuilding)
+            {
                 return;
+            }
             AuthoringEnvironment.SetNodeSelection(items.OfType<Item>().Select(item => item.Node).Where(node => node != null)
                 .Select(node => ElementSelectionProxy.ForAuthor(node.Key)));
         }
@@ -242,14 +325,22 @@ namespace URUI.Authoring.Windows
             {
                 var node = proxy.SourceNode;
                 for (var parent = node.Parent; parent != null; parent = parent.Parent)
+                {
                     if (visible.TryGetValue(AuthoringEnvironment.Author.NodeIdentity(parent.Key), out var branch))
+                    {
                         tree.ExpandItem(branch.Id);
+                    }
+                }
                 if (visible.TryGetValue(AuthoringEnvironment.Author.NodeIdentity(node.Key), out var item))
+                {
                     ids.Add(item.Id);
+                }
             }
             tree.SetSelectionByIdWithoutNotify(ids);
             if (scroll && ids.Count > 0)
+            {
                 tree.ScrollToItemById(ids[0]);
+            }
         }
 
         Label MakeRow()
@@ -260,21 +351,25 @@ namespace URUI.Authoring.Windows
             label.style.unityTextAlign = TextAnchor.MiddleLeft;
             label.style.overflow = Overflow.Hidden;
             label.style.textOverflow = TextOverflow.Ellipsis;
-            WorkbenchUi.EnableDrag(label, () => label.userData is Item item && item.Node is { } node && node.Tag != "body" && node.Tag != "html"
+            WorkbenchUI.EnableDrag(label, () => label.userData is Item item && item.Node is { } node && node.Tag != "body" && node.Tag != "html"
                 ? new WorkbenchDrag(identity: item.Identity) : null, click: () =>
                 {
                     if (Selection.count != 0 && label.userData is Item selected && tree.selectedIds.Contains(selected.Id))
+                    {
                         SelectItems(tree.selectedItems);
+                    }
                 });
             label.AddManipulator(new ContextualMenuManipulator(evt =>
             {
                 if (!(label.userData is Item item) || item.Node == null)
+                {
                     return;
+                }
                 var proxy = ElementSelectionProxy.ForAuthor(item.Node.Key);
                 evt.menu.AppendAction(L.Tr("创建子节点…"), _ =>
                 {
                     AuthoringEnvironment.Select(proxy);
-                    UruiHierarchyWindow.ShowCreateMenu();
+                    HierarchyWindow.ShowCreateMenu();
                 }, _ => item.Node.IsVoid ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal);
                 evt.menu.AppendAction(L.Tr("删除"), _ =>
                 {
@@ -287,10 +382,14 @@ namespace URUI.Authoring.Windows
                 var placement = RowPlacement(label, evt.localMousePosition.y, out int zone);
                 var drag = WorkbenchDrag.Current;
                 if (drag == null)
+                {
                     return;
+                }
                 ClearDrop();
                 if (drag.CanDrop(placement))
+                {
                     MarkDrop(label, zone);
+                }
                 DragAndDrop.visualMode = drag.CanDrop(placement) ? (drag.Identity == null ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Move) : DragAndDropVisualMode.Rejected;
                 evt.StopPropagation();
             });
@@ -301,7 +400,9 @@ namespace URUI.Authoring.Windows
                 var drag = WorkbenchDrag.Current;
                 ClearDrop();
                 if (drag == null)
+                {
                     return;
+                }
                 var placement = RowPlacement(label, evt.localMousePosition.y, out _);
                 AuthoringEnvironment.Try(() => drag.Drop(placement));
                 evt.StopPropagation();
@@ -315,9 +416,13 @@ namespace URUI.Authoring.Windows
             float height = label.layout.height;
             zone = y < height * .25f ? -1 : y > height * .75f ? 1 : 0;
             if (node == null)
+            {
                 return default;
+            }
             if (zone == 0 && node.IsVoid)
+            {
                 zone = y < height / 2 ? -1 : 1;
+            }
             return zone == 0 ? NodePlacement.ChildOf(node) : NodePlacement.Beside(node, zone > 0);
         }
 
@@ -333,7 +438,9 @@ namespace URUI.Authoring.Windows
         void ClearDrop()
         {
             if (dropRow == null)
+            {
                 return;
+            }
             dropRow.style.backgroundColor = StyleKeyword.Null;
             dropRow.style.borderTopWidth = 0;
             dropRow.style.borderBottomWidth = 0;
@@ -343,7 +450,9 @@ namespace URUI.Authoring.Windows
         bool RunCommand(string command)
         {
             if (!NodePlacement.Editing || AuthoringEnvironment.ActiveNode?.SourceNode is not SourceDocument.Node node)
+            {
                 return false;
+            }
             var author = AuthoringEnvironment.Author;
             var selected = AuthoringEnvironment.SelectedNodes
                 .Where(proxy => proxy.SourceNode is { Tag: not ("body" or "html" or "head") })
@@ -352,7 +461,9 @@ namespace URUI.Authoring.Windows
             {
                 case "Copy":
                     if (selected.Length == 0)
+                    {
                         return false;
+                    }
                     EditorGUIUtility.systemCopyBuffer = author.CopyNodes(selected);
                     return true;
                 case "Paste":
@@ -362,14 +473,17 @@ namespace URUI.Authoring.Windows
                     return true;
                 case "Duplicate":
                     if (selected.Length == 0)
+                    {
                         return false;
+                    }
                     AuthoringEnvironment.Try(() => NodePlacement.Beside(node, true).Paste(author.CopyNodes(selected)));
                     return true;
                 case "Delete":
                 case "SoftDelete":
                     AuthoringEnvironment.Try(() => SessionUndoBridge.Record(author, () => author.RemoveNodes(selected, author.Revision)));
                     return true;
-                default: return false;
+                default:
+                    return false;
             }
         }
     }

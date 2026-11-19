@@ -2,22 +2,24 @@
 
 #include "WidgetTextInput.h"
 
-namespace URUI {
+namespace URUI
+{
 
-/**
+    /**
     A specialisation of the text input widget for multi-line text fields.
  */
 
-class WidgetTextInputMultiLine : public WidgetTextInput {
-public:
-	WidgetTextInputMultiLine(ElementFormControl* parent);
-	virtual ~WidgetTextInputMultiLine();
+    class WidgetTextInputMultiLine : public WidgetTextInput
+    {
+    public:
+        WidgetTextInputMultiLine(ElementFormControl* parent);
+        virtual ~WidgetTextInputMultiLine();
 
-protected:
-	/// Removes any invalid characters from the string.
-	void SanitizeValue(String& value) override;
-	/// Called when the user pressed enter.
-	void LineBreak() override;
-};
+    protected:
+        /// Removes any invalid characters from the string.
+        void SanitizeValue(String& value) override;
+        /// Called when the user pressed enter.
+        void LineBreak() override;
+    };
 
-} // namespace URUI
+}

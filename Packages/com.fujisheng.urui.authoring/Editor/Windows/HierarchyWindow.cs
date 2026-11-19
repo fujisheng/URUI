@@ -14,9 +14,11 @@ using URUI.Hosting;
 
 namespace URUI.Authoring.Windows
 {
-    public sealed class UruiHierarchyWindow : EditorWindow
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "URUI.Authoring.Windows", sourceClassName: "UruiHierarchyWindow")]
+    public sealed class HierarchyWindow : EditorWindow
     {
-        [SerializeField] TreeViewState treeState;
+        [SerializeField]
+        TreeViewState treeState;
         NodeTree tree;
         double lastReload;
         long structureRevision = -1;
@@ -35,8 +37,16 @@ namespace URUI.Authoring.Windows
         {
             string path = AssetDatabase.GetAssetPath(instanceId);
             if (!path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            {
                 return false;
-            AuthoringEnvironment.Try(() => { if (UruiEditorWindow.OpenPageWithConfirmation(path)) UruiEditorWindow.Open(); });
+            }
+            AuthoringEnvironment.Try(() =>
+            {
+                if (AuthoringWindow.OpenPageWithConfirmation(path))
+                {
+                    AuthoringWindow.Open();
+                }
+            });
             return true;
         }
         void OnEnable()
@@ -64,7 +74,9 @@ namespace URUI.Authoring.Windows
         void FollowSelection()
         {
             if (AuthoringEnvironment.ActiveNode is ElementSelectionProxy proxy)
+            {
                 tree?.Reveal(proxy);
+            }
             Repaint();
         }
         void Refresh()
@@ -86,28 +98,38 @@ namespace URUI.Authoring.Windows
                 GUILayout.Label(EditorApplication.isPlaying ? L.Tr("LIVE · temporary") : L.Tr("AUTHORING"), EditorStyles.miniBoldLabel);
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button(L.Tr("Canvas"), EditorStyles.toolbarButton))
-                    UruiCanvasWindow.Open();
+                {
+                    CanvasWindow.Open();
+                }
                 if (GUILayout.Button(L.Tr("Open…"), EditorStyles.toolbarButton))
                 {
                     string path = EditorUtility.OpenFilePanel(L.Tr("Open URUI HTML"), Application.dataPath, "html");
                     if (!string.IsNullOrEmpty(path))
-                        AuthoringEnvironment.Try(() => UruiEditorWindow.OpenPageWithConfirmation(path));
+                    {
+                        AuthoringEnvironment.Try(() => AuthoringWindow.OpenPageWithConfirmation(path));
+                    }
                 }
             }
             if (EditorApplication.isPlaying)
             {
                 var docs = AuthoringEnvironment.Documents();
                 if (docs.Length == 0)
+                {
                     EditorGUILayout.HelpBox(L.Tr("Select a loaded URUI Document or Surface in Unity Hierarchy."), MessageType.Info);
+                }
                 else
                 {
                     int selected = Array.IndexOf(docs, AuthoringEnvironment.LiveDocument);
                     var names = new string[docs.Length];
                     for (int i = 0; i < names.Length; i++)
+                    {
                         names[i] = docs[i].name + " · " + docs[i].SourceUrl;
+                    }
                     int next = EditorGUILayout.Popup(L.Tr("Document"), Math.Max(0, selected), names);
                     if (selected < 0 || selected != next)
+                    {
                         AuthoringEnvironment.SetDocument(docs[next]);
+                    }
                 }
             }
             else if (AuthoringEnvironment.Author.File != null)
@@ -116,17 +138,25 @@ namespace URUI.Authoring.Windows
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     if (GUILayout.Button(L.Tr("+ Node")))
+                    {
                         ShowCreateMenu();
+                    }
                     if (GUILayout.Button(L.Tr("Save")))
+                    {
                         AuthoringEnvironment.Try(AuthoringEnvironment.Save);
+                    }
                     if (GUILayout.Button(L.Tr("Reload")))
+                    {
                         AuthoringEnvironment.Try(() => AuthoringEnvironment.Author.Reload(false));
+                    }
                 }
             }
             tree.DrawToolbar();
             string nextSearch = EditorGUILayout.TextField(L.Tr("搜索节点"), tree.searchString);
             if (nextSearch != tree.searchString)
+            {
                 tree.searchString = nextSearch;
+            }
             var area = GUILayoutUtility.GetRect(0, 100000, 0, 100000, GUILayout.ExpandHeight(true));
             tree.OnGUI(area);
             EditorGUILayout.LabelField(L.Message(AuthoringEnvironment.Status), EditorStyles.wordWrappedMiniLabel);
@@ -144,10 +174,16 @@ namespace URUI.Authoring.Windows
                 {
                     bool available = false;
                     foreach (var extension in AuthoringEnvironment.Extensions)
+                    {
                         if (extension.Id == "effect")
+                        {
                             available = true;
+                        }
+                    }
                     if (!available)
+                    {
                         continue;
+                    }
                 }
                 menu.AddItem(new GUIContent(labels[i]), false, () => AuthoringEnvironment.Try(() => CreateNode(kind)));
             }
@@ -172,13 +208,20 @@ namespace URUI.Authoring.Windows
         static void MoveNode(string key, string parent, int index)
         {
             var author = AuthoringEnvironment.Author;
-            SessionUndoBridge.Record(author, () => author.Execute(new[] { new AuthoringEdit { Operation = "move", Node = key, Parent = parent, Index = index } }, author.Revision));
+            SessionUndoBridge.Record(author, () => author.Execute(new[] { new AuthoringEdit {
+Operation = "move",
+Node = key,
+Parent = parent,
+Index = index
+} }, author.Revision));
         }
         internal static void HandleKeys()
         {
             var evt = Event.current;
             if (evt.type != EventType.KeyDown || EditorGUIUtility.editingTextField)
+            {
                 return;
+            }
             if ((evt.control || evt.command) && evt.keyCode == KeyCode.S && !EditorApplication.isPlaying)
             {
                 AuthoringEnvironment.Try(AuthoringEnvironment.Save);
@@ -187,13 +230,19 @@ namespace URUI.Authoring.Windows
             }
             var proxy = AuthoringEnvironment.ActiveNode;
             if (!proxy || !proxy.IsTargetValid || proxy.IsLive)
+            {
                 return;
+            }
             var author = AuthoringEnvironment.Author;
             var node = proxy.SourceNode;
             var keys = new List<string>();
             foreach (var obj in AuthoringEnvironment.SelectedNodes)
+            {
                 if (obj is ElementSelectionProxy selected && !selected.IsLive && selected.IsTargetValid)
+                {
                     keys.Add(selected.SourceKey);
+                }
+            }
             if ((evt.control || evt.command) && evt.keyCode == KeyCode.C)
             {
                 EditorGUIUtility.systemCopyBuffer = author.CopyNodes(keys);
@@ -201,7 +250,11 @@ namespace URUI.Authoring.Windows
             }
             else if ((evt.control || evt.command) && evt.keyCode == KeyCode.V)
             {
-                AuthoringEnvironment.Try(() => SessionUndoBridge.Record(author, () => author.Execute(new[] { new AuthoringEdit { Operation = "insert", Parent = node.Key, Value = EditorGUIUtility.systemCopyBuffer } }, author.Revision)));
+                AuthoringEnvironment.Try(() => SessionUndoBridge.Record(author, () => author.Execute(new[] { new AuthoringEdit {
+Operation = "insert",
+Parent = node.Key,
+Value = EditorGUIUtility.systemCopyBuffer
+} }, author.Revision)));
                 evt.Use();
             }
             else if (evt.keyCode == KeyCode.Delete || evt.keyCode == KeyCode.Backspace)
@@ -219,23 +272,28 @@ namespace URUI.Authoring.Windows
             sealed class NodeItem : TreeViewItem
             {
                 internal string Tooltip;
-                internal string SearchText, Binding, Classes;
+                internal string SearchText;
+                internal string Binding;
+                internal string Classes;
                 internal NodeItem(int id, int depth, string tag, string name, string inputType = null, string classes = null, string text = null, bool runtime = false)
-                    : base(id, depth, runtime ? WorkbenchUi.NodeTitle(tag, name, classes, text, inputType) : L.NodeName(tag, name))
+                    : base(id, depth, runtime ? WorkbenchUI.NodeTitle(tag, name, classes, text, inputType) : L.NodeName(tag, name))
                 {
                     Binding = name;
                     Classes = classes;
                     SearchText = string.Join(" ", displayName, tag, name, classes, text);
                     Tooltip = "<" + tag + "> · " + L.Tr(NodePresentation.TypeLabel(tag, inputType)) + (string.IsNullOrEmpty(name) ? L.Tr("\n未设置绑定 id") : "\nid: " + name);
                     if (!string.IsNullOrEmpty(classes))
+                    {
                         Tooltip += "\nclass: " + classes;
+                    }
                     string iconName = tag == "img" ? "Texture2D Icon" : tag == "urui-particles" ? "ParticleSystem Icon" : tag == "span" || tag == "p" || tag == "label" ? "TextAsset Icon" : "RectTransform Icon";
                     icon = EditorGUIUtility.FindTexture(iconName) ?? EditorGUIUtility.ObjectContent(null, tag == "img" ? typeof(Texture2D) : tag == "span" || tag == "p" || tag == "label" ? typeof(TextAsset) : typeof(RectTransform)).image as Texture2D;
                 }
             }
             internal bool ShowFullStructure
             {
-                get; set;
+                get;
+                set;
             }
             internal void DrawToolbar()
             {
@@ -255,11 +313,15 @@ namespace URUI.Authoring.Windows
             {
                 base.RowGUI(args);
                 if (args.item is NodeItem item)
+                {
                     GUI.Label(args.rowRect, new GUIContent("", item.Tooltip));
+                }
             }
-            int nextId = 1, visited;
+            int nextId = 1;
+            int visited;
             long sourceStructure = -1;
-            bool autoExpand, syncing;
+            bool autoExpand;
+            bool syncing;
             public NodeTree(TreeViewState state, bool runtimeWindow = false) : base(state)
             {
                 this.runtimeWindow = runtimeWindow;
@@ -280,7 +342,9 @@ namespace URUI.Authoring.Windows
             {
                 var rows = GetRows();
                 if (string.IsNullOrEmpty(searchString) || rows.Count == 0)
+                {
                     return false;
+                }
                 var selection = new[] { rows[0].id };
                 SetSelection(selection, TreeViewSelectionOptions.RevealAndFrame);
                 SelectionChanged(selection);
@@ -290,18 +354,26 @@ namespace URUI.Authoring.Windows
             protected override bool DoesItemMatchSearch(TreeViewItem item, string search)
             {
                 if (!runtimeWindow || item is not NodeItem node || string.IsNullOrEmpty(search))
+                {
                     return base.DoesItemMatchSearch(item, search);
+                }
                 if (search[0] == '#')
+                {
                     return string.Equals(node.Binding, search.Substring(1), StringComparison.OrdinalIgnoreCase);
+                }
                 if (search[0] == '.')
+                {
                     return Array.Exists(node.Classes?.Split((char[])null, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>(),
-                        name => name.Equals(search.Substring(1), StringComparison.OrdinalIgnoreCase));
+                                            name => name.Equals(search.Substring(1), StringComparison.OrdinalIgnoreCase));
+                }
                 return node.SearchText.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
             }
             int Id(string key)
             {
                 if (!ids.TryGetValue(key, out int id))
+                {
                     ids.Add(key, id = nextId++);
+                }
                 return id;
             }
             protected override TreeViewItem BuildRoot()
@@ -314,14 +386,18 @@ namespace URUI.Authoring.Windows
                 {
                     var doc = AuthoringEnvironment.LiveDocument;
                     if (doc && doc.IsLoaded && AuthoringEnvironment.Live != null)
+                    {
                         AddLive(root, RuntimeInspectionBridge.Root(doc), 0);
+                    }
                 }
                 else if (!runtimeWindow && AuthoringEnvironment.Author.Model != null)
                 {
                     autoExpand = sourceStructure != AuthoringEnvironment.Author.StructureRevision;
                     sourceStructure = AuthoringEnvironment.Author.StructureRevision;
                     foreach (var node in AuthoringEnvironment.Author.Model.Roots)
+                    {
                         AddSource(root, node, 0);
+                    }
                     autoExpand = false;
                 }
                 return root;
@@ -330,72 +406,104 @@ namespace URUI.Authoring.Windows
             static bool HasNamedDescendant(SourceDocument.Node node)
             {
                 foreach (var child in node.Children)
+                {
                     if (!string.IsNullOrEmpty(child.Attribute("id")) || HasNamedDescendant(child))
+                    {
                         return true;
+                    }
+                }
                 return false;
             }
             void AddSource(TreeViewItem parent, SourceDocument.Node node, int depth)
             {
                 if (++visited > 10000)
+                {
                     return;
+                }
                 string name = node.Attribute("id");
                 if (!NodePresentation.Visible(node.Tag, name, Full))
                 {
                     if (node.Tag == "html")
                     {
                         foreach (var child in node.Children)
+                        {
                             AddSource(parent, child, depth);
+                        }
                         return;
                     }
                     if (!HasNamedDescendant(node))
+                    {
                         return;
+                    }
                 }
                 int id = Id(AuthoringEnvironment.Author.Id + "/" + AuthoringEnvironment.Author.NodeIdentity(node.Key));
                 if (autoExpand && (node.Tag == "html" || node.Tag == "body") && !state.expandedIDs.Contains(id))
+                {
                     state.expandedIDs.Add(id);
+                }
                 sourceKeys[id] = node.Key;
                 var item = new NodeItem(id, depth, node.Tag, name, node.Attribute("type"));
                 parent.AddChild(item);
                 if (node.Children.Count == 0)
+                {
                     return;
+                }
                 if (IsExpanded(id) || !string.IsNullOrEmpty(searchString))
+                {
                     foreach (var child in node.Children)
+                    {
                         AddSource(item, child, depth + 1);
+                    }
+                }
                 else
+                {
                     item.children = CreateChildListForCollapsedParent();
+                }
             }
             static bool HasNamedDescendant(InspectedNode node, int depth = 0)
             {
                 if (depth > 128)
+                {
                     return false;
+                }
                 for (int i = 0; i < node.ChildCount; i++)
                 {
                     var child = node.Child(i);
                     if (!string.IsNullOrEmpty(child.Name) || HasNamedDescendant(child, depth + 1))
+                    {
                         return true;
+                    }
                 }
                 return false;
             }
             void AddLive(TreeViewItem parent, InspectedNode node, int depth)
             {
                 if (node == null || !node.IsValid || ++visited > 10000)
+                {
                     return;
+                }
                 if (!NodePresentation.Visible(node.Tag, node.Name, Full))
                 {
                     if (node.Tag == "html")
                     {
                         for (int i = 0; i < node.ChildCount; i++)
+                        {
                             AddLive(parent, node.Child(i), depth);
+                        }
                         return;
                     }
                     if (!HasNamedDescendant(node))
+                    {
                         return;
+                    }
                 }
                 string key = AuthoringEnvironment.Live.Id + "/" + node.Id;
                 bool expandBody = runtimeWindow && node.Tag == "body" && !ids.ContainsKey(key);
                 int id = Id(key);
                 if (expandBody)
+                {
                     state.expandedIDs.Add(id);
+                }
                 liveNodes[id] = node;
                 var item = runtimeWindow
                     ? new NodeItem(id, depth, node.Tag, node.Name, node.Read("attr.type"), node.Read("attr.class"),
@@ -403,12 +511,20 @@ namespace URUI.Authoring.Windows
                     : new NodeItem(id, depth, node.Tag, node.Name);
                 parent.AddChild(item);
                 if (node.ChildCount == 0)
+                {
                     return;
+                }
                 if (IsExpanded(id) || !string.IsNullOrEmpty(searchString))
+                {
                     for (int i = 0; i < node.ChildCount; i++)
+                    {
                         AddLive(item, node.Child(i), depth + 1);
+                    }
+                }
                 else
+                {
                     item.children = CreateChildListForCollapsedParent();
+                }
             }
             protected override void ExpandedStateChanged() => Reload();
 
@@ -416,30 +532,46 @@ namespace URUI.Authoring.Windows
             {
                 var selection = GetSelection();
                 if (Selection.count != 0 && selection.Contains(id))
+                {
                     SelectionChanged(selection);
+                }
             }
 
             protected override void SelectionChanged(IList<int> selectedIds)
             {
                 if (syncing)
+                {
                     return;
+                }
                 var proxies = new List<ElementSelectionProxy>();
                 foreach (int id in selectedIds)
+                {
                     if (sourceKeys.TryGetValue(id, out var key))
+                    {
                         proxies.Add(ElementSelectionProxy.ForAuthor(key));
+                    }
                     else if (liveNodes.TryGetValue(id, out var node) && node.IsValid)
+                    {
                         proxies.Add(ElementSelectionProxy.ForLive(node, AuthoringEnvironment.Live));
+                    }
+                }
                 if (runtimeWindow || proxies.Count != 0)
+                {
                     AuthoringEnvironment.SetNodeSelection(proxies);
+                }
             }
             internal void Reveal(ElementSelectionProxy proxy)
             {
                 if (!proxy.IsTargetValid || proxy.IsLive != EditorApplication.isPlaying)
+                {
                     return;
+                }
                 string tag = proxy.IsLive ? proxy.Node.Tag : proxy.SourceNode.Tag;
                 string name = proxy.IsLive ? proxy.Node.Name : proxy.SourceNode.Attribute("id");
                 if (!NodePresentation.Visible(tag, name, false))
+                {
                     ShowFullStructure = true;
+                }
                 syncing = true;
                 try
                 {
@@ -451,7 +583,9 @@ namespace URUI.Authoring.Windows
                         {
                             int id = Id(AuthoringEnvironment.Live.Id + "/" + node.Id);
                             if (!state.expandedIDs.Contains(id))
+                            {
                                 state.expandedIDs.Add(id);
+                            }
                         }
                         selected = Id(AuthoringEnvironment.Live.Id + "/" + proxy.Node.Id);
                     }
@@ -462,7 +596,9 @@ namespace URUI.Authoring.Windows
                         {
                             int id = Id(prefix + AuthoringEnvironment.Author.NodeIdentity(node.Key));
                             if (!state.expandedIDs.Contains(id))
+                            {
                                 state.expandedIDs.Add(id);
+                            }
                         }
                         selected = Id(prefix + AuthoringEnvironment.Author.NodeIdentity(proxy.SourceKey));
                     }
@@ -470,15 +606,24 @@ namespace URUI.Authoring.Windows
                     {
                         bool visible = false;
                         foreach (var row in GetRows())
+                        {
                             if (row.id == selected)
+                            {
                                 visible = true;
+                            }
+                        }
                         if (!visible)
+                        {
                             searchString = "";
+                        }
                     }
                     Reload();
                     SetSelection(new[] { selected }, TreeViewSelectionOptions.RevealAndFrame);
                 }
-                finally { syncing = false; }
+                finally
+                {
+                    syncing = false;
+                }
             }
             protected override void ContextClickedItem(int id)
             {
@@ -492,18 +637,26 @@ namespace URUI.Authoring.Windows
                     menu.AddItem(new GUIContent(L.Tr("创建子节点…")), false, ShowCreateMenu);
                 }
                 else if (liveNodes.TryGetValue(id, out var live))
+                {
                     menu.AddItem(new GUIContent(L.Tr("复制绑定 id")), false, () => EditorGUIUtility.systemCopyBuffer = live.Name ?? "");
-                menu.AddItem(new GUIContent(L.Tr("显示完整结构")), ShowFullStructure, () => { ShowFullStructure = !ShowFullStructure; Reload(); });
+                }
+                menu.AddItem(new GUIContent(L.Tr("显示完整结构")), ShowFullStructure, () =>
+                {
+                    ShowFullStructure = !ShowFullStructure;
+                    Reload();
+                });
                 menu.ShowAsContext();
             }
             protected override bool CanRename(TreeViewItem item) => !EditorApplication.isPlaying && sourceKeys.ContainsKey(item.id);
             protected override void RenameEnded(RenameEndedArgs args)
             {
                 if (args.acceptedRename)
-                    AuthoringEnvironment.Try(() =>
                 {
-                    RenameNode(sourceKeys[args.itemID], args.newName);
-                });
+                    AuthoringEnvironment.Try(() =>
+                                    {
+                                        RenameNode(sourceKeys[args.itemID], args.newName);
+                                    });
+                }
             }
             protected override bool CanStartDrag(CanStartDragArgs args) => !EditorApplication.isPlaying && args.draggedItemIDs.Count == 1;
             protected override void SetupDragAndDrop(SetupDragAndDropArgs args)
@@ -517,31 +670,41 @@ namespace URUI.Authoring.Windows
             {
                 string key = DragAndDrop.GetGenericData("URUI.SourceKey") as string;
                 if (!(DragAndDrop.GetGenericData("URUI.SourceRevision") is long revision) || revision != AuthoringEnvironment.Author.Revision)
-                    return DragAndDropVisualMode.Rejected;
-                if (key == null || args.parentItem == null || !sourceKeys.TryGetValue(args.parentItem.id, out var parent))
-                    return DragAndDropVisualMode.Rejected;
-                if (args.performDrop)
-                    AuthoringEnvironment.Try(() =>
                 {
-                    int index = args.insertAtIndex;
-                    if (index >= 0 && args.parentItem.children != null)
-                    {
-                        // A filtered tree index is not a DOM index. Insert before the real visible sibling.
-                        if (index < args.parentItem.children.Count && sourceKeys.TryGetValue(args.parentItem.children[index].id, out var sibling))
-                        {
-                            var children = AuthoringEnvironment.Author.Model.Find(parent).Children;
-                            for (int i = 0; i < children.Count; i++)
-                                if (children[i].Key == sibling)
-                                {
-                                    index = i;
-                                    break;
-                                }
-                        }
-                        else
-                            index = -1;
-                    }
-                    MoveNode(key, parent, index);
-                });
+                    return DragAndDropVisualMode.Rejected;
+                }
+                if (key == null || args.parentItem == null || !sourceKeys.TryGetValue(args.parentItem.id, out var parent))
+                {
+                    return DragAndDropVisualMode.Rejected;
+                }
+                if (args.performDrop)
+                {
+                    AuthoringEnvironment.Try(() =>
+                                    {
+                                        int index = args.insertAtIndex;
+                                        if (index >= 0 && args.parentItem.children != null)
+                                        {
+                                            // A filtered tree index is not a DOM index. Insert before the real visible sibling.
+                                            if (index < args.parentItem.children.Count && sourceKeys.TryGetValue(args.parentItem.children[index].id, out var sibling))
+                                            {
+                                                var children = AuthoringEnvironment.Author.Model.Find(parent).Children;
+                                                for (int i = 0; i < children.Count; i++)
+                                                {
+                                                    if (children[i].Key == sibling)
+                                                    {
+                                                        index = i;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                index = -1;
+                                            }
+                                        }
+                                        MoveNode(key, parent, index);
+                                    });
+                }
                 return DragAndDropVisualMode.Move;
             }
         }
@@ -553,11 +716,13 @@ namespace URUI.Authoring.Windows
         public override void OnInspectorGUI()
         {
             using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
+            {
                 DrawDefaultInspector();
+            }
             if (GUILayout.Button(L.Tr("View URUI Nodes")))
             {
                 AuthoringEnvironment.SetDocument((Document)target);
-                UruiHierarchyWindow.Open();
+                HierarchyWindow.Open();
             }
         }
     }
@@ -568,7 +733,9 @@ namespace URUI.Authoring.Windows
         {
             DrawDefaultInspector();
             if (GUILayout.Button(L.Tr("View URUI Documents")))
-                UruiHierarchyWindow.Open();
+            {
+                HierarchyWindow.Open();
+            }
         }
     }
 }

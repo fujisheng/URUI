@@ -16,7 +16,9 @@ namespace URUI.Authoring.Tests
         {
             count++;
             if (!value)
+            {
                 throw new Exception(message);
+            }
         }
         public static void Run()
         {
@@ -29,7 +31,11 @@ namespace URUI.Authoring.Tests
             var endpoint = (Dictionary<string, object>)AgentJson.Parse(File.ReadAllText(AgentServer.EndpointPath));
             var task = Task.Run(async () =>
             {
-                using (var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri((string)endpoint["url"]), Timeout = TimeSpan.FromSeconds(20) })
+                using (var client = new HttpClient(new HttpClientHandler { UseProxy = false })
+                {
+                    BaseAddress = new Uri((string)endpoint["url"]),
+                    Timeout = TimeSpan.FromSeconds(20)
+                })
                 {
                     client.DefaultRequestHeaders.Add("Authorization", "Bearer " + (string)endpoint["token"]);
                     client.DefaultRequestHeaders.Add("X-URUI-Session", (string)endpoint["editorSession"]);
@@ -40,7 +46,9 @@ namespace URUI.Authoring.Tests
                     {
                         var request = AgentDispatcher.Obj("op", op, "mode", "authoring", "session", session, "expectedRevision", revision);
                         for (int i = 0; i < pairs.Length; i += 2)
+                        {
                             request[(string)pairs[i]] = pairs[i + 1];
+                        }
                         var result = await AgentValidation.Command(client, request);
                         revision = (long)result["sourceRevision"];
                         return result;
@@ -51,7 +59,8 @@ namespace URUI.Authoring.Tests
                     string target = (string)((Dictionary<string, object>)nodes[0])["id"];
                     var preset = await Write("animation.preset", "target", target, "preset", "popup", "duration", .3);
                     var data = (Dictionary<string, object>)preset["data"];
-                    string track = (string)data["selectedTrack"], sequence = (string)data["path"];
+                    string track = (string)data["selectedTrack"];
+                    string sequence = (string)data["path"];
                     Check(!File.Exists(sequence), "Preset wrote the sequence before Save");
                     await Write("animation.key", "track", track, "position", .5, "property", "opacity", "value", ".6");
                     await Write("animation.sample", "time", .15);
@@ -81,7 +90,9 @@ namespace URUI.Authoring.Tests
             finish = () =>
             {
                 if (!task.IsCompleted)
+                {
                     return;
+                }
                 EditorApplication.update -= finish;
                 AgentServer.Stop();
                 Directory.CreateDirectory("Evidence");
@@ -104,20 +115,28 @@ namespace URUI.Authoring.Tests
         {
             // JSON itself rejects infinity. A finite out-of-range position exercises transactional source validation.
             if (request.TryGetValue("keys", out var raw) && raw is List<object> list)
+            {
                 ((Dictionary<string, object>)list[1])["position"] = 1.5;
+            }
             var response = await client.PostAsync("v1/commands", new StringContent(AgentJson.Stringify(request), Encoding.UTF8, "application/json"));
             var queued = (Dictionary<string, object>)AgentJson.Parse(await response.Content.ReadAsStringAsync());
             if ((int)response.StatusCode != 202)
+            {
                 return false;
+            }
             string id = (string)queued["job"];
             for (int i = 0; i < 400; i++)
             {
                 var job = (Dictionary<string, object>)AgentJson.Parse(await client.GetStringAsync("v1/jobs/" + id));
                 string status = (string)job["status"];
                 if (status == "failed" || status == "cancelled")
+                {
                     return true;
+                }
                 if (status == "done")
+                {
                     return false;
+                }
                 await Task.Delay(25);
             }
             throw new Exception("Animation rejection timeout");

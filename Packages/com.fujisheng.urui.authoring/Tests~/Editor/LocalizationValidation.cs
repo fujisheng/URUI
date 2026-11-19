@@ -18,7 +18,9 @@ namespace URUI.Authoring.Tests
         {
             count++;
             if (!condition)
+            {
                 throw new Exception(message);
+            }
         }
         public static void Run()
         {
@@ -43,7 +45,9 @@ namespace URUI.Authoring.Tests
                 Check(EditorText.Tr("--urui-image-fill-mode") == "--urui-image-fill-mode", "CSS identifiers were translated");
                 var menuExists = typeof(Menu).GetMethod("MenuItemExists", flags);
                 foreach (string command in new[] { "Window/URUI/Editor", "Window/URUI/Hierarchy", "Window/URUI/Canvas", "Window/URUI/Animation" })
+                {
                     Check((bool)menuExists.Invoke(null, new object[] { EditorMenus.Path(command) }), "Localized command is missing: " + command);
+                }
                 Directory.CreateDirectory("Assets/LocalizationChecks");
                 const string path = "Assets/LocalizationChecks/page.html";
                 const string original = "<!doctype html><html><head><style>body{margin:0;}</style></head><body><button id='保存' style='width:25%;height:40px;'>Button</button><div id='Save'></div></body></html>";
@@ -53,7 +57,7 @@ namespace URUI.Authoring.Tests
                 var node = author.Model.Nodes.Single(n => n.Attribute("id") == "保存");
                 var proxy = ElementSelectionProxy.ForAuthor(node.Key);
                 Selection.activeObject = proxy;
-                UruiEditorWindow.Open();
+                AuthoringWindow.Open();
                 long revision = author.Revision;
                 var changed = (Action)typeof(EditorText).GetField("LanguageChanged", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
                 changed?.Invoke();
@@ -63,7 +67,7 @@ namespace URUI.Authoring.Tests
                 Check(proxy.Read("style.width") == "35%" && proxy.Read("attr.id") == "保存", "Localized fields changed property values or binding names");
                 Undo.PerformUndo();
                 Check(author.File.Text == original, "Localized edit Undo did not restore source");
-                var widgets = typeof(UruiEditorWindow).Assembly.GetType("URUI.Authoring.Windows.PropertyWidgets");
+                var widgets = typeof(AuthoringWindow).Assembly.GetType("URUI.Authoring.Windows.PropertyWidgets");
                 string width = (string)widgets.GetMethod("Label", flags).Invoke(null, new object[] { "width" });
                 Check(width == (EditorText.IsChinese ? "宽度" : "Width"), "Cached property labels ignored language");
                 var choices = (Dictionary<string, string[]>)widgets.GetField("choices", flags).GetValue(null);

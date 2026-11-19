@@ -19,11 +19,15 @@ namespace URUI.Effect.Editor.Import
         {
             var source = Selection.activeObject;
             if (!source)
+            {
                 throw new InvalidOperationException("请选择 UIEffect 5.8.4 预设或组件。");
+            }
             var result = UIEffectPresetImporter.Read(source);
             var path = EditorUtility.SaveFilePanelInProject(L.Tr("导入 URUI 预设"), source.name + " URUI", "asset", L.Tr("保存为新资产；不会覆盖原预设。"));
             if (string.IsNullOrEmpty(path))
+            {
                 return;
+            }
             Selection.activeObject = UIEffectPresetImporter.Save(result, path);
         }
     }

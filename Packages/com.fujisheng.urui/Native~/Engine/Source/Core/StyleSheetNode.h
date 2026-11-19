@@ -5,80 +5,82 @@
 #include "StyleSheetSelector.h"
 #include <unordered_map>
 
-namespace URUI {
+namespace URUI
+{
 
-struct StyleSheetIndex;
-class StyleSheetNode;
-using StyleSheetNodeList = Vector<UniquePtr<StyleSheetNode>>;
+    struct StyleSheetIndex;
+    class StyleSheetNode;
+    using StyleSheetNodeList = Vector<UniquePtr<StyleSheetNode>>;
 
-/**
+    /**
     A style sheet is composed of a tree of nodes.
  */
 
-class StyleSheetNode {
-public:
-	StyleSheetNode();
-	StyleSheetNode(StyleSheetNode* parent, const CompoundSelector& selector);
-	StyleSheetNode(StyleSheetNode* parent, CompoundSelector&& selector);
+    class StyleSheetNode
+    {
+    public:
+        StyleSheetNode();
+        StyleSheetNode(StyleSheetNode* parent, const CompoundSelector& selector);
+        StyleSheetNode(StyleSheetNode* parent, CompoundSelector&& selector);
 
-	/// Retrieves or creates a child node with requirements equivalent to the 'other' node.
-	StyleSheetNode* GetOrCreateChildNode(const CompoundSelector& other);
-	/// Retrieves a child node with the given requirements if they match an existing node, or else creates a new one.
-	StyleSheetNode* GetOrCreateChildNode(CompoundSelector&& other);
+        /// Retrieves or creates a child node with requirements equivalent to the 'other' node.
+        StyleSheetNode* GetOrCreateChildNode(const CompoundSelector& other);
+        /// Retrieves a child node with the given requirements if they match an existing node, or else creates a new one.
+        StyleSheetNode* GetOrCreateChildNode(CompoundSelector&& other);
 
-	/// Merges an entire tree hierarchy into our hierarchy.
-	void MergeHierarchy(StyleSheetNode* node, uint64_t source_order_offset = 0);
-	/// Copy this node including all descendent nodes.
-	UniquePtr<StyleSheetNode> DeepCopy(StyleSheetNode* parent = nullptr) const;
-	/// Builds up a style sheet's index recursively.
-	void BuildIndex(StyleSheetIndex& styled_node_index) const;
+        /// Merges an entire tree hierarchy into our hierarchy.
+        void MergeHierarchy(StyleSheetNode* node, uint64_t source_order_offset = 0);
+        /// Copy this node including all descendent nodes.
+        UniquePtr<StyleSheetNode> DeepCopy(StyleSheetNode* parent = nullptr) const;
+        /// Builds up a style sheet's index recursively.
+        void BuildIndex(StyleSheetIndex& styled_node_index) const;
 
-	/// Imports properties from a single rule definition into the node's properties and sets the appropriate specificity on them. Any existing
-	/// attributes sharing a key with a new attribute will be overwritten if they are of a lower specificity.
-	/// @param[in] properties The properties to import.
-	/// @param[in] rule_specificity The specificity of the importing rule.
-	void ImportProperties(const PropertyDictionary& properties, uint64_t rule_source_order);
-	/// Returns the node's default properties.
-	const PropertyDictionary& GetProperties() const;
+        /// Imports properties from a single rule definition into the node's properties and sets the appropriate specificity on them. Any existing
+        /// attributes sharing a key with a new attribute will be overwritten if they are of a lower specificity.
+        /// @param[in] properties The properties to import.
+        /// @param[in] rule_specificity The specificity of the importing rule.
+        void ImportProperties(const PropertyDictionary& properties, uint64_t rule_source_order);
+        /// Returns the node's default properties.
+        const PropertyDictionary& GetProperties() const;
 
-	/// Returns true if this node is applicable to the given element, given its IDs, classes and heritage.
-	/// @note For performance reasons this call does not check whether 'element' is a text element. The caller must manually check this condition and
-	/// consider any text element not applicable.
-	bool IsApplicable(const Element* element, const Element* scope) const;
+        /// Returns true if this node is applicable to the given element, given its IDs, classes and heritage.
+        /// @note For performance reasons this call does not check whether 'element' is a text element. The caller must manually check this condition and
+        /// consider any text element not applicable.
+        bool IsApplicable(const Element* element, const Element* scope) const;
 
-	/// Returns the specificity of this node.
-	void SetOrigin(CssOrigin origin);
-	Specificity GetSpecificity() const;
+        /// Returns the specificity of this node.
+        void SetOrigin(CssOrigin origin);
+        Specificity GetSpecificity() const;
 
-private:
-	friend class CompiledArchive;
-	void CalculateAndSetSpecificity();
-	StyleSheetNode* FindChild(const CompoundSelector& other);
-	StyleSheetNode* AppendChild(UniquePtr<StyleSheetNode> child);
+    private:
+        friend class CompiledArchive;
+        void CalculateAndSetSpecificity();
+        StyleSheetNode* FindChild(const CompoundSelector& other);
+        StyleSheetNode* AppendChild(UniquePtr<StyleSheetNode> child);
 
-	// Match an element to the local node requirements.
-	inline bool Match(const Element* element, const Element* scope) const;
-	inline bool MatchStructuralSelector(const Element* element, const Element* scope) const;
-	inline bool MatchAttributes(const Element* element) const;
+        // Match an element to the local node requirements.
+        inline bool Match(const Element* element, const Element* scope) const;
+        inline bool MatchStructuralSelector(const Element* element, const Element* scope) const;
+        inline bool MatchAttributes(const Element* element) const;
 
-	// Recursively traverse the nodes up towards the root to match the element and its hierarchy.
-	bool TraverseMatch(const Element* element, const Element* scope) const;
+        // Recursively traverse the nodes up towards the root to match the element and its hierarchy.
+        bool TraverseMatch(const Element* element, const Element* scope) const;
 
-	// The parent of this node; is nullptr for the root node.
-	StyleSheetNode* parent = nullptr;
+        // The parent of this node; is nullptr for the root node.
+        StyleSheetNode* parent = nullptr;
 
-	// Node requirements
-	CompoundSelector selector;
+        // Node requirements
+        CompoundSelector selector;
 
-	// A measure of specificity of this node; the attribute in a node with a higher value will override those of a node with a lower value.
-	Specificity specificity;
+        // A measure of specificity of this node; the attribute in a node with a higher value will override those of a node with a lower value.
+        Specificity specificity;
 
-	PropertyDictionary properties;
+        PropertyDictionary properties;
 
-	StyleSheetNodeList children;
-	using ChildIndex = std::unordered_multimap<size_t, size_t>;
-	UniquePtr<ChildIndex> child_index;
-	size_t indexed_children = 0;
-};
+        StyleSheetNodeList children;
+        using ChildIndex = std::unordered_multimap<size_t, size_t>;
+        UniquePtr<ChildIndex> child_index;
+        size_t indexed_children = 0;
+    };
 
-} // namespace URUI
+}

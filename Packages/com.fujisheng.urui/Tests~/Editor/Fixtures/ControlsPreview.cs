@@ -8,7 +8,9 @@ using URUI.Events;
 
 namespace URUI.Tests
 {
-    /// <summary>使用真实相机绘制综合控件样例并保存 PNG。</summary>
+    /// <summary>
+    /// 使用真实相机绘制综合控件样例并保存 PNG。
+    /// </summary>
     public sealed class ControlsPreview : MonoBehaviour
     {
         IEnumerator Start()
@@ -18,7 +20,10 @@ namespace URUI.Tests
                 yield return null;
             }
 
-            try { CheckInteractions(GetComponent<Document>()); }
+            try
+            {
+                CheckInteractions(GetComponent<Document>());
+            }
             catch (Exception error)
             {
                 Debug.LogException(error);
@@ -38,7 +43,8 @@ namespace URUI.Tests
                 }
 
                 var camera = Camera.main;
-                int width = Screen.width, height = Screen.height;
+                int width = Screen.width;
+                int height = Screen.height;
                 var target = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32);
                 var previous = RenderTexture.active;
                 var previousTarget = camera.targetTexture;
@@ -97,7 +103,9 @@ namespace URUI.Tests
             var row = document.Q<ListView>("items").ContentContainer[0];
             var list = document.Q<ListView>("items");
             if (row.Layout.width < list.ViewportRect.width - 1)
+            {
                 throw new Exception("Sample row does not fill viewport: " + row.Layout + " / " + list.ContentRect + " / content " + list.ContentContainer.Layout);
+            }
             var point = row.WorldBound.center;
             document.Surface.Input.SendPointer(PointerPhase.Down, point);
             document.Surface.Input.SendPointer(PointerPhase.Up, point);

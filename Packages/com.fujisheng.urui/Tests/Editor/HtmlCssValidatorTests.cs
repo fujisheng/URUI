@@ -33,41 +33,55 @@ namespace URUI.Tests.Editor
             var result = HtmlCssValidator.ValidateCss(prefix + "font-weight:0; " +
                 (descriptor ? "font-family:LocalFace;src:url(font.ttf);}" : "color:red;}"), "ui/author.css");
             var issue = result.Diagnostics.Single();
-            Assert.AreEqual("ui/author.css", issue.Uri); Assert.AreEqual(3, issue.Line); Assert.AreEqual(3, issue.Column);
+            Assert.AreEqual("ui/author.css", issue.Uri);
+            Assert.AreEqual(3, issue.Line);
+            Assert.AreEqual(3, issue.Column);
             Assert.AreEqual(Encoding.UTF8.GetByteCount(prefix), issue.ByteOffset);
             var declaration = result.Rules.Single().Declarations.First();
-            Assert.AreEqual("font-weight", declaration.Property); Assert.AreEqual("0", declaration.Value);
+            Assert.AreEqual("font-weight", declaration.Property);
+            Assert.AreEqual("0", declaration.Value);
             Assert.AreEqual(issue.ByteOffset, declaration.ByteOffset);
         }
 
         [Test]
         public void SpriteSheetAuthorRuleHasNoRuntimeCompatibilityDispatch()
         {
-            var result=HtmlCssValidator.ValidateCss("@spritesheet atlas {src:atlas.png;icon:0px 0px 2px 2px;}","ui/old-atlas.css");
-            Assert.IsTrue(result.Diagnostics.Any(issue=>issue.Code=="CSS_AT_RULE"));
+            var result = HtmlCssValidator.ValidateCss("@spritesheet atlas {src:atlas.png;icon:0px 0px 2px 2px;}", "ui/old-atlas.css");
+            Assert.IsTrue(result.Diagnostics.Any(issue => issue.Code == "CSS_AT_RULE"));
         }
 
         [Test]
-        [TestCase("0 274 0 27 fill",1)]
-        [TestCase("0 273 0 27 fill",0)]
-        [TestCase("50% fill",1)]
-        [TestCase("50%",0)]
-        public void BorderImageFillChecksSourceDimensionsWithoutRejectingValidCss(string slice,int expected)
+        [TestCase("0 274 0 27 fill", 1)]
+        [TestCase("0 273 0 27 fill", 0)]
+        [TestCase("50% fill", 1)]
+        [TestCase("50%", 0)]
+        public void BorderImageFillChecksSourceDimensionsWithoutRejectingValidCss(string slice, int expected)
         {
-            var sheet=new TextAsset(".panel{border-image:url('panel).png') "+slice+" / 0 274px 0 27px stretch;}");
+            var sheet = new TextAsset(".panel{border-image:url('panel).png') " + slice + " / 0 274px 0 27px stretch;}");
             try
             {
-                var calls=0;
-                var issues=StyleDependencyValidator.Validate(new[]{new KeyValuePair<string,TextAsset>("/ui/page.css",sheet)},null,uri=>
+                var calls = 0;
+                var issues = StyleDependencyValidator.Validate(new[] { new KeyValuePair<string, TextAsset>("/ui/page.css", sheet) }, null, uri =>
                 {
-                    Assert.AreEqual("/ui/panel).png",uri);calls++;return new Vector2Int(301,207);
+                    Assert.AreEqual("/ui/panel).png", uri);
+                    calls++;
+                    return new Vector2Int(301, 207);
                 });
-                Assert.AreEqual(expected,issues.Count);
-                Assert.IsFalse(issues.Any(value=>value.IsError),"退化中心属于合法CSS，应给作者提示而非改变解析语义。");
-                if(expected>0){Assert.AreEqual("empty-border-image-center",issues[0].Code);}
-                if(slice.EndsWith("fill")){Assert.AreEqual(1,calls);}
+                Assert.AreEqual(expected, issues.Count);
+                Assert.IsFalse(issues.Any(value => value.IsError), "退化中心属于合法CSS，应给作者提示而非改变解析语义。");
+                if (expected > 0)
+                {
+                    Assert.AreEqual("empty-border-image-center", issues[0].Code);
+                }
+                if (slice.EndsWith("fill"))
+                {
+                    Assert.AreEqual(1, calls);
+                }
             }
-            finally{Object.DestroyImmediate(sheet);}
+            finally
+            {
+                Object.DestroyImmediate(sheet);
+            }
         }
 
         [Test]
@@ -77,11 +91,15 @@ namespace URUI.Tests.Editor
                 ".y{--urui-image-effect:inherit;}.z{--urui-image-effect:var(--chosen-effect);}");
             try
             {
-                var issues = StyleDependencyValidator.Validate(new[] { new KeyValuePair<string,TextAsset>("ui/effects.css", sheet) }, new[] { "available" });
-                Assert.AreEqual(1, issues.Count); StringAssert.Contains("missing", issues[0].Message);
+                var issues = StyleDependencyValidator.Validate(new[] { new KeyValuePair<string, TextAsset>("ui/effects.css", sheet) }, new[] { "available" });
+                Assert.AreEqual(1, issues.Count);
+                StringAssert.Contains("missing", issues[0].Message);
                 Assert.Greater(issues[0].Column, 1);
             }
-            finally { Object.DestroyImmediate(sheet); }
+            finally
+            {
+                Object.DestroyImmediate(sheet);
+            }
         }
 
         [Test]
@@ -95,7 +113,11 @@ namespace URUI.Tests.Editor
                     new KeyValuePair<string,TextAsset>("ui/first.css", first),
                     new KeyValuePair<string,TextAsset>("ui/second.css", second) }));
             }
-            finally { Object.DestroyImmediate(first); Object.DestroyImmediate(second); }
+            finally
+            {
+                Object.DestroyImmediate(first);
+                Object.DestroyImmediate(second);
+            }
         }
 
         [Test]

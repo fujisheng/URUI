@@ -17,7 +17,7 @@ namespace URUI.Tests
         public Document generatedDocument;
         public TextAsset generatedSource;
         public URUI.Resources.CompiledDocumentAsset generatedCompiled;
-        HelloUrui sample;
+        HelloURUI sample;
         int frames;
         int clicks;
         bool finished;
@@ -86,7 +86,7 @@ namespace URUI.Tests
                     Destroy(generatedDocument.gameObject);
                     var sampleObject = new GameObject("Hello URUI");
                     sampleObject.AddComponent<Document>().Surface = surface;
-                    sample = sampleObject.AddComponent<HelloUrui>();
+                    sample = sampleObject.AddComponent<HelloURUI>();
                 }
 
                 if (frames == 6)

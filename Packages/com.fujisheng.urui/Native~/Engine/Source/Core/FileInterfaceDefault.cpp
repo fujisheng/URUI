@@ -2,34 +2,37 @@
 
 #ifndef URUI_NO_FILE_INTERFACE_DEFAULT
 
-namespace URUI {
-
-FileInterfaceDefault::~FileInterfaceDefault() {}
-
-FileHandle FileInterfaceDefault::Open(const String& path)
+namespace URUI
 {
-	return (FileHandle)fopen(path.c_str(), "rb");
-}
 
-void FileInterfaceDefault::Close(FileHandle file)
-{
-	fclose((FILE*)file);
-}
+    FileInterfaceDefault::~FileInterfaceDefault()
+    {
+    }
 
-size_t FileInterfaceDefault::Read(void* buffer, size_t size, FileHandle file)
-{
-	return fread(buffer, 1, size, (FILE*)file);
-}
+    FileHandle FileInterfaceDefault::Open(const String& path)
+    {
+        return (FileHandle)fopen(path.c_str(), "rb");
+    }
 
-bool FileInterfaceDefault::Seek(FileHandle file, long offset, int origin)
-{
-	return fseek((FILE*)file, offset, origin) == 0;
-}
+    void FileInterfaceDefault::Close(FileHandle file)
+    {
+        fclose((FILE*)file);
+    }
 
-size_t FileInterfaceDefault::Tell(FileHandle file)
-{
-	return ftell((FILE*)file);
-}
+    size_t FileInterfaceDefault::Read(void* buffer, size_t size, FileHandle file)
+    {
+        return fread(buffer, 1, size, (FILE*)file);
+    }
 
-} // namespace URUI
+    bool FileInterfaceDefault::Seek(FileHandle file, long offset, int origin)
+    {
+        return fseek((FILE*)file, offset, origin) == 0;
+    }
+
+    size_t FileInterfaceDefault::Tell(FileHandle file)
+    {
+        return ftell((FILE*)file);
+    }
+
+}
 #endif /*URUI_NO_FILE_INTERFACE_DEFAULT*/

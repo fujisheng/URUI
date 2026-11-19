@@ -4,7 +4,9 @@ using URUI.Editor.Inspection;
 
 namespace URUI.Authoring.Preview
 {
-    /// <summary>Maps Unity assets onto the same author resource mounts used by compiled pages.</summary>
+    /// <summary>
+    /// Maps Unity assets onto the same author resource mounts used by compiled pages.
+    /// </summary>
     internal static class AuthoringAssetPaths
     {
         const string ResourcesRoot = "Assets/Resources/URUI/";
@@ -16,11 +18,17 @@ namespace URUI.Authoring.Preview
         internal static string AssetUri(string path)
         {
             if (path.StartsWith(ResourcesRoot, StringComparison.Ordinal))
+            {
                 return "/URUI/" + path.Substring(ResourcesRoot.Length);
+            }
             if (path.StartsWith(CoreRoot, StringComparison.Ordinal))
+            {
                 return "/urui/" + path.Substring(CoreRoot.Length);
+            }
             if (path.StartsWith(EffectRoot, StringComparison.Ordinal))
+            {
                 return "/urui-effect/" + path.Substring(EffectRoot.Length);
+            }
             return "/" + path;
         }
 
@@ -30,7 +38,9 @@ namespace URUI.Authoring.Preview
             string target = AssetUri(Relative(root, assetPath));
             // Keep a reference on its own mount when the source file belongs to a different mount.
             if (source.Split('/')[1] != target.Split('/')[1])
+            {
                 return target;
+            }
             var from = new Uri("https://urui.invalid" + EscapePath(source));
             var to = new Uri("https://urui.invalid" + EscapePath(target));
             return from.MakeRelativeUri(to).ToString();
@@ -42,16 +52,26 @@ namespace URUI.Authoring.Preview
         internal static string AssetPath(string uri)
         {
             if (string.IsNullOrEmpty(uri) || !uri.StartsWith("/", StringComparison.Ordinal) || uri.StartsWith("//", StringComparison.Ordinal))
+            {
                 return null;
+            }
             string path = Uri.UnescapeDataString(uri);
             if (path.Contains('\\') || path.Contains('\0') || Array.Exists(path.Split('/'), part => part is "." or ".."))
+            {
                 return null;
+            }
             if (path.StartsWith("/URUI/", StringComparison.Ordinal))
+            {
                 return ResourcesRoot + path.Substring(6);
+            }
             if (path.StartsWith("/urui/", StringComparison.Ordinal))
+            {
                 return CoreRoot + path.Substring(6);
+            }
             if (path.StartsWith("/urui-effect/", StringComparison.Ordinal))
+            {
                 return EffectRoot + path.Substring(13);
+            }
             return path.StartsWith("/Assets/", StringComparison.Ordinal) || path.StartsWith("/Packages/", StringComparison.Ordinal) ? path.Substring(1) : null;
         }
 
@@ -60,7 +80,9 @@ namespace URUI.Authoring.Preview
             string full = Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(root, path));
             string prefix = root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             if (!full.StartsWith(prefix, StringComparison.Ordinal))
+            {
                 throw new InvalidOperationException("Source is outside project.");
+            }
             return full.Substring(prefix.Length).Replace('\\', '/');
         }
 

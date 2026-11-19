@@ -23,33 +23,60 @@ namespace URUI.Effect.Rendering
             foreach (var name in new[] { "transition-filter", "transition-reverse", "transition-keep-aspect-ratio",
                 "transition-color-filter", "transition-color-glow", "transition-pattern-reverse", "detail-filter",
                 "edge-mode", "edge-color-filter", "edge-color-glow", "pattern-area" })
+            {
                 result.Add(new("--urui-fx-" + name, StyleValueType.Keyword));
+            }
             foreach (var name in new[] { "transition-progress", "transition-width", "transition-softness", "transition-rotation",
                 "transition-range-min", "transition-range-max", "transition-auto-play-speed", "detail-intensity",
                 "detail-threshold-min", "detail-threshold-max", "edge-width", "edge-shiny-progress", "edge-shiny-width", "edge-shiny-auto-play-speed" })
+            {
                 result.Add(new("--urui-fx-" + name, StyleValueType.Number));
+            }
             foreach (var group in new[] { "transition", "detail" })
             {
                 result.Add(new("--urui-fx-" + group + "-texture", StyleValueType.Image));
                 foreach (var field in new[] { "scale", "offset", "speed" })
-                    foreach (var axis in new[] { "x", "y" }) result.Add(new("--urui-fx-" + group + "-texture-" + field + "-" + axis, StyleValueType.Number));
+                {
+                    foreach (var axis in new[] { "x", "y" })
+                    {
+                        result.Add(new("--urui-fx-" + group + "-texture-" + field + "-" + axis, StyleValueType.Number));
+                    }
+                }
             }
-            foreach (var name in new[] { "transition-color", "detail-color", "edge-color" }) result.Add(new("--urui-fx-" + name, StyleValueType.Color));
+            foreach (var name in new[] { "transition-color", "detail-color", "edge-color" })
+            {
+                result.Add(new("--urui-fx-" + name, StyleValueType.Color));
+            }
             return result.ToArray();
         }
-        static readonly Dictionary<string,string> names=new(StringComparer.Ordinal);
-        static readonly Dictionary<string,(string X,string Y)> vectors=new(StringComparer.Ordinal);
+        static readonly Dictionary<string, string> names = new(StringComparer.Ordinal);
+        static readonly Dictionary<string, (string X, string Y)> vectors = new(StringComparer.Ordinal);
         static string Name(string name)
-        {if(!names.TryGetValue(name,out var key))names.Add(name,key="--urui-fx-"+name);return key;}
-        static float Number(EffectStyleView style,string name)=>style.GetNumber(Name(name));
+        {
+            if (!names.TryGetValue(name, out var key))
+            {
+                names.Add(name, key = "--urui-fx-" + name);
+            }
+            return key;
+        }
+        static float Number(EffectStyleView style, string name) => style.GetNumber(Name(name));
         static bool Flag(EffectStyleView style, string name) => style.GetKeyword(Name(name)) == "true";
-        static Vector2 Vector(EffectStyleView style,string name)
-        {if(!vectors.TryGetValue(name,out var keys))vectors.Add(name,keys=(Name(name+"-x"),Name(name+"-y")));return new(style.GetNumber(keys.X),style.GetNumber(keys.Y));}
+        static Vector2 Vector(EffectStyleView style, string name)
+        {
+            if (!vectors.TryGetValue(name, out var keys))
+            {
+                vectors.Add(name, keys = (Name(name + "-x"), Name(name + "-y")));
+            }
+            return new(style.GetNumber(keys.X), style.GetNumber(keys.Y));
+        }
         static int Mode(EffectStyleView style, string name, string[] values)
         {
             var value = style.GetKeyword(Name(name));
             var index = Array.IndexOf(values, value);
-            if (index < 0) throw new InvalidOperationException("URUI 效果模式无效：" + name + "=" + value);
+            if (index < 0)
+            {
+                throw new InvalidOperationException("URUI 效果模式无效：" + name + "=" + value);
+            }
             return index;
         }
         internal static ColorFilter ColorMode(EffectStyleView style, string name) => (ColorFilter)Mode(style, name, colorModes);

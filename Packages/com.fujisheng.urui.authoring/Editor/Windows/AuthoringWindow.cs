@@ -11,24 +11,34 @@ using L = URUI.Editor.Localization.EditorText;
 
 namespace URUI.Authoring.Windows
 {
-    /// <summary>The authoring workbench and the standalone tools share the same authoring session.</summary>
-    public sealed class UruiEditorWindow : EditorWindow
+    /// <summary>
+    /// The authoring workbench and the standalone tools share the same authoring session.
+    /// </summary>
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "URUI.Authoring.Windows", sourceClassName: "UruiEditorWindow")]
+    public sealed class AuthoringWindow : EditorWindow
     {
         CanvasView canvas;
         TimelineView timeline;
-        IMGUIContainer canvasPanel, timelinePanel;
-        Label documentLabel, status;
+        IMGUIContainer canvasPanel;
+        IMGUIContainer timelinePanel;
+        Label documentLabel;
+        Label status;
         Button saveButton;
         WorkbenchCompileStatus compileStatus;
-        ToolbarToggle libraryToggle, layoutToggle, motionToggle, sourceToggle;
-        ToolbarButton undoButton, redoButton;
+        ToolbarToggle libraryToggle;
+        ToolbarToggle layoutToggle;
+        ToolbarToggle motionToggle;
+        ToolbarToggle sourceToggle;
+        ToolbarButton undoButton;
+        ToolbarButton redoButton;
         TextField code;
         WorkbenchLibrary library;
-        [SerializeField] bool showLibrary = true;
+        [SerializeField]
+        bool showLibrary = true;
         bool cssPreview;
         long codeRevision = -1;
         bool observing;
-        static UruiEditorWindow Current => UnityEngine.Resources.FindObjectsOfTypeAll<UruiEditorWindow>().FirstOrDefault();
+        static AuthoringWindow Current => UnityEngine.Resources.FindObjectsOfTypeAll<AuthoringWindow>().FirstOrDefault();
 
         [InitializeOnLoadMethod]
         static void RegisterLocalizedMenus()
@@ -44,7 +54,7 @@ namespace URUI.Authoring.Windows
         public static void Open()
         {
             RuntimeDebugWindows.Open();
-            var window = GetWindow<UruiEditorWindow>(L.Tr("URUI 编辑器"), typeof(SceneView));
+            var window = GetWindow<AuthoringWindow>(L.Tr("URUI 编辑器"), typeof(SceneView));
             window.minSize = new Vector2(900, 550);
             window.Show();
         }
@@ -58,7 +68,13 @@ namespace URUI.Authoring.Windows
         [MenuItem("Assets/URUI/Open Editor", false, 0)]
         static void OpenAsset()
         {
-            AuthoringEnvironment.Try(() => { if (OpenPageWithConfirmation(AssetDatabase.GetAssetPath(Selection.activeObject))) Open(); });
+            AuthoringEnvironment.Try(() =>
+            {
+                if (OpenPageWithConfirmation(AssetDatabase.GetAssetPath(Selection.activeObject)))
+                {
+                    Open();
+                }
+            });
         }
 
         [MenuItem("Assets/URUI/Open Editor", true)]
@@ -67,13 +83,21 @@ namespace URUI.Authoring.Windows
         void OnEnable()
         {
             wantsMouseMove = true;
-            canvas = new CanvasView(() => { canvasPanel?.MarkDirtyRepaint(); Repaint(); }, rememberView: true);
-            timeline = new TimelineView(() => { timelinePanel?.MarkDirtyRepaint(); Repaint(); });
+            canvas = new CanvasView(() =>
+            {
+                canvasPanel?.MarkDirtyRepaint();
+                Repaint();
+            }, rememberView: true);
+            timeline = new TimelineView(() =>
+            {
+                timelinePanel?.MarkDirtyRepaint();
+                Repaint();
+            });
             AuthoringEnvironment.Observe(true);
             observing = true;
             AuthoringEnvironment.Changed += Refresh;
             AuthoringEnvironment.NodeSelectionChanged += SelectionChanged;
-            UruiRuntimeHierarchyWindow.StyleSelectionChanged += RuleSelectionChanged;
+            RuntimeHierarchyWindow.StyleSelectionChanged += RuleSelectionChanged;
             L.LanguageChanged += CreateGUI;
             EditorApplication.update += Tick;
             EditorApplication.projectChanged += ProjectChanged;
@@ -82,11 +106,13 @@ namespace URUI.Authoring.Windows
         void OnDisable()
         {
             if (observing)
+            {
                 AuthoringEnvironment.Observe(false);
+            }
             observing = false;
             AuthoringEnvironment.Changed -= Refresh;
             AuthoringEnvironment.NodeSelectionChanged -= SelectionChanged;
-            UruiRuntimeHierarchyWindow.StyleSelectionChanged -= RuleSelectionChanged;
+            RuntimeHierarchyWindow.StyleSelectionChanged -= RuleSelectionChanged;
             L.LanguageChanged -= CreateGUI;
             EditorApplication.update -= Tick;
             EditorApplication.projectChanged -= ProjectChanged;
@@ -95,7 +121,7 @@ namespace URUI.Authoring.Windows
             canvas?.Dispose();
         }
 
-        void OnFocus() => WorkbenchUi.FocusWhenEmpty(this);
+        void OnFocus() => WorkbenchUI.FocusWhenEmpty(this);
 
         void OnLostFocus() => canvas?.CancelInput();
 
@@ -103,15 +129,27 @@ namespace URUI.Authoring.Windows
         {
             L.Title(this, "URUI 编辑器");
             var root = rootVisualElement;
-            WorkbenchUi.BuildRoot(root);
+            WorkbenchUI.BuildRoot(root);
             var toolbar = new Toolbar();
             toolbar.AddToClassList("urui-topbar");
-            libraryToggle = new ToolbarToggle { name = "urui-toggle-library", text = L.Tr("控件库") };
+            libraryToggle = new ToolbarToggle
+            {
+                name = "urui-toggle-library",
+                text = L.Tr("控件库")
+            };
             libraryToggle.RegisterValueChangedCallback(evt => SetLibraryOpen(evt.newValue));
             toolbar.Add(libraryToggle);
             toolbar.Add(new ToolbarButton(OpenPage) { text = L.Tr("打开页面…") });
-            undoButton = new ToolbarButton(() => History(false)) { text = "↶", tooltip = L.Tr("撤销") };
-            redoButton = new ToolbarButton(() => History(true)) { text = "↷", tooltip = L.Tr("重做") };
+            undoButton = new ToolbarButton(() => History(false))
+            {
+                text = "↶",
+                tooltip = L.Tr("撤销")
+            };
+            redoButton = new ToolbarButton(() => History(true))
+            {
+                text = "↷",
+                tooltip = L.Tr("重做")
+            };
             toolbar.Add(undoButton);
             toolbar.Add(redoButton);
             documentLabel = new Label();
@@ -122,10 +160,18 @@ namespace URUI.Authoring.Windows
             toolbar.Add(layoutToggle);
             toolbar.Add(motionToggle);
             toolbar.Add(new ToolbarButton(RuntimeDebugWindows.Open) { text = L.Tr("层级和属性") });
-            sourceToggle = new ToolbarToggle { text = L.Tr("源码"), viewDataKey = "urui-show-source" };
+            sourceToggle = new ToolbarToggle
+            {
+                text = L.Tr("源码"),
+                viewDataKey = "urui-show-source"
+            };
             sourceToggle.RegisterValueChangedCallback(_ => Refresh());
             toolbar.Add(sourceToggle);
-            saveButton = new Button(SavePage) { text = L.Tr("保存"), name = "urui-save" };
+            saveButton = new Button(SavePage)
+            {
+                text = L.Tr("保存"),
+                name = "urui-save"
+            };
             saveButton.AddToClassList("urui-save-button");
             toolbar.Add(saveButton);
             root.Add(toolbar);
@@ -141,15 +187,36 @@ namespace URUI.Authoring.Windows
             body.Add(canvasPanel);
             root.Add(body);
 
-            code = new TextField { multiline = true, isReadOnly = true, name = "urui-source-preview" };
+            code = new TextField
+            {
+                multiline = true,
+                isReadOnly = true,
+                name = "urui-source-preview"
+            };
             code.style.flexGrow = 1;
             code.style.minHeight = 0;
             code.style.height = 140;
             codeRevision = -1;
             var source = new VisualElement { name = "urui-source-pane" };
             var sourceBar = new Toolbar();
-            sourceBar.Add(new ToolbarButton(() => { cssPreview = false; codeRevision = -1; RefreshCode(); }) { text = "HTML" });
-            sourceBar.Add(new ToolbarButton(() => { cssPreview = true; codeRevision = -1; RefreshCode(); }) { text = "CSS" });
+            sourceBar.Add(new ToolbarButton(() =>
+            {
+                cssPreview = false;
+                codeRevision = -1;
+                RefreshCode();
+            })
+            {
+                text = "HTML"
+            });
+            sourceBar.Add(new ToolbarButton(() =>
+            {
+                cssPreview = true;
+                codeRevision = -1;
+                RefreshCode();
+            })
+            {
+                text = "CSS"
+            });
             sourceBar.Add(new ToolbarButton(OpenSourceAsset) { text = L.Tr("打开源文件") });
             source.Add(sourceBar);
             source.Add(code);
@@ -167,7 +234,7 @@ namespace URUI.Authoring.Windows
             root.Add(footer);
             root.UnregisterCallback<KeyDownEvent>(HandleKeys, TrickleDown.TrickleDown);
             root.RegisterCallback<KeyDownEvent>(HandleKeys, TrickleDown.TrickleDown);
-            WorkbenchUi.FocusWhenEmpty(this);
+            WorkbenchUI.FocusWhenEmpty(this);
             Refresh();
             SelectionChanged();
         }
@@ -177,9 +244,13 @@ namespace URUI.Authoring.Windows
             showLibrary = open;
             RefreshLibrary();
             if (open)
+            {
                 library.FocusSearch();
+            }
             else
+            {
                 libraryToggle.Focus();
+            }
         }
 
         bool HandleLibraryDrag(WorkbenchDrag drag, Vector2 panelPosition, bool drop)
@@ -198,7 +269,9 @@ namespace URUI.Authoring.Windows
             libraryToggle.tooltip = L.Tr(expanded ? "关闭控件库" : "打开控件库");
             library.style.display = expanded ? DisplayStyle.Flex : DisplayStyle.None;
             if (expanded)
+            {
                 library.Refresh();
+            }
         }
 
         ToolbarToggle ModeTab(WorkspaceMode mode, string text)
@@ -216,12 +289,16 @@ namespace URUI.Authoring.Windows
         internal static void HandleKeys(KeyDownEvent evt)
         {
             if (EditorApplication.isPlaying || evt.currentTarget is not VisualElement root)
+            {
                 return;
+            }
             if (!evt.commandKey && !evt.ctrlKey)
             {
                 if (!evt.altKey && !evt.shiftKey && evt.keyCode == KeyCode.F &&
                     !EditorGUIUtility.editingTextField && !FocusInTextField(root) && Current?.canvas?.FrameSelection() == true)
+                {
                     evt.StopImmediatePropagation();
+                }
                 return;
             }
             if (evt.keyCode == KeyCode.S)
@@ -239,8 +316,12 @@ namespace URUI.Authoring.Windows
         static bool FocusInTextField(VisualElement root)
         {
             for (var element = root.focusController?.focusedElement as VisualElement; element != null; element = element.parent)
+            {
                 if (element is TextField || element.ClassListContains("unity-base-text-field"))
+                {
                     return true;
+                }
+            }
             return false;
         }
 
@@ -248,13 +329,19 @@ namespace URUI.Authoring.Windows
         {
             Current?.canvas?.CancelInput();
             if (EditorApplication.isPlaying || (redo ? !AuthoringEnvironment.Author.Workspace.CanRedo : !AuthoringEnvironment.Author.Workspace.CanUndo))
+            {
                 return;
+            }
             AuthoringEnvironment.Try(() =>
             {
                 if (redo)
+                {
                     Undo.PerformRedo();
+                }
                 else
+                {
                     Undo.PerformUndo();
+                }
             });
             Current?.Refresh();
         }
@@ -263,7 +350,9 @@ namespace URUI.Authoring.Windows
         {
             string path = EditorUtility.OpenFilePanel(L.Tr("打开 URUI 页面"), Application.dataPath, "html");
             if (!string.IsNullOrEmpty(path))
+            {
                 AuthoringEnvironment.Try(() => OpenPageWithConfirmation(path));
+            }
         }
 
         internal static bool OpenPageWithConfirmation(string path)
@@ -271,7 +360,9 @@ namespace URUI.Authoring.Windows
             var author = AuthoringEnvironment.Author;
             path = author.Workspace.CheckPath(path);
             if (path == author.File?.Path)
+            {
                 return true;
+            }
             bool discard = false;
             if (AuthoringEnvironment.HasUnsavedSources)
             {
@@ -279,11 +370,17 @@ namespace URUI.Authoring.Windows
                     string.Format(L.Tr("打开 {0} 前，选择如何处理当前页面及关联文件。"), Path.GetFileName(path)),
                     L.Tr("保存并打开"), L.Tr("取消"), L.Tr("放弃修改并打开"));
                 if (choice == 1)
+                {
                     return false;
+                }
                 if (choice == 0)
+                {
                     AuthoringEnvironment.SaveSources();
+                }
                 else
+                {
                     discard = true;
+                }
             }
             AuthoringEnvironment.Open(path, discard);
             return true;
@@ -303,29 +400,37 @@ namespace URUI.Authoring.Windows
         void OpenSourceAsset()
         {
             var author = AuthoringEnvironment.Author;
-            string path = cssPreview ? UruiRuntimeHierarchyWindow.Current?.StyleSheets?.SelectedPath ?? AuthoringEnvironment.Preview?.StylePaths.FirstOrDefault() : author.File?.Path;
+            string path = cssPreview ? RuntimeHierarchyWindow.Current?.StyleSheets?.SelectedPath ?? AuthoringEnvironment.Preview?.StylePaths.FirstOrDefault() : author.File?.Path;
             if (path == null)
+            {
                 return;
+            }
             var asset = AssetDatabase.LoadAssetAtPath<TextAsset>(FileUtil.GetProjectRelativePath(path));
             if (asset)
+            {
                 EditorUtility.OpenWithDefaultApp(AssetDatabase.GetAssetPath(asset));
+            }
         }
 
         void RefreshCode()
         {
             var author = AuthoringEnvironment.Author;
             if (code == null || codeRevision == author.Revision || !sourceToggle.value)
+            {
                 return;
+            }
             codeRevision = author.Revision;
             code.SetValueWithoutNotify(cssPreview
-                ? UruiRuntimeHierarchyWindow.Current?.StyleSheets?.PreviewText ?? string.Join("\n\n", AuthoringEnvironment.Preview?.StylePaths.Select(path => "/* " + Path.GetFileName(path) + " */\n" + author.Workspace.Open(path).Text) ?? Array.Empty<string>())
+                ? RuntimeHierarchyWindow.Current?.StyleSheets?.PreviewText ?? string.Join("\n\n", AuthoringEnvironment.Preview?.StylePaths.Select(path => "/* " + Path.GetFileName(path) + " */\n" + author.Workspace.Open(path).Text) ?? Array.Empty<string>())
                 : author.File?.Text ?? "");
         }
 
         void Refresh()
         {
             if (status == null)
+            {
                 return;
+            }
             bool playing = EditorApplication.isPlaying;
             var author = AuthoringEnvironment.Author;
             var mode = AuthoringEnvironment.Mode;
@@ -367,7 +472,9 @@ namespace URUI.Authoring.Windows
         void Tick()
         {
             if (canvasPanel == null)
+            {
                 return;
+            }
             if (AnimationEnvironment.Playing || AuthoringEnvironment.Preview?.Playing == true)
             {
                 canvasPanel.MarkDirtyRepaint();

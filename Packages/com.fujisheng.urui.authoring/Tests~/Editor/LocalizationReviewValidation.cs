@@ -16,7 +16,8 @@ namespace URUI.Authoring.Tests
         {
             var current = typeof(EditorText).GetField("current", Flags);
             var poll = typeof(EditorText).GetField("nextPoll", Flags);
-            object previous = current.GetValue(null), deadline = poll.GetValue(null);
+            object previous = current.GetValue(null);
+            object deadline = poll.GetValue(null);
             var changed = (Action)typeof(EditorText).GetField("LanguageChanged", Flags).GetValue(null);
             try
             {
@@ -45,29 +46,41 @@ namespace URUI.Authoring.Tests
                 File.WriteAllText(path, original);
                 AuthoringEnvironment.Open(path);
                 foreach (var language in new[] { SystemLanguage.English, SystemLanguage.ChineseSimplified })
+                {
                     WithLanguage(language, () =>
-                    {
-                        if (name == "status")
-                        {
-                            SaveWorksetWindow.OpenOrSave();
-                            if (AuthoringEnvironment.Status != "已保存页面、CSS 与序列工作集。")
-                                throw new Exception("Shared Agent diagnostics changed with UI language: " + AuthoringEnvironment.Status);
-                        }
-                        else if (name == "menus")
-                        {
-                            var exists = typeof(Menu).GetMethod("MenuItemExists", Flags);
-                            string menu = EditorMenus.Path("Window/URUI/Editor");
-                            string expected = language == SystemLanguage.English ? "Window/URUI/Editor" : "Window/URUI/编辑器";
-                            if (menu != expected || !(bool)exists.Invoke(null, new object[] { menu }))
-                                throw new Exception("Localized menu was not registered: " + menu);
-                            if (!EditorApplication.ExecuteMenuItem(menu))
-                                throw new Exception("Localized menu action was not executable");
-                            if (File.ReadAllText(path) != original || AuthoringEnvironment.Author.File.Dirty)
-                                throw new Exception("Menu language changed source files");
-                        }
-                        else
-                            throw new Exception("Unknown review case");
-                    });
+                                        {
+                                            if (name == "status")
+                                            {
+                                                SaveWorksetWindow.OpenOrSave();
+                                                if (AuthoringEnvironment.Status != "已保存页面、CSS 与序列工作集。")
+                                                {
+                                                    throw new Exception("Shared Agent diagnostics changed with UI language: " + AuthoringEnvironment.Status);
+                                                }
+                                            }
+                                            else if (name == "menus")
+                                            {
+                                                var exists = typeof(Menu).GetMethod("MenuItemExists", Flags);
+                                                string menu = EditorMenus.Path("Window/URUI/Editor");
+                                                string expected = language == SystemLanguage.English ? "Window/URUI/Editor" : "Window/URUI/编辑器";
+                                                if (menu != expected || !(bool)exists.Invoke(null, new object[] { menu }))
+                                                {
+                                                    throw new Exception("Localized menu was not registered: " + menu);
+                                                }
+                                                if (!EditorApplication.ExecuteMenuItem(menu))
+                                                {
+                                                    throw new Exception("Localized menu action was not executable");
+                                                }
+                                                if (File.ReadAllText(path) != original || AuthoringEnvironment.Author.File.Dirty)
+                                                {
+                                                    throw new Exception("Menu language changed source files");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                throw new Exception("Unknown review case");
+                                            }
+                                        });
+                }
                 Directory.CreateDirectory("Evidence");
                 File.WriteAllText("Evidence/localization-review-" + name + ".json", "{\"passed\":true,\"languages\":2,\"unityPreferencesChanged\":false}");
                 Debug.Log("URUI Localization review PASS " + name);

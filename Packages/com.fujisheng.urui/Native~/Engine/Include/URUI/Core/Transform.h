@@ -4,11 +4,12 @@
 #include "TransformPrimitive.h"
 #include "Types.h"
 
-namespace URUI {
+namespace URUI
+{
 
-class Property;
+    class Property;
 
-/**
+    /**
     The Transform class holds the information parsed from an element's `transform' property.
 
     The class holds a list of transform primitives making up a complete transformation specification
@@ -18,36 +19,43 @@ class Property;
     @see URUI::Variant
  */
 
-class URUI_CORE_API Transform {
-public:
-	using PrimitiveList = Vector<TransformPrimitive>;
+    class URUI_CORE_API Transform
+    {
+    public:
+        using PrimitiveList = Vector<TransformPrimitive>;
 
-	/// Default constructor, initializes an identity transform
-	Transform();
+        /// Default constructor, initializes an identity transform
+        Transform();
 
-	/// Construct transform with a list of primitives
-	Transform(PrimitiveList primitives);
+        /// Construct transform with a list of primitives
+        Transform(PrimitiveList primitives);
 
-	/// Helper function to create a 'transform' Property from the given list of primitives
-	static Property MakeProperty(PrimitiveList primitives);
+        /// Helper function to create a 'transform' Property from the given list of primitives
+        static Property MakeProperty(PrimitiveList primitives);
 
-	/// Remove all Primitives from this Transform
-	void ClearPrimitives();
+        /// Remove all Primitives from this Transform
+        void ClearPrimitives();
 
-	/// Add a Primitive to this Transform
-	void AddPrimitive(const TransformPrimitive& p);
+        /// Add a Primitive to this Transform
+        void AddPrimitive(const TransformPrimitive& p);
 
-	/// Return the number of Primitives in this Transform
-	int GetNumPrimitives() const noexcept;
+        /// Return the number of Primitives in this Transform
+        int GetNumPrimitives() const noexcept;
 
-	/// Return the i-th Primitive in this Transform
-	const TransformPrimitive& GetPrimitive(int i) const noexcept;
+        /// Return the i-th Primitive in this Transform
+        const TransformPrimitive& GetPrimitive(int i) const noexcept;
 
-	PrimitiveList& GetPrimitives() noexcept { return primitives; }
-	const PrimitiveList& GetPrimitives() const noexcept { return primitives; }
+        PrimitiveList& GetPrimitives() noexcept
+        {
+            return primitives;
+        }
+        const PrimitiveList& GetPrimitives() const noexcept
+        {
+            return primitives;
+        }
 
-private:
-	PrimitiveList primitives;
-};
+    private:
+        PrimitiveList primitives;
+    };
 
-} // namespace URUI
+}

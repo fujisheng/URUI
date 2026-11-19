@@ -138,7 +138,7 @@ EffectPlayback 提供以下接口：
 | `Finished : Task` / `Completed : Action` | 自然完成的任务/事件，循环模式不会自然结束 |
 | `ProgressChanged : Action<float>` | 仅启用 Event 通道且进度变化时触发 |
 
-句柄在创建线程操作；跨线程取消使用传入 CancellationToken，由后续主线程更新处理。Normal/Unscaled 使用 Unity 对应时间；调用方显式提供的自定义 Surface.UiClock 在两种自动模式中优先。Manual 不由宿主自动推进。节点隐藏不隐式切换 Enabled。
+句柄在创建线程操作；跨线程取消使用传入 CancellationToken，由后续主线程更新处理。Normal/Unscaled 使用 Unity 对应时间；调用方显式提供的自定义 Surface.UIClock 在两种自动模式中优先。Manual 不由宿主自动推进。节点隐藏不隐式切换 Enabled。
 
 ## 参数联动
 

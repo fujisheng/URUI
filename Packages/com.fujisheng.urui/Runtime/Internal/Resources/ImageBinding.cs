@@ -3,7 +3,9 @@ using UnityEngine;
 
 namespace URUI.Internal.Resources
 {
-    /// <summary>宿主读取的图片配置；纹理资产仍由调用者持有。</summary>
+    /// <summary>
+    /// 宿主读取的图片配置；纹理资产仍由调用者持有。
+    /// </summary>
     [Serializable]
     internal struct ImageBinding
     {

@@ -15,7 +15,9 @@ namespace URUI.Authoring.Tests
         {
             assertions++;
             if (!Equals(expected, actual))
+            {
                 throw new Exception($"Expected [{expected}], got [{actual}]");
+            }
         }
         static void Rejected(Action action)
         {
@@ -24,14 +26,23 @@ namespace URUI.Authoring.Tests
             {
                 action();
             }
-            catch (InvalidOperationException) { return; }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
             throw new Exception("Expected rejection");
         }
 
         public static void Run()
         {
             var errors = new System.Collections.Generic.List<string>();
-            Application.LogCallback captureError = (message, stack, type) => { if (type == LogType.Error || type == LogType.Exception) errors.Add(message); };
+            Application.LogCallback captureError = (message, stack, type) =>
+            {
+                if (type == LogType.Error || type == LogType.Exception)
+                {
+                    errors.Add(message);
+                }
+            };
             Application.logMessageReceived += captureError;
             try
             {
@@ -132,7 +143,9 @@ namespace URUI.Authoring.Tests
                         var inspectedImage = RuntimeInspectionBridge.Inspect(imageElement);
                         live.Set(inspectedImage, "image", imagePath, live.Revision);
                         using (var pixels = preview.Capture())
+                        {
                             Equal(true, pixels.Texture.GetPixel(210, 310).b > .9f);
+                        }
                         live.Undo();
                         Equal(null, imageElement.GetAttribute("src"));
                         live.Set(inspectedImage, "image", imagePath, live.Revision);
@@ -156,7 +169,9 @@ namespace URUI.Authoring.Tests
                     }
                     preview.Render();
                     using (var pixels = preview.Capture())
+                    {
                         Equal(480, pixels.Texture.width);
+                    }
                 }
                 AuthoringEnvironment.Open(sourcePath);
                 VerifyIdentityAndDocumentSwitch();
@@ -185,9 +200,17 @@ namespace URUI.Authoring.Tests
                 File.WriteAllText(cssPath, "#direct { background-color:red; }");
                 string headKey = null;
                 foreach (var node in AuthoringEnvironment.Author.Model.Nodes)
+                {
                     if (node.Tag == "head")
+                    {
                         headKey = node.Key;
-                AuthoringEnvironment.Author.Execute(new[] { new AuthoringEdit { Operation = "insert", Parent = headKey, Value = "<link rel=\"stylesheet\" href=\"shared.css\">" } }, AuthoringEnvironment.Author.Revision);
+                    }
+                }
+                AuthoringEnvironment.Author.Execute(new[] { new AuthoringEdit {
+Operation = "insert",
+Parent = headKey,
+Value = "<link rel=\"stylesheet\" href=\"shared.css\">"
+} }, AuthoringEnvironment.Author.Revision);
                 var rules = URUI.Authoring.Source.CssSource.Rules(AuthoringEnvironment.Author.Workspace.Open(cssPath).Text);
                 long beforeCss = AuthoringEnvironment.Author.Revision;
                 AuthoringEnvironment.Author.SetSharedRule(cssPath, rules[0].Start, "background-color", "blue", beforeCss);
@@ -198,7 +221,9 @@ namespace URUI.Authoring.Tests
                 AuthoringEnvironment.Preview.Dispose();
                 var effectChecks = typeof(AuthoringValidation).Assembly.GetType("URUI.Authoring.Tests.EffectValidation");
                 if (effectChecks != null)
+                {
                     assertions += (int)effectChecks.GetMethod("Run").Invoke(null, null);
+                }
                 Equal(0, errors.Count);
                 ElementSelectionProxy.Clear();
                 Directory.CreateDirectory("Evidence");
@@ -213,7 +238,10 @@ namespace URUI.Authoring.Tests
                 File.WriteAllText("Evidence/authoring-failure.txt", error.ToString());
                 EditorApplication.Exit(1);
             }
-            finally { Application.logMessageReceived -= captureError; }
+            finally
+            {
+                Application.logMessageReceived -= captureError;
+            }
         }
         static void VerifyIdentityAndDocumentSwitch()
         {
@@ -225,7 +253,11 @@ namespace URUI.Authoring.Tests
             string a = System.Linq.Enumerable.Single(author.Model.Nodes, n => n.Attribute("id") == "a").Key;
             string body = System.Linq.Enumerable.Single(author.Model.Nodes, n => n.Tag == "body").Key;
             var locked = ElementSelectionProxy.ForAuthor(a);
-            author.Execute(new[] { new AuthoringEdit { Operation = "move", Node = a, Parent = body } }, author.Revision);
+            author.Execute(new[] { new AuthoringEdit {
+Operation = "move",
+Node = a,
+Parent = body
+} }, author.Revision);
             Equal(true, locked.IsTargetValid);
             Equal("a", locked.SourceNode.Attribute("id"));
             var moved = locked;
@@ -256,7 +288,7 @@ namespace URUI.Authoring.Tests
                 Selection.activeObject = ElementSelectionProxy.ForAuthor(body);
                 string before = author.File.Text;
                 object[] arguments = operation == "CreateNode" ? new object[] { "span" } : operation == "RenameNode" ? new object[] { a, "renamed" } : new object[] { a, body, -1 };
-                typeof(UruiHierarchyWindow).GetMethod(operation, System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, arguments);
+                typeof(HierarchyWindow).GetMethod(operation, System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, arguments);
                 string after = author.File.Text;
                 Equal(false, before == after);
                 Undo.PerformUndo();

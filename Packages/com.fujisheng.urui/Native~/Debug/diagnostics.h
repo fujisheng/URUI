@@ -5,14 +5,14 @@
 #include "style_probe.h"
 #include <chrono>
 
-namespace urui_debug
+namespace URUI::Debug
 {
-    static_assert(sizeof(UruiProfile) == 104, "diagnostic profile ABI");
+    static_assert(sizeof(URUIProfile) == 104, "diagnostic profile ABI");
     using ProfileClock = std::chrono::steady_clock;
-    extern UruiProfile profile;
-    extern UruiApiProfile api_profile;
+    extern URUIProfile profile;
+    extern URUIApiProfile api_profile;
     extern bool api_profile_enabled;
-    extern UruiTypedProbe typed_probe;
+    extern URUITypedProbe typed_probe;
     extern int typed_probe_mode;
 
     // Scope ownership prevents a failed/early-returning API call from losing its time.
@@ -40,6 +40,6 @@ namespace urui_debug
             }
         }
     };
-} // namespace urui_debug
+}
 
 #endif

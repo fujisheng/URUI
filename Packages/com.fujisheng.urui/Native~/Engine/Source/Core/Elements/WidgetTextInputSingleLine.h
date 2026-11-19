@@ -2,21 +2,23 @@
 
 #include "WidgetTextInput.h"
 
-namespace URUI {
+namespace URUI
+{
 
-/**
+    /**
     A specialisation of the text input widget for single-line input fields.
  */
 
-class WidgetTextInputSingleLine : public WidgetTextInput {
-public:
-	WidgetTextInputSingleLine(ElementFormControl* parent);
+    class WidgetTextInputSingleLine : public WidgetTextInput
+    {
+    public:
+        WidgetTextInputSingleLine(ElementFormControl* parent);
 
-protected:
-	/// Removes any invalid characters from the string.
-	void SanitizeValue(String& value) override;
-	/// Called when the user pressed enter.
-	void LineBreak() override;
-};
+    protected:
+        /// Removes any invalid characters from the string.
+        void SanitizeValue(String& value) override;
+        /// Called when the user pressed enter.
+        void LineBreak() override;
+    };
 
-} // namespace URUI
+}

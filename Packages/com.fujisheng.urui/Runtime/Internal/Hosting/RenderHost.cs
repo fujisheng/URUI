@@ -54,11 +54,28 @@ namespace URUI.Internal.Hosting
         public bool Ready => active;
         internal Camera InspectionCamera => targetCamera;
 
-        public int UiWidth => OwnerSurface ? OwnerSurface.Width : Screen.width;
+        public int UIWidth => OwnerSurface ? OwnerSurface.Width : Screen.width;
 
-        public int UiHeight => OwnerSurface ? OwnerSurface.Height : Screen.height;
+        public int UIHeight => OwnerSurface ? OwnerSurface.Height : Screen.height;
 
-        public int ElementCount { get { var count = 0; if (active) foreach (var document in OwnerSurface.DocumentsSnapshot()) if (document && document.IsLoaded) count += NativeMethods.urui_element_count(document.NativeHandle); return count; } }
+        public int ElementCount
+        {
+            get
+            {
+                var count = 0;
+                if (active)
+                {
+                    foreach (var document in OwnerSurface.DocumentsSnapshot())
+                    {
+                        if (document && document.IsLoaded)
+                        {
+                            count += NativeMethods.urui_element_count(document.NativeHandle);
+                        }
+                    }
+                }
+                return count;
+            }
+        }
 
         readonly HashSet<ulong> frameUsedGeometry = new HashSet<ulong>();
         readonly List<ulong> frameStaleGeometry = new List<ulong>();
@@ -74,8 +91,16 @@ namespace URUI.Internal.Hosting
         int pooledGeometryBytes;
         CommandBuffer buffer;
         Material material;
-        internal int RecordedGeometryDraws { get; private set; }
-        internal int RecordedRasterResolves { get; private set; }
+        internal int RecordedGeometryDraws
+        {
+            get;
+            private set;
+        }
+        internal int RecordedRasterResolves
+        {
+            get;
+            private set;
+        }
         MaterialPropertyBlock reusableProperties;
         Camera targetCamera;
         bool active;

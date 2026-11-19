@@ -5,8 +5,8 @@ namespace URUI.Effect.Rendering
 {
     internal static class EffectParameterReader
     {
-        static readonly EffectColorProperties colorProperties=new("--urui-fx-color");
-        internal static void Read(EffectStyleView style,EffectParameters p)
+        static readonly EffectColorProperties colorProperties = new("--urui-fx-color");
+        internal static void Read(EffectStyleView style, EffectParameters p)
         {
             p.ToneFilter = (ToneFilter)Mode(style.GetKeyword("--urui-fx-tone-filter"), "tone");
             p.ColorFilter = (ColorFilter)Mode(style.GetKeyword("--urui-fx-color-filter"), "color");
@@ -26,19 +26,28 @@ namespace URUI.Effect.Rendering
             EffectVisualProperties.Read(style, p);
             EffectGradation.Read(style, p);
             EffectShadowProperties.Read(style, p);
-            EffectBlendState.Read(style,p);
+            EffectBlendState.Read(style, p);
         }
         static int Mode(string value, string family)
         {
             return (family, value) switch
             {
                 (_, "none") => 0,
-                ("tone", "grayscale") => 1, ("tone", "sepia") => 2, ("tone", "negative") => 3,
-                ("tone", "retro") => 4, ("tone", "posterize") => 5,
-                ("color", "multiply") => 1, ("color", "additive") => 2, ("color", "subtractive") => 3,
-                ("color", "replace") => 4, ("color", "multiply-luminance") => 5, ("color", "multiply-additive") => 6,
-                ("color", "hsv-modifier") => 7, ("color", "contrast") => 8,
-                ("target", "hue") => 1, ("target", "luminance") => 2,
+                ("tone", "grayscale") => 1,
+                ("tone", "sepia") => 2,
+                ("tone", "negative") => 3,
+                ("tone", "retro") => 4,
+                ("tone", "posterize") => 5,
+                ("color", "multiply") => 1,
+                ("color", "additive") => 2,
+                ("color", "subtractive") => 3,
+                ("color", "replace") => 4,
+                ("color", "multiply-luminance") => 5,
+                ("color", "multiply-additive") => 6,
+                ("color", "hsv-modifier") => 7,
+                ("color", "contrast") => 8,
+                ("target", "hue") => 1,
+                ("target", "luminance") => 2,
                 _ => throw new InvalidOperationException("URUI 效果模式无效：" + family + "=" + value)
             };
         }

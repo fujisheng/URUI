@@ -10,7 +10,10 @@ namespace URUI.Internal.Resources
         internal static TextAsset Load()
         {
             var asset = UnityResources.Load<TextAsset>("URUI/controls");
-            if (!asset) { throw new InvalidOperationException("URUI 控件基础样式资源缺失。"); }
+            if (!asset)
+            {
+                throw new InvalidOperationException("URUI 控件基础样式资源缺失。");
+            }
             return asset;
         }
     }

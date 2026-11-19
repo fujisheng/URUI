@@ -16,8 +16,14 @@ namespace URUI.Elements
             var key = (field, name);
             strings.TryGetValue(key, out var previous);
             var value = NativeMethods.ReadElement(NativeHandle, token, field, name, previous);
-            if (value != null && value.Length <= 64 * 1024) { strings[key] = value; }
-            else { strings.Remove(key); }
+            if (value != null && value.Length <= 64 * 1024)
+            {
+                strings[key] = value;
+            }
+            else
+            {
+                strings.Remove(key);
+            }
             return value;
         }
         internal string ReadStyle(string property, bool local)
@@ -29,7 +35,9 @@ namespace URUI.Elements
             var value = NativeMethods.ReadStyle(NativeHandle, token, property, local, previous.recent, previous.prior);
             // 每个已读属性最多保留两个有限文本；空值不丢弃显隐切换前的字符串。
             if (value != null && value.Length <= 64 * 1024 && !ReferenceEquals(value, previous.recent))
-            { styleStrings[key] = (value, previous.recent); }
+            {
+                styleStrings[key] = (value, previous.recent);
+            }
             return value;
         }
         internal ReadOnlySpan<byte> ReadStyleNumberText(string property)
@@ -51,34 +59,58 @@ namespace URUI.Elements
             return metrics;
         }
         static Rect ReadRect(float[] values, int offset) => new Rect(values[offset], values[offset + 1], values[offset + 2], values[offset + 3]);
-        /// <summary>最近完成的原生布局中的边框矩形，位置相对于布局父级。</summary>
+        /// <summary>
+        /// 最近完成的原生布局中的边框矩形，位置相对于布局父级。
+        /// </summary>
         public Rect Layout => ReadRect(ReadMetrics(), 0);
-        /// <summary>本地坐标中的内容矩形。</summary>
+        /// <summary>
+        /// 本地坐标中的内容矩形。
+        /// </summary>
         public Rect ContentRect => ReadRect(ReadMetrics(), 4);
-        /// <summary>累积变换后的文档坐标轴对齐包围框。</summary>
+        /// <summary>
+        /// 累积变换后的文档坐标轴对齐包围框。
+        /// </summary>
         public Rect WorldBound => ReadRect(ReadMetrics(), 8);
-        /// <summary>扣除边框、内边距及可见滚动条的本地视口，适用于普通 overflow 节点。</summary>
+        /// <summary>
+        /// 扣除边框、内边距及可见滚动条的本地视口，适用于普通 overflow 节点。
+        /// </summary>
         public Rect ViewportRect
         {
             get
             {
                 RequireValid();
-                if(!HasLayout){throw new InvalidOperationException("读取视口需要已完成的布局。");}
-                var values=viewportSnapshot??(viewportSnapshot=new float[4]);
-                RequireSuccess(NativeMethods.urui_element_viewport(NativeHandle, token,values,values.Length),"读取视口");
-                return ReadRect(values,0);
+                if (!HasLayout)
+                {
+                    throw new InvalidOperationException("读取视口需要已完成的布局。");
+                }
+                var values = viewportSnapshot ?? (viewportSnapshot = new float[4]);
+                RequireSuccess(NativeMethods.urui_element_viewport(NativeHandle, token, values, values.Length), "读取视口");
+                return ReadRect(values, 0);
             }
         }
-        /// <summary>读取不含变换原点平移的本地矩阵，以及显式旋转原语的乘积；含 matrix 原语时返回 false。</summary>
-        /// <remarks>矩阵来自最近计算样式。旋转与缩放的语义不能从任意矩阵唯一恢复；false 时 localTransform 仍有效。</remarks>
+        /// <summary>
+        /// 读取不含变换原点平移的本地矩阵，以及显式旋转原语的乘积；含 matrix 原语时返回 false。
+        /// </summary>
+        /// <remarks>
+        /// 矩阵来自最近计算样式。旋转与缩放的语义不能从任意矩阵唯一恢复；false 时 localTransform 仍有效。
+        /// </remarks>
         public bool TryGetLocalTransform(out Matrix4x4 localTransform, out Quaternion logicalRotation)
         {
             RequireValid();
-            if (!HasLayout) { throw new InvalidOperationException("元素尚未完成布局。"); }
-            if (NativeMethods.urui_transform_api_version() != 1) { throw new NotSupportedException("不支持的原生变换协议。"); }
+            if (!HasLayout)
+            {
+                throw new InvalidOperationException("元素尚未完成布局。");
+            }
+            if (NativeMethods.urui_transform_api_version() != 1)
+            {
+                throw new NotSupportedException("不支持的原生变换协议。");
+            }
             var values = transformSnapshot ?? (transformSnapshot = new float[32]);
             var result = NativeMethods.urui_element_local_transform(NativeHandle, token, values, values.Length);
-            if (result != 2) { RequireSuccess(result, "读取本地变换"); }
+            if (result != 2)
+            {
+                RequireSuccess(result, "读取本地变换");
+            }
             localTransform = new Matrix4x4();
             var rotation = new Matrix4x4();
             for (var index = 0; index < 16; index++)
@@ -89,9 +121,13 @@ namespace URUI.Elements
             logicalRotation = result == 1 ? rotation.rotation : Quaternion.identity;
             return result == 1;
         }
-        /// <summary>最近完成的计算样式和实际尺寸读取入口。</summary>
+        /// <summary>
+        /// 最近完成的计算样式和实际尺寸读取入口。
+        /// </summary>
         public ElementResolvedStyle ResolvedStyle => resolvedStyle ?? (resolvedStyle = new ElementResolvedStyle(this));
-        /// <summary>当前滚动偏移，设置时由 URUI 根据内容范围夹取。</summary>
+        /// <summary>
+        /// 当前滚动偏移，设置时由 URUI 根据内容范围夹取。
+        /// </summary>
         public Vector2 ScrollOffset
         {
             get
@@ -102,12 +138,15 @@ namespace URUI.Elements
             set
             {
                 RequireValid();
-                ElementStyle.RequireFinite(value.x); ElementStyle.RequireFinite(value.y);
+                ElementStyle.RequireFinite(value.x);
+                ElementStyle.RequireFinite(value.y);
                 RequireSuccess(NativeMethods.urui_element_scroll(NativeHandle, token, value.x, value.y), "设置滚动偏移");
                 document.FinishNativeCall();
             }
         }
-        /// <summary>可滚动内容的整体尺寸。</summary>
+        /// <summary>
+        /// 可滚动内容的整体尺寸。
+        /// </summary>
         public Vector2 ScrollSize
         {
             get
@@ -116,19 +155,29 @@ namespace URUI.Elements
                 return new Vector2(values[14], values[15]);
             }
         }
-        /// <summary>将元素本地边框坐标转换到文档坐标。</summary>
+        /// <summary>
+        /// 将元素本地边框坐标转换到文档坐标。
+        /// </summary>
         public Vector2 LocalToWorld(Vector2 point) => ConvertPoint(point, true);
-        /// <summary>将文档坐标投影到元素本地边框坐标；不可逆变换抛异常。</summary>
+        /// <summary>
+        /// 将文档坐标投影到元素本地边框坐标；不可逆变换抛异常。
+        /// </summary>
         public Vector2 WorldToLocal(Vector2 point) => ConvertPoint(point, false);
-        /// <summary>尝试将文档坐标投影到本地；零缩放等不可逆变换返回 false。</summary>
+        /// <summary>
+        /// 尝试将文档坐标投影到本地；零缩放等不可逆变换返回 false。
+        /// </summary>
         public bool TryWorldToLocal(Vector2 point, out Vector2 localPoint)
         {
             RequireValid();
             document.ReadGeometryBarrier();
-            ElementStyle.RequireFinite(point.x); ElementStyle.RequireFinite(point.y);
+            ElementStyle.RequireFinite(point.x);
+            ElementStyle.RequireFinite(point.y);
             var result = NativeMethods.urui_element_point(NativeHandle, token, 0, point.x, point.y, projectedPoint);
             localPoint = default;
-            if (result == -2) { return false; }
+            if (result == -2)
+            {
+                return false;
+            }
             RequireSuccess(result, "转换坐标");
             localPoint = new Vector2(projectedPoint[0], projectedPoint[1]);
             return true;
@@ -137,53 +186,111 @@ namespace URUI.Elements
         {
             RequireValid();
             document.ReadGeometryBarrier();
-            ElementStyle.RequireFinite(point.x); ElementStyle.RequireFinite(point.y);
+            ElementStyle.RequireFinite(point.x);
+            ElementStyle.RequireFinite(point.y);
             RequireSuccess(NativeMethods.urui_element_point(NativeHandle, token, toWorld ? 1 : 0, point.x, point.y, projectedPoint), "转换坐标");
             return new Vector2(projectedPoint[0], projectedPoint[1]);
         }
-        /// <summary>检查本地坐标点是否位于元素边框内。</summary>
+        /// <summary>
+        /// 检查本地坐标点是否位于元素边框内。
+        /// </summary>
         public bool ContainsPoint(Vector2 point) => new Rect(Vector2.zero, Layout.size).Contains(point);
     }
 
-    /// <summary>原生计算样式读取器，尺寸来自已完成的布局；仅限主线程。</summary>
+    /// <summary>
+    /// 原生计算样式读取器，尺寸来自已完成的布局；仅限主线程。
+    /// </summary>
     public sealed class ElementResolvedStyle
     {
         readonly Element element;
-        internal ElementResolvedStyle(Element element) { this.element = element; }
-        /// <summary>最终边框宽度，像素。</summary>
+        internal ElementResolvedStyle(Element element)
+        {
+            this.element = element;
+        }
+        /// <summary>
+        /// 最终边框宽度，像素。
+        /// </summary>
         public float Width => element.Layout.width;
-        /// <summary>最终边框高度，像素。</summary>
+        /// <summary>
+        /// 最终边框高度，像素。
+        /// </summary>
         public float Height => element.Layout.height;
-        /// <summary>读取最近计算样式中的有限数值长度或 auto，不创建托管 CSS 字符串。</summary>
+        /// <summary>
+        /// 读取最近计算样式中的有限数值长度或 auto，不创建托管 CSS 字符串。
+        /// </summary>
         /// <param name="property">非空且不包含 NUL 的 CSS 属性名。</param>
         /// <param name="length">保留像素、百分比、em、rem 或 auto 单位的值。</param>
         /// <returns>值为受支持的长度时返回 true；缺失、未解析或非长度值返回 false。</returns>
-        /// <remarks>无单位数值按像素返回；此读取不代替 CSS 属性类型校验。</remarks>
+        /// <remarks>
+        /// 无单位数值按像素返回；此读取不代替 CSS 属性类型校验。
+        /// </remarks>
         public bool TryGetLength(string property, out Length length)
         {
             URUI.Documents.Document.RequireName(property, nameof(property));
-            if (!element.HasLayout) { throw new InvalidOperationException("元素尚未完成布局。"); }
+            if (!element.HasLayout)
+            {
+                throw new InvalidOperationException("元素尚未完成布局。");
+            }
             length = default;
             var text = element.ReadStyleNumberText(property);
-            while (!text.IsEmpty && text[0] <= 32) { text = text.Slice(1); }
-            while (!text.IsEmpty && text[text.Length - 1] <= 32) { text = text.Slice(0, text.Length - 1); }
-            if (AsciiEquals(text, "auto")) { length = Length.Auto; return true; }
-            if (!System.Buffers.Text.Utf8Parser.TryParse(text, out float value, out var consumed) || !float.IsFinite(value)) { return false; }
+            while (!text.IsEmpty && text[0] <= 32)
+            {
+                text = text.Slice(1);
+            }
+            while (!text.IsEmpty && text[text.Length - 1] <= 32)
+            {
+                text = text.Slice(0, text.Length - 1);
+            }
+            if (AsciiEquals(text, "auto"))
+            {
+                length = Length.Auto;
+                return true;
+            }
+            if (!System.Buffers.Text.Utf8Parser.TryParse(text, out float value, out var consumed) || !float.IsFinite(value))
+            {
+                return false;
+            }
             var suffix = text.Slice(consumed);
-            if (suffix.IsEmpty || AsciiEquals(suffix, "px")) { length = Length.Pixels(value); }
-            else if (AsciiEquals(suffix, "%")) { length = Length.Percent(value); }
-            else if (AsciiEquals(suffix, "em")) { length = Length.Em(value); }
-            else if (AsciiEquals(suffix, "rem")) { length = Length.Rem(value); }
-            else { return false; }
+            if (suffix.IsEmpty || AsciiEquals(suffix, "px"))
+            {
+                length = Length.Pixels(value);
+            }
+            else if (AsciiEquals(suffix, "%"))
+            {
+                length = Length.Percent(value);
+            }
+            else if (AsciiEquals(suffix, "em"))
+            {
+                length = Length.Em(value);
+            }
+            else if (AsciiEquals(suffix, "rem"))
+            {
+                length = Length.Rem(value);
+            }
+            else
+            {
+                return false;
+            }
             return true;
         }
         static bool AsciiEquals(ReadOnlySpan<byte> value, string expected)
         {
-            if (value.Length != expected.Length) { return false; }
-            for (var i = 0; i < value.Length; i++) { if (value[i] != expected[i]) { return false; } }
+            if (value.Length != expected.Length)
+            {
+                return false;
+            }
+            for (var i = 0; i < value.Length; i++)
+            {
+                if (value[i] != expected[i])
+                {
+                    return false;
+                }
+            }
             return true;
         }
-        /// <summary>读取级联与变量解析后的 CSS 值；尺寸像素请使用 Width/Height。</summary>
+        /// <summary>
+        /// 读取级联与变量解析后的 CSS 值；尺寸像素请使用 Width/Height。
+        /// </summary>
         public string Get(string property)
         {
             URUI.Documents.Document.RequireName(property, nameof(property));

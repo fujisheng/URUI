@@ -17,28 +17,42 @@ namespace URUI.Authoring.Tests
         {
             try
             {
-                Application.logMessageReceived += (message, stack, type) => { if (type == LogType.Error || type == LogType.Exception) errors.Add(message + "\n" + stack); };
+                Application.logMessageReceived += (message, stack, type) =>
+                {
+                    if (type == LogType.Error || type == LogType.Exception)
+                    {
+                        errors.Add(message + "\n" + stack);
+                    }
+                };
                 string sample = Path.Combine(UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(AuthoringEnvironment).Assembly).resolvedPath, "Samples~/Animation Demo");
                 Directory.CreateDirectory("Assets/AnimationDemo");
                 foreach (string file in Directory.GetFiles(sample))
+                {
                     if (!file.EndsWith(".meta"))
+                    {
                         File.Copy(file, "Assets/AnimationDemo/" + Path.GetFileName(file), true);
+                    }
+                }
                 AssetDatabase.Refresh();
                 AuthoringEnvironment.Open("Assets/AnimationDemo/Reward.html");
                 AnimationEnvironment.EnsureWorkspace();
                 AnimationEnvironment.SelectTrack("reward-in");
                 AnimationEnvironment.Seek(.2);
-                UruiEditorWindow.OpenAnimation();
+                AuthoringWindow.OpenAnimation();
                 GetWindow();
                 EditorApplication.ExecuteMenuItem("Window/General/Inspector");
                 Directory.CreateDirectory("Evidence");
                 EditorApplication.update += Tick;
             }
-            catch (Exception error) { Debug.LogException(error); EditorApplication.Exit(1); }
+            catch (Exception error)
+            {
+                Debug.LogException(error);
+                EditorApplication.Exit(1);
+            }
         }
         static void GetWindow()
         {
-            var window = EditorWindow.GetWindow<UruiEditorWindow>();
+            var window = EditorWindow.GetWindow<AuthoringWindow>();
             window.position = new Rect(20, 50, 1220, 820);
             window.Focus();
         }
@@ -46,7 +60,9 @@ namespace URUI.Authoring.Tests
         {
             frames++;
             if (frames < 80)
+            {
                 return;
+            }
             if (errors.Count != 0)
             {
                 File.WriteAllText("Evidence/animation-visual-failure.txt", string.Join("\n", errors));

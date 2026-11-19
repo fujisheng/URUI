@@ -7,114 +7,130 @@
 #include "../../Include/URUI/Core/Utilities.h"
 #include <algorithm>
 
-namespace URUI {
-
-PropertyParserFontEffect::PropertyParserFontEffect() {}
-
-PropertyParserFontEffect::~PropertyParserFontEffect() {}
-
-bool PropertyParserFontEffect::ParseValue(Property& property, const String& font_effect_string_value, const ParameterMap& /*parameters*/) const
+namespace URUI
 {
-	// Font-effects are declared as
-	//   --urui-font-effect: <font-effect-value>[, <font-effect-value> ...];
-	// Where <font-effect-value> is declared with inline properties, e.g.
-	//   --urui-font-effect: outline( 1px black ), ...;
 
-	if (font_effect_string_value.empty() || font_effect_string_value == "none")
-	{
-		property.value = Variant();
-		property.unit = Unit::UNKNOWN;
-		return true;
-	}
+    PropertyParserFontEffect::PropertyParserFontEffect()
+    {
+    }
 
-	URUI_ZoneScoped;
+    PropertyParserFontEffect::~PropertyParserFontEffect()
+    {
+    }
 
-	FontEffects font_effects;
+    bool PropertyParserFontEffect::ParseValue(Property& property, const String& font_effect_string_value,
+                                              const ParameterMap& /*parameters*/) const
+    {
+        // Font-effects are declared as
+        //   --urui-font-effect: <font-effect-value>[, <font-effect-value> ...];
+        // Where <font-effect-value> is declared with inline properties, e.g.
+        //   --urui-font-effect: outline( 1px black ), ...;
 
-	// Make sure we don't split inside the parenthesis since they may appear in decorator shorthands.
-	StringList font_effect_string_list;
-	StringUtilities::ExpandString(font_effect_string_list, font_effect_string_value, ',', '(', ')');
+        if (font_effect_string_value.empty() || font_effect_string_value == "none")
+        {
+            property.value = Variant();
+            property.unit = Unit::UNKNOWN;
+            return true;
+        }
 
-	font_effects.value = font_effect_string_value;
-	font_effects.list.reserve(font_effect_string_list.size());
+        URUI_ZoneScoped;
 
-	// Get or instance each decorator in the comma-separated string list
-	for (const String& font_effect_string : font_effect_string_list)
-	{
-		const size_t shorthand_open = font_effect_string.find('(');
-		const size_t shorthand_close = font_effect_string.rfind(')');
-		const bool invalid_parenthesis = (shorthand_open == String::npos || shorthand_close == String::npos || shorthand_open >= shorthand_close);
+        FontEffects font_effects;
 
-		if (invalid_parenthesis)
-		{
-			// We found no parenthesis, font-effects can only be declared anonymously for now.
-			Log::Message(Log::LT_WARNING, "Invalid syntax for --urui-font-effect '%s'.", font_effect_string.c_str());
-			return false;
-		}
-		else
-		{
-			// Since we have parentheses it must be an anonymous decorator with inline properties
-			const String type = StringUtilities::StripWhitespace(font_effect_string.substr(0, shorthand_open));
+        // Make sure we don't split inside the parenthesis since they may appear in decorator shorthands.
+        StringList font_effect_string_list;
+        StringUtilities::ExpandString(font_effect_string_list, font_effect_string_value, ',', '(', ')');
 
-			// Check for valid --urui-font-effect type
-			FontEffectInstancer* instancer = Factory::GetFontEffectInstancer(type);
-			if (!instancer)
-			{
-				Log::Message(Log::LT_WARNING, "Font-effect type '%s' not found.", type.c_str());
-				return false;
-			}
+        font_effects.value = font_effect_string_value;
+        font_effects.list.reserve(font_effect_string_list.size());
 
-			const String shorthand = font_effect_string.substr(shorthand_open + 1, shorthand_close - shorthand_open - 1);
-			const PropertySpecification& specification = instancer->GetPropertySpecification();
+        // Get or instance each decorator in the comma-separated string list
+        for (const String& font_effect_string : font_effect_string_list)
+        {
+            const size_t shorthand_open = font_effect_string.find('(');
+            const size_t shorthand_close = font_effect_string.rfind(')');
+            const bool invalid_parenthesis = (shorthand_open == String::npos || shorthand_close == String::npos ||
+                                              shorthand_open >= shorthand_close);
 
-			// Parse the shorthand properties given by the '--urui-font-effect' shorthand property
-			PropertyDictionary properties;
-			if (!specification.ParsePropertyDeclaration(properties, "--urui-font-effect", shorthand))
-			{
-				// Empty values are allowed in font-effects, if the value is not empty we must have encountered a parser error.
-				if (!StringUtilities::StripWhitespace(shorthand).empty())
-				{
-					Log::Message(Log::LT_WARNING, "Could not parse --urui-font-effect value '%s'.", font_effect_string.c_str());
-					return false;
-				}
-			}
+            if (invalid_parenthesis)
+            {
+                // We found no parenthesis, font-effects can only be declared anonymously for now.
+                Log::Message(Log::LT_WARNING, "Invalid syntax for --urui-font-effect '%s'.",
+                             font_effect_string.c_str());
+                return false;
+            }
+            else
+            {
+                // Since we have parentheses it must be an anonymous decorator with inline properties
+                const String type = StringUtilities::StripWhitespace(font_effect_string.substr(0, shorthand_open));
 
-			// Set unspecified values to their defaults
-			specification.SetPropertyDefaults(properties);
+                // Check for valid --urui-font-effect type
+                FontEffectInstancer* instancer = Factory::GetFontEffectInstancer(type);
+                if (!instancer)
+                {
+                    Log::Message(Log::LT_WARNING, "Font-effect type '%s' not found.", type.c_str());
+                    return false;
+                }
 
-			URUI_ZoneScopedN("InstanceFontEffect");
-			SharedPtr<FontEffect> font_effect = instancer->InstanceFontEffect(type, properties);
-			if (font_effect)
-			{
-				// Create a unique hash value for the given type and values
-				size_t fingerprint = Hash<String>{}(type);
-				for (const auto& id_value : properties.GetProperties())
-					Utilities::HashCombine(fingerprint, id_value.second.ToString());
+                const String shorthand =
+                    font_effect_string.substr(shorthand_open + 1, shorthand_close - shorthand_open - 1);
+                const PropertySpecification& specification = instancer->GetPropertySpecification();
 
-				font_effect->SetFingerprint(fingerprint);
-				font_effects.declarations.push_back({type, MakeShared<PropertyDictionary>(properties)});
+                // Parse the shorthand properties given by the '--urui-font-effect' shorthand property
+                PropertyDictionary properties;
+                if (!specification.ParsePropertyDeclaration(properties, "--urui-font-effect", shorthand))
+                {
+                    // Empty values are allowed in font-effects, if the value is not empty we must have encountered a parser error.
+                    if (!StringUtilities::StripWhitespace(shorthand).empty())
+                    {
+                        Log::Message(Log::LT_WARNING, "Could not parse --urui-font-effect value '%s'.",
+                                     font_effect_string.c_str());
+                        return false;
+                    }
+                }
 
-				font_effects.list.emplace_back(std::move(font_effect));
-			}
-			else
-			{
-				Log::Message(Log::LT_WARNING, "Font-effect '%s' could not be instanced.", font_effect_string.c_str());
-				return false;
-			}
-		}
-	}
+                // Set unspecified values to their defaults
+                specification.SetPropertyDefaults(properties);
 
-	if (font_effects.list.empty())
-		return false;
+                URUI_ZoneScopedN("InstanceFontEffect");
+                SharedPtr<FontEffect> font_effect = instancer->InstanceFontEffect(type, properties);
+                if (font_effect)
+                {
+                    // Create a unique hash value for the given type and values
+                    size_t fingerprint = Hash<String>{}(type);
+                    for (const auto& id_value : properties.GetProperties())
+                    {
+                        Utilities::HashCombine(fingerprint, id_value.second.ToString());
+                    }
 
-	// Partition the list such that the back layer effects appear before the front layer effects
-	std::stable_partition(font_effects.list.begin(), font_effects.list.end(),
-		[](const SharedPtr<const FontEffect>& effect) { return effect->GetLayer() == FontEffect::Layer::Back; });
+                    font_effect->SetFingerprint(fingerprint);
+                    font_effects.declarations.push_back({type, MakeShared<PropertyDictionary>(properties)});
 
-	property.value = Variant(MakeShared<FontEffects>(std::move(font_effects)));
-	property.unit = Unit::FONTEFFECT;
+                    font_effects.list.emplace_back(std::move(font_effect));
+                }
+                else
+                {
+                    Log::Message(Log::LT_WARNING, "Font-effect '%s' could not be instanced.",
+                                 font_effect_string.c_str());
+                    return false;
+                }
+            }
+        }
 
-	return true;
+        if (font_effects.list.empty())
+        {
+            return false;
+        }
+
+        // Partition the list such that the back layer effects appear before the front layer effects
+        std::stable_partition(font_effects.list.begin(), font_effects.list.end(),
+                              [](const SharedPtr<const FontEffect>& effect)
+                              { return effect->GetLayer() == FontEffect::Layer::Back; });
+
+        property.value = Variant(MakeShared<FontEffects>(std::move(font_effects)));
+        property.unit = Unit::FONTEFFECT;
+
+        return true;
+    }
+
 }
-
-} // namespace URUI

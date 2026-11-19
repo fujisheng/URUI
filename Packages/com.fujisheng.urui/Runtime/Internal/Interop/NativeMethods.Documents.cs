@@ -29,9 +29,12 @@ namespace URUI.Internal.Interop
         [StructLayout(LayoutKind.Sequential)]
         internal struct CompiledNodeInfo
         {
-            internal ulong Identity, Revision;
-            internal uint LocalId, End;
-            internal int Flags, RootMatch;
+            internal ulong Identity;
+            internal ulong Revision;
+            internal uint LocalId;
+            internal uint End;
+            internal int Flags;
+            internal int RootMatch;
         }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int urui_element_compiled_info(ulong owner, ulong root, int queryKind,

@@ -8,7 +8,7 @@ using L = URUI.Editor.Localization.EditorText;
 
 namespace URUI.Authoring.Windows
 {
-    internal static class WorkbenchUi
+    internal static class WorkbenchUI
     {
         internal static void BuildRoot(VisualElement root)
         {
@@ -19,7 +19,9 @@ namespace URUI.Authoring.Windows
             root.EnableInClassList("urui-workbench-light", !EditorGUIUtility.isProSkin);
             var skin = AssetDatabase.LoadAssetAtPath<StyleSheet>("Packages/com.fujisheng.urui.authoring/Editor/Windows/Workbench.uss");
             if (skin && !root.styleSheets.Contains(skin))
+            {
                 root.styleSheets.Add(skin);
+            }
         }
 
         internal static void FocusWhenEmpty(EditorWindow window)
@@ -28,7 +30,9 @@ namespace URUI.Authoring.Windows
             root.schedule.Execute(() =>
             {
                 if (EditorWindow.focusedWindow == window && root.focusController?.focusedElement == null)
+                {
                     root.Focus();
+                }
             });
         }
 
@@ -42,14 +46,18 @@ namespace URUI.Authoring.Windows
         internal static string NodeTitle(string tag, string id, string classes, string text, string type)
         {
             if (!string.IsNullOrWhiteSpace(id))
+            {
                 return id;
+            }
             if (!string.IsNullOrWhiteSpace(text))
             {
                 string line = text.Trim().Split('\n', '\r')[0];
                 return line.Length > 36 ? line.Substring(0, 36) + "…" : line;
             }
             if (!string.IsNullOrWhiteSpace(classes))
+            {
                 return classes.Split((char[])null, StringSplitOptions.RemoveEmptyEntries)[0];
+            }
             string kind = NodePresentation.TypeLabel(tag, type);
             return kind == "节点" || NodePresentation.IsMetadata(tag) ? tag : L.Tr(kind);
         }
@@ -71,7 +79,9 @@ namespace URUI.Authoring.Windows
         internal static void SetPlaceholder(UnityEditor.UIElements.ToolbarSearchField search, string text)
         {
             if (search.Q<TextField>() is TextField field)
+            {
                 field.textEdition.placeholder = text;
+            }
         }
 
         internal delegate bool LocalNodeDrag(WorkbenchDrag drag, Vector2 panelPosition, bool drop);
@@ -80,7 +90,8 @@ namespace URUI.Authoring.Windows
             Action doubleClick = null, Action click = null, LocalNodeDrag local = null)
         {
             Vector2 down = default;
-            int pointer = -1, clicks = 0;
+            int pointer = -1;
+            int clicks = 0;
             long downRevision = -1;
             WorkbenchDrag localPayload = null;
 
@@ -94,26 +105,34 @@ namespace URUI.Authoring.Windows
                     local(null, default, false);
                 }
                 if (id >= 0 && target.HasPointerCapture(id))
+                {
                     target.ReleasePointer(id);
+                }
             }
 
             target.RegisterCallback<PointerDownEvent>(evt =>
             {
                 if (evt.button != 0)
+                {
                     return;
+                }
                 pointer = evt.pointerId;
                 clicks = evt.clickCount;
                 down = evt.position;
                 downRevision = AuthoringEnvironment.Author.Revision;
                 if (target.focusable)
+                {
                     target.Focus();
+                }
                 target.CapturePointer(pointer);
             });
             target.RegisterCallback<PointerMoveEvent>(evt =>
             {
                 if (pointer != evt.pointerId || (evt.pressedButtons & 1) == 0 ||
                     (localPayload == null && ((Vector2)evt.position - down).sqrMagnitude < 36f))
+                {
                     return;
+                }
                 if (downRevision != AuthoringEnvironment.Author.Revision)
                 {
                     Release();
@@ -128,14 +147,18 @@ namespace URUI.Authoring.Windows
                 }
                 Release();
                 if (payload == null)
+                {
                     return;
+                }
                 payload.Begin(target is Label label ? label.text : L.Tr("移动"));
                 evt.StopImmediatePropagation();
             });
             target.RegisterCallback<PointerUpEvent>(evt =>
             {
                 if (pointer != evt.pointerId)
+                {
                     return;
+                }
                 var payload = localPayload;
                 Release();
                 if (payload != null)
@@ -145,11 +168,17 @@ namespace URUI.Authoring.Windows
                     return;
                 }
                 if (downRevision != AuthoringEnvironment.Author.Revision || !target.worldBound.Contains(evt.position))
+                {
                     return;
+                }
                 if (clicks == 1)
+                {
                     click?.Invoke();
+                }
                 else if (clicks == 2)
+                {
                     doubleClick?.Invoke();
+                }
             });
             target.RegisterCallback<PointerCancelEvent>(_ => Release());
             target.RegisterCallback<PointerCaptureOutEvent>(_ => Release());

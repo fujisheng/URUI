@@ -8,9 +8,13 @@ using URUI.Events;
 
 namespace URUI.Tests
 {
-    sealed class CustomEvent : EventBase { }
+    sealed class CustomEvent : EventBase
+    {
+    }
 
-    /// <summary>跨真实 Editor 帧检查节点树、身份、匿名目标及回调修改期间的事件边界。</summary>
+    /// <summary>
+    /// 跨真实 Editor 帧检查节点树、身份、匿名目标及回调修改期间的事件边界。
+    /// </summary>
     public sealed class ElementTreeSmoke : MonoBehaviour
     {
         const string Markup = "<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'><style>body{margin:0;}#action{position:absolute;left:0;top:0;width:160px;height:100px;background-color:red;}.hit{position:absolute;left:5px;top:5px;width:100px;height:60px;background-color:blue;}</style></head><body><div id='action'><div class='hit'></div></div><div id='scope'></div></body></html>";
@@ -81,7 +85,8 @@ namespace URUI.Tests
             Need(ReferenceEquals(a, document.Q("renamed")) && scope.Q("same") == b, "name change does not change identity");
             b.Text = "  <tag>& {{literal}}\n中文 🎮  ";
             Need(b.Text == "  <tag>& {{literal}}\n中文 🎮  ", "exact plain UTF8 text");
-            Throws<InvalidOperationException>(() => {
+            Throws<InvalidOperationException>(() =>
+            {
                 var ignored = a.Text;
             });
             b.SetAttribute("title", "提示");
@@ -132,7 +137,8 @@ namespace URUI.Tests
                     Need(target.Name == "" && target.Parent == action, "anonymous click target");
                     action.Style.SetWidth(10);
                     action.Style.Remove("width");
-                    Action<ClickEvent> handler = evt => {
+                    Action<ClickEvent> handler = evt =>
+                    {
                         Need(evt.Target == target && evt.CurrentTarget == target, "actual event identity");
                         targetCalls++;
                         if (targetCalls == 1)
@@ -150,7 +156,8 @@ namespace URUI.Tests
                     IDisposable removed = null;
                     target.RegisterCallback<ClickEvent>(_ => removed.Dispose());
                     removed = target.RegisterCallback<ClickEvent>(_ => skipped++);
-                    action.RegisterCallback<ClickEvent>(evt => {
+                    action.RegisterCallback<ClickEvent>(evt =>
+                    {
                         Need(evt.Target == target && evt.CurrentTarget == action, "receiver differs from target");
                         parentCalls++;
                     });
@@ -236,7 +243,14 @@ namespace URUI.Tests
         {
             Directory.CreateDirectory("Evidence");
             finished = true;
-            File.WriteAllText("Evidence/element-tree.json", JsonUtility.ToJson(new Report { passed = passed, frames = frames, targetCalls = targetCalls, parentCalls = parentCalls, error = error }, true));
+            File.WriteAllText("Evidence/element-tree.json", JsonUtility.ToJson(new Report
+            {
+                passed = passed,
+                frames = frames,
+                targetCalls = targetCalls,
+                parentCalls = parentCalls,
+                error = error
+            }, true));
             Debug.Log(passed ? "URUI_ELEMENT_TREE_PASS" : "URUI_ELEMENT_TREE_FAIL " + error);
             UnityEditor.EditorApplication.Exit(passed ? 0 : 1);
         }

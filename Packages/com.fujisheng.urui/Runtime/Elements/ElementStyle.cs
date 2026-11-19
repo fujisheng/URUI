@@ -36,19 +36,29 @@ namespace URUI.Elements
             element.SetPixels(property, value);
         }
 
-        /// <summary>更新无单位的运行时值；不构造 CSS 字符串。</summary>
+        /// <summary>
+        /// 更新无单位的运行时值；不构造 CSS 字符串。
+        /// </summary>
         public void SetNumber(string property, float value) => element.SetNumeric(property, value, 0);
 
-        /// <summary>更新百分比运行时值；布局与皮肤仍由资源声明。</summary>
+        /// <summary>
+        /// 更新百分比运行时值；布局与皮肤仍由资源声明。
+        /// </summary>
         public void SetPercent(string property, float value) => element.SetNumeric(property, value, 2);
 
-        /// <summary>更新带 dp 单位的动态值，保留文档密度缩放语义。</summary>
+        /// <summary>
+        /// 更新带 dp 单位的动态值，保留文档密度缩放语义。
+        /// </summary>
         public void SetDensityPixels(string property, float value) => element.SetNumeric(property, value, 3);
 
-        /// <summary>写入已注册属性的关键字序号；原生解析器校验该序号，不构造样式文本。</summary>
+        /// <summary>
+        /// 写入已注册属性的关键字序号；原生解析器校验该序号，不构造样式文本。
+        /// </summary>
         public void SetKeyword(string property, int value) => element.SetNumeric(property, value, 4);
 
-        /// <summary>更新动态颜色值；属性必须接受颜色，不生成 CSS 文本。</summary>
+        /// <summary>
+        /// 更新动态颜色值；属性必须接受颜色，不生成 CSS 文本。
+        /// </summary>
         public void SetColor(string property, Color value) => element.SetColor(property, value);
 
         /// <summary>
@@ -124,7 +134,9 @@ namespace URUI.Elements
             SetColor("background-color", value);
         }
 
-        /// <summary>移除行内 CSS 覆盖，让类名或样式表重新决定该属性。</summary>
+        /// <summary>
+        /// 移除行内 CSS 覆盖，让类名或样式表重新决定该属性。
+        /// </summary>
         public void Remove(string property)
         {
             element.RemoveStyle(property);

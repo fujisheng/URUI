@@ -7,10 +7,14 @@ using URUI.Documents;
 
 namespace URUI.Tests.Editor
 {
-    /// <summary>在独立工程运行真实 元素文档、输入和控件验收。</summary>
+    /// <summary>
+    /// 在独立工程运行真实 元素文档、输入和控件验收。
+    /// </summary>
     public static class ElementRuntimeValidation
     {
-        /// <summary>独立执行控件完整行为验收。</summary>
+        /// <summary>
+        /// 独立执行控件完整行为验收。
+        /// </summary>
         public static void VerifyControls()
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -20,7 +24,9 @@ namespace URUI.Tests.Editor
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), "Assets/ControlCompleteness.unity");
             EditorApplication.delayCall += () => EditorApplication.delayCall += () => EditorApplication.isPlaying = true;
         }
-        /// <summary>预览综合控件样例，保存真实相机渲染结果。</summary>
+        /// <summary>
+        /// 预览综合控件样例，保存真实相机渲染结果。
+        /// </summary>
         public static void PreviewSample()
         {
             SetPreviewSize(1100, 720);
@@ -52,7 +58,9 @@ namespace URUI.Tests.Editor
             viewType.GetProperty("selectedSizeIndex").SetValue(view, index);
         }
 
-        /// <summary>批处理入口；运行结果保存在 Evidence/element-runtime.json。</summary>
+        /// <summary>
+        /// 批处理入口；运行结果保存在 Evidence/element-runtime.json。
+        /// </summary>
         public static void Run()
         {
             if (typeof(Document).Assembly.GetType("URUI.Controls.Button") == null)
@@ -68,13 +76,17 @@ namespace URUI.Tests.Editor
             EditorApplication.delayCall += () => EditorApplication.delayCall += () => EditorApplication.isPlaying = true;
         }
 
-        /// <summary>构建同一组行为夹具的 macOS ARM64 IL2CPP Player，完成后退出 Editor。</summary>
+        /// <summary>
+        /// 构建同一组行为夹具的 macOS ARM64 IL2CPP Player，完成后退出 Editor。
+        /// </summary>
         public static void BuildPlayer()
         {
             BuildValidationPlayer(typeof(URUI.Tests.ElementRuntimeSmoke), "ElementRuntimePlayer");
         }
 
-        /// <summary>构建控件完整行为夹具的 ARM64 IL2CPP Player。</summary>
+        /// <summary>
+        /// 构建控件完整行为夹具的 ARM64 IL2CPP Player。
+        /// </summary>
         public static void BuildControlsPlayer()
         {
             BuildValidationPlayer(typeof(URUI.Tests.ControlCompletenessSmoke), "ControlCompletenessPlayer");

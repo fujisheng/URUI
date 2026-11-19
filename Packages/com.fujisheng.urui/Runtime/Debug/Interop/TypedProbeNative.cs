@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace URUI.Internal.Interop
 {
     [StructLayout(LayoutKind.Sequential)]
-    internal struct UruiTypedProbeNative
+    internal struct TypedProbeNative
     {
         public ulong total_ns;
         public ulong lookup_ns;

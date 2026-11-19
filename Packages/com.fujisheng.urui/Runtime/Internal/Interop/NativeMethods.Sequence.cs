@@ -7,8 +7,10 @@ namespace URUI.Internal.Interop
         [StructLayout(LayoutKind.Sequential)]
         internal struct SequenceSample
         {
-            [MarshalAs(UnmanagedType.LPUTF8Str)] public string Name;
-            [MarshalAs(UnmanagedType.LPUTF8Str)] public string Easing;
+            [MarshalAs(UnmanagedType.LPUTF8Str)]
+            public string Name;
+            [MarshalAs(UnmanagedType.LPUTF8Str)]
+            public string Easing;
             public float Progress;
         }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]

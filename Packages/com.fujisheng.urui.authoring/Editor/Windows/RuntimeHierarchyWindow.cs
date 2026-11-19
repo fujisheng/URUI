@@ -10,13 +10,17 @@ using L = URUI.Editor.Localization.EditorText;
 
 namespace URUI.Authoring.Windows
 {
-    internal sealed class UruiRuntimeHierarchyWindow : EditorWindow
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "URUI.Authoring.Windows", sourceClassName: "UruiRuntimeHierarchyWindow")]
+    internal sealed class RuntimeHierarchyWindow : EditorWindow
     {
         SearchField search;
-        [SerializeField] TreeViewState treeState;
-        [SerializeField] string filter = "";
-        [SerializeField] bool fullStructure;
-        UruiHierarchyWindow.NodeTree tree;
+        [SerializeField]
+        TreeViewState treeState;
+        [SerializeField]
+        string filter = "";
+        [SerializeField]
+        bool fullStructure;
+        HierarchyWindow.NodeTree tree;
         Document[] documents = Array.Empty<Document>();
         GUIContent[] documentNames = Array.Empty<GUIContent>();
         double nextRefresh;
@@ -26,9 +30,14 @@ namespace URUI.Authoring.Windows
         WorkbenchStyleSheets styles;
         VisualElement authorView;
         IMGUIContainer liveView;
-        Button layersTab, stylesTab;
+        Button layersTab;
+        Button stylesTab;
         bool showStyles;
-        internal static UruiRuntimeHierarchyWindow Current { get; private set; }
+        internal static RuntimeHierarchyWindow Current
+        {
+            get;
+            private set;
+        }
         internal static event Action StyleSelectionChanged;
         internal WorkbenchStyleSheets StyleSheets => styles;
 
@@ -36,7 +45,7 @@ namespace URUI.Authoring.Windows
         {
             search = new SearchField();
             treeState ??= new TreeViewState();
-            tree = new UruiHierarchyWindow.NodeTree(treeState, runtimeWindow: true)
+            tree = new HierarchyWindow.NodeTree(treeState, runtimeWindow: true)
             {
                 ShowFullStructure = fullStructure,
                 searchString = filter
@@ -66,12 +75,12 @@ namespace URUI.Authoring.Windows
             }
         }
 
-        void OnFocus() => WorkbenchUi.FocusWhenEmpty(this);
+        void OnFocus() => WorkbenchUI.FocusWhenEmpty(this);
 
         public void CreateGUI()
         {
             var root = rootVisualElement;
-            WorkbenchUi.BuildRoot(root);
+            WorkbenchUI.BuildRoot(root);
             L.Title(this, "URUI Hierarchy");
             hierarchy = new WorkbenchHierarchy();
             styles = new WorkbenchStyleSheets(() => StyleSelectionChanged?.Invoke());
@@ -96,8 +105,8 @@ namespace URUI.Authoring.Windows
             liveView = new IMGUIContainer(DrawLive);
             liveView.style.flexGrow = 1;
             root.Add(liveView);
-            root.UnregisterCallback<KeyDownEvent>(UruiEditorWindow.HandleKeys, TrickleDown.TrickleDown);
-            root.RegisterCallback<KeyDownEvent>(UruiEditorWindow.HandleKeys, TrickleDown.TrickleDown);
+            root.UnregisterCallback<KeyDownEvent>(AuthoringWindow.HandleKeys, TrickleDown.TrickleDown);
+            root.RegisterCallback<KeyDownEvent>(AuthoringWindow.HandleKeys, TrickleDown.TrickleDown);
             RefreshView();
             FollowSelection();
             StyleSelectionChanged?.Invoke();
@@ -113,12 +122,16 @@ namespace URUI.Authoring.Windows
         void RefreshView()
         {
             if (authorView == null)
+            {
                 return;
+            }
             bool playing = EditorApplication.isPlaying;
             authorView.style.display = playing ? DisplayStyle.None : DisplayStyle.Flex;
             liveView.style.display = playing ? DisplayStyle.Flex : DisplayStyle.None;
             if (playing)
+            {
                 return;
+            }
             hierarchy.Refresh();
             styles.Refresh();
             styles.SetEnabled(NodePlacement.Editing);
@@ -132,8 +145,13 @@ namespace URUI.Authoring.Windows
                 showStyles = stylesTab;
                 RefreshNavigation();
                 if (!showStyles)
+                {
                     hierarchy.Reveal();
-            }) { text = L.Tr(title) };
+                }
+            })
+            {
+                text = L.Tr(title)
+            };
             button.AddToClassList("urui-tab");
             return button;
         }
@@ -149,14 +167,18 @@ namespace URUI.Authoring.Windows
         void Tick()
         {
             if (!EditorApplication.isPlaying || AuthoringEnvironment.Live == null || EditorApplication.timeSinceStartup < nextRefresh)
+            {
                 return;
+            }
             nextRefresh = EditorApplication.timeSinceStartup + .25;
             documents = AuthoringEnvironment.Documents();
             documentNames = Array.ConvertAll(documents, doc =>
                 new GUIContent(string.IsNullOrEmpty(doc.SourceUrl) ? doc.name : doc.name + " · " + doc.SourceUrl, doc.SourceUrl));
             var active = AuthoringEnvironment.LiveDocument;
             if (Array.IndexOf(documents, active) < 0)
+            {
                 AuthoringEnvironment.SetDocument(documents.Length == 0 ? null : documents[0]);
+            }
             active = AuthoringEnvironment.LiveDocument;
             string root = active && active.IsLoaded ? RuntimeInspectionBridge.Root(active)?.Id : null;
             if (currentDocument != active || currentRoot != root)
@@ -170,7 +192,9 @@ namespace URUI.Authoring.Windows
             else
             {
                 if (AuthoringEnvironment.ActiveNode is { IsLive: true, IsTargetValid: false })
+                {
                     AuthoringEnvironment.SetNodeSelection(AuthoringEnvironment.SelectedNodes, clearUnitySelection: false);
+                }
                 tree.Reload();
             }
             liveView?.MarkDirtyRepaint();
@@ -195,7 +219,9 @@ namespace URUI.Authoring.Windows
                 filter = tree.searchString;
             }
             else
+            {
                 tree.SetSelection(Array.Empty<int>());
+            }
             liveView?.MarkDirtyRepaint();
             Repaint();
         }
@@ -231,9 +257,13 @@ namespace URUI.Authoring.Windows
                 evt.keyCode is KeyCode.Return or KeyCode.KeypadEnter;
             filter = search.OnToolbarGUI(filter);
             if (filter != tree.searchString)
+            {
                 tree.searchString = filter;
+            }
             if (selectMatch && tree.SelectFirstMatch() && evt.type == EventType.KeyDown)
+            {
                 evt.Use();
+            }
             tree.OnGUI(GUILayoutUtility.GetRect(0, 10000, 0, 10000, GUILayout.ExpandHeight(true)));
         }
     }

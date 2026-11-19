@@ -10,7 +10,9 @@ using URUI.Events;
 
 namespace URUI.Tests
 {
-    /// <summary>分别验证实际控件交互；单项失败不掩盖其余组件缺口。</summary>
+    /// <summary>
+    /// 分别验证实际控件交互；单项失败不掩盖其余组件缺口。
+    /// </summary>
     public sealed class ControlCompletenessSmoke : MonoBehaviour
     {
         [Serializable]
@@ -83,8 +85,15 @@ body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
                 yield return null;
                 yield return null;
                 yield return null;
-                try { test.test(); result.passedCases.Add(test.name); }
-                catch (Exception error) { result.failures.Add(test.name + ": " + error); }
+                try
+                {
+                    test.test();
+                    result.passedCases.Add(test.name);
+                }
+                catch (Exception error)
+                {
+                    result.failures.Add(test.name + ": " + error);
+                }
             }
             result.passed = result.failures.Count == 0;
             string evidence = "Evidence";
@@ -140,26 +149,32 @@ body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
         {
             var first = document.Q<RadioButton>("radio-a");
             var last = document.Q<RadioButton>("radio-c");
-            first.Focus(); Key(KeyCode.RightArrow);
+            first.Focus();
+            Key(KeyCode.RightArrow);
             Need(!first.Value && last.Value && last.Focused, "radio arrow skips disabled group member");
             Key(KeyCode.RightArrow);
             Need(first.Value && first.Focused && !last.Value, "radio navigation wraps within group");
         }
         void ButtonReloadBoundary()
         {
-            var button = document.Q<Button>("button"); int late = 0;
+            var button = document.Q<Button>("button");
+            int late = 0;
             button.Clicked += () => document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><label id='new'>new</label></body></html>", "ui/acceptance.html");
             button.Clicked += () => late++;
-            button.Focus(); Key(KeyCode.Return);
+            button.Focus();
+            Key(KeyCode.Return);
             Need(late == 0 && !button.IsValid && document.Q("new") != null, "reload stops remaining Clicked handlers");
         }
         void DelayedInteger()
         {
-            var field = document.Q<IntegerField>("integer"); int changes = 0, submits = 0;
+            var field = document.Q<IntegerField>("integer");
+            int changes = 0;
+            int submits = 0;
             field.IsDelayed = true;
             field.Submitted += value => submits++;
             field.RegisterValueChangedCallback(evt => changes++);
-            field.Focus(); ReplaceText("42");
+            field.Focus();
+            ReplaceText("42");
             Need(field.Value == 2 && changes == 0, "delayed input leaves committed value unchanged");
             Key(KeyCode.Return);
             Need(field.Value == 42 && changes == 1 && submits == 1, "enter commits and submits once");
@@ -169,51 +184,77 @@ body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
         void ReadOnlyText()
         {
             var text = document.Q<TextField>("text");
-            text.IsReadOnly = true; text.Focus();
-            ReplaceText("changed"); document.Surface.Input.SendComposition("preview"); document.Surface.Input.CommitComposition("commit");
+            text.IsReadOnly = true;
+            text.Focus();
+            ReplaceText("changed");
+            document.Surface.Input.SendComposition("preview");
+            document.Surface.Input.CommitComposition("commit");
             Need(text.Value == "old", "readonly rejects direct text and composition");
-            text.IsReadOnly = false; ReplaceText("editable");
+            text.IsReadOnly = false;
+            ReplaceText("editable");
             Need(text.Value == "editable", "readonly can be reversed without losing focus");
         }
         void InvalidFloat()
         {
-            var field = document.Q<FloatField>("float"); int exceptions = 0;
-            Application.LogCallback log = (message, trace, type) => { if (type == LogType.Exception) { exceptions++; } };
+            var field = document.Q<FloatField>("float");
+            int exceptions = 0;
+            Application.LogCallback log = (message, trace, type) =>
+            {
+                if (type == LogType.Exception)
+                {
+                    exceptions++;
+                }
+            };
             Application.logMessageReceived += log;
             try
             {
-                field.Focus(); ReplaceText("NaN"); Key(KeyCode.Return);
+                field.Focus();
+                ReplaceText("NaN");
+                Key(KeyCode.Return);
                 Need(field.Value == 2 && exceptions == 0, "nonfinite edit restores last valid value without exception");
             }
-            finally { Application.logMessageReceived -= log; }
+            finally
+            {
+                Application.logMessageReceived -= log;
+            }
         }
         void NumericStep()
         {
-            var field = document.Q<IntegerField>("integer"); field.Step = 3;
-            field.Focus(); Key(KeyCode.UpArrow);
+            var field = document.Q<IntegerField>("integer");
+            field.Step = 3;
+            field.Focus();
+            Key(KeyCode.UpArrow);
             Need(field.Value == 5, "numeric up arrow applies configured step");
-            field.Value = int.MaxValue; Key(KeyCode.UpArrow);
+            field.Value = int.MaxValue;
+            Key(KeyCode.UpArrow);
             Need(field.Value == int.MaxValue, "integer stepping saturates instead of overflowing");
         }
         void SliderDirection()
         {
-            var slider = document.Q<Slider>("slider"); slider.Direction = URUI.Controls.SliderDirection.Vertical;
+            var slider = document.Q<Slider>("slider");
+            slider.Direction = URUI.Controls.SliderDirection.Vertical;
             var bounds = slider.WorldBound;
             var point = new Vector2(bounds.center.x, bounds.yMin + bounds.height * .8f);
             document.Surface.Input.SendPointer(PointerPhase.Down, point);
             document.Surface.Input.SendPointer(PointerPhase.Up, point);
             Need(slider.Value >= 75 && slider.Value <= 85, "vertical slider uses y coordinate");
-            slider.Inverted = true; slider.Focus(); Key(KeyCode.DownArrow);
+            slider.Inverted = true;
+            slider.Focus();
+            Key(KeyCode.DownArrow);
             Need(slider.Value < 80, "inverted slider reverses keyboard direction");
         }
         void SliderStepChange()
         {
-            var slider = document.Q<Slider>("slider"); slider.Value = 5; slider.Step = 3;
+            var slider = document.Q<Slider>("slider");
+            slider.Value = 5;
+            slider.Step = 3;
             Need(slider.Value == 6, "changing step requantizes current value");
         }
         void ProgressRange()
         {
-            var progress = document.Q<ProgressBar>("progress"); progress.LowValue = 20; progress.HighValue = 80;
+            var progress = document.Q<ProgressBar>("progress");
+            progress.LowValue = 20;
+            progress.HighValue = 80;
             progress.Value = 50;
             var fill = progress.Q(className: "urui-progress-fill");
             Need(fill.Style.Width.Value == 50 && fill.Style.Width.Unit == LengthUnit.Percent, "progress fill uses configured range");
@@ -223,13 +264,17 @@ body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
             var foldout = document.Q<Foldout>("foldout");
             var field = foldout as INotifyValueChanged<bool>;
             Need(field != null, "foldout participates in generic value controls");
-            field.SetValueWithoutNotify(false); Need(!field.Value && foldout.ChildCount == 1, "quiet collapse preserves content");
+            field.SetValueWithoutNotify(false);
+            Need(!field.Value && foldout.ChildCount == 1, "quiet collapse preserves content");
         }
         void ScrollKeyboard()
         {
-            var scroll = document.Q<ScrollView>("scroll"); Need(scroll.Focus(), "scroll view participates in focus navigation");
-            Key(KeyCode.PageDown); Need(scroll.ScrollOffset.y > 40, "page down scrolls the viewport");
-            Key(KeyCode.Home); Need(scroll.ScrollOffset.y == 0, "home returns to start");
+            var scroll = document.Q<ScrollView>("scroll");
+            Need(scroll.Focus(), "scroll view participates in focus navigation");
+            Key(KeyCode.PageDown);
+            Need(scroll.ScrollOffset.y > 40, "page down scrolls the viewport");
+            Key(KeyCode.Home);
+            Need(scroll.ScrollOffset.y == 0, "home returns to start");
         }
         void ScrollToChild()
         {
@@ -239,17 +284,25 @@ body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
         }
         void ListKeyboard()
         {
-            var list = document.Q<ListView>("list"); Need(list.Focus(), "list focus");
-            int chosen = -1; list.ItemChosen += index => chosen = index;
-            Key(KeyCode.DownArrow); Need(list.SelectedIndex == 0, "first arrow selects first item");
-            Key(KeyCode.End); Need(list.SelectedIndex == 99 && list.ScrollOffset.y > 1000, "end selects and reveals final item");
-            Key(KeyCode.Return); Need(chosen == 99, "enter chooses current item");
+            var list = document.Q<ListView>("list");
+            Need(list.Focus(), "list focus");
+            int chosen = -1;
+            list.ItemChosen += index => chosen = index;
+            Key(KeyCode.DownArrow);
+            Need(list.SelectedIndex == 0, "first arrow selects first item");
+            Key(KeyCode.End);
+            Need(list.SelectedIndex == 99 && list.ScrollOffset.y > 1000, "end selects and reveals final item");
+            Key(KeyCode.Return);
+            Need(chosen == 99, "enter chooses current item");
         }
         void ListBindingCleanup()
         {
-            var list = document.Q<ListView>("list"); int oldCleanup = 0, newCleanup = 0;
+            var list = document.Q<ListView>("list");
+            int oldCleanup = 0;
+            int newCleanup = 0;
             list.UnbindItem = (row, index) => oldCleanup++;
-            list.RefreshItems(); int count = list.RealizedItemCount;
+            list.RefreshItems();
+            int count = list.RealizedItemCount;
             list.UnbindItem = (row, index) => newCleanup++;
             list.RefreshItems();
             Need(oldCleanup == count && newCleanup == 0, "each binding retains its matching cleanup delegate");
@@ -270,7 +323,8 @@ body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
         }
         void ListBindingReload()
         {
-            var list = document.Q<ListView>("list"); bool requested = false;
+            var list = document.Q<ListView>("list");
+            bool requested = false;
             list.BindItem = (row, index) =>
             {
                 if (!requested)
@@ -287,22 +341,34 @@ body { margin:0; width:100%; height:100%; font-family:'URUI Sans'; }
         {
             var oldButton = document.Q<Button>("button");
             bool rejected = false;
-            try { document.LoadHtml("<!doctype html><html><body><button>Ready</button></body></html>", "ui/missing-head.html"); }
-            catch (InvalidOperationException) { rejected = true; }
+            try
+            {
+                document.LoadHtml("<!doctype html><html><body><button>Ready</button></body></html>", "ui/missing-head.html");
+            }
+            catch (InvalidOperationException)
+            {
+                rejected = true;
+            }
             Need(rejected && oldButton.IsValid, "missing head is rejected without replacing the current document");
         }
         void InvertedSliderStep()
         {
-            var slider = document.Q<Slider>("slider"); slider.Step = 3; slider.Value = 81;
+            var slider = document.Q<Slider>("slider");
+            slider.Step = 3;
+            slider.Value = 81;
             slider.Inverted = true;
             Need(slider.Value == 81, "inversion preserves value when range is not divisible by step");
-            slider.Focus(); Key(KeyCode.RightArrow);
+            slider.Focus();
+            Key(KeyCode.RightArrow);
             Need(slider.Value == 78, "inverted keyboard step follows semantic step grid");
         }
         void DelayedModeSwitch()
         {
-            var field = document.Q<IntegerField>("integer"); field.IsDelayed = true;
-            field.Focus(); ReplaceText("42"); field.IsDelayed = false;
+            var field = document.Q<IntegerField>("integer");
+            field.IsDelayed = true;
+            field.Focus();
+            ReplaceText("42");
+            field.IsDelayed = false;
             Need(field.Value == 42, "turning off delayed mode commits current editing text");
         }
         void ProgressHtmlRange()

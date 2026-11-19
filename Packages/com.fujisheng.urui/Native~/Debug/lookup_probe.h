@@ -3,15 +3,16 @@
 #include "../urui.h"
 #include <chrono>
 #include <URUI/Core/Element.h>
-namespace urui_lookup
+namespace URUI::LookupProbe
 {
     extern thread_local bool inline_enabled;
     extern thread_local int profile_mode;
     extern thread_local bool style_scope;
-    extern thread_local UruiLookupProfile profile;
+    extern thread_local URUILookupProfile profile;
     struct StyleScope
     {
-        bool active, old = false;
+        bool active;
+        bool old = false;
         StyleScope() : active(profile_mode != 0)
         {
             if (active)
@@ -23,7 +24,9 @@ namespace urui_lookup
         ~StyleScope()
         {
             if (active)
+            {
                 style_scope = old;
+            }
         }
     };
     struct Scope
@@ -37,7 +40,9 @@ namespace urui_lookup
             {
                 ++profile.queries;
                 if (style)
+                {
                     ++profile.style_queries;
+                }
                 start = std::chrono::steady_clock::now();
             }
         }
@@ -47,7 +52,9 @@ namespace urui_lookup
             {
                 ++profile.nodes_visited;
                 if (frontier > profile.max_frontier)
+                {
                     profile.max_frontier = frontier;
+                }
             }
         }
         ~Scope()
@@ -58,7 +65,9 @@ namespace urui_lookup
                               .count();
                 profile.lookup_ns += ns;
                 if (style)
+                {
                     profile.style_lookup_ns += ns;
+                }
             }
         }
     };
@@ -66,12 +75,16 @@ namespace urui_lookup
     // Preserve breadth-first order; spill remaining queue before current children.
     inline URUI::Element* InlineFind(URUI::Element* root, const URUI::String& id, Scope& scope)
     {
-        constexpr unsigned capacity = 256, mask = capacity - 1;
+        constexpr unsigned capacity = 256;
+        constexpr unsigned mask = capacity - 1;
         URUI::Element* fifo[capacity];
-        unsigned head = 0, count = 1;
+        unsigned head = 0;
+        unsigned count = 1;
         fifo[0] = root;
         if (scope.mode > 1)
+        {
             ++profile.inline_calls;
+        }
         while (count)
         {
             scope.Visit(count);
@@ -79,26 +92,38 @@ namespace urui_lookup
             head = (head + 1) & mask;
             --count;
             if (element->GetId() == id)
+            {
                 return element;
+            }
             const int children = element->GetNumChildren();
             if (children > static_cast<int>(capacity - count))
             {
                 if (scope.mode > 1)
+                {
                     ++profile.overflow_calls;
+                }
                 URUI::Queue<URUI::Element*> pending;
                 for (unsigned i = 0; i < count; i++)
+                {
                     pending.push(fifo[(head + i) & mask]);
+                }
                 for (int i = 0; i < children; i++)
+                {
                     pending.push(element->GetChild(i));
+                }
                 while (!pending.empty())
                 {
                     scope.Visit(pending.size());
                     auto* next = pending.front();
                     pending.pop();
                     if (next->GetId() == id)
+                    {
                         return next;
+                    }
                     for (int i = 0; i < next->GetNumChildren(); i++)
+                    {
                         pending.push(next->GetChild(i));
+                    }
                 }
                 return nullptr;
             }
@@ -110,6 +135,6 @@ namespace urui_lookup
         }
         return nullptr;
     }
-} // namespace urui_lookup
+}
 
 #endif

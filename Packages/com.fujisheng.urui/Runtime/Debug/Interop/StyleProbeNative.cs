@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace URUI.Internal.Interop
 {
     [StructLayout(LayoutKind.Sequential)]
-    internal struct UruiStyleProbeNative
+    internal struct StyleProbeNative
     {
         public ulong lookup_ns;
         public ulong parse_ns;

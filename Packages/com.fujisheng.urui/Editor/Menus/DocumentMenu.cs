@@ -18,7 +18,9 @@ namespace URUI.Editor.Menus
         /// <summary>
         /// 创建包含文本资产、Document 与相机的最小场景；已有同名资产不会被覆盖。
         /// </summary>
-        /// <remarks>先询问保存当前场景；Source 通过序列化赋值，避免在编辑状态加载文档。</remarks>
+        /// <remarks>
+        /// 先询问保存当前场景；Source 通过序列化赋值，避免在编辑状态加载文档。
+        /// </remarks>
         [MenuItem("Tools/URUI/Create Minimal UI Scene", false, 100)]
         public static void CreateMinimalScene()
         {
@@ -49,11 +51,13 @@ namespace URUI.Editor.Menus
                 new TextResource("/urui/base.css", RequiredText("Runtime/Resources/URUI/base.css"))
             };
             foreach (var family in new[] { "Serif", "Sans", "Mono" })
+            {
                 foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
                 {
                     var file = "Liberation" + family + "-" + face + ".ttf.bytes";
                     resources.Add(new TextResource("/urui/Fonts/" + file, RequiredText("Runtime/Resources/URUI/Fonts/" + file)));
                 }
+            }
             var serialized = new SerializedObject(document);
             serialized.FindProperty("surface").objectReferenceValue = surface;
             var compiled = URUI.Editor.Compilation.CompiledDocumentCompiler.CompileAndSave(

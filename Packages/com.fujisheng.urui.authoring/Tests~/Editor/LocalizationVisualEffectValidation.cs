@@ -16,7 +16,8 @@ namespace URUI.Authoring.Tests
         static LocalizationVisualEffectValidation window;
         static EffectPreset preset;
         static UnityEditor.Editor inspector;
-        static object originalLanguage, originalPoll;
+        static object originalLanguage;
+        static object originalPoll;
         static string originalJson;
         static int painted;
         static double readyAt;
@@ -47,7 +48,9 @@ namespace URUI.Authoring.Tests
         static void Log(string message, string stack, LogType type)
         {
             if (type == LogType.Error || type == LogType.Exception)
+            {
                 errors.Add(message + "\n" + stack);
+            }
         }
         void OnGUI()
         {
@@ -57,17 +60,23 @@ namespace URUI.Authoring.Tests
                 inspector.OnInspectorGUI();
             }
             if (Event.current.type == EventType.Repaint)
+            {
                 painted++;
+            }
         }
         static void Tick()
         {
             window.Repaint();
             if (painted < 40 && errors.Count == 0)
+            {
                 return;
+            }
             if (readyAt == 0)
             {
                 if (JsonUtility.ToJson(preset) != originalJson)
+                {
                     errors.Add("GUI changed serialized preset data");
+                }
                 File.WriteAllText("Evidence/localization-effect-visual.json", "{\"paintedFrames\":" + painted + ",\"errors\":" + errors.Count + ",\"chinesePresentationSimulated\":true,\"unityPreferencesChanged\":false}");
                 File.WriteAllText("Library/URUI/LocalizationEffect/ready", "ready");
                 readyAt = EditorApplication.timeSinceStartup;
@@ -83,7 +92,9 @@ namespace URUI.Authoring.Tests
                 DestroyImmediate(preset);
                 Application.logMessageReceived -= Log;
                 if (errors.Count != 0)
+                {
                     File.WriteAllText("Evidence/localization-effect-visual-failure.txt", string.Join("\n", errors));
+                }
                 EditorApplication.Exit(errors.Count == 0 ? 0 : 1);
             }
         }

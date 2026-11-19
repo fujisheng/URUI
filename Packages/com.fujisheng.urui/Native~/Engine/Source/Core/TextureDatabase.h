@@ -4,76 +4,87 @@
 #include "../../Include/URUI/Core/StableVector.h"
 #include "../../Include/URUI/Core/Types.h"
 
-namespace URUI {
+namespace URUI
+{
 
-class RenderInterface;
-class ResourceContext;
+    class RenderInterface;
+    class ResourceContext;
 
-class CallbackTextureDatabase : NonCopyMoveable {
-public:
-	CallbackTextureDatabase();
-	~CallbackTextureDatabase();
+    class CallbackTextureDatabase : NonCopyMoveable
+    {
+    public:
+        CallbackTextureDatabase();
+        ~CallbackTextureDatabase();
 
-	StableVectorIndex CreateTexture(CallbackTextureFunction&& callback);
-	void ReleaseTexture(RenderInterface* render_interface, StableVectorIndex callback_index);
+        StableVectorIndex CreateTexture(CallbackTextureFunction&& callback);
+        void ReleaseTexture(RenderInterface* render_interface, StableVectorIndex callback_index);
 
-	Vector2i GetDimensions(RenderManager* render_manager, RenderInterface* render_interface, StableVectorIndex callback_index);
-	TextureHandle GetHandle(RenderManager* render_manager, RenderInterface* render_interface, StableVectorIndex callback_index);
+        Vector2i GetDimensions(RenderManager* render_manager, RenderInterface* render_interface,
+                               StableVectorIndex callback_index);
+        TextureHandle GetHandle(RenderManager* render_manager, RenderInterface* render_interface,
+                                StableVectorIndex callback_index);
 
-	size_t size() const;
+        size_t size() const;
 
-	void ReleaseAllTextures(RenderInterface* render_interface);
+        void ReleaseAllTextures(RenderInterface* render_interface);
 
-private:
-	struct CallbackTextureEntry {
-		CallbackTextureFunction callback;
-		TextureHandle texture_handle = {};
-		Vector2i dimensions;
-		bool load_failed = false;
-	};
+    private:
+        struct CallbackTextureEntry
+        {
+            CallbackTextureFunction callback;
+            TextureHandle texture_handle = {};
+            Vector2i dimensions;
+            bool load_failed = false;
+        };
 
-	CallbackTextureEntry& EnsureLoaded(RenderManager* render_manager, RenderInterface* render_interface, StableVectorIndex callback_index);
+        CallbackTextureEntry& EnsureLoaded(RenderManager* render_manager, RenderInterface* render_interface,
+                                           StableVectorIndex callback_index);
 
-	StableVector<CallbackTextureEntry> texture_list;
-};
+        StableVector<CallbackTextureEntry> texture_list;
+    };
 
-class FileTextureDatabase : NonCopyMoveable {
-public:
-	FileTextureDatabase();
-	~FileTextureDatabase();
+    class FileTextureDatabase : NonCopyMoveable
+    {
+    public:
+        FileTextureDatabase();
+        ~FileTextureDatabase();
 
-	TextureFileIndex InsertTexture(const String& source, const SharedPtr<ResourceContext>& resources);
+        TextureFileIndex InsertTexture(const String& source, const SharedPtr<ResourceContext>& resources);
 
-	TextureHandle GetHandle(RenderInterface* render_interface, TextureFileIndex index);
-	Vector2i GetDimensions(RenderInterface* render_interface, TextureFileIndex index);
+        TextureHandle GetHandle(RenderInterface* render_interface, TextureFileIndex index);
+        Vector2i GetDimensions(RenderInterface* render_interface, TextureFileIndex index);
 
-	void GetSourceList(StringList& source_list) const;
+        void GetSourceList(StringList& source_list) const;
 
-	bool ReleaseTexture(RenderInterface* render_interface, const String& source, const SharedPtr<ResourceContext>& resources);
-	void RetireContext(RenderInterface* render_interface, uint64_t identity);
-	void ReleaseAllTextures(RenderInterface* render_interface);
+        bool ReleaseTexture(RenderInterface* render_interface, const String& source,
+                            const SharedPtr<ResourceContext>& resources);
+        void RetireContext(RenderInterface* render_interface, uint64_t identity);
+        void ReleaseAllTextures(RenderInterface* render_interface);
 
-private:
-	struct FileTextureEntry {
-		String source;
-		SharedPtr<ResourceContext> resources;
-		bool retired = false;
-		TextureHandle texture_handle = {};
-		Vector2i dimensions;
-		bool load_texture_failed = false;
-	};
+    private:
+        struct FileTextureEntry
+        {
+            String source;
+            SharedPtr<ResourceContext> resources;
+            bool retired = false;
+            TextureHandle texture_handle = {};
+            Vector2i dimensions;
+            bool load_texture_failed = false;
+        };
 
-	static String Key(const String& source, const SharedPtr<ResourceContext>& resources);
-	FileTextureEntry& EnsureLoaded(RenderInterface* render_interface, TextureFileIndex index);
+        static String Key(const String& source, const SharedPtr<ResourceContext>& resources);
+        FileTextureEntry& EnsureLoaded(RenderInterface* render_interface, TextureFileIndex index);
 
-	Vector<FileTextureEntry> texture_list;
-	UnorderedMap<String, TextureFileIndex> texture_map; // key: source, value: index into 'texture_list'
-};
+        Vector<FileTextureEntry> texture_list;
+        // key: source, value: index into 'texture_list'
+        UnorderedMap<String, TextureFileIndex> texture_map;
+    };
 
-class TextureDatabase {
-public:
-	FileTextureDatabase file_database;
-	CallbackTextureDatabase callback_database;
-};
+    class TextureDatabase
+    {
+    public:
+        FileTextureDatabase file_database;
+        CallbackTextureDatabase callback_database;
+    };
 
-} // namespace URUI
+}

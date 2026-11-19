@@ -3,16 +3,19 @@
 #include "StyleTypes.h"
 #include "Types.h"
 
-namespace URUI {
+namespace URUI
+{
 
-/*
+    /*
     Data extracted from the properties of an element to help provide context for text shaping and spacing.
 */
-struct TextShapingContext {
-	const String& language;
-	Style::Direction text_direction = Style::Direction::Auto;
-	Style::FontKerning font_kerning = Style::FontKerning::Auto;
-	float letter_spacing = 0.0f; // Measured in pixels.
-};
+    struct TextShapingContext
+    {
+        const String& language;
+        Style::Direction text_direction = Style::Direction::Auto;
+        Style::FontKerning font_kerning = Style::FontKerning::Auto;
+        // Measured in pixels.
+        float letter_spacing = 0.0f;
+    };
 
-} // namespace URUI
+}

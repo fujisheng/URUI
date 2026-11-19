@@ -1,7 +1,10 @@
 #include "../../Include/URUI/Core/ContextInstancer.h"
 
-namespace URUI {
+namespace URUI
+{
 
-ContextInstancer::~ContextInstancer() {}
+    ContextInstancer::~ContextInstancer()
+    {
+    }
 
-} // namespace URUI
+}

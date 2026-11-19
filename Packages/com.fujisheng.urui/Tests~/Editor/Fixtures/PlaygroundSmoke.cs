@@ -8,7 +8,9 @@ using URUI.Elements;
 
 namespace URUI.Tests
 {
-    /// <summary>操作实际 Playground 场景的按钮，验证序列化 HTML 与导入的控制器使用当前包。</summary>
+    /// <summary>
+    /// 操作实际 Playground 场景的按钮，验证序列化 HTML 与导入的控制器使用当前包。
+    /// </summary>
     [DefaultExecutionOrder(-10000)]
     public sealed class PlaygroundSmoke : MonoBehaviour
     {
@@ -156,7 +158,12 @@ namespace URUI.Tests
                 error = runtimeError;
             }
 
-            File.WriteAllText("Evidence/playground.json", JsonUtility.ToJson(new Report { passed = passed, frames = frames, error = error }, true));
+            File.WriteAllText("Evidence/playground.json", JsonUtility.ToJson(new Report
+            {
+                passed = passed,
+                frames = frames,
+                error = error
+            }, true));
             Debug.Log(passed ? "URUI_PLAYGROUND_PASS" : "URUI_PLAYGROUND_FAIL " + error);
             UnityEditor.EditorApplication.Exit(passed ? 0 : 1);
         }

@@ -23,42 +23,62 @@ namespace URUI.Internal.Resources
         {
             if (!sourceIdentities.TryGetValue(texture, out var identity))
             {
-                if (nextSourceIdentity == ulong.MaxValue) throw new InvalidOperationException("URUI image source identities exhausted");
+                if (nextSourceIdentity == ulong.MaxValue)
+                {
+                    throw new InvalidOperationException("URUI image source identities exhausted");
+                }
                 sourceIdentities.Add(texture, identity = ++nextSourceIdentity);
             }
             return identity;
         }
         internal IEnumerable<Texture> Textures
         {
-            get { foreach (var entry in entries.Values) yield return entry.texture; }
+            get
+            {
+                foreach (var entry in entries.Values)
+                {
+                    yield return entry.texture;
+                }
+            }
         }
 
         sealed class Entry
         {
             internal ulong id;
             internal Texture texture;
-            internal int width, height;
+            internal int width;
+            internal int height;
             internal GraphicsFormat format;
             internal ImageLease lease;
             internal bool nativeHeld;
-            internal int pins, documents;
+            internal int pins;
+            internal int documents;
 
             internal void Validate()
             {
                 if (!texture)
+                {
                     throw new InvalidOperationException("URUI borrowed image was destroyed or unloaded while registered. Unload the document before releasing its images.");
+                }
                 RequireFullResolution(texture);
                 if (texture.width != width || texture.height != height || texture.graphicsFormat != format)
+                {
                     throw new InvalidOperationException("URUI borrowed image dimensions/format changed. Unload and reload the document after reinitializing its texture.");
+                }
             }
         }
 
         internal static void ValidateTexture(Texture texture)
         {
-            if (!texture) throw new ArgumentException("URUI image needs a valid color texture");
+            if (!texture)
+            {
+                throw new ArgumentException("URUI image needs a valid color texture");
+            }
             RequireFullResolution(texture);
             if (texture.width <= 0 || texture.height <= 0 || texture.width > 8192 || texture.height > 8192)
+            {
                 throw new ArgumentException("URUI image dimensions must be between 1 and 8192");
+            }
             ValidateColorFormat(texture.graphicsFormat);
         }
 
@@ -66,7 +86,9 @@ namespace URUI.Internal.Resources
         {
             if (format == GraphicsFormat.None || GraphicsFormatUtility.IsIntegerFormat(format)
                 || GraphicsFormatUtility.IsDepthStencilFormat(format))
+            {
                 throw new ArgumentException("URUI images require a sampled color texture, not integer/depth data", nameof(format));
+            }
         }
 
         static void RequireFullResolution(Texture texture)
@@ -75,68 +97,112 @@ namespace URUI.Internal.Resources
             {
                 if (!target.IsCreated() || target.dimension != UnityEngine.Rendering.TextureDimension.Tex2D ||
                     target.antiAliasing != 1 || target.memorylessMode != RenderTextureMemoryless.None)
+                {
                     throw new ArgumentException("URUI RenderTexture needs a created, persistent, single-sample 2D color target.");
+                }
                 return;
             }
             if (!(texture is Texture2D image))
+            {
                 throw new ArgumentException("URUI images support Texture2D and RenderTexture only.");
+            }
             // Integer texel fetch must address the actual full-resolution mip0. Do not
             // silently override caller quality/streaming settings or create a copy.
             if (image.activeMipmapLimit != 0 || image.streamingMipmaps)
+            {
                 throw new ArgumentException("URUI borrowed images require resident full-resolution mip0 (no active mipmap limit or texture streaming). Import UI images without mip streaming/limits.");
+            }
         }
 
         internal static bool IsBorrowed(ulong id) => (id & ExternalBit) != 0;
 
         internal void Register(ulong owner, ImageBinding[] images)
         {
-            if (documents.ContainsKey(owner)) throw new InvalidOperationException("Document image mappings already registered");
+            if (documents.ContainsKey(owner))
+            {
+                throw new InvalidOperationException("Document image mappings already registered");
+            }
             var held = new HashSet<Entry>();
             documents.Add(owner, held);
             foreach (var image in images ?? Array.Empty<ImageBinding>())
             {
                 var texture = image.texture;
                 if (string.IsNullOrEmpty(image.source) || !texture)
+                {
                     throw new ArgumentException("URUI image asset needs a source and texture");
+                }
                 ValidateTexture(texture);
-                int width = texture.width, height = texture.height;
+                int width = texture.width;
+                int height = texture.height;
                 if ((image.expectedWidth > 0 && width != image.expectedWidth)
                     || (image.expectedHeight > 0 && height != image.expectedHeight))
+                {
                     throw new ArgumentException("URUI image dimensions differ from declared atlas/source pixels: " + image.source);
+                }
                 if (!sources.TryGetValue(texture, out var entry))
                 {
-                    if (nextId == ulong.MaxValue) throw new InvalidOperationException("URUI image resource IDs exhausted");
-                    entry = new Entry { id = ++nextId, texture = texture, width = width, height = height, format = texture.graphicsFormat };
+                    if (nextId == ulong.MaxValue)
+                    {
+                        throw new InvalidOperationException("URUI image resource IDs exhausted");
+                    }
+                    entry = new Entry
+                    {
+                        id = ++nextId,
+                        texture = texture,
+                        width = width,
+                        height = height,
+                        format = texture.graphicsFormat
+                    };
                     entries.Add(entry.id, entry);
                     sources.Add(texture, entry);
                 }
-                if (held.Add(entry)) entry.documents++;
+                if (held.Add(entry))
+                {
+                    entry.documents++;
+                }
                 if (NativeMethods.urui_document_register_external_texture(owner, image.source, width, height, entry.id) != 1)
+                {
                     throw new InvalidOperationException("URUI borrowed image registration: " + NativeMethods.LastError());
+                }
             }
         }
 
         internal void Unregister(ulong owner)
         {
-            if (!documents.Remove(owner, out var held)) return;
+            if (!documents.Remove(owner, out var held))
+            {
+                return;
+            }
             foreach (var entry in held)
             {
-                if (--entry.documents != 0) continue;
-                entries.Remove(entry.id); sources.Remove(entry.texture);
+                if (--entry.documents != 0)
+                {
+                    continue;
+                }
+                entries.Remove(entry.id);
+                sources.Remove(entry.texture);
             }
         }
 
         internal void Validate()
         {
-            foreach (var entry in entries.Values) entry.Validate();
+            foreach (var entry in entries.Values)
+            {
+                entry.Validate();
+            }
         }
 
         internal bool TryResolve(ulong id, out Texture texture)
         {
             texture = null;
-            if (!IsBorrowed(id)) return false;
+            if (!IsBorrowed(id))
+            {
+                return false;
+            }
             if (!entries.TryGetValue(id, out var entry))
+            {
                 throw new InvalidOperationException("URUI image belongs to an expired or different document generation");
+            }
             entry.Validate();
             texture = entry.texture;
             return true;
@@ -144,12 +210,26 @@ namespace URUI.Internal.Resources
 
         internal ulong RegisterResolved(ImageLease lease)
         {
-            if (lease == null) throw new ArgumentNullException(nameof(lease));
+            if (lease == null)
+            {
+                throw new ArgumentNullException(nameof(lease));
+            }
             var texture = lease.Texture;
             ValidateTexture(texture);
-            if (nextId == ulong.MaxValue) throw new InvalidOperationException("URUI image resource IDs exhausted");
-            var entry = new Entry { id = ++nextId, texture = texture, width = texture.width, height = texture.height,
-                format = texture.graphicsFormat, lease = lease, nativeHeld = true };
+            if (nextId == ulong.MaxValue)
+            {
+                throw new InvalidOperationException("URUI image resource IDs exhausted");
+            }
+            var entry = new Entry
+            {
+                id = ++nextId,
+                texture = texture,
+                width = texture.width,
+                height = texture.height,
+                format = texture.graphicsFormat,
+                lease = lease,
+                nativeHeld = true
+            };
             entries.Add(entry.id, entry);
             return entry.id;
         }
@@ -157,47 +237,105 @@ namespace URUI.Internal.Resources
         // SRP 重放可能沿用旧录制；提交自身必须持有租约，不能依赖录制路径的临时 pin。
         internal sealed class SubmissionPins
         {
-            readonly List<Entry> pinned=new();
-            readonly HashSet<ulong> ids=new();
+            readonly List<Entry> pinned = new();
+            readonly HashSet<ulong> ids = new();
             BorrowedTextureRegistry owner;
-            internal int Count=>pinned.Count;
-            internal bool AcquireOne(BorrowedTextureRegistry registry,ulong id,out Texture texture)
+            internal int Count => pinned.Count;
+            internal bool AcquireOne(BorrowedTextureRegistry registry, ulong id, out Texture texture)
             {
-                if(!registry.TryResolve(id,out texture))return false;
-                var entry=registry.entries[id];
-                if(entry.lease==null)return true;
-                if(owner!=null&&!ReferenceEquals(owner,registry))throw new InvalidOperationException("图片 pin 不能跨注册表使用。");
-                owner=registry;
-                if(!ids.Add(id))return true;
-                try{pinned.Add(entry);entry.pins++;}
-                catch{ids.Remove(id);throw;}
+                if (!registry.TryResolve(id, out texture))
+                {
+                    return false;
+                }
+                var entry = registry.entries[id];
+                if (entry.lease == null)
+                {
+                    return true;
+                }
+                if (owner != null && !ReferenceEquals(owner, registry))
+                {
+                    throw new InvalidOperationException("图片 pin 不能跨注册表使用。");
+                }
+                owner = registry;
+                if (!ids.Add(id))
+                {
+                    return true;
+                }
+                try
+                {
+                    pinned.Add(entry);
+                    entry.pins++;
+                }
+                catch
+                {
+                    ids.Remove(id);
+                    throw;
+                }
                 return true;
             }
             internal void Acquire(BorrowedTextureRegistry registry)
             {
-                if(owner!=null)throw new InvalidOperationException("URUI 提交仍持有上一批图片。");
-                try{Append(registry);}catch{Release();throw;}
+                if (owner != null)
+                {
+                    throw new InvalidOperationException("URUI 提交仍持有上一批图片。");
+                }
+                try
+                {
+                    Append(registry);
+                }
+                catch
+                {
+                    Release();
+                    throw;
+                }
             }
             // 即时相机队列上的后续 fence 覆盖较早提交；只追加尚未持有的资源版本。
             internal void Append(BorrowedTextureRegistry registry)
             {
-                if(owner!=null&&!ReferenceEquals(owner,registry))throw new InvalidOperationException("图片 pin 不能跨注册表使用。");
-                owner=registry;
-                foreach(var entry in registry.entries.Values)
+                if (owner != null && !ReferenceEquals(owner, registry))
+                {
+                    throw new InvalidOperationException("图片 pin 不能跨注册表使用。");
+                }
+                owner = registry;
+                foreach (var entry in registry.entries.Values)
                 {
                     // 原生已释放的图片只属于既有录制/提交；未来提交不能再次延长其寿命。
-                    if(entry.lease==null||!entry.nativeHeld||!ids.Add(entry.id))continue;
-                    try{entry.Validate();pinned.Add(entry);entry.pins++;}
-                    catch{ids.Remove(entry.id);throw;}
+                    if (entry.lease == null || !entry.nativeHeld || !ids.Add(entry.id))
+                    {
+                        continue;
+                    }
+                    try
+                    {
+                        entry.Validate();
+                        pinned.Add(entry);
+                        entry.pins++;
+                    }
+                    catch
+                    {
+                        ids.Remove(entry.id);
+                        throw;
+                    }
                 }
             }
             internal void Release()
             {
-                var previous=owner;if(previous==null)return;owner=null;
-                foreach(var entry in pinned)
+                var previous = owner;
+                if (previous == null)
+                {
+                    return;
+                }
+                owner = null;
+                foreach (var entry in pinned)
                 {
                     entry.pins--;
-                    try{previous.Collect(entry);}catch(Exception error){Debug.LogException(error);}
+                    try
+                    {
+                        previous.Collect(entry);
+                    }
+                    catch (Exception error)
+                    {
+                        Debug.LogException(error);
+                    }
                 }
                 pinned.Clear();
                 ids.Clear();
@@ -206,19 +344,31 @@ namespace URUI.Internal.Resources
 
         internal void ReleaseResolved(ulong id)
         {
-            if (!entries.TryGetValue(id, out var entry) || entry.lease == null) return;
+            if (!entries.TryGetValue(id, out var entry) || entry.lease == null)
+            {
+                return;
+            }
             entry.nativeHeld = false;
             Collect(entry);
         }
 
         void Collect(Entry entry)
         {
-            if (entry.lease == null || entry.nativeHeld || entry.pins != 0) return;
+            if (entry.lease == null || entry.nativeHeld || entry.pins != 0)
+            {
+                return;
+            }
             entries.Remove(entry.id);
             var lease = entry.lease;
             entry.lease = null;
-            try { lease.Dispose(); }
-            catch (Exception error) { Debug.LogException(error); }
+            try
+            {
+                lease.Dispose();
+            }
+            catch (Exception error)
+            {
+                Debug.LogException(error);
+            }
         }
 
         // Render plans retain their borrowed Texture references until existing GPU
@@ -232,7 +382,9 @@ namespace URUI.Internal.Resources
                 Collect(entry);
             }
             entries.Clear();
-            sources.Clear(); documents.Clear(); sourceIdentities.Clear();
+            sources.Clear();
+            documents.Clear();
+            sourceIdentities.Clear();
         }
     }
 }

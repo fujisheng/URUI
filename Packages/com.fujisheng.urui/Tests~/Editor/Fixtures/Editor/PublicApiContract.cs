@@ -25,15 +25,21 @@ namespace URUI.Tests.Editor
                 "URUI.Events.EventBase", "URUI.Events.ClickEvent", "URUI.Resources.ImageAsset",
                 "URUI.Controls.Button", "URUI.Controls.TextField", "URUI.Controls.Toggle", "URUI.Controls.ListView"
             };
-            string[] allowed = {"URUI.Documents", "URUI.Elements", "URUI.Events", "URUI.Resources", "URUI.Controls", "URUI.Hosting", "URUI.Styles", "URUI.Animation", "URUI.Media", "URUI.Rendering", "URUI.Rendering.Effects"};
+            string[] allowed = { "URUI.Documents", "URUI.Elements", "URUI.Events", "URUI.Resources", "URUI.Controls", "URUI.Hosting", "URUI.Styles", "URUI.Animation", "URUI.Media", "URUI.Rendering", "URUI.Rendering.Effects" };
             if (required.Except(actual).Any() || runtime.GetExportedTypes().Any(type => !allowed.Contains(type.Namespace)))
+            {
                 throw new Exception("URUI public boundary differs: " + string.Join(",", actual));
+            }
             if (runtime.GetType("URUI.Elements.Element").IsSealed)
+            {
                 throw new Exception("Custom controls require an extensible Element");
+            }
             var packet = runtime.GetType("URUI.Internal.Interop.ElementEventNative", true);
             if (System.Runtime.InteropServices.Marshal.SizeOf(packet) != 80
                 || System.Runtime.InteropServices.Marshal.OffsetOf(packet, "text").ToInt32() != 72)
+            {
                 throw new Exception("Element event ABI layout differs");
+            }
 
             CheckDebugIsolation(runtime);
             ProductionSafetyContract.Check(runtime);
@@ -48,11 +54,11 @@ namespace URUI.Tests.Editor
             {
                 "GeometryContentProbe",
                 "PropertyDependencyCounter",
-                "UruiProfileNative",
-                "UruiApiProfileNative",
-                "UruiTypedProbeNative",
-                "UruiStyleProbeNative",
-                "UruiLookupProfileNative"
+                "ProfileNative",
+                "ApiProfileNative",
+                "TypedProbeNative",
+                "StyleProbeNative",
+                "LookupProfileNative"
             };
             var included = runtime.GetTypes()
                 .Where(type => diagnosticNames.Contains(type.Name))

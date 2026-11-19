@@ -9,14 +9,33 @@ namespace URUI.Internal.Hosting
         sealed class RetiredObject : IDisposable
         {
             UnityEngine.Object value;
-            internal RetiredObject(UnityEngine.Object value) { this.value = value; }
-            public void Dispose() { if (value) UnityEngine.Object.DestroyImmediate(value); value = null; }
+            internal RetiredObject(UnityEngine.Object value)
+            {
+                this.value = value;
+            }
+            public void Dispose()
+            {
+                if (value)
+                {
+                    UnityEngine.Object.DestroyImmediate(value);
+                }
+                value = null;
+            }
         }
         static void DestroyRenderObject(UnityEngine.Object value)
         {
-            if (!value) return;
-            if (Application.isPlaying) UnityEngine.Object.Destroy(value);
-            else ImagePinRetirement.Retire(null, null, resource: new RetiredObject(value));
+            if (!value)
+            {
+                return;
+            }
+            if (Application.isPlaying)
+            {
+                UnityEngine.Object.Destroy(value);
+            }
+            else
+            {
+                ImagePinRetirement.Retire(null, null, resource: new RetiredObject(value));
+            }
         }
     }
 }

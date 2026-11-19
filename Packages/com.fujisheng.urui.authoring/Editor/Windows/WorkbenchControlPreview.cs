@@ -5,7 +5,9 @@ using L = URUI.Editor.Localization.EditorText;
 
 namespace URUI.Authoring.Windows
 {
-    /// <summary>Static samples for the library. Picking stays with the card so a click or drag adds the control.</summary>
+    /// <summary>
+    /// Static samples for the library. Picking stays with the card so a click or drag adds the control.
+    /// </summary>
     internal static class WorkbenchControlPreview
     {
         internal static VisualElement Create(string kind)
@@ -27,7 +29,11 @@ namespace URUI.Authoring.Windows
                 "particles" => ParticleSample(),
                 _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown control sample.")
             };
-            var preview = new VisualElement { name = "urui-control-preview", pickingMode = PickingMode.Ignore };
+            var preview = new VisualElement
+            {
+                name = "urui-control-preview",
+                pickingMode = PickingMode.Ignore
+            };
             preview.AddToClassList("urui-control-preview");
             preview.Add(sample);
             return preview;
@@ -38,7 +44,9 @@ namespace URUI.Authoring.Windows
             var element = new VisualElement { pickingMode = PickingMode.Ignore };
             element.AddToClassList(className);
             foreach (var child in children)
+            {
                 element.Add(child);
+            }
             return element;
         }
 
@@ -56,7 +64,9 @@ namespace URUI.Authoring.Windows
             {
                 Rect rect = context.visualElement.contentRect;
                 if (rect.width <= 0 || rect.height <= 0)
+                {
                     return;
+                }
                 Vector2 Point(float x, float y) => new Vector2(rect.x + x * rect.width, rect.y + y * rect.height);
                 var painter = context.painter2D;
                 painter.fillColor = new Color(.40f, .68f, .77f);

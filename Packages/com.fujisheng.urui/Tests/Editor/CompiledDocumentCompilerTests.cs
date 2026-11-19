@@ -27,11 +27,17 @@ namespace URUI.Editor.Tests
                 Assert.AreEqual(asset.Fingerprint, template.ParentFingerprint);
                 Assert.IsNotNull(asset.FindBlueprint(template.NodeIndex.Identity));
                 var entries = template.NodeIndex.Query(".caption", 0, template.NodeIndex.NodeCount, out var key);
-                Assert.AreEqual("caption", key); Assert.AreEqual(1, entries.Count, "重复 class token 不能重复绑定同一节点。");
+                Assert.AreEqual("caption", key);
+                Assert.AreEqual(1, entries.Count, "重复 class token 不能重复绑定同一节点。");
                 var page = asset.FindBlueprint(asset.FindBlueprint(template.NodeIndex.Identity).Identity);
                 Assert.AreSame(template.NodeIndex, page);
             }
-            finally { Object.DestroyImmediate(asset); Object.DestroyImmediate(fragment); Object.DestroyImmediate(html); }
+            finally
+            {
+                Object.DestroyImmediate(asset);
+                Object.DestroyImmediate(fragment);
+                Object.DestroyImmediate(html);
+            }
         }
 
         [Test]
@@ -42,7 +48,8 @@ namespace URUI.Editor.Tests
             CompiledDocumentAsset compiled = null;
             try
             {
-                var root = new GameObject("Build document"); UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(root, scene);
+                var root = new GameObject("Build document");
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(root, scene);
                 var document = root.AddComponent<URUI.Documents.Document>();
                 compiled = CompiledDocumentCompiler.Compile(source, "/page.html");
                 var serialized = new SerializedObject(document);
@@ -50,7 +57,12 @@ namespace URUI.Editor.Tests
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 Assert.DoesNotThrow(() => CompiledAssetBuildGuard.ValidateScene(scene));
             }
-            finally { EditorSceneManager.ClosePreviewScene(scene); Object.DestroyImmediate(compiled); Object.DestroyImmediate(source); }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(scene);
+                Object.DestroyImmediate(compiled);
+                Object.DestroyImmediate(source);
+            }
         }
         [UnityTest]
         public IEnumerator ImportedStyleAutomaticallyUpdatesExistingCompiledAsset()
@@ -68,11 +80,17 @@ namespace URUI.Editor.Tests
                 File.WriteAllText(folder + "/a.css", "body{color:blue;}");
                 AssetDatabase.ImportAsset(folder + "/a.css", ImportAssetOptions.ForceSynchronousImport);
                 var deadline = EditorApplication.timeSinceStartup + 5;
-                while (asset.Fingerprint == fingerprint && EditorApplication.timeSinceStartup < deadline) yield return null;
+                while (asset.Fingerprint == fingerprint && EditorApplication.timeSinceStartup < deadline)
+                {
+                    yield return null;
+                }
                 Assert.AreNotEqual(fingerprint, asset.Fingerprint);
                 CompiledDocumentCompiler.ValidateCurrent(asset);
             }
-            finally { AssetDatabase.DeleteAsset(folder); }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
         }
         [Test]
         public void RecompileDiscoversNewStylesAndBuildValidationRejectsStaleAsset()
@@ -97,7 +115,10 @@ namespace URUI.Editor.Tests
                 Assert.AreNotEqual(firstFingerprint, asset.Fingerprint);
                 Assert.AreSame(asset, AssetDatabase.LoadAssetAtPath<CompiledDocumentAsset>(folder + "/page.asset"));
             }
-            finally { AssetDatabase.DeleteAsset(folder); }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
         }
         [Test]
         public void CompilerResolvesRelativeStylesAndInvalidatesChangedDependency()
@@ -105,7 +126,8 @@ namespace URUI.Editor.Tests
             var html = new TextAsset("<!doctype html><html><head><link rel='stylesheet' href='../shared.css'></head><body><div id='item'></div></body></html>");
             var firstStyle = new TextAsset("#item{width:25px;}");
             var changedStyle = new TextAsset("#item{width:50px;}");
-            CompiledDocumentAsset first = null, changed = null;
+            CompiledDocumentAsset first = null;
+            CompiledDocumentAsset changed = null;
             try
             {
                 first = CompiledDocumentCompiler.Compile(html, "ui/pages/page.html", new[] { new TextResource("ui/shared.css", firstStyle) });
@@ -117,8 +139,11 @@ namespace URUI.Editor.Tests
             }
             finally
             {
-                Object.DestroyImmediate(first); Object.DestroyImmediate(changed);
-                Object.DestroyImmediate(html); Object.DestroyImmediate(firstStyle); Object.DestroyImmediate(changedStyle);
+                Object.DestroyImmediate(first);
+                Object.DestroyImmediate(changed);
+                Object.DestroyImmediate(html);
+                Object.DestroyImmediate(firstStyle);
+                Object.DestroyImmediate(changedStyle);
             }
         }
     }

@@ -23,7 +23,9 @@ namespace URUI.Authoring.Tests
         {
             assertions++;
             if (!condition)
+            {
                 throw new Exception(message);
+            }
         }
         static void Set(object target, string name, object value) => target.GetType().GetField(name, Hidden).SetValue(target, value);
         static void Invoke(object target, string name, params object[] arguments) => target.GetType().GetMethod(name, Hidden).Invoke(target, arguments);
@@ -49,9 +51,12 @@ namespace URUI.Authoring.Tests
         {
             const string directory = "Assets/FamiliarityChecks";
             Directory.CreateDirectory(directory);
-            const string path = directory + "/page.html", cssPath = directory + "/page.css";
+            const string path = directory + "/page.html";
+            const string cssPath = directory + "/page.css";
             foreach (string suffix in new[] { ".animations.css", ".urui-sequence.json" })
+            {
                 File.Delete(Path.ChangeExtension(path, suffix));
+            }
             string original = "<!doctype html><html><head><meta name='test' content='keep' /><link rel='stylesheet' href='page.css' /><style>body{margin:0;}button{height:40px;}div{min-height:20px;}</style><style id='BoundStyle'>.keep{color:red;}</style></head><body id='Root'><div><button id='Bound' class='shared' style='width:25%;height:40px;transform:translate(10%,20px) rotate(15deg) scale(1,1);'>领取</button></div><img id='Picture' style='width:80px;height:80px;' /><input id='Input' type='text' /><section id='Custom'></section><button id='Nested'><span id='NestedLabel'>Label</span></button></body></html>";
             File.WriteAllText(path, original);
             File.WriteAllText(cssPath, ".shared{height:40px;color:blue;}");
@@ -59,7 +64,7 @@ namespace URUI.Authoring.Tests
             var author = AuthoringEnvironment.Author;
             string before = author.File.Text;
             long revision = author.Revision;
-            var type = typeof(UruiHierarchyWindow).GetNestedType("NodeTree", BindingFlags.NonPublic);
+            var type = typeof(HierarchyWindow).GetNestedType("NodeTree", BindingFlags.NonPublic);
             var tree = (TreeView)Activator.CreateInstance(type, new object[] { new TreeViewState() });
             Expand(tree);
             var names = tree.GetRows().Select(item => item.displayName).ToArray();
@@ -130,7 +135,11 @@ namespace URUI.Authoring.Tests
                 Check(author.File.Text == before, "Linked spacing Undo was partial");
                 var image = ElementSelectionProxy.ForAuthor(author.Model.Nodes.First(n => n.Attribute("id") == "Picture").Key);
                 history = author.Workspace.HistoryPosition;
-                ElementSelectionProxy.SetProperties(new[] { proxy, image }, new Dictionary<string, string> { ["style.opacity"] = ".6", ["style.margin-top"] = "3px" });
+                ElementSelectionProxy.SetProperties(new[] { proxy, image }, new Dictionary<string, string>
+                {
+                    ["style.opacity"] = ".6",
+                    ["style.margin-top"] = "3px"
+                });
                 Check(proxy.Read("style.opacity") == ".6" && image.Read("style.opacity") == ".6", "Multi-node edit lost a target");
                 Check(author.Workspace.HistoryPosition == history + 1, "Multi-property multi-node edit was not atomic");
                 Undo.PerformUndo();
@@ -142,11 +151,19 @@ namespace URUI.Authoring.Tests
                 AuthoringEnvironment.SetMode(WorkspaceMode.Animation);
                 AnimationEnvironment.Seek(.15);
                 string animationBase = author.File.Text;
-                ElementSelectionProxy.SetProperties(new[] { proxy }, new Dictionary<string, string> { ["style.opacity"] = ".3", ["style.width"] = "120px" });
+                ElementSelectionProxy.SetProperties(new[] { proxy }, new Dictionary<string, string>
+                {
+                    ["style.opacity"] = ".3",
+                    ["style.width"] = "120px"
+                });
                 Check(author.File.Text == animationBase, "Animation preview changed base HTML");
                 AnimationEnvironment.BeginRecording(proxy);
                 history = author.Workspace.HistoryPosition;
-                ElementSelectionProxy.SetProperties(new[] { proxy }, new Dictionary<string, string> { ["style.opacity"] = ".4", ["style.width"] = "130px" });
+                ElementSelectionProxy.SetProperties(new[] { proxy }, new Dictionary<string, string>
+                {
+                    ["style.opacity"] = ".4",
+                    ["style.width"] = "130px"
+                });
                 Check(author.File.Text == animationBase && author.Workspace.HistoryPosition == history + 1, "Linked recording changed base or made multiple history entries");
                 Check(workspace.Keys(track).Any(k => k.Declarations.Contains("130px") && k.Declarations.Contains(".4")), "Recorded values missing from CSS keys");
                 AnimationEnvironment.EndRecording();
@@ -157,20 +174,27 @@ namespace URUI.Authoring.Tests
                 AuthoringEnvironment.SetMode(WorkspaceMode.Layout);
                 Selection.activeObject = ElementSelectionProxy.ForAuthor(author.Model.Nodes.First(n => n.Attribute("id") == "Root").Key);
                 history = author.Workspace.HistoryPosition;
-                typeof(UruiHierarchyWindow).GetMethod("CreateNode", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { "image" });
+                typeof(HierarchyWindow).GetMethod("CreateNode", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { "image" });
                 Check(author.Model.Nodes.Any(n => n.Attribute("id") == "Image" && n.Tag == "img"), "Creation has no real unique binding name");
                 Check(author.Workspace.HistoryPosition == history + 1, "Create was not one transaction");
                 Undo.PerformUndo();
                 Check(!author.Model.Nodes.Any(n => n.Attribute("id") == "Image"), "Create Undo failed");
                 Check(File.ReadAllText(path) == original, "Working-copy operations persisted without Save");
             }
-            finally { UnityEngine.Object.DestroyImmediate(inspector); }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(inspector);
+            }
         }
         static void Expand(TreeView tree)
         {
             for (int pass = 0; pass < 6; pass++)
+            {
                 foreach (var item in tree.GetRows().ToArray())
+                {
                     tree.SetExpanded(item.id, true);
+                }
+            }
         }
     }
 }

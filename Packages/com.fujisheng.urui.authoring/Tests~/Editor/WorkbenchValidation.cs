@@ -74,7 +74,7 @@ namespace URUI.Authoring.Tests
         {
             var document = SourceDocument.Parse("<body><input id='field'><span id='field-copy'></span></body>");
             const string snippet = "<label for='field'>Value</label><input id='field' aria-describedby='field remote'>";
-            var placement = typeof(UruiEditorWindow).Assembly.GetType("URUI.Authoring.Windows.NodePlacement");
+            var placement = typeof(AuthoringWindow).Assembly.GetType("URUI.Authoring.Windows.NodePlacement");
             var copy = placement.GetMethod("CopyWithUniqueIds", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
             Check(copy != null, "Named controls need a safe copy operation.");
             var fragment = SourceDocument.Parse((string)copy.Invoke(null, new object[] { snippet, document }));
@@ -86,7 +86,7 @@ namespace URUI.Authoring.Tests
         static void QuickAddUsesOuterButtonAsAnchor()
         {
             var document = SourceDocument.Parse("<body><header><button id='back'><div><span id='title'>Page</span></div></button></header></body>");
-            var library = typeof(UruiEditorWindow).Assembly.GetType("URUI.Authoring.Windows.WorkbenchLibrary");
+            var library = typeof(AuthoringWindow).Assembly.GetType("URUI.Authoring.Windows.WorkbenchLibrary");
             var anchor = library.GetMethod("SelectedAnchor", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
             var title = document.Nodes.Single(node => node.Attribute("id") == "title");
             var button = document.Nodes.Single(node => node.Attribute("id") == "back");
@@ -109,7 +109,9 @@ namespace URUI.Authoring.Tests
         static void EmptySaveKeepsOpenPagePrompt()
         {
             if (AuthoringEnvironment.Author.File != null)
+            {
                 return;
+            }
             string before = AuthoringEnvironment.Status;
             SaveWorksetWindow.OpenOrSave();
             Check(AuthoringEnvironment.Status == before, "Saving an empty editor must not report a save.");
@@ -125,8 +127,8 @@ namespace URUI.Authoring.Tests
                 File.WriteAllText(folder + "/Layout.html", "<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='Layout.css'></head><body><div class='frame'><button class='start'>Start</button><div class='slot'>Inventory slot</div></div></body></html>");
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 AuthoringEnvironment.Open(folder + "/Layout.html");
-                UruiEditorWindow.Open();
-                var workbench = UnityEngine.Resources.FindObjectsOfTypeAll<UruiEditorWindow>().Single();
+                AuthoringWindow.Open();
+                var workbench = UnityEngine.Resources.FindObjectsOfTypeAll<AuthoringWindow>().Single();
                 Directory.CreateDirectory("Evidence");
                 EditorApplication.delayCall += () => CheckSurface(workbench);
             }
@@ -137,7 +139,7 @@ namespace URUI.Authoring.Tests
             }
         }
 
-        static void CheckSurface(UruiEditorWindow workbench)
+        static void CheckSurface(AuthoringWindow workbench)
         {
             try
             {
@@ -145,8 +147,8 @@ namespace URUI.Authoring.Tests
                 Check(root.Q("urui-viewport") != null && root.Q<TreeView>("urui-node-tree") == null && root.Q("urui-inspector") == null,
                     "The canvas must use the separate docked hierarchy and inspector.");
                 var windows = UnityEngine.Resources.FindObjectsOfTypeAll<EditorWindow>();
-                var hierarchy = windows.Single(window => window.GetType().Name == "UruiRuntimeHierarchyWindow").rootVisualElement;
-                var inspector = windows.Single(window => window.GetType().Name == "UruiRuntimeInspectorWindow").rootVisualElement;
+                var hierarchy = windows.Single(window => window.GetType().Name == "RuntimeHierarchyWindow").rootVisualElement;
+                var inspector = windows.Single(window => window.GetType().Name == "RuntimeInspectorWindow").rootVisualElement;
                 Check(hierarchy.Q<TreeView>("urui-node-tree") != null && inspector.Q("urui-inspector") != null,
                     "Edit Mode must use the same hierarchy and inspector windows as Play Mode.");
                 var drawer = root.Q("urui-library-drawer");
@@ -159,8 +161,10 @@ namespace URUI.Authoring.Tests
                 libraryToggle.value = true;
                 Check(drawer.style.display == DisplayStyle.Flex, "The toolbar must reopen the drawer.");
                 foreach (string kind in new[] { "panel", "text", "image", "button", "input", "textarea", "toggle", "radio", "slider", "select", "progress" })
+                {
                     Check(drawer.Q("urui-control-" + kind)?.Q("urui-control-preview")?.childCount > 0,
-                        "Every standard card must have a visual preview: " + kind);
+                                            "Every standard card must have a visual preview: " + kind);
+                }
                 var session = AuthoringEnvironment.Author;
                 string path = session.File.Path;
                 var original = File.ReadAllText(path);
@@ -231,7 +235,9 @@ namespace URUI.Authoring.Tests
         static void Check(bool condition, string message)
         {
             if (!condition)
+            {
                 throw new InvalidOperationException(message);
+            }
         }
     }
 }

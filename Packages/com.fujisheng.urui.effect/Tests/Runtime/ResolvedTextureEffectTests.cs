@@ -6,6 +6,8 @@ namespace URUI.Effect.Tests
     {
         [Test]
         public void GenericMaterialEffectAcceptsAResourceKeyResolver()
-        {Assert.That(typeof(TextureColorEffect).GetMethod("DefineResolved"),Is.Not.Null,"通用单图程序不应为每个项目材质注册一份定义");}
+        {
+            Assert.That(typeof(TextureColorEffect).GetMethod("DefineResolved"), Is.Not.Null, "通用单图程序不应为每个项目材质注册一份定义");
+        }
     }
 }

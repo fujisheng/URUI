@@ -17,13 +17,16 @@ namespace URUI.Authoring.Windows
             public Vector2Int Size;
         }
 
-        [SerializeField] List<Canvas> canvases = new List<Canvas>();
+        [SerializeField]
+        List<Canvas> canvases = new List<Canvas>();
 
         internal Canvas ForPage(string path)
         {
             var state = canvases.Find(item => item.Path == path);
             if (state != null)
+            {
                 return state;
+            }
             state = new Canvas { Path = path };
             canvases.Add(state);
             return state;

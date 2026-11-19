@@ -17,20 +17,26 @@ namespace URUI.Documents
     {
         [SerializeField]
         TextAsset source;
-        [SerializeField] CompiledDocumentAsset compiledSource;
+        [SerializeField]
+        CompiledDocumentAsset compiledSource;
         [SerializeField]
         ImageAsset[] images = Array.Empty<ImageAsset>();
         [SerializeField]
         TextResource[] textResources = Array.Empty<TextResource>();
         RenderHost host;
-        [SerializeField] Surface surface;
-        [SerializeField] string sourceUrl = "";
+        [SerializeField]
+        Surface surface;
+        [SerializeField]
+        string sourceUrl = "";
         string requestedMarkup;
         int ownerThread;
         bool changingContent;
         bool loadRequested = true;
         static int unityThread;
-        internal void InitializeForEditor() { ownerThread = Thread.CurrentThread.ManagedThreadId; }
+        internal void InitializeForEditor()
+        {
+            ownerThread = Thread.CurrentThread.ManagedThreadId;
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void CaptureUnityThread()
@@ -41,7 +47,9 @@ namespace URUI.Documents
         /// <summary>
         /// 文档已同步完成加载，可以查询元素。
         /// </summary>
-        /// <remarks>文档可查询不表示当帧布局和绘制已经完成。</remarks>
+        /// <remarks>
+        /// 文档可查询不表示当帧布局和绘制已经完成。
+        /// </remarks>
         public bool IsLoaded
         {
             get
@@ -59,14 +67,26 @@ namespace URUI.Documents
         /// <summary>
         /// 已加载的文档卸载后触发；所有旧元素和点击订阅已经失效。
         /// </summary>
-        /// <remarks>通知中的加载与卸载请求进入所属 Surface 的有序延迟队列。</remarks>
+        /// <remarks>
+        /// 通知中的加载与卸载请求进入所属 Surface 的有序延迟队列。
+        /// </remarks>
         public event Action<Document> Unloaded;
 
-        /// <summary>所有现存元素完成本轮原生布局刷新后触发；祖先移动或滚动也会通知。</summary>
+        /// <summary>
+        /// 所有现存元素完成本轮原生布局刷新后触发；祖先移动或滚动也会通知。
+        /// </summary>
         public event Action<Document> LayoutUpdated
         {
-            add { layoutUpdated += value; layoutCallbacks = null; }
-            remove { layoutUpdated -= value; layoutCallbacks = null; }
+            add
+            {
+                layoutUpdated += value;
+                layoutCallbacks = null;
+            }
+            remove
+            {
+                layoutUpdated -= value;
+                layoutCallbacks = null;
+            }
         }
         Action<Document> layoutUpdated;
         Delegate[] layoutCallbacks;

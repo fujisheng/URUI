@@ -36,31 +36,47 @@ namespace URUI.Authoring.Tests
                 {
                     preview.Refresh();
                     if (!preview.Document.CompiledSource)
+                    {
                         throw new Exception("Authoring preview must load the current compiled working copy.");
+                    }
                     if (!preview.Document.IsLoaded || preview.Document.Q("visible").Layout.width != 80)
+                    {
                         throw new Exception("Resources stylesheet did not reach the preview document.");
+                    }
                     var css = author.Workspace.Open("Assets/Resources/URUI/PreviewChecks/style.css");
                     author.Workspace.Edit(css.Path, css.Text.Replace("80px", "95px"), css.Revision);
                     preview.Refresh();
                     if (preview.Document.Q("visible").Layout.width != 95)
+                    {
                         throw new Exception("Resources URL ignored the unsaved stylesheet working copy.");
+                    }
                     string recovery = Path.GetFullPath("Library/URUI/Authoring/preview-check-recovery.json");
                     SourceRecovery.Save(author, recovery);
                     var restored = new AuthoringSession(Directory.GetCurrentDirectory());
                     SourceRecovery.Restore(restored, recovery);
                     if (restored.Workspace.Open("Assets/Resources/URUI/PreviewChecks/fragment.html").Text != fragment)
+                    {
                         throw new Exception("Linked fragment changed during recovery.");
+                    }
                     bool rejected = false;
                     try
                     {
                         restored.EditFile(restored.File.Path, "<div>not a page</div>", restored.Revision);
                     }
-                    catch (InvalidOperationException) { rejected = true; }
+                    catch (InvalidOperationException)
+                    {
+                        rejected = true;
+                    }
                     if (!rejected)
+                    {
                         throw new Exception("A fragment was accepted as the active full document.");
+                    }
                 }
             }
-            catch (Exception error) { failures.Add("resource-urls: " + error); }
+            catch (Exception error)
+            {
+                failures.Add("resource-urls: " + error);
+            }
             try
             {
                 var author = new AuthoringSession(Directory.GetCurrentDirectory());
@@ -72,38 +88,69 @@ namespace URUI.Authoring.Tests
                     try
                     {
                         if (!pixels.LoadImage(File.ReadAllBytes(path)))
+                        {
                             throw new Exception("PNG capture could not be read.");
+                        }
                         var pixel = pixels.GetPixel(16, pixels.height - 16);
                         if (pixel.b < .7f || pixel.r > .2f || pixel.g > .2f)
+                        {
                             throw new Exception("Encoded Unicode image URL was not loaded; pixel=" + pixel);
+                        }
                     }
-                    finally { UnityEngine.Object.DestroyImmediate(pixels); }
+                    finally
+                    {
+                        UnityEngine.Object.DestroyImmediate(pixels);
+                    }
                 }
             }
-            catch (Exception error) { failures.Add("unicode-image: " + error); }
+            catch (Exception error)
+            {
+                failures.Add("unicode-image: " + error);
+            }
             try
             {
                 var author = new AuthoringSession(Directory.GetCurrentDirectory());
                 author.Open("Assets/preview-resources.html");
                 bool rejected = false;
-                try { author.EditFile("Assets/independent-preview.html", "<div>not a document</div>", author.Revision); }
-                catch (InvalidOperationException) { rejected = true; }
+                try
+                {
+                    author.EditFile("Assets/independent-preview.html", "<div>not a document</div>", author.Revision);
+                }
+                catch (InvalidOperationException)
+                {
+                    rejected = true;
+                }
                 if (!rejected || author.Workspace.Open("Assets/independent-preview.html").Text != independent)
+                {
                     throw new Exception("An unrelated full document could be replaced by a fragment.");
+                }
             }
-            catch (Exception error) { failures.Add("independent-document: " + error); }
+            catch (Exception error)
+            {
+                failures.Add("independent-document: " + error);
+            }
             try
             {
                 AuthoringEnvironment.Open("Assets/preview-resources.html");
                 string previousKey = System.Linq.Enumerable.First(AuthoringEnvironment.Author.Model.Nodes, n => n.Attribute("id") == "visible").Key;
                 AuthoringEnvironment.Open("Assets/preview-missing.html");
                 if (!AuthoringEnvironment.Status.Contains("missing-preview.css"))
+                {
                     throw new Exception("Preview failure was hidden by the successful source-open status: " + AuthoringEnvironment.Status);
+                }
                 if (AuthoringEnvironment.Preview.Node(previousKey) != null)
+                {
                     throw new Exception("Failed page switch left the previous page's nodes editable.");
+                }
             }
-            catch (Exception error) { failures.Add("failure-status: " + error); }
-            finally { AuthoringEnvironment.Preview?.Dispose(); }
+            catch (Exception error)
+            {
+                failures.Add("failure-status: " + error);
+            }
+            finally
+            {
+                AuthoringEnvironment.Preview?.Dispose();
+            }
             Directory.CreateDirectory("Evidence");
             File.WriteAllText("Evidence/preview-resources.txt", failures.Count == 0 ? "PASS: Resources URLs, unsaved CSS and preview failure feedback" : string.Join("\n", failures));
             Debug.Log("Preview resource checks: " + (failures.Count == 0 ? "PASS" : string.Join("\n", failures)));

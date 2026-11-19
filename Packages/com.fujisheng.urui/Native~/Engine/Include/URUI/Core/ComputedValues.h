@@ -7,191 +7,235 @@
 #include "Types.h"
 #include <cfloat>
 
-namespace URUI {
-namespace Style {
+namespace URUI
+{
+    namespace Style
+    {
 
-	/*
+        /*
 	    A computed value is a value resolved as far as possible :before: introducing layouting. See CSS specs for details of each property.
 
 	    Note: Enums and default values must correspond to the keywords and defaults in `StyleSheetSpecification.cpp`.
 	*/
 
-	struct CommonValues {
-		CommonValues() :
-			display(Display::Inline), position(Position::Static), float_(Float::None), clear(Clear::None), overflow_x(Overflow::Visible),
-			overflow_y(Overflow::Visible),
+        struct CommonValues
+        {
+            CommonValues()
+                : display(Display::Inline), position(Position::Static), float_(Float::None), clear(Clear::None),
+                  overflow_x(Overflow::Visible), overflow_y(Overflow::Visible),
 
-			has_decorator(false), box_sizing(BoxSizing::ContentBox),
+                  has_decorator(false), box_sizing(BoxSizing::ContentBox),
 
-			width_type(LengthPercentageAuto::Auto), height_type(LengthPercentageAuto::Auto),
+                  width_type(LengthPercentageAuto::Auto), height_type(LengthPercentageAuto::Auto),
 
-			margin_top_type(LengthPercentageAuto::Length), margin_right_type(LengthPercentageAuto::Length),
-			margin_bottom_type(LengthPercentageAuto::Length), margin_left_type(LengthPercentageAuto::Length),
+                  margin_top_type(LengthPercentageAuto::Length), margin_right_type(LengthPercentageAuto::Length),
+                  margin_bottom_type(LengthPercentageAuto::Length), margin_left_type(LengthPercentageAuto::Length),
 
-			padding_top_type(LengthPercentage::Length), padding_right_type(LengthPercentage::Length), padding_bottom_type(LengthPercentage::Length),
-			padding_left_type(LengthPercentage::Length),
+                  padding_top_type(LengthPercentage::Length), padding_right_type(LengthPercentage::Length),
+                  padding_bottom_type(LengthPercentage::Length), padding_left_type(LengthPercentage::Length),
 
-			top_type(LengthPercentageAuto::Auto), right_type(LengthPercentageAuto::Auto), bottom_type(LengthPercentageAuto::Auto),
-			left_type(LengthPercentageAuto::Auto), z_index_type(NumberAuto::Auto)
-		{}
+                  top_type(LengthPercentageAuto::Auto), right_type(LengthPercentageAuto::Auto),
+                  bottom_type(LengthPercentageAuto::Auto), left_type(LengthPercentageAuto::Auto),
+                  z_index_type(NumberAuto::Auto)
+            {
+            }
 
-		Display display : 4;
-		Position position : 2;
+            Display display : 4;
+            Position position : 2;
 
-		Float float_ : 2;
-		Clear clear : 2;
+            Float float_ : 2;
+            Clear clear : 2;
 
-		Overflow overflow_x : 2, overflow_y : 2;
+            Overflow overflow_x : 2;
+            Overflow overflow_y : 2;
 
-		bool has_decorator : 1;
-		BoxSizing box_sizing : 1;
+            bool has_decorator : 1;
+            BoxSizing box_sizing : 1;
 
-		LengthPercentageAuto::Type width_type : 2, height_type : 2;
+            LengthPercentageAuto::Type width_type : 2;
+            LengthPercentageAuto::Type height_type : 2;
 
-		LengthPercentageAuto::Type margin_top_type : 2, margin_right_type : 2, margin_bottom_type : 2, margin_left_type : 2;
-		LengthPercentage::Type padding_top_type : 1, padding_right_type : 1, padding_bottom_type : 1, padding_left_type : 1;
-		LengthPercentageAuto::Type top_type : 2, right_type : 2, bottom_type : 2, left_type : 2;
+            LengthPercentageAuto::Type margin_top_type : 2;
+            LengthPercentageAuto::Type margin_right_type : 2;
+            LengthPercentageAuto::Type margin_bottom_type : 2;
+            LengthPercentageAuto::Type margin_left_type : 2;
+            LengthPercentage::Type padding_top_type : 1;
+            LengthPercentage::Type padding_right_type : 1;
+            LengthPercentage::Type padding_bottom_type : 1;
+            LengthPercentage::Type padding_left_type : 1;
+            LengthPercentageAuto::Type top_type : 2;
+            LengthPercentageAuto::Type right_type : 2;
+            LengthPercentageAuto::Type bottom_type : 2;
+            LengthPercentageAuto::Type left_type : 2;
 
-		NumberAuto::Type z_index_type : 1;
+            NumberAuto::Type z_index_type : 1;
 
-		float width_value = 0;
-		float height_value = 0;
+            float width_value = 0;
+            float height_value = 0;
 
-		float margin_top_value = 0;
-		float margin_right_value = 0;
-		float margin_bottom_value = 0;
-		float margin_left_value = 0;
+            float margin_top_value = 0;
+            float margin_right_value = 0;
+            float margin_bottom_value = 0;
+            float margin_left_value = 0;
 
-		float padding_top_value = 0;
-		float padding_right_value = 0;
-		float padding_bottom_value = 0;
-		float padding_left_value = 0;
+            float padding_top_value = 0;
+            float padding_right_value = 0;
+            float padding_bottom_value = 0;
+            float padding_left_value = 0;
 
-		float top_value = 0;
-		float right_value = 0;
-		float bottom_value = 0;
-		float left_value = 0;
+            float top_value = 0;
+            float right_value = 0;
+            float bottom_value = 0;
+            float left_value = 0;
 
-		float z_index_value = 0;
+            float z_index_value = 0;
 
-		uint16_t border_top_width = 0, border_right_width = 0, border_bottom_width = 0, border_left_width = 0;
+            uint16_t border_top_width = 0;
+            uint16_t border_right_width = 0;
+            uint16_t border_bottom_width = 0;
+            uint16_t border_left_width = 0;
 
-		Colourb border_top_color{255, 255, 255}, border_right_color{255, 255, 255}, border_bottom_color{255, 255, 255},
-			border_left_color{255, 255, 255};
+            Colourb border_top_color{255, 255, 255};
+            Colourb border_right_color{255, 255, 255};
+            Colourb border_bottom_color{255, 255, 255};
+            Colourb border_left_color{255, 255, 255};
 
-		float opacity = 1;
-		Colourb background_color = Colourb(0, 0, 0, 0);
-	};
+            float opacity = 1;
+            Colourb background_color = Colourb(0, 0, 0, 0);
+        };
 
-	struct InheritedValues {
-		InheritedValues() :
-			font_weight(FontWeight::Normal), font_kerning(FontKerning::Auto), font_style(FontStyle::Normal),
-			has_font_effect(false), pointer_events(PointerEvents::Auto), focus(Focus::Auto), visibility(Visibility::Visible), text_align(TextAlign::Left),
-			text_decoration(TextDecoration::None), text_transform(TextTransform::None), white_space(WhiteSpace::Normal),
-			word_break(WordBreak::Normal), direction(Direction::Ltr), line_height_inherit_type(LineHeight::Number)
-		{}
+        struct InheritedValues
+        {
+            InheritedValues()
+                : font_weight(FontWeight::Normal), font_kerning(FontKerning::Auto), font_style(FontStyle::Normal),
+                  has_font_effect(false), pointer_events(PointerEvents::Auto), focus(Focus::Auto),
+                  visibility(Visibility::Visible), text_align(TextAlign::Left), text_decoration(TextDecoration::None),
+                  text_transform(TextTransform::None), white_space(WhiteSpace::Normal), word_break(WordBreak::Normal),
+                  direction(Direction::Ltr), line_height_inherit_type(LineHeight::Number)
+            {
+            }
 
-		// Font face used to render text and resolve ex properties. Does not represent a true property
-		// like most computed values, but placed here as it is used and inherited in a similar manner.
-		FontFaceHandle font_face_handle = 0;
+            // Font face used to render text and resolve ex properties. Does not represent a true property
+            // like most computed values, but placed here as it is used and inherited in a similar manner.
+            FontFaceHandle font_face_handle = 0;
 
-		float font_size = 16.f;
+            float font_size = 16.f;
 
-		Colourb color = Colourb(0, 0, 0);
+            Colourb color = Colourb(0, 0, 0);
 
-		FontWeight font_weight : 10;
-		FontKerning font_kerning : 2;
-		float letter_spacing = 0.f;
+            FontWeight font_weight : 10;
+            FontKerning font_kerning : 2;
+            float letter_spacing = 0.f;
 
-		FontStyle font_style : 1;
-		bool has_font_effect : 1;
-		PointerEvents pointer_events : 1;
-		Focus focus : 1;
-		Visibility visibility : 1;
+            FontStyle font_style : 1;
+            bool has_font_effect : 1;
+            PointerEvents pointer_events : 1;
+            Focus focus : 1;
+            Visibility visibility : 1;
 
-		TextAlign text_align : 2;
-		TextDecoration text_decoration : 2;
-		TextTransform text_transform : 2;
-		WhiteSpace white_space : 3;
-		WordBreak word_break : 2;
+            TextAlign text_align : 2;
+            TextDecoration text_decoration : 2;
+            TextTransform text_transform : 2;
+            WhiteSpace white_space : 3;
+            WordBreak word_break : 2;
 
-		Direction direction : 2;
+            Direction direction : 2;
 
-		LineHeight::InheritType line_height_inherit_type : 1;
-		float line_height = 12.f * 1.2f;
-		float line_height_inherit = 1.2f;
+            LineHeight::InheritType line_height_inherit_type : 1;
+            float line_height = 12.f * 1.2f;
+            float line_height_inherit = 1.2f;
 
-		String language = "";
-	};
+            String language = "";
+        };
 
-	struct RareValues {
-		RareValues() :
-			min_width_type(LengthPercentageAuto::Auto), max_width_type(LengthPercentage::Length), min_height_type(LengthPercentageAuto::Auto),
-			max_height_type(LengthPercentage::Length),
+        struct RareValues
+        {
+            RareValues()
+                : min_width_type(LengthPercentageAuto::Auto), max_width_type(LengthPercentage::Length),
+                  min_height_type(LengthPercentageAuto::Auto), max_height_type(LengthPercentage::Length),
 
-			perspective_origin_x_type(LengthPercentage::Percentage), perspective_origin_y_type(LengthPercentage::Percentage),
-			transform_origin_x_type(LengthPercentage::Percentage), transform_origin_y_type(LengthPercentage::Percentage), has_local_transform(false),
-			has_local_perspective(false),
+                  perspective_origin_x_type(LengthPercentage::Percentage),
+                  perspective_origin_y_type(LengthPercentage::Percentage),
+                  transform_origin_x_type(LengthPercentage::Percentage),
+                  transform_origin_y_type(LengthPercentage::Percentage), has_local_transform(false),
+                  has_local_perspective(false),
 
-			flex_basis_type(LengthPercentageAuto::Auto), row_gap_type(LengthPercentage::Length), column_gap_type(LengthPercentage::Length),
+                  flex_basis_type(LengthPercentageAuto::Auto), row_gap_type(LengthPercentage::Length),
+                  column_gap_type(LengthPercentage::Length),
 
-			vertical_align_type(VerticalAlign::Baseline), drag(Drag::None), tab_index(TabIndex::None), overscroll_behavior(OverscrollBehavior::Auto),
+                  vertical_align_type(VerticalAlign::Baseline), drag(Drag::None), tab_index(TabIndex::None),
+                  overscroll_behavior(OverscrollBehavior::Auto),
 
-			has_mask_image(false), has_urui_mask_image(false), has_filter(false), has_backdrop_filter(false), has_box_shadow(false), text_overflow(TextOverflow::Clip)
-		{}
+                  has_mask_image(false), has_urui_mask_image(false), has_filter(false), has_backdrop_filter(false),
+                  has_box_shadow(false), text_overflow(TextOverflow::Clip)
+            {
+            }
 
-		LengthPercentageAuto::Type min_width_type : 2;
-		LengthPercentage::Type max_width_type : 1;
-		LengthPercentageAuto::Type min_height_type : 2;
-		LengthPercentage::Type max_height_type : 1;
+            LengthPercentageAuto::Type min_width_type : 2;
+            LengthPercentage::Type max_width_type : 1;
+            LengthPercentageAuto::Type min_height_type : 2;
+            LengthPercentage::Type max_height_type : 1;
 
-		LengthPercentage::Type perspective_origin_x_type : 1, perspective_origin_y_type : 1;
-		LengthPercentage::Type transform_origin_x_type : 1, transform_origin_y_type : 1;
-		bool has_local_transform : 1, has_local_perspective : 1;
+            LengthPercentage::Type perspective_origin_x_type : 1;
+            LengthPercentage::Type perspective_origin_y_type : 1;
+            LengthPercentage::Type transform_origin_x_type : 1;
+            LengthPercentage::Type transform_origin_y_type : 1;
+            bool has_local_transform : 1;
+            bool has_local_perspective : 1;
 
-		LengthPercentageAuto::Type flex_basis_type : 2;
-		LengthPercentage::Type row_gap_type : 1, column_gap_type : 1;
+            LengthPercentageAuto::Type flex_basis_type : 2;
+            LengthPercentage::Type row_gap_type : 1;
+            LengthPercentage::Type column_gap_type : 1;
 
-		VerticalAlign::Type vertical_align_type : 4;
-		Drag drag : 3;
-		TabIndex tab_index : 1;
-		OverscrollBehavior overscroll_behavior : 1;
+            VerticalAlign::Type vertical_align_type : 4;
+            Drag drag : 3;
+            TabIndex tab_index : 1;
+            OverscrollBehavior overscroll_behavior : 1;
 
-		bool has_mask_image : 1;
-		bool has_urui_mask_image : 1;
-		bool has_filter : 1;
-		bool has_backdrop_filter : 1;
-		bool has_box_shadow : 1;
+            bool has_mask_image : 1;
+            bool has_urui_mask_image : 1;
+            bool has_filter : 1;
+            bool has_backdrop_filter : 1;
+            bool has_box_shadow : 1;
 
-		TextOverflow text_overflow : 2;
+            TextOverflow text_overflow : 2;
 
-		Clip clip;
+            Clip clip;
 
-		float min_width = 0, max_width = FLT_MAX;
-		float min_height = 0, max_height = FLT_MAX;
-		float vertical_align_length = 0;
+            float min_width = 0;
+            float max_width = FLT_MAX;
+            float min_height = 0;
+            float max_height = FLT_MAX;
+            float vertical_align_length = 0;
 
-		float perspective = 0;
-		float perspective_origin_x = 50.f;
-		float perspective_origin_y = 50.f;
+            float perspective = 0;
+            float perspective_origin_x = 50.f;
+            float perspective_origin_y = 50.f;
 
-		float transform_origin_x = 50.f;
-		float transform_origin_y = 50.f;
-		float transform_origin_z = 0.0f;
+            float transform_origin_x = 50.f;
+            float transform_origin_y = 50.f;
+            float transform_origin_z = 0.0f;
 
-		float flex_basis = 0;
-		float row_gap = 0, column_gap = 0;
+            float flex_basis = 0;
+            float row_gap = 0;
+            float column_gap = 0;
 
-		int16_t border_top_left_radius = 0, border_top_right_radius = 0, border_bottom_right_radius = 0, border_bottom_left_radius = 0;
-		Colourb image_color = Colourb(255, 255, 255);
-		float scrollbar_margin = 0.f;
-	};
+            int16_t border_top_left_radius = 0;
+            int16_t border_top_right_radius = 0;
+            int16_t border_bottom_right_radius = 0;
+            int16_t border_bottom_left_radius = 0;
+            Colourb image_color = Colourb(255, 255, 255);
+            float scrollbar_margin = 0.f;
+        };
 
-	class ComputedValues : NonCopyMoveable {
-	public:
-		explicit ComputedValues(Element* element) : element(element) {}
+        class ComputedValues : NonCopyMoveable
+        {
+        public:
+            explicit ComputedValues(Element* element) : element(element)
+            {
+            }
 
-		// clang-format off
+            // clang-format off
 
 		// -- Common --
 		LengthPercentageAuto width()               const { return LengthPercentageAuto(common.width_type, common.width_value); }
@@ -389,58 +433,63 @@ namespace Style {
 		void has_backdrop_filter       (bool value)              { rare.has_backdrop_filter        = value; }
 		void has_box_shadow            (bool value)              { rare.has_box_shadow             = value; }
 
-		// clang-format on
+            // clang-format on
 
-		// -- Management --
-		void CopyNonInherited(const ComputedValues& other)
-		{
-			common = other.common;
-			rare = other.rare;
-		}
-		void CopyInherited(const ComputedValues& parent) { inherited = parent.inherited; }
+            // -- Management --
+            void CopyNonInherited(const ComputedValues& other)
+            {
+                common = other.common;
+                rare = other.rare;
+            }
+            void CopyInherited(const ComputedValues& parent)
+            {
+                inherited = parent.inherited;
+            }
 
-	private:
-		template <typename T>
-		inline T GetLocalPropertyKeyword(PropertyId id, T default_value) const
-		{
-			if (auto p = GetLocalPropertyWithResolvedVariables(id))
-				return static_cast<T>(p->Get<int>());
-			return default_value;
-		}
-		template <typename T>
-		inline T GetLocalProperty(PropertyId id, T default_value) const
-		{
-			if (auto p = GetLocalPropertyWithResolvedVariables(id))
-				return p->Get<T>();
-			return default_value;
-		}
+        private:
+            template <typename T> inline T GetLocalPropertyKeyword(PropertyId id, T default_value) const
+            {
+                if (auto p = GetLocalPropertyWithResolvedVariables(id))
+                {
+                    return static_cast<T>(p->Get<int>());
+                }
+                return default_value;
+            }
+            template <typename T> inline T GetLocalProperty(PropertyId id, T default_value) const
+            {
+                if (auto p = GetLocalPropertyWithResolvedVariables(id))
+                {
+                    return p->Get<T>();
+                }
+                return default_value;
+            }
 
-		const Property* GetLocalPropertyWithResolvedVariables(PropertyId id) const;
+            const Property* GetLocalPropertyWithResolvedVariables(PropertyId id) const;
 
-		Element* element = nullptr;
+            Element* element = nullptr;
 
-		CommonValues common;
-		InheritedValues inherited;
-		RareValues rare;
-	};
+            CommonValues common;
+            InheritedValues inherited;
+            RareValues rare;
+        };
 
-} // namespace Style
+    }
 
-// Resolves a computed LengthPercentage(Auto) value to the base unit 'px'.
-// Percentages are scaled by the base value, if definite (>= 0), otherwise return the default value.
-// Auto lengths always return the default value.
-URUI_CORE_API float ResolveValueOr(Style::LengthPercentageAuto length, float base_value, float default_value);
-URUI_CORE_API float ResolveValueOr(Style::LengthPercentage length, float base_value, float default_value);
+    // Resolves a computed LengthPercentage(Auto) value to the base unit 'px'.
+    // Percentages are scaled by the base value, if definite (>= 0), otherwise return the default value.
+    // Auto lengths always return the default value.
+    URUI_CORE_API float ResolveValueOr(Style::LengthPercentageAuto length, float base_value, float default_value);
+    URUI_CORE_API float ResolveValueOr(Style::LengthPercentage length, float base_value, float default_value);
 
-URUI_CORE_API_INLINE float ResolveValue(Style::LengthPercentageAuto length, float base_value)
-{
-	return ResolveValueOr(length, base_value, 0.f);
+    URUI_CORE_API_INLINE float ResolveValue(Style::LengthPercentageAuto length, float base_value)
+    {
+        return ResolveValueOr(length, base_value, 0.f);
+    }
+    URUI_CORE_API_INLINE float ResolveValue(Style::LengthPercentage length, float base_value)
+    {
+        return ResolveValueOr(length, base_value, 0.f);
+    }
+
+    using ComputedValues = Style::ComputedValues;
+
 }
-URUI_CORE_API_INLINE float ResolveValue(Style::LengthPercentage length, float base_value)
-{
-	return ResolveValueOr(length, base_value, 0.f);
-}
-
-using ComputedValues = Style::ComputedValues;
-
-} // namespace URUI

@@ -22,14 +22,18 @@ struct RenderSerial
 class RenderPlan
 {
     RenderSerial& serial;
-    std::vector<UruiCommand> previous;
+    std::vector<URUICommand> previous;
     std::vector<std::array<float, 16>> previous_matrices;
-    uint64_t epoch = 0, commands = 0, resources = 0;
+    uint64_t epoch = 0;
+    uint64_t commands = 0;
+    uint64_t resources = 0;
     URUI_DEBUG_CODE(uint64_t compared = 0;)
-    bool supported = true, complete = false, have_previous = false;
+    bool supported = true;
+    bool complete = false;
+    bool have_previous = false;
     void ClearPrevious()
     {
-        std::vector<UruiCommand>().swap(previous);
+        std::vector<URUICommand>().swap(previous);
         std::vector<std::array<float, 16>>().swap(previous_matrices);
         have_previous = false;
     }
@@ -54,7 +58,10 @@ public:
         URUI_DEBUG_CODE(compared = 0;)
         ClearPrevious();
     }
-    void DocumentsChanged() { complete = false; }
+    void DocumentsChanged()
+    {
+        complete = false;
+    }
     void Unsupported()
     {
         supported = false;
@@ -66,7 +73,7 @@ public:
         // 复用帧不进行数组比较；诊断不能继续报告上次重录的比较字节数。
         URUI_DEBUG_CODE(compared = 0;)
     }
-    void Begin(std::vector<UruiCommand>& current, std::vector<std::array<float, 16>>& matrices)
+    void Begin(std::vector<URUICommand>& current, std::vector<std::array<float, 16>>& matrices)
     {
         complete = false;
         URUI_DEBUG_CODE(compared = 0;)
@@ -78,10 +85,12 @@ public:
         current.clear();
         matrices.clear();
     }
-    void Finish(const std::vector<UruiCommand>& current, const std::vector<std::array<float, 16>>& matrices)
+    void Finish(const std::vector<URUICommand>& current, const std::vector<std::array<float, 16>>& matrices)
     {
         if (!supported)
+        {
             return;
+        }
         if (current.size() != matrices.size())
         {
             complete = false;
@@ -90,8 +99,8 @@ public:
         bool same = have_previous && previous.size() == current.size() && previous_matrices.size() == matrices.size();
         if (same && !current.empty())
         {
-            URUI_DEBUG_CODE(compared += current.size() * sizeof(UruiCommand);)
-            same = std::memcmp(previous.data(), current.data(), current.size() * sizeof(UruiCommand)) == 0;
+            URUI_DEBUG_CODE(compared += current.size() * sizeof(URUICommand);)
+            same = std::memcmp(previous.data(), current.data(), current.size() * sizeof(URUICommand)) == 0;
         }
         if (same && !matrices.empty())
         {
@@ -99,25 +108,33 @@ public:
             same = std::memcmp(previous_matrices.data(), matrices.data(), matrices.size() * sizeof(matrices[0])) == 0;
         }
         if (!same)
+        {
             commands = serial.Next();
+        }
         have_previous = true;
         complete = true;
     }
-    UruiFrameStamp Snapshot(size_t count) const
+    URUIFrameStamp Snapshot(size_t count) const
     {
-        UruiFrameStamp out{};
+        URUIFrameStamp out{};
         out.epoch = epoch;
         out.commands = commands;
         out.resources = resources;
-        URUI_DEBUG_CODE(out.retained_bytes = previous.capacity() * sizeof(UruiCommand) +
+        URUI_DEBUG_CODE(out.retained_bytes = previous.capacity() * sizeof(URUICommand) +
                                              previous_matrices.capacity() * sizeof(std::array<float, 16>);)
         URUI_DEBUG_CODE(out.compare_bytes = compared;)
         if (count <= std::numeric_limits<uint32_t>::max())
+        {
             out.count = static_cast<uint32_t>(count);
+        }
         if (!supported)
+        {
             out.flags = 2;
+        }
         else if (complete && !serial.exhausted && count <= std::numeric_limits<uint32_t>::max())
+        {
             out.flags = 1;
+        }
         return out;
     }
 };

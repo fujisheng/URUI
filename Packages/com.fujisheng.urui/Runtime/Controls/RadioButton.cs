@@ -6,14 +6,22 @@ using UnityEngine;
 
 namespace URUI.Controls
 {
-    /// <summary>有类型的 RadioButton 表单控件。</summary>
+    /// <summary>
+    /// 有类型的 RadioButton 表单控件。
+    /// </summary>
     public class RadioButton : CheckableField
     {
-        /// <summary>文档工厂构造入口。</summary>
+        /// <summary>
+        /// 文档工厂构造入口。
+        /// </summary>
         protected internal RadioButton(ElementContext context) : base(context) { }
-        /// <summary>单选激活只选中，不取消自身。</summary>
+        /// <summary>
+        /// 单选激活只选中，不取消自身。
+        /// </summary>
         protected override void Activate() => Value = true;
-        /// <summary>同一文档中互斥的单选组名称。</summary>
+        /// <summary>
+        /// 同一文档中互斥的单选组名称。
+        /// </summary>
         public string GroupName
         {
             get => GetAttribute("name") ?? "";
@@ -31,7 +39,9 @@ namespace URUI.Controls
 
             return element.Document.DocumentElement;
         }
-        /// <summary>方向键在同一表单的组内循环，跳过禁用和隐藏的成员。</summary>
+        /// <summary>
+        /// 方向键在同一表单的组内循环，跳过禁用和隐藏的成员。
+        /// </summary>
         protected override void OnEvent(EventBase evt)
         {
             if (evt is KeyDownEvent key && ReferenceEquals(key.Target, this) && EnabledInHierarchy)

@@ -2,107 +2,108 @@ namespace URUI.Effect
 {
     internal static class EffectParameterMerge
     {
-        internal static EffectParameters Merge(EffectParameters destination,EffectParameters source)
+        internal static EffectParameters Merge(EffectParameters destination, EffectParameters source)
         {
-            var p=destination.Clone();var s=source.Clone();
-            if(s.ToneFilter!=ToneFilter.None)
+            var p = destination.Clone();
+            var s = source.Clone();
+            if (s.ToneFilter != ToneFilter.None)
             {
-                p.ToneFilter=s.ToneFilter;
-                p.ToneIntensity=s.ToneIntensity;
+                p.ToneFilter = s.ToneFilter;
+                p.ToneIntensity = s.ToneIntensity;
             }
-            if(s.ColorFilter!=ColorFilter.None)
+            if (s.ColorFilter != ColorFilter.None)
             {
-                p.ColorFilter=s.ColorFilter;
-                p.ColorIntensity=s.ColorIntensity;
-                p.Color=s.Color;
-                p.ColorGlow=s.ColorGlow;
+                p.ColorFilter = s.ColorFilter;
+                p.ColorIntensity = s.ColorIntensity;
+                p.Color = s.Color;
+                p.ColorGlow = s.ColorGlow;
             }
-            if(s.SamplingFilter!=SamplingFilter.None)
+            if (s.SamplingFilter != SamplingFilter.None)
             {
-                p.SamplingFilter=s.SamplingFilter;
-                p.SamplingIntensity=s.SamplingIntensity;
-                p.SamplingWidth=s.SamplingWidth;
+                p.SamplingFilter = s.SamplingFilter;
+                p.SamplingIntensity = s.SamplingIntensity;
+                p.SamplingWidth = s.SamplingWidth;
             }
-            if(s.TransitionFilter!=TransitionFilter.None)
+            if (s.TransitionFilter != TransitionFilter.None)
             {
-                p.TransitionFilter=s.TransitionFilter;
-                p.TransitionProgress=s.TransitionProgress;
-                p.TransitionTextureScale=s.TransitionTextureScale;
-                p.TransitionTextureOffset=s.TransitionTextureOffset;
-                p.TransitionTextureSpeed=s.TransitionTextureSpeed;
-                p.TransitionRotation=s.TransitionRotation;
-                p.TransitionKeepAspectRatio=s.TransitionKeepAspectRatio;
-                p.TransitionWidth=s.TransitionWidth;
-                p.TransitionSoftness=s.TransitionSoftness;
-                p.TransitionRange=s.TransitionRange;
-                p.TransitionColorFilter=s.TransitionColorFilter;
-                p.TransitionColor=s.TransitionColor;
-                p.TransitionColorGlow=s.TransitionColorGlow;
-                p.TransitionPatternReverse=s.TransitionPatternReverse;
-                p.TransitionAutoPlaySpeed=s.TransitionAutoPlaySpeed;
+                p.TransitionFilter = s.TransitionFilter;
+                p.TransitionProgress = s.TransitionProgress;
+                p.TransitionTextureScale = s.TransitionTextureScale;
+                p.TransitionTextureOffset = s.TransitionTextureOffset;
+                p.TransitionTextureSpeed = s.TransitionTextureSpeed;
+                p.TransitionRotation = s.TransitionRotation;
+                p.TransitionKeepAspectRatio = s.TransitionKeepAspectRatio;
+                p.TransitionWidth = s.TransitionWidth;
+                p.TransitionSoftness = s.TransitionSoftness;
+                p.TransitionRange = s.TransitionRange;
+                p.TransitionColorFilter = s.TransitionColorFilter;
+                p.TransitionColor = s.TransitionColor;
+                p.TransitionColorGlow = s.TransitionColorGlow;
+                p.TransitionPatternReverse = s.TransitionPatternReverse;
+                p.TransitionAutoPlaySpeed = s.TransitionAutoPlaySpeed;
             }
-            if(s.TargetMode!=TargetMode.None)
+            if (s.TargetMode != TargetMode.None)
             {
-                p.TargetMode=s.TargetMode;
-                p.TargetColor=s.TargetColor;
-                p.TargetRange=s.TargetRange;
-                p.TargetSoftness=s.TargetSoftness;
+                p.TargetMode = s.TargetMode;
+                p.TargetColor = s.TargetColor;
+                p.TargetRange = s.TargetRange;
+                p.TargetSoftness = s.TargetSoftness;
             }
-            if(s.BlendType!=BlendType.AlphaBlend)
+            if (s.BlendType != BlendType.AlphaBlend)
             {
-                p.BlendType=s.BlendType;
-                p.SrcBlendMode=s.SrcBlendMode;
-                p.DstBlendMode=s.DstBlendMode;
+                p.BlendType = s.BlendType;
+                p.SrcBlendMode = s.SrcBlendMode;
+                p.DstBlendMode = s.DstBlendMode;
             }
-            if(s.ShadowMode!=ShadowMode.None)
+            if (s.ShadowMode != ShadowMode.None)
             {
-                p.ShadowMode=s.ShadowMode;
-                p.ShadowDistance=s.ShadowDistance;
-                p.ShadowIteration=s.ShadowIteration;
-                p.ShadowFade=s.ShadowFade;
-                p.ShadowMirrorScale=s.ShadowMirrorScale;
-                p.ShadowBlurIntensity=s.ShadowBlurIntensity;
-                p.ShadowColorFilter=s.ShadowColorFilter;
-                p.ShadowColor=s.ShadowColor;
-                p.ShadowColorGlow=s.ShadowColorGlow;
+                p.ShadowMode = s.ShadowMode;
+                p.ShadowDistance = s.ShadowDistance;
+                p.ShadowIteration = s.ShadowIteration;
+                p.ShadowFade = s.ShadowFade;
+                p.ShadowMirrorScale = s.ShadowMirrorScale;
+                p.ShadowBlurIntensity = s.ShadowBlurIntensity;
+                p.ShadowColorFilter = s.ShadowColorFilter;
+                p.ShadowColor = s.ShadowColor;
+                p.ShadowColorGlow = s.ShadowColorGlow;
             }
-            if(s.GradationMode!=GradationMode.None)
+            if (s.GradationMode != GradationMode.None)
             {
-                p.GradationMode=s.GradationMode;
-                p.GradationIntensity=s.GradationIntensity;
-                p.GradationColorFilter=s.GradationColorFilter;
-                p.GradationColor1=s.GradationColor1;
-                p.GradationColor2=s.GradationColor2;
-                p.GradationColor3=s.GradationColor3;
-                p.GradationColor4=s.GradationColor4;
-                p.GradationGradient=s.GradationGradient;
-                p.GradationOffset=s.GradationOffset;
-                p.GradationScale=s.GradationScale;
-                p.GradationRotation=s.GradationRotation;
+                p.GradationMode = s.GradationMode;
+                p.GradationIntensity = s.GradationIntensity;
+                p.GradationColorFilter = s.GradationColorFilter;
+                p.GradationColor1 = s.GradationColor1;
+                p.GradationColor2 = s.GradationColor2;
+                p.GradationColor3 = s.GradationColor3;
+                p.GradationColor4 = s.GradationColor4;
+                p.GradationGradient = s.GradationGradient;
+                p.GradationOffset = s.GradationOffset;
+                p.GradationScale = s.GradationScale;
+                p.GradationRotation = s.GradationRotation;
             }
-            if(s.EdgeMode!=EdgeMode.None)
+            if (s.EdgeMode != EdgeMode.None)
             {
-                p.EdgeMode=s.EdgeMode;
-                p.EdgeWidth=s.EdgeWidth;
-                p.EdgeColorFilter=s.EdgeColorFilter;
-                p.EdgeColor=s.EdgeColor;
-                p.EdgeColorGlow=s.EdgeColorGlow;
-                p.EdgeShinyProgress=s.EdgeShinyProgress;
-                p.EdgeShinyWidth=s.EdgeShinyWidth;
-                p.EdgeShinyAutoPlaySpeed=s.EdgeShinyAutoPlaySpeed;
-                p.PatternArea=s.PatternArea;
+                p.EdgeMode = s.EdgeMode;
+                p.EdgeWidth = s.EdgeWidth;
+                p.EdgeColorFilter = s.EdgeColorFilter;
+                p.EdgeColor = s.EdgeColor;
+                p.EdgeColorGlow = s.EdgeColorGlow;
+                p.EdgeShinyProgress = s.EdgeShinyProgress;
+                p.EdgeShinyWidth = s.EdgeShinyWidth;
+                p.EdgeShinyAutoPlaySpeed = s.EdgeShinyAutoPlaySpeed;
+                p.PatternArea = s.PatternArea;
             }
-            if(s.DetailFilter!=DetailFilter.None)
+            if (s.DetailFilter != DetailFilter.None)
             {
-                p.DetailFilter=s.DetailFilter;
-                p.DetailIntensity=s.DetailIntensity;
-                p.DetailColor=s.DetailColor;
-                p.DetailThreshold=s.DetailThreshold;
-                p.DetailTextureScale=s.DetailTextureScale;
-                p.DetailTextureOffset=s.DetailTextureOffset;
-                p.DetailTextureSpeed=s.DetailTextureSpeed;
+                p.DetailFilter = s.DetailFilter;
+                p.DetailIntensity = s.DetailIntensity;
+                p.DetailColor = s.DetailColor;
+                p.DetailThreshold = s.DetailThreshold;
+                p.DetailTextureScale = s.DetailTextureScale;
+                p.DetailTextureOffset = s.DetailTextureOffset;
+                p.DetailTextureSpeed = s.DetailTextureSpeed;
             }
-            p.Flip|=s.Flip;
+            p.Flip |= s.Flip;
             return p;
         }
     }

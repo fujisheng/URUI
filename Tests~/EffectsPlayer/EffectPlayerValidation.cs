@@ -40,7 +40,7 @@ namespace URUI.Effect.PlayerValidation
         public string CaptureDirectory;
         public bool Finished {get;private set;}
         public bool Passed=>report.status=="passed";
-        sealed class Clock:URUI.Animation.IUiClock {public double Now {get;set;} public float Delta=>.2f;}
+        sealed class Clock:URUI.Animation.IUIClock {public double Now {get;set;} public float Delta=>.2f;}
         readonly Report report=new();
         float originalCaptureDelta;
         string output;
@@ -51,7 +51,7 @@ namespace URUI.Effect.PlayerValidation
         {
             originalCaptureDelta=Time.captureDeltaTime;Time.captureDeltaTime=1f/60;
             if(!gallery)gallery=GetComponent<EffectGallery>();
-            if(gallery)gallery.UiClock=new Clock();
+            if(gallery)gallery.UIClock=new Clock();
         }
         IEnumerator Start()
         {
@@ -94,7 +94,7 @@ namespace URUI.Effect.PlayerValidation
             Require(gallery.shader&&gallery.shader.isSupported,"Missing gallery shader");
             var document=gallery.Document;document.Surface.Viewport=new Vector2Int(1280,720);document.Surface.Input.UseUnityInput=false;
             target=new RenderTexture(1280,720,0,RenderTextureFormat.ARGBHalf);Require(target.Create(),"Capture target");captureCamera.targetTexture=target;
-            report.clockTime=document.Surface.UiClock.Now;Require(report.clockTime==0,"Gallery clock was not frozen before its Surface initialized: "+report.clockTime);
+            report.clockTime=document.Surface.UIClock.Now;Require(report.clockTime==0,"Gallery clock was not frozen before its Surface initialized: "+report.clockTime);
             document.SynchronizeLayout();captureCamera.Render();Capture("Gallery.png",new Rect(0,0,1280,720));
             ValidateAllocationProbe();
             var playback=gallery.Playback;document.Q("pause").SendEvent(new ClickEvent());Require(playback.IsPaused,"Pause callback");
@@ -229,7 +229,7 @@ namespace URUI.Effect.PlayerValidation
             var document=gallery.Document;
             var files=new List<TextResource>(document.TextResources){new TextResource("/urui/controls.css",UnityEngine.Resources.Load<TextAsset>("URUI/controls"))};
             document.TextResources=files.ToArray();
-            var clock=new Clock();document.Surface.UiClock=clock;
+            var clock=new Clock();document.Surface.UIClock=clock;
             document.Load(UnityEngine.Resources.Load<TextAsset>("URUI/Tests/DefaultControlsGallery"),"/samples/urui-effects/DefaultControls.html");
             void Tick(){clock.Now+=.2;document.SynchronizeLayout();clock.Now+=.2;document.SynchronizeLayout();}
             Tick();captureCamera.Render();Capture("DefaultControls-normal.png",new Rect(0,0,1280,720));

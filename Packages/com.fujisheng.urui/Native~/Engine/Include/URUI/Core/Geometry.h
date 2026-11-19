@@ -7,30 +7,38 @@
 #include "Texture.h"
 #include "UniqueRenderResource.h"
 
-namespace URUI {
+namespace URUI
+{
 
-class RenderManager;
+    class RenderManager;
 
-/**
+    /**
     A representation of geometry to be rendered through its underlying render interface.
 
     A unique resource constructed through the render manager.
  */
-class URUI_CORE_API Geometry final : public UniqueRenderResource<Geometry, StableVectorIndex, StableVectorIndex::Invalid> {
-public:
-	enum class ReleaseMode { ReturnMesh, ClearMesh };
+    class URUI_CORE_API Geometry final
+        : public UniqueRenderResource<Geometry, StableVectorIndex, StableVectorIndex::Invalid>
+    {
+    public:
+        enum class ReleaseMode
+        {
+            ReturnMesh,
+            ClearMesh
+        };
 
-	Geometry() = default;
+        Geometry() = default;
 
-	void Render(Vector2f translation, Texture texture = {}, const CompiledShader& shader = {}, const DrawParameters& parameters = {}) const;
+        void Render(Vector2f translation, Texture texture = {}, const CompiledShader& shader = {},
+                    const DrawParameters& parameters = {}) const;
 
-	Mesh Release(ReleaseMode mode = ReleaseMode::ReturnMesh);
+        Mesh Release(ReleaseMode mode = ReleaseMode::ReturnMesh);
 
-	const Mesh& GetMesh() const;
+        const Mesh& GetMesh() const;
 
-private:
-	Geometry(RenderManager* render_manager, StableVectorIndex resource_handle);
-	friend class RenderManager;
-};
+    private:
+        Geometry(RenderManager* render_manager, StableVectorIndex resource_handle);
+        friend class RenderManager;
+    };
 
-} // namespace URUI
+}

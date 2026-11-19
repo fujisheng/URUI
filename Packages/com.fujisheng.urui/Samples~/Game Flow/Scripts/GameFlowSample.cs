@@ -10,16 +10,29 @@ using URUI.Events;
 
 namespace URUI.Samples.GameFlow
 {
-    public enum GamePage { Loading, Login, Home, Inventory, Settings, Leaderboard }
+    public enum GamePage
+    {
+        Loading,
+        Login,
+        Home,
+        Inventory,
+        Settings,
+        Leaderboard
+    }
 
-    /// <summary>A complete local game UI flow. Authentication and ranking data are mocked.</summary>
+    /// <summary>
+    /// A complete local game UI flow. Authentication and ranking data are mocked.
+    /// </summary>
     [RequireComponent(typeof(Document))]
     public sealed partial class GameFlowSample : MonoBehaviour
     {
         public const string SettingsKey = "URUI.GameFlow.Settings.v1";
-        [SerializeField] bool simulateStartupFailureOnce;
-        [SerializeField] int serviceLatencyMilliseconds = 350;
-        [SerializeField, TextArea] string startupError;
+        [SerializeField]
+        bool simulateStartupFailureOnce;
+        [SerializeField]
+        int serviceLatencyMilliseconds = 350;
+        [SerializeField, TextArea]
+        string startupError;
         Document document;
         GameFlowResources assets;
         MockGameService service;
@@ -33,18 +46,30 @@ namespace URUI.Samples.GameFlow
         GamePage? requestedPage;
         float entryTime;
         float rewardUntil;
-        int backdropWidth, backdropHeight;
+        int backdropWidth;
+        int backdropHeight;
         Element entryPanel;
         bool initializationAttempted;
-        public GamePage CurrentPage { get; private set; }
-        public bool IsBusy { get; private set; }
+        public GamePage CurrentPage
+        {
+            get;
+            private set;
+        }
+        public bool IsBusy
+        {
+            get;
+            private set;
+        }
         public MockGameService Service => service;
         public string StartupError => startupError;
 
         void OnEnable()
         {
             document = GetComponent<Document>();
-            if (!document.Surface) document.Surface = GetComponent<URUI.Hosting.Surface>() ?? gameObject.AddComponent<URUI.Hosting.Surface>();
+            if (!document.Surface)
+            {
+                document.Surface = GetComponent<URUI.Hosting.Surface>() ?? gameObject.AddComponent<URUI.Hosting.Surface>();
+            }
             try
             {
                 startupError = "";
@@ -60,7 +85,10 @@ namespace URUI.Samples.GameFlow
                 }
                 ownedAudio = new GameObject("Aster Vale Audio");
                 ownedAudio.transform.SetParent(transform, false);
-                if (!FindFirstObjectByType<AudioListener>()) ownedAudio.AddComponent<AudioListener>();
+                if (!FindFirstObjectByType<AudioListener>())
+                {
+                    ownedAudio.AddComponent<AudioListener>();
+                }
                 audioSource = ownedAudio.AddComponent<AudioSource>();
                 audioSource.playOnAwake = false;
                 feedback = UnityEngine.Resources.Load<AudioClip>("URUI/GameFlow/Audio/confirm");
@@ -79,16 +107,31 @@ namespace URUI.Samples.GameFlow
 
         public void Navigate(GamePage page)
         {
-            if (!isActiveAndEnabled) return;
-            if (page != GamePage.Loading && service?.IsInitialized != true) page = GamePage.Loading;
-            if (page != GamePage.Loading && page != GamePage.Login && service?.CurrentPlayer == null) page = GamePage.Login;
+            if (!isActiveAndEnabled)
+            {
+                return;
+            }
+            if (page != GamePage.Loading && service?.IsInitialized != true)
+            {
+                page = GamePage.Loading;
+            }
+            if (page != GamePage.Loading && page != GamePage.Login && service?.CurrentPlayer == null)
+            {
+                page = GamePage.Login;
+            }
             requestedPage = page;
         }
 
         void LateUpdate()
         {
-            try { UpdatePage(); }
-            catch (Exception error) { FailBootstrap(error); }
+            try
+            {
+                UpdatePage();
+            }
+            catch (Exception error)
+            {
+                FailBootstrap(error);
+            }
         }
 
         void UpdatePage()
@@ -114,7 +157,11 @@ namespace URUI.Samples.GameFlow
                 // with relative layout offset rather than a transform matrix.
                 entryPanel = document.Q(className: "window-bar") ?? document.Q(className: "player-copy")
                     ?? document.Q(className: "login-card") ?? document.Q(className: "boot-screen");
-                if (entryPanel != null) { entryPanel.Style.Position = Position.Relative; entryPanel.Style.Top = 10; }
+                if (entryPanel != null)
+                {
+                    entryPanel.Style.Position = Position.Relative;
+                    entryPanel.Style.Top = 10;
+                }
                 BindPage();
             }
             if (document && document.IsLoaded)
@@ -122,20 +169,23 @@ namespace URUI.Samples.GameFlow
                 UpdateArtwork();
                 if (backdropWidth != Screen.width || backdropHeight != Screen.height)
                 {
-                    backdropWidth = Screen.width; backdropHeight = Screen.height;
+                    backdropWidth = Screen.width;
+                    backdropHeight = Screen.height;
                     var background = document.Q<URUI.Controls.Image>("backdrop");
                     if (background != null)
                     {
                         var size = assets.BackgroundSize;
                         float scale = Mathf.Max(Screen.width / size.x, Screen.height / size.y);
-                        background.Style.Width = size.x * scale; background.Style.Height = size.y * scale;
+                        background.Style.Width = size.x * scale;
+                        background.Style.Height = size.y * scale;
                         background.Style.Left = (Screen.width - size.x * scale) * .5f;
                         background.Style.Top = (Screen.height - size.y * scale) * .5f;
                     }
                 }
                 if (rewardUntil > 0 && Time.unscaledTime >= rewardUntil)
                 {
-                    document.Q("item-detail")?.RemoveFromClassList("reward"); rewardUntil = 0;
+                    document.Q("item-detail")?.RemoveFromClassList("reward");
+                    rewardUntil = 0;
                 }
             }
             if (document && document.IsLoaded && entryTime < .22f)
@@ -147,7 +197,11 @@ namespace URUI.Samples.GameFlow
                 if (entryPanel != null && entryPanel.IsValid)
                 {
                     entryPanel.Style.Top = 10 * (1 - eased);
-                    if (progress >= 1) { entryPanel.Style.Remove("top"); entryPanel.Style.Remove("position"); }
+                    if (progress >= 1)
+                    {
+                        entryPanel.Style.Remove("top");
+                        entryPanel.Style.Remove("position");
+                    }
                 }
             }
         }
@@ -156,12 +210,25 @@ namespace URUI.Samples.GameFlow
         {
             switch (CurrentPage)
             {
-                case GamePage.Loading: BindButton("retry", () => Operation(Initialize)); Operation(Initialize); break;
-                case GamePage.Login: BindLogin(); break;
-                case GamePage.Home: BindHome(); break;
-                case GamePage.Inventory: BindInventory(); break;
-                case GamePage.Settings: BindSettings(); break;
-                case GamePage.Leaderboard: BindLeaderboard(); break;
+                case GamePage.Loading:
+                    BindButton("retry", () => Operation(Initialize));
+                    Operation(Initialize);
+                    break;
+                case GamePage.Login:
+                    BindLogin();
+                    break;
+                case GamePage.Home:
+                    BindHome();
+                    break;
+                case GamePage.Inventory:
+                    BindInventory();
+                    break;
+                case GamePage.Settings:
+                    BindSettings();
+                    break;
+                case GamePage.Leaderboard:
+                    BindLeaderboard();
+                    break;
             }
             if (CurrentPage >= GamePage.Home)
             {
@@ -173,7 +240,9 @@ namespace URUI.Samples.GameFlow
                 Text("player-caption", "LV. " + service.CurrentPlayer.level);
                 Text("credits", service.CurrentPlayer.credits.ToString("N0"));
                 foreach (GamePage page in new[] { GamePage.Home, GamePage.Inventory, GamePage.Settings, GamePage.Leaderboard })
+                {
                     document.Q(page.ToString().ToLowerInvariant())?.EnableInClassList("active", page == CurrentPage);
+                }
             }
         }
 
@@ -181,19 +250,28 @@ namespace URUI.Samples.GameFlow
         {
             Show("retry", false);
             var progress = document.Q<ProgressBar>("loading-progress");
-            Text("status", "Validating page assets and catalog..."); progress.Value = 20; Text("loading-percent", "20%");
+            Text("status", "Validating page assets and catalog...");
+            progress.Value = 20;
+            Text("loading-percent", "20%");
             await Task.Delay(100, token);
             token.ThrowIfCancellationRequested();
             assets.LoadImages();
-            if (service == null) service = new MockGameService(assets.ReadCatalog(), serviceLatencyMilliseconds);
-            Text("status", "Preparing local inventory and profile..."); progress.Value = 55; Text("loading-percent", "55%");
+            if (service == null)
+            {
+                service = new MockGameService(assets.ReadCatalog(), serviceLatencyMilliseconds);
+            }
+            Text("status", "Preparing local inventory and profile...");
+            progress.Value = 55;
+            Text("loading-percent", "55%");
             await Task.Delay(100, token);
             token.ThrowIfCancellationRequested();
             service.FailNextInitialization = simulateStartupFailureOnce && !initializationAttempted;
             initializationAttempted = true;
             await service.InitializeAsync(token);
             token.ThrowIfCancellationRequested();
-            Text("status", "Ready. Connecting to the local demo session..."); progress.Value = 100; Text("loading-percent", "100%");
+            Text("status", "Ready. Connecting to the local demo session...");
+            progress.Value = 100;
+            Text("loading-percent", "100%");
             await Task.Delay(160, token);
             token.ThrowIfCancellationRequested();
             Navigate(GamePage.Login);
@@ -201,10 +279,16 @@ namespace URUI.Samples.GameFlow
 
         async void Operation(Func<CancellationToken, Task> action)
         {
-            if (IsBusy || pageLifetime == null) return;
+            if (IsBusy || pageLifetime == null)
+            {
+                return;
+            }
             var lifetime = pageLifetime;
             IsBusy = true;
-            try { await action(lifetime.Token); }
+            try
+            {
+                await action(lifetime.Token);
+            }
             catch (OperationCanceledException) { }
             catch (Exception error)
             {
@@ -222,7 +306,11 @@ namespace URUI.Samples.GameFlow
                     if (document && document.IsLoaded)
                     {
                         var submit = document.Q<Button>("login-submit");
-                        if (submit != null) { submit.SetEnabled(true); ButtonText("login-submit", "CONNECT"); }
+                        if (submit != null)
+                        {
+                            submit.SetEnabled(true);
+                            ButtonText("login-submit", "CONNECT");
+                        }
                         document.Q<Button>("refresh")?.SetEnabled(true);
                     }
                 }
@@ -232,8 +320,18 @@ namespace URUI.Samples.GameFlow
         void BindButton(string name, Action action, bool feedback = true)
         {
             var button = document.Q<Button>(name);
-            if (button == null) return;
-            Action callback = () => { if (feedback) PlayFeedback(); action(); };
+            if (button == null)
+            {
+                return;
+            }
+            Action callback = () =>
+            {
+                if (feedback)
+                {
+                    PlayFeedback();
+                }
+                action();
+            };
             button.Clicked += callback;
             detach.Add(() => button.Clicked -= callback);
         }
@@ -243,18 +341,40 @@ namespace URUI.Samples.GameFlow
             var subscription = field.RegisterValueChangedCallback(action);
             detach.Add(subscription.Dispose);
         }
-        void Text(string name, string text) { var element = document.Q<Label>(name); if (element != null) element.Text = text; }
-        void Show(string name, bool visible) { var element = document.Q(name); if (element != null) element.Style.Display = visible ? DisplayStyle.Block : DisplayStyle.None; }
+        void Text(string name, string text)
+        {
+            var element = document.Q<Label>(name);
+            if (element != null)
+            {
+                element.Text = text;
+            }
+        }
+        void Show(string name, bool visible)
+        {
+            var element = document.Q(name);
+            if (element != null)
+            {
+                element.Style.Display = visible ? DisplayStyle.Block : DisplayStyle.None;
+            }
+        }
         void PlayFeedback()
         {
-            if (audioSource && feedback && settings.sound) { audioSource.volume = settings.volume; audioSource.PlayOneShot(feedback); }
+            if (audioSource && feedback && settings.sound)
+            {
+                audioSource.volume = settings.volume;
+                audioSource.PlayOneShot(feedback);
+            }
         }
         void ClosePage()
         {
             pageLifetime?.Cancel();
-            foreach (var action in detach) action();
+            foreach (var action in detach)
+            {
+                action();
+            }
             detach.Clear();
-            pageLifetime?.Dispose(); pageLifetime = null;
+            pageLifetime?.Dispose();
+            pageLifetime = null;
             IsBusy = false;
             entryPanel = null;
             artGroups.Clear();
@@ -263,11 +383,26 @@ namespace URUI.Samples.GameFlow
         {
             requestedPage = null;
             ClosePage();
-            if (document) document.Unload();
+            if (document)
+            {
+                document.Unload();
+            }
             assets = null;
-            service = null; initializationAttempted = false;
-            if (ownedAudio) { ownedAudio.SetActive(false); Destroy(ownedAudio); ownedAudio = null; audioSource = null; }
-            if (ownedCamera) { ownedCamera.gameObject.SetActive(false); Destroy(ownedCamera.gameObject); ownedCamera = null; }
+            service = null;
+            initializationAttempted = false;
+            if (ownedAudio)
+            {
+                ownedAudio.SetActive(false);
+                Destroy(ownedAudio);
+                ownedAudio = null;
+                audioSource = null;
+            }
+            if (ownedCamera)
+            {
+                ownedCamera.gameObject.SetActive(false);
+                Destroy(ownedCamera.gameObject);
+                ownedCamera = null;
+            }
         }
 
         void FailBootstrap(Exception error)
@@ -280,7 +415,10 @@ namespace URUI.Samples.GameFlow
         [ContextMenu("Retry Game Flow startup")]
         public void RetryStartup()
         {
-            if (!Application.isPlaying) return;
+            if (!Application.isPlaying)
+            {
+                return;
+            }
             enabled = false;
             enabled = true;
         }

@@ -6,7 +6,9 @@ using URUI.Editor.Inspection;
 
 namespace URUI.Authoring.Windows
 {
-    /// <summary>画布手势只临时覆盖自有预览，结束后发布一笔作者命令；取消不产生源码或撤销记录。</summary>
+    /// <summary>
+    /// 画布手势只临时覆盖自有预览，结束后发布一笔作者命令；取消不产生源码或撤销记录。
+    /// </summary>
     public sealed class CanvasGesture : IDisposable
     {
         readonly ElementSelectionProxy proxy;
@@ -23,7 +25,9 @@ namespace URUI.Authoring.Windows
         public CanvasGesture(ElementSelectionProxy proxy)
         {
             if (!proxy || proxy.IsLive || !proxy.IsTargetValid || proxy.Node == null)
+            {
                 throw new InvalidOperationException("请选择有效源码节点。");
+            }
             mode = AuthoringEnvironment.Mode;
             recording = Animation.AnimationEnvironment.Recording;
             recordingEpoch = Animation.AnimationEnvironment.RecordingEpoch;
@@ -40,9 +44,13 @@ namespace URUI.Authoring.Windows
             foreach (var edit in values)
             {
                 if (edit.Node != proxy.SourceKey || !edit.Property.StartsWith("style.", StringComparison.Ordinal))
+                {
                     throw new InvalidOperationException("手势只能修改当前节点样式。");
+                }
                 if (!originals.ContainsKey(edit.Property))
+                {
                     originals.Add(edit.Property, node.Read(edit.Property));
+                }
                 candidates.Add(edit);
             }
             foreach (var edit in candidates)
@@ -60,11 +68,17 @@ namespace URUI.Authoring.Windows
             Restore();
             ended = true;
             if (edits == null || edits.Count == 0)
+            {
                 return;
+            }
             if (recording)
+            {
                 Animation.AnimationEnvironment.Record(proxy, edits);
+            }
             else if (mode == WorkspaceMode.Animation)
+            {
                 Animation.AnimationEnvironment.PreviewEdits(proxy, edits);
+            }
             else
             {
                 var author = AuthoringEnvironment.Author;
@@ -74,24 +88,36 @@ namespace URUI.Authoring.Windows
         void Check()
         {
             if (AuthoringEnvironment.Mode != mode || (recording && (!Animation.AnimationEnvironment.Recording || Animation.AnimationEnvironment.RecordingEpoch != recordingEpoch)))
+            {
                 throw new InvalidOperationException("手势的动画/录制上下文已变化，请重新开始。");
+            }
             if (ended || !proxy || !proxy.IsTargetValid || proxy.TargetId != target || proxy.Revision != revision || !node.IsValid)
+            {
                 throw new InvalidOperationException("手势目标或源码版本已变化，请重新拖动。");
+            }
         }
         void Restore()
         {
             if (!node.IsValid)
+            {
                 return;
+            }
             foreach (var pair in originals)
+            {
                 if (applied.TryGetValue(pair.Key, out var owned) && node.Read(pair.Key) == owned)
+                {
                     node.Write(pair.Key, pair.Value);
+                }
+            }
             RuntimeInspectionBridge.Refresh(node.Document);
             AuthoringEnvironment.Preview?.Refresh();
         }
         public void Dispose()
         {
             if (ended)
+            {
                 return;
+            }
             ended = true;
             Restore();
         }

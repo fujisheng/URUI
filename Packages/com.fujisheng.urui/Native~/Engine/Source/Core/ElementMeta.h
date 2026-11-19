@@ -12,25 +12,31 @@
 #include "EventDispatcher.h"
 #include "Pool.h"
 
-namespace URUI {
+namespace URUI
+{
 
-// Meta objects for element collected in a single struct to reduce memory allocations
-struct ElementMeta {
-	explicit ElementMeta(Element* el) : event_dispatcher(el), style(el), background_border(), effects(el), scroll(el), computed_values(el) {}
-	EventDispatcher event_dispatcher;
-	ElementStyle style;
-	ElementBackgroundBorder background_border;
-	ElementEffects effects;
-	ElementScroll scroll;
-	Style::ComputedValues computed_values;
-};
+    // Meta objects for element collected in a single struct to reduce memory allocations
+    struct ElementMeta
+    {
+        explicit ElementMeta(Element* el)
+            : event_dispatcher(el), style(el), background_border(), effects(el), scroll(el), computed_values(el)
+        {
+        }
+        EventDispatcher event_dispatcher;
+        ElementStyle style;
+        ElementBackgroundBorder background_border;
+        ElementEffects effects;
+        ElementScroll scroll;
+        Style::ComputedValues computed_values;
+    };
 
-struct ElementMetaPool {
-	Pool<ElementMeta> pool{50, true};
+    struct ElementMetaPool
+    {
+        Pool<ElementMeta> pool{50, true};
 
-	static ControlledLifetimeResource<ElementMetaPool> element_meta_pool;
-	static void Initialize();
-	static void Shutdown();
-};
+        static ControlledLifetimeResource<ElementMetaPool> element_meta_pool;
+        static void Initialize();
+        static void Shutdown();
+    };
 
-} // namespace URUI
+}

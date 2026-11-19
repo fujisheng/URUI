@@ -5,7 +5,9 @@ using UnityEngine;
 
 namespace URUI.Editor.Authoring
 {
-    /// <summary>直接导入标准 .css，保留原始 UTF-8 内容供浏览器与 URUI 共用。</summary>
+    /// <summary>
+    /// 直接导入标准 .css，保留原始 UTF-8 内容供浏览器与 URUI 共用。
+    /// </summary>
     [ScriptedImporter(1, "css")]
     public sealed class CssImporter : ScriptedImporter
     {

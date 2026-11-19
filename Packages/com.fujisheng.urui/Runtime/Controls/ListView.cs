@@ -7,7 +7,9 @@ using URUI.Events;
 
 namespace URUI.Controls
 {
-    /// <summary>固定行高的虚拟列表；只创建可见区域及前后一行，行在文档内复用。</summary>
+    /// <summary>
+    /// 固定行高的虚拟列表；只创建可见区域及前后一行，行在文档内复用。
+    /// </summary>
     public class ListView : ScrollView
     {
         sealed class Row
@@ -23,41 +25,95 @@ namespace URUI.Controls
         float itemHeight = 24;
         int selectedIndex = -1;
         bool refreshing;
-        /// <summary>文档工厂构造入口。</summary>
+        /// <summary>
+        /// 文档工厂构造入口。
+        /// </summary>
         protected internal ListView(ElementContext context) : base(context) { }
-        /// <summary>数据源；设置会重建行。原地修改后调用 RefreshItems。</summary>
+        /// <summary>
+        /// 数据源；设置会重建行。原地修改后调用 RefreshItems。
+        /// </summary>
         public IList ItemsSource
         {
-            get { RequireValid(); return items; }
-            set { RequireValid(); items = value; Rebuild(); }
-        }
-        /// <summary>创建可复用行的工厂；返回同一文档、未挂载且未被其他行使用的元素。</summary>
-        public Func<Element> MakeItem { get; set; }
-        /// <summary>把数据索引绑定到行；应与 UnbindItem 配合清理业务订阅。</summary>
-        public Action<Element, int> BindItem { get; set; }
-        /// <summary>行更换数据或退役前调用，索引代表旧绑定。</summary>
-        public Action<Element, int> UnbindItem { get; set; }
-        /// <summary>每行像素高度，必须为正有限值。</summary>
-        public float FixedItemHeight
-        {
-            get { RequireValid(); return itemHeight; }
+            get
+            {
+                RequireValid();
+                return items;
+            }
             set
             {
-                RequireValid(); ElementStyle.RequireFinite(value);
+                RequireValid();
+                items = value;
+                Rebuild();
+            }
+        }
+        /// <summary>
+        /// 创建可复用行的工厂；返回同一文档、未挂载且未被其他行使用的元素。
+        /// </summary>
+        public Func<Element> MakeItem
+        {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 把数据索引绑定到行；应与 UnbindItem 配合清理业务订阅。
+        /// </summary>
+        public Action<Element, int> BindItem
+        {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 行更换数据或退役前调用，索引代表旧绑定。
+        /// </summary>
+        public Action<Element, int> UnbindItem
+        {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 每行像素高度，必须为正有限值。
+        /// </summary>
+        public float FixedItemHeight
+        {
+            get
+            {
+                RequireValid();
+                return itemHeight;
+            }
+            set
+            {
+                RequireValid();
+                ElementStyle.RequireFinite(value);
                 if (value <= 0)
                 {
                     throw new ArgumentOutOfRangeException(nameof(value));
                 }
 
-                itemHeight = value; Rebuild();
+                itemHeight = value;
+                Rebuild();
             }
         }
-        /// <summary>当前已实例化行数量，可用于检查虚拟化范围。</summary>
-        public int RealizedItemCount { get { RequireValid(); return rows.Count; } }
-        /// <summary>单选索引，-1 取消选择。</summary>
+        /// <summary>
+        /// 当前已实例化行数量，可用于检查虚拟化范围。
+        /// </summary>
+        public int RealizedItemCount
+        {
+            get
+            {
+                RequireValid();
+                return rows.Count;
+            }
+        }
+        /// <summary>
+        /// 单选索引，-1 取消选择。
+        /// </summary>
         public int SelectedIndex
         {
-            get { RequireValid(); return selectedIndex; }
+            get
+            {
+                RequireValid();
+                return selectedIndex;
+            }
             set
             {
                 RequireValid();
@@ -76,13 +132,21 @@ namespace URUI.Controls
                 NotifyIndex(SelectionChanged, value);
             }
         }
-        /// <summary>选中索引改变时触发；数据缩短导致选择失效时也触发。</summary>
+        /// <summary>
+        /// 选中索引改变时触发；数据缩短导致选择失效时也触发。
+        /// </summary>
         public event Action<int> SelectionChanged;
-        /// <summary>列表自身获得焦点后，Enter 确认当前选中项。</summary>
+        /// <summary>
+        /// 列表自身获得焦点后，Enter 确认当前选中项。
+        /// </summary>
         public event Action<int> ItemChosen;
-        /// <summary>刷新现有数据绑定，保留可复用行。</summary>
+        /// <summary>
+        /// 刷新现有数据绑定，保留可复用行。
+        /// </summary>
         public void RefreshItems() => RefreshVisible(true);
-        /// <summary>销毁现有行并使用当前工厂重新构建。</summary>
+        /// <summary>
+        /// 销毁现有行并使用当前工厂重新构建。
+        /// </summary>
         public void Rebuild()
         {
             RequireValid();
@@ -108,9 +172,14 @@ namespace URUI.Controls
                     RefreshVisible(true);
                 }
             }
-            finally { Document.EndControlUpdate(); }
+            finally
+            {
+                Document.EndControlUpdate();
+            }
         }
-        /// <summary>滚动到指定项。</summary>
+        /// <summary>
+        /// 滚动到指定项。
+        /// </summary>
         public void ScrollToItem(int index)
         {
             RequireValid();
@@ -125,7 +194,9 @@ namespace URUI.Controls
                 RefreshVisible(false);
             }
         }
-        /// <summary>布局完成后按视口和偏移更新可见行。</summary>
+        /// <summary>
+        /// 布局完成后按视口和偏移更新可见行。
+        /// </summary>
         protected override void OnUpdate()
         {
             base.OnUpdate();
@@ -161,7 +232,9 @@ namespace URUI.Controls
             {
                 while (rows.Count > visible)
                 {
-                    var row = rows[rows.Count - 1]; rows.RemoveAt(rows.Count - 1); Retire(row);
+                    var row = rows[rows.Count - 1];
+                    rows.RemoveAt(rows.Count - 1);
+                    Retire(row);
                     if (Document.HasPendingInvalidation)
                     {
                         return;
@@ -199,18 +272,24 @@ namespace URUI.Controls
                             }
                         }
                     });
-                    ContentContainer.Add(element); rows.Add(row);
+                    ContentContainer.Add(element);
+                    rows.Add(row);
                 }
                 for (int i = 0; i < rows.Count; i++)
                 {
-                    var row = rows[i]; int index = first + i;
+                    var row = rows[i];
+                    int index = first + i;
                     if (row.Index != index || rebind)
                     {
                         if (row.Index >= 0)
                         {
                             row.Unbind?.Invoke(row.Element, row.Index);
                             row.Unbind = null;
-                            if (Document.HasPendingInvalidation) { row.Index = -1; return; }
+                            if (Document.HasPendingInvalidation)
+                            {
+                                row.Index = -1;
+                                return;
+                            }
                         }
 
                         row.BindingVersion++;
@@ -232,7 +311,11 @@ namespace URUI.Controls
                     row.Element.Style.Top = index * itemHeight;
                     row.Element.Style.Height = itemHeight;
                 }
-                if (selectedIndex >= count) { selectedIndex = -1; NotifyIndex(SelectionChanged, -1); }
+                if (selectedIndex >= count)
+                {
+                    selectedIndex = -1;
+                    NotifyIndex(SelectionChanged, -1);
+                }
                 if (Document.HasPendingInvalidation)
                 {
                     return;
@@ -240,7 +323,11 @@ namespace URUI.Controls
 
                 RefreshSelection();
             }
-            finally { refreshing = false; Document.EndControlUpdate(); }
+            finally
+            {
+                refreshing = false;
+                Document.EndControlUpdate();
+            }
         }
         void RefreshSelection()
         {
@@ -266,7 +353,9 @@ namespace URUI.Controls
                 row.Element.Destroy();
             }
         }
-        /// <summary>文档或节点失效后释放数据及业务委托；此时不再访问原生行。</summary>
+        /// <summary>
+        /// 文档或节点失效后释放数据及业务委托；此时不再访问原生行。
+        /// </summary>
         protected override void OnInvalidated()
         {
             foreach (var row in rows)
@@ -276,13 +365,27 @@ namespace URUI.Controls
                     continue;
                 }
 
-                try { row.Unbind?.Invoke(row.Element, row.Index); }
-                catch (Exception error) { Debug.LogException(error); }
+                try
+                {
+                    row.Unbind?.Invoke(row.Element, row.Index);
+                }
+                catch (Exception error)
+                {
+                    Debug.LogException(error);
+                }
                 row.Index = -1;
             }
-            rows.Clear(); items = null; MakeItem = null; BindItem = null; UnbindItem = null; SelectionChanged = null; ItemChosen = null;
+            rows.Clear();
+            items = null;
+            MakeItem = null;
+            BindItem = null;
+            UnbindItem = null;
+            SelectionChanged = null;
+            ItemChosen = null;
         }
-        /// <summary>只处理列表自身焦点的导航，不截获行内输入控件的编辑按键。</summary>
+        /// <summary>
+        /// 只处理列表自身焦点的导航，不截获行内输入控件的编辑按键。
+        /// </summary>
         protected override void OnEvent(EventBase evt)
         {
             if (evt is KeyDownEvent key && ReferenceEquals(evt.Target, this) && EnabledInHierarchy)
@@ -291,12 +394,24 @@ namespace URUI.Controls
                 int next = selectedIndex;
                 switch (key.KeyCode)
                 {
-                    case KeyCode.DownArrow: next = selectedIndex < 0 ? 0 : selectedIndex + 1; break;
-                    case KeyCode.UpArrow: next = selectedIndex < 0 ? count - 1 : selectedIndex - 1; break;
-                    case KeyCode.Home: next = 0; break;
-                    case KeyCode.End: next = count - 1; break;
-                    case KeyCode.PageDown: next = Math.Max(0, selectedIndex) + Math.Max(1, Mathf.FloorToInt(ViewportRect.height / itemHeight)); break;
-                    case KeyCode.PageUp: next = Math.Max(0, selectedIndex) - Math.Max(1, Mathf.FloorToInt(ViewportRect.height / itemHeight)); break;
+                    case KeyCode.DownArrow:
+                        next = selectedIndex < 0 ? 0 : selectedIndex + 1;
+                        break;
+                    case KeyCode.UpArrow:
+                        next = selectedIndex < 0 ? count - 1 : selectedIndex - 1;
+                        break;
+                    case KeyCode.Home:
+                        next = 0;
+                        break;
+                    case KeyCode.End:
+                        next = count - 1;
+                        break;
+                    case KeyCode.PageDown:
+                        next = Math.Max(0, selectedIndex) + Math.Max(1, Mathf.FloorToInt(ViewportRect.height / itemHeight));
+                        break;
+                    case KeyCode.PageUp:
+                        next = Math.Max(0, selectedIndex) - Math.Max(1, Mathf.FloorToInt(ViewportRect.height / itemHeight));
+                        break;
                     case KeyCode.Return:
                     case KeyCode.KeypadEnter:
                         key.PreventDefault();
@@ -306,7 +421,9 @@ namespace URUI.Controls
                         }
 
                         return;
-                    default: base.OnEvent(evt); return;
+                    default:
+                        base.OnEvent(evt);
+                        return;
                 }
                 key.PreventDefault();
                 if (count > 0)
@@ -335,7 +452,14 @@ namespace URUI.Controls
                     break;
                 }
 
-                try { callback(index); } catch (Exception error) { Debug.LogException(error); }
+                try
+                {
+                    callback(index);
+                }
+                catch (Exception error)
+                {
+                    Debug.LogException(error);
+                }
             }
         }
     }

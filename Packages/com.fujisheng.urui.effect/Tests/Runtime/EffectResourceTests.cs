@@ -20,21 +20,34 @@ namespace URUI.Effect.Tests
             internal Texture2D texture;
             internal bool missing;
             internal int released;
-            public ImageLease AcquireImage(ComputedImageValue image) { return missing ? null : new ImageLease(texture, () => released++); }
-            public GameObject ResolveParticles(string source) { return null; }
+            public ImageLease AcquireImage(ComputedImageValue image)
+            {
+                return missing ? null : new ImageLease(texture, () => released++);
+            }
+            public GameObject ResolveParticles(string source)
+            {
+                return null;
+            }
         }
         sealed class EmptyFactory : IEffectFactory
         {
-            public IElementEffect Create(EffectContext context) { throw new NotSupportedException(); }
+            public IElementEffect Create(EffectContext context)
+            {
+                throw new NotSupportedException();
+            }
         }
 
         [UnityTest]
-        public IEnumerator UiRetriesAnUnchangedImageUrlAfterItBecomesAvailable()
+        public IEnumerator UIRetriesAnUnchangedImageUrlAfterItBecomesAvailable()
         {
-            using var fixture=new EffectRenderFixture();fixture.Missing=true;
-            fixture.Load("--urui-fx-transition-filter:dissolve;--urui-fx-transition-texture:url('pattern.png');");fixture.Render();
-            Assert.That(fixture.ImageAcquisitions,Is.Zero);fixture.Missing=false;fixture.Render();
-            Assert.That(fixture.ImageAcquisitions,Is.EqualTo(1),"失败的解析不能确认资源键；同一个 URL 可在之后变为可用。");
+            using var fixture = new EffectRenderFixture();
+            fixture.Missing = true;
+            fixture.Load("--urui-fx-transition-filter:dissolve;--urui-fx-transition-texture:url('pattern.png');");
+            fixture.Render();
+            Assert.That(fixture.ImageAcquisitions, Is.Zero);
+            fixture.Missing = false;
+            fixture.Render();
+            Assert.That(fixture.ImageAcquisitions, Is.EqualTo(1), "失败的解析不能确认资源键；同一个 URL 可在之后变为可用。");
             yield return null;
         }
         [Test]
@@ -51,9 +64,13 @@ namespace URUI.Effect.Tests
             try
             {
                 var resources = Activator.CreateInstance(type, new object[] { context, resolver });
-                var prepare = type.GetMethod("PrepareImage"); var get = type.GetMethod("GetImage");
-                ComputedImageValue Value(string url) { return (ComputedImageValue)Activator.CreateInstance(typeof(ComputedImageValue),
-                    BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { 1, url, "/styles/effect.css" }, null); }
+                var prepare = type.GetMethod("PrepareImage");
+                var get = type.GetMethod("GetImage");
+                ComputedImageValue Value(string url)
+                {
+                    return (ComputedImageValue)Activator.CreateInstance(typeof(ComputedImageValue),
+                    BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { 1, url, "/styles/effect.css" }, null);
+                }
                 Assert.That(prepare.Invoke(resources, new object[] { "pattern", Value("a.png") }), Is.True);
                 resolver.missing = true;
                 Assert.That(prepare.Invoke(resources, new object[] { "pattern", Value("missing.png") }), Is.False);
@@ -61,10 +78,16 @@ namespace URUI.Effect.Tests
                 Assert.That(resolver.released, Is.Zero);
                 resolver.missing = false;
                 Assert.That(prepare.Invoke(resources, new object[] { "pattern", Value("b.png") }), Is.True);
-                Assert.That(retired.Count, Is.EqualTo(1)); Assert.That(resolver.released, Is.Zero);
-                retired[0].Dispose(); Assert.That(resolver.released, Is.EqualTo(1));
+                Assert.That(retired.Count, Is.EqualTo(1));
+                Assert.That(resolver.released, Is.Zero);
+                retired[0].Dispose();
+                Assert.That(resolver.released, Is.EqualTo(1));
             }
-            finally { context.Dispose(); UnityEngine.Object.DestroyImmediate(texture); }
+            finally
+            {
+                context.Dispose();
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
             Assert.That(resolver.released, Is.EqualTo(2));
         }
         [Test]
@@ -73,13 +96,15 @@ namespace URUI.Effect.Tests
             Assert.That(Enum.IsDefined(typeof(StyleValueType), "Image"), Is.True,
                 "附加纹理需要原生解析的类型化图像参数");
             var host = new GameObject("Image parameter source");
-            var camera = new GameObject("Image parameter camera", typeof(Camera)); camera.tag = "MainCamera";
+            var camera = new GameObject("Image parameter camera", typeof(Camera));
+            camera.tag = "MainCamera";
             var css = new TextAsset("@property --probe-image {syntax:'<image>';inherits:false;initial-value:none;}" +
                 "#node{width:32px;height:32px;--probe-image:url('../images/pattern.png');}");
             try
             {
                 var surface = host.AddComponent<Surface>();
-                var document = host.AddComponent<Document>(); document.Surface = surface;
+                var document = host.AddComponent<Document>();
+                document.Surface = surface;
                 document.TextResources = new[] { new TextResource("/styles/effect.css", css) };
                 document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/styles/effect.css'></head>" +
                     "<body><div id='node'></div></body></html>", "/views/example.html");
@@ -91,7 +116,12 @@ namespace URUI.Effect.Tests
                 Assert.That(value.GetType().GetProperty("Url").GetValue(value), Is.EqualTo("../images/pattern.png"));
                 Assert.That(value.GetType().GetProperty("SourceUrl").GetValue(value), Is.EqualTo("/styles/effect.css"));
             }
-            finally { UnityEngine.Object.DestroyImmediate(host); UnityEngine.Object.DestroyImmediate(camera); UnityEngine.Object.DestroyImmediate(css); }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(host);
+                UnityEngine.Object.DestroyImmediate(camera);
+                UnityEngine.Object.DestroyImmediate(css);
+            }
         }
     }
 }

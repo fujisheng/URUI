@@ -66,7 +66,7 @@ class InventoryTests(unittest.TestCase):
         self.assertTrue(tool.audit_coverage(data, coverage, final=True))
         item = coverage['features']['enum:TransitionFilter.Dissolve']
         item['status'] = 'passed'
-        item['implementation'] = 'Runtime/Rendering/UiEffectInstance.cs'
+        item['implementation'] = 'Runtime/Rendering/UIEffectInstance.cs'
         self.assertTrue(any('Dissolve' in x for x in tool.audit_coverage(data, coverage, final=True)))
 
     def test_vectors_and_root_references_have_real_target_contracts(self):

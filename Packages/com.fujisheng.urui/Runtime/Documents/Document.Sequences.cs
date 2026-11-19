@@ -22,11 +22,15 @@ namespace URUI.Documents
         internal void AdvanceSequences()
         {
             if (!IsLoaded || sequencePlayers.Count == 0)
+            {
                 return;
+            }
             var snapshot = sequenceSnapshot ??= sequencePlayers.ToArray();
-            double now = Surface.UiClock.Now;
+            double now = Surface.UIClock.Now;
             foreach (var player in snapshot)
+            {
                 player.Tick(now);
+            }
         }
     }
 }

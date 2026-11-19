@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace URUI.Internal.Interop
 {
     [StructLayout(LayoutKind.Sequential)]
-    internal struct UruiProfileNative
+    internal struct ProfileNative
     {
         public ulong text_ns;
         public ulong update_ns;

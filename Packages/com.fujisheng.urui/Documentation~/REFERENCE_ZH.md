@@ -69,13 +69,13 @@ public void Stop();
 public void Dispose();
 ```
 
-### IUiClock
+### IUIClock
 
-源码：[IUiClock.cs](../Runtime/Animation/IUiClock.cs)。
+源码：[IUIClock.cs](../Runtime/Animation/IUIClock.cs)。
 
 ```csharp
 // 界面动画和效果显式选择的时间源。
-public interface IUiClock
+public interface IUIClock
 double Now { get; }
 float Delta { get; }
 ```
@@ -93,15 +93,15 @@ public StaggeredReveal(Element root, Element container, string activeClass, stri
 public void Dispose();
 ```
 
-### UnityUiClock
+### UnityUIClock
 
-源码：[UnityUiClock.cs](../Runtime/Animation/UnityUiClock.cs)。
+源码：[UnityUIClock.cs](../Runtime/Animation/UnityUIClock.cs)。
 
 ```csharp
 // Unity 的缩放或非缩放时钟；不改变媒体解码策略。
-public sealed class UnityUiClock : IUiClock
-public static IUiClock Scaled { get; }
-public static IUiClock Unscaled { get; }
+public sealed class UnityUIClock : IUIClock
+public static IUIClock Scaled { get; }
+public static IUIClock Unscaled { get; }
 public double Now { get; }
 public float Delta { get; }
 ```
@@ -1754,7 +1754,7 @@ public Vector2 Delta { get; internal set; }
 // 拥有共享原生上下文、视口、时钟、输入与绘制资源；顶层页面显式关联此组件。
 public sealed class Surface : MonoBehaviour
 // 同一 Surface 的所有页面共享此时钟；加载期间不能更换时基。
-public IUiClock UiClock { get; set; }
+public IUIClock UIClock { get; set; }
 // 逻辑 CSS 像素尺寸；零表示跟随屏幕尺寸。
 public Vector2Int Viewport { get; set; }
 // 一次分发到整个 Surface 的输入入口。
@@ -1995,7 +1995,7 @@ public IDisposable BindProgramParameters(URUI.Elements.Element element, IEffectP
 // 声明运行时参数需要捕获及显式命中策略；不修改作者 CSS，默认两个标志均为 false。
 public void SetRuntimeState(URUI.Elements.Element element, bool captureRequired, bool inputDisabled);
 // 覆盖一个效果实例的时间源；调用方持有租约，解除后恢复Document时钟，不更换CSS的文档时基。
-public IDisposable BindClock(URUI.Elements.Element element, URUI.Animation.IUiClock clock);
+public IDisposable BindClock(URUI.Elements.Element element, URUI.Animation.IUIClock clock);
 public int Count { get; }
 public void RegisterFilter(string name, Func<ILayerFilterProgram> factory, bool cacheable = false);
 public void Register(EffectDefinition definition);
@@ -2195,7 +2195,7 @@ public EffectFrame Frame { get; }
 // 固定参数图片程序。宿主直接提交原始几何和冻结参数，不调用 Record。 材质在 Prepare 后不可变；替换材质须通过 EffectContext 退役。
 public interface IParameterImageEffect
 UnityEngine.Material Program { get; }
-// 当前不可变程序实际消费的时间源；取值为 None 或 UiClock。
+// 当前不可变程序实际消费的时间源；取值为 None 或 UIClock。
 RenderTimeInput TimeInput { get; }
 void PrepareProgram(in EffectProgramPreparation preparation);
 // 无 DOM 预览的数值输入；字段含义由程序拥有，Core 不解释属性名称。
@@ -2324,7 +2324,7 @@ public enum RenderGeometry { Unknown, Local, VertexDisplacement, Expanded, Captu
 源码：[RenderProgramDescriptor.cs](../Runtime/Rendering/RenderProgramDescriptor.cs)。
 
 ```csharp
-public enum RenderTimeInput { None, UiClock, External }
+public enum RenderTimeInput { None, UIClock, External }
 ```
 
 ### RenderProgramDescriptor

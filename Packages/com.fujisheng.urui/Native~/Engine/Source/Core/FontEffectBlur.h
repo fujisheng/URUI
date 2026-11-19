@@ -4,43 +4,49 @@
 #include "../../Include/URUI/Core/FontEffect.h"
 #include "../../Include/URUI/Core/FontEffectInstancer.h"
 
-namespace URUI {
+namespace URUI
+{
 
-/**
+    /**
     A concrete font effect for rendering Gaussian blurred text.
  */
 
-class FontEffectBlur : public FontEffect {
-public:
-	FontEffectBlur();
-	virtual ~FontEffectBlur();
+    class FontEffectBlur : public FontEffect
+    {
+    public:
+        FontEffectBlur();
+        virtual ~FontEffectBlur();
 
-	bool Initialise(int width);
+        bool Initialise(int width);
 
-	bool HasUniqueTexture() const override;
+        bool HasUniqueTexture() const override;
 
-	bool GetGlyphMetrics(Vector2i& origin, Vector2i& dimensions, const FontGlyph& glyph) const override;
+        bool GetGlyphMetrics(Vector2i& origin, Vector2i& dimensions, const FontGlyph& glyph) const override;
 
-	void GenerateGlyphTexture(byte* destination_data, Vector2i destination_dimensions, int destination_stride, const FontGlyph& glyph) const override;
+        void GenerateGlyphTexture(byte* destination_data, Vector2i destination_dimensions, int destination_stride,
+                                  const FontGlyph& glyph) const override;
 
-private:
-	int width;
-	ConvolutionFilter filter_x, filter_y;
-};
+    private:
+        int width;
+        ConvolutionFilter filter_x;
+        ConvolutionFilter filter_y;
+    };
 
-/**
+    /**
     A concrete font effect instancer for the blur effect.
  */
 
-class FontEffectBlurInstancer : public FontEffectInstancer {
-public:
-	FontEffectBlurInstancer();
-	virtual ~FontEffectBlurInstancer();
+    class FontEffectBlurInstancer : public FontEffectInstancer
+    {
+    public:
+        FontEffectBlurInstancer();
+        virtual ~FontEffectBlurInstancer();
 
-	SharedPtr<FontEffect> InstanceFontEffect(const String& name, const PropertyDictionary& properties) override;
+        SharedPtr<FontEffect> InstanceFontEffect(const String& name, const PropertyDictionary& properties) override;
 
-private:
-	PropertyId id_width, id_color;
-};
+    private:
+        PropertyId id_width;
+        PropertyId id_color;
+    };
 
-} // namespace URUI
+}

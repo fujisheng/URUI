@@ -18,8 +18,13 @@ namespace URUI.Authoring.Tests
     [InitializeOnLoad]
     public static class PlayValidation
     {
-        const string Prefix = "URUI.Authoring.PlayValidation.", Html = "Assets/AuthoringChecks/live.html", ScenePath = "Assets/AuthoringChecks/live.unity";
-        static InspectedNode cleanupWidth, cleanupImage, cleanupText, cleanupAnimation;
+        const string Prefix = "URUI.Authoring.PlayValidation.";
+        const string Html = "Assets/AuthoringChecks/live.html";
+        const string ScenePath = "Assets/AuthoringChecks/live.unity";
+        static InspectedNode cleanupWidth;
+        static InspectedNode cleanupImage;
+        static InspectedNode cleanupText;
+        static InspectedNode cleanupAnimation;
         static PlayValidation()
         {
             EditorApplication.playModeStateChanged += State;
@@ -27,7 +32,9 @@ namespace URUI.Authoring.Tests
         static void Check(bool condition, string message)
         {
             if (!condition)
+            {
                 throw new Exception(message);
+            }
             SessionState.SetInt(Prefix + "count", SessionState.GetInt(Prefix + "count", 0) + 1);
         }
         public static void Run()
@@ -62,14 +69,24 @@ namespace URUI.Authoring.Tests
             File.WriteAllText("Evidence/play-original.html", File.ReadAllText(Html));
             File.WriteAllText("Evidence/play-original.unity", File.ReadAllText(ScenePath));
             var sequence = new URUI.Animation.SequenceDefinition { Duration = 1 };
-            sequence.Tracks.Add(new URUI.Animation.SequenceTrack { Id = "live", Target = "animated", Keyframes = "sequence-live", Duration = 1 });
+            sequence.Tracks.Add(new URUI.Animation.SequenceTrack
+            {
+                Id = "live",
+                Target = "animated",
+                Keyframes = "sequence-live",
+                Duration = 1
+            });
             File.WriteAllText(Path.ChangeExtension(Html, ".urui-sequence.json"), sequence.ToJson());
             AuthoringEnvironment.Open(Html);
             URUI.Authoring.Animation.AnimationEnvironment.EnsureWorkspace();
             string sourceKey = null;
             foreach (var node in AuthoringEnvironment.Author.Model.Nodes)
+            {
                 if (node.Attribute("id") == "live")
+                {
                     sourceKey = node.Key;
+                }
+            }
             AuthoringEnvironment.Author.Set(sourceKey, "text", "unsaved author draft", AuthoringEnvironment.Author.Revision);
             StartIteration();
         }
@@ -82,17 +99,24 @@ namespace URUI.Authoring.Tests
         static void State(PlayModeStateChange state)
         {
             if (!SessionState.GetBool(Prefix + "active", false))
+            {
                 return;
+            }
             try
             {
                 if (state == PlayModeStateChange.EnteredPlayMode)
+                {
                     EditorApplication.delayCall += Exercise;
+                }
                 else if (state == PlayModeStateChange.EnteredEditMode)
                 {
                     EditorApplication.delayCall += () => EditorApplication.delayCall += CheckEditMode;
                 }
             }
-            catch (Exception error) { Fail(error); }
+            catch (Exception error)
+            {
+                Fail(error);
+            }
         }
         static void CheckEditMode()
         {
@@ -115,11 +139,18 @@ namespace URUI.Authoring.Tests
                 int iteration = SessionState.GetInt(Prefix + "iteration", 0) + 1;
                 SessionState.SetInt(Prefix + "iteration", iteration);
                 if (iteration < 2)
+                {
                     StartIteration();
+                }
                 else
+                {
                     Finish(0);
+                }
             }
-            catch (Exception error) { Fail(error); }
+            catch (Exception error)
+            {
+                Fail(error);
+            }
         }
         static void Exercise()
         {
@@ -158,7 +189,9 @@ namespace URUI.Authoring.Tests
                 Check(File.ReadAllText(ScenePath) == File.ReadAllText("Evidence/play-original.unity"), "Saving the scene persisted temporary node properties");
                 int objects = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
                 for (int i = 0; i < 100; i++)
+                {
                     document.Body.Add(document.CreateElement());
+                }
                 Check(objects == UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Length, "DOM nodes created GameObjects");
                 var otherRoot = new GameObject("Second business page");
                 var other = otherRoot.AddComponent<Document>();
@@ -170,7 +203,10 @@ namespace URUI.Authoring.Tests
                 {
                     new URUI.Authoring.Agent.AgentDispatcher("play-review").Execute(URUI.Authoring.Agent.AgentDispatcher.Obj("op", "animation.sample", "mode", "authoring", "session", AuthoringEnvironment.Author.Id, "expectedRevision", AuthoringEnvironment.Author.Revision, "time", .2));
                 }
-                catch (InvalidOperationException) { modeRejected = true; }
+                catch (InvalidOperationException)
+                {
+                    modeRejected = true;
+                }
                 Check(modeRejected, "Authoring-mode animation request controlled a live document");
                 URUI.Authoring.Animation.AnimationEnvironment.Seek(.2);
                 AuthoringEnvironment.SetDocument(other);
@@ -209,7 +245,10 @@ namespace URUI.Authoring.Tests
                 EditorApplication.playModeStateChanged += VerifyExitingCleanup;
                 EditorApplication.isPlaying = false;
             }
-            catch (Exception error) { Fail(error); }
+            catch (Exception error)
+            {
+                Fail(error);
+            }
         }
 
         static void CheckRuntimeDebugWindows(Document document)
@@ -222,15 +261,19 @@ namespace URUI.Authoring.Tests
                 .GetProperty("ActiveNode", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
 
             Check(EditorApplication.ExecuteMenuItem(menu), "The runtime debug menu did not open the windows");
-            var hierarchy = Window("UruiRuntimeHierarchyWindow");
-            var inspector = Window("UruiRuntimeInspectorWindow");
+            var hierarchy = Window("RuntimeHierarchyWindow");
+            var inspector = Window("RuntimeInspectorWindow");
             Check(hierarchy && inspector, "Runtime debugging must open both editor panels");
             var nativeHierarchy = Window("SceneHierarchyWindow");
             var nativeInspector = Window("InspectorWindow");
             if (nativeHierarchy && nativeHierarchy.docked)
+            {
                 Check(hierarchy.docked, "The runtime hierarchy did not dock by Unity's hierarchy");
+            }
             if (nativeInspector && nativeInspector.docked)
+            {
                 Check(inspector.docked, "The runtime inspector did not dock by Unity's inspector");
+            }
             Check(Selection.activeGameObject == document.gameObject, "Opening runtime debugging changed Unity's selected object");
             var tree = (TreeView)hierarchy.GetType().GetField("tree", fields).GetValue(hierarchy);
             var added = document.CreateElement("button");
@@ -259,9 +302,9 @@ namespace URUI.Authoring.Tests
             tree.searchString = "";
 
             inspector.Close();
-            Check(EditorApplication.ExecuteMenuItem(menu) && Window("UruiRuntimeHierarchyWindow") == hierarchy,
+            Check(EditorApplication.ExecuteMenuItem(menu) && Window("RuntimeHierarchyWindow") == hierarchy,
                 "Reopening the inspector replaced the already open hierarchy");
-            var reopened = Window("UruiRuntimeInspectorWindow");
+            var reopened = Window("RuntimeInspectorWindow");
             Check(reopened && (!nativeInspector || !nativeInspector.docked || reopened.docked),
                 "The runtime inspector did not reopen as a dockable panel");
         }
@@ -269,7 +312,9 @@ namespace URUI.Authoring.Tests
         static void VerifyExitingCleanup(PlayModeStateChange state)
         {
             if (state != PlayModeStateChange.ExitingPlayMode)
+            {
                 return;
+            }
             EditorApplication.playModeStateChanged -= VerifyExitingCleanup;
             try
             {
@@ -279,7 +324,11 @@ namespace URUI.Authoring.Tests
                 Check(cleanupImage.Read("attr.src") == null, "A failed text restoration leaked the image override");
                 Check(!cleanupText.CanEditText, "Cleanup destroyed business-owned structured children");
             }
-            catch (Exception error) { SessionState.SetString(Prefix + "failure", error.ToString()); File.WriteAllText("Evidence/play-failure.txt", error.ToString()); }
+            catch (Exception error)
+            {
+                SessionState.SetString(Prefix + "failure", error.ToString());
+                File.WriteAllText("Evidence/play-failure.txt", error.ToString());
+            }
         }
         static void Fail(Exception error)
         {
@@ -288,9 +337,13 @@ namespace URUI.Authoring.Tests
             Debug.LogException(error);
             EditorApplication.isPaused = false;
             if (EditorApplication.isPlaying)
+            {
                 EditorApplication.isPlaying = false;
+            }
             else
+            {
                 Finish(1);
+            }
         }
         static void Finish(int code)
         {

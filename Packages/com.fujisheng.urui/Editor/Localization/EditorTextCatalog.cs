@@ -3,7 +3,9 @@ using System.Collections.Generic;
 
 namespace URUI.Editor.Localization
 {
-    /// <summary>Language-independent text table. Technical identifiers and user data are never lookup keys.</summary>
+    /// <summary>
+    /// Language-independent text table. Technical identifiers and user data are never lookup keys.
+    /// </summary>
     public static class EditorTextCatalog
     {
         public sealed class Entry
@@ -731,9 +733,13 @@ namespace URUI.Editor.Localization
             foreach (var entry in entries.Values)
             {
                 if (!(entry.English.Length == 1 && entry.English[0] < 128 && char.IsLetter(entry.English[0])) && !result.ContainsKey(entry.English))
+                {
                     result.Add(entry.English, entry);
+                }
                 if (!result.ContainsKey(entry.Chinese))
+                {
                     result.Add(entry.Chinese, entry);
+                }
             }
             return result;
         }
@@ -744,24 +750,35 @@ namespace URUI.Editor.Localization
         public static string Translate(string key, bool chinese)
         {
             if (key == null)
+            {
                 return null;
+            }
             if (entries.TryGetValue(key, out var entry) || english.TryGetValue(key, out entry))
+            {
                 return chinese ? entry.Chinese : entry.English;
+            }
             return key;
         }
         public static string Message(string message, bool chinese)
         {
             if (message == null)
+            {
                 return null;
+            }
             string exact = Translate(message, chinese);
             if (exact != message)
+            {
                 return exact;
-            string prefix = null, translated = null;
+            }
+            string prefix = null;
+            string translated = null;
             foreach (var pair in entries)
             {
                 string source = chinese ? pair.Value.English : pair.Value.Chinese;
                 if (source.Length < 6 || !(source.EndsWith(":", StringComparison.Ordinal) || source.EndsWith("：", StringComparison.Ordinal) || source.EndsWith(" ", StringComparison.Ordinal)))
+                {
                     continue;
+                }
                 if (message.StartsWith(source, StringComparison.Ordinal) && (prefix == null || source.Length > prefix.Length))
                 {
                     prefix = source;
@@ -769,13 +786,17 @@ namespace URUI.Editor.Localization
                 }
             }
             if (prefix != null)
+            {
                 return translated + message.Substring(prefix.Length);
+            }
             int separator = message.IndexOf(": ", StringComparison.Ordinal);
             if (separator > 0)
             {
                 string code = message.Substring(0, separator);
                 if (code.IndexOf('_') >= 0 && System.Text.RegularExpressions.Regex.IsMatch(code, @"^[A-Za-z][A-Za-z0-9_]*$"))
+                {
                     return code + ": " + Message(message.Substring(separator + 2), chinese);
+                }
             }
             return message;
         }

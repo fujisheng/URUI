@@ -3,28 +3,28 @@
 
 // One strong definition provides consistent TLS access from the bridge and
 // the generated URUI instrumentation translation units.
-namespace urui_lookup
+namespace URUI::LookupProbe
 {
     thread_local bool inline_enabled = false;
     thread_local int profile_mode = 0;
     thread_local bool style_scope = false;
-    thread_local UruiLookupProfile profile{};
-} // namespace urui_lookup
+    thread_local URUILookupProfile profile{};
+}
 
-namespace urui_style_probe
+namespace URUI::StyleProbe
 {
-    thread_local UruiStyleProbe total{};
+    thread_local URUIStyleProbe total{};
     thread_local int mode = 0;
-    thread_local UruiStyleProbe* active = nullptr;
-} // namespace urui_style_probe
+    thread_local URUIStyleProbe* active = nullptr;
+}
 
-namespace urui_debug
+namespace URUI::Debug
 {
-    UruiProfile profile{};
-    UruiApiProfile api_profile{};
+    URUIProfile profile{};
+    URUIApiProfile api_profile{};
     bool api_profile_enabled = false;
-    UruiTypedProbe typed_probe{};
+    URUITypedProbe typed_probe{};
     int typed_probe_mode = 0;
-} // namespace urui_debug
+}
 
 #endif

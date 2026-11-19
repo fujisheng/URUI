@@ -54,21 +54,21 @@
     {
       "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/ImageSemantics.html",
       "source": "test-image.png",
-      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/UruiImageSemanticsTests.cs",
+      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/ImageSemanticsTests.cs",
       "providerSha256": "62a6d1bc32612f2da3a989d7b4d48e4e4f34b0907fca460ceee1c91de2aadf0f",
       "ownerSha256": "1f7098285b538c4dc8247e6e0a24b600f1255c15faf8056fa3c778a70f447386"
     },
     {
       "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/LiveTexture.html",
       "source": "live-frame",
-      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/UruiImageResolverTests.cs",
+      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/ImageResolverTests.cs",
       "providerSha256": "a50f56768e117c7631290dfdabb57bdeeb429e194b96bdaca8c6269d54460efe",
       "ownerSha256": "85e2c11b0a8ee531d7e86edc5017131f81f2d247a77c1c1357b95d1f58d4d777"
     },
     {
       "path": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/Resources/URUI/Tests/AuthoredImage.html",
       "source": "authored.png",
-      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/UruiStageTests.cs",
+      "provider": "FUI/Packages/com.fujisheng.fui.urui/Tests/Runtime/StageTests.cs",
       "providerSha256": "52af188dad8e3eca86b1fb17a83dee1ef1aba04821c7fef774e96047de70c127",
       "ownerSha256": "b349456b1a2e9fe556b6699e4ce48223c535c78a47a26fc23812605edcf6b29e"
     },

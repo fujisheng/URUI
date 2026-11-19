@@ -1,32 +1,51 @@
 #include "../../Include/URUI/Core/Plugin.h"
 
-namespace URUI {
-
-Plugin::~Plugin() {}
-
-int Plugin::GetEventClasses()
+namespace URUI
 {
-	return EVT_ALL;
+
+    Plugin::~Plugin()
+    {
+    }
+
+    int Plugin::GetEventClasses()
+    {
+        return EVT_ALL;
+    }
+
+    void Plugin::OnInitialise()
+    {
+    }
+
+    void Plugin::OnShutdown()
+    {
+    }
+
+    void Plugin::OnContextCreate(Context* /*context*/)
+    {
+    }
+
+    void Plugin::OnContextDestroy(Context* /*context*/)
+    {
+    }
+
+    void Plugin::OnDocumentOpen(Context* /*context*/, const String& /*document_path*/)
+    {
+    }
+
+    void Plugin::OnDocumentLoad(ElementDocument* /*document*/)
+    {
+    }
+
+    void Plugin::OnDocumentUnload(ElementDocument* /*document*/)
+    {
+    }
+
+    void Plugin::OnElementCreate(Element* /*element*/)
+    {
+    }
+
+    void Plugin::OnElementDestroy(Element* /*element*/)
+    {
+    }
+
 }
-
-void Plugin::OnInitialise() {}
-
-void Plugin::OnShutdown() {}
-
-void Plugin::OnContextCreate(Context* /*context*/) {}
-
-void Plugin::OnContextDestroy(Context* /*context*/) {}
-
-void Plugin::OnDocumentOpen(Context* /*context*/, const String& /*document_path*/) {}
-
-void Plugin::OnDocumentLoad(ElementDocument* /*document*/) {}
-
-void Plugin::OnDocumentUnload(ElementDocument* /*document*/) {}
-
-void Plugin::OnElementCreate(Element* /*element*/) {}
-
-void Plugin::OnElementDestroy(Element* /*element*/) {}
-
-
-
-} // namespace URUI

@@ -28,7 +28,8 @@ namespace URUI.Internal.Hosting
             public Vector2[] uv;
             public Color32[] colors;
             public int[] indices;
-            public int vertexCount, indexCount;
+            public int vertexCount;
+            public int indexCount;
             public Bounds bounds;
             public int CapacityBytes => positions.Length * 24 + indices.Length * 4;
         }

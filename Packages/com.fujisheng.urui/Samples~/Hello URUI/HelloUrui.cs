@@ -14,7 +14,8 @@ namespace URUI.Samples
     /// 添加到空 GameObject，进入 Play Mode 即可体验托管文档与点击接口。
     /// </summary>
     [RequireComponent(typeof(Document))]
-    public sealed class HelloUrui : MonoBehaviour
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "URUI.Samples", sourceClassName: "HelloUrui")]
+    public sealed class HelloURUI : MonoBehaviour
     {
         Document document;
         Camera ownedCamera;
@@ -68,17 +69,22 @@ namespace URUI.Samples
             var files = new List<TextResource>(document.TextResources);
             AddFile("/urui/base.css", "URUI/base");
             foreach (var family in new[] { "Serif", "Sans", "Mono" })
+            {
                 foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
                 {
                     var name = "Liberation" + family + "-" + face + ".ttf";
                     AddFile("/urui/Fonts/" + name + ".bytes", "URUI/Fonts/" + name);
                 }
+            }
             document.TextResources = files.ToArray();
             document.Load(source, document.Source ? document.SourceUrl : "samples/hello/Hello.html");
 
             void AddFile(string uri, string resource)
             {
-                if (files.Exists(file => file.Source == uri)) return;
+                if (files.Exists(file => file.Source == uri))
+                {
+                    return;
+                }
                 files.Add(new TextResource(uri, UnityResources.Load<TextAsset>(resource)
                     ?? throw new InvalidOperationException("样例缺少作者依赖：" + resource)));
             }

@@ -8,7 +8,9 @@ using URUI.Authoring.Source;
 
 namespace URUI.Authoring.Windows
 {
-    /// <summary>The source insertion point is bound to the document and revision seen when it was chosen.</summary>
+    /// <summary>
+    /// The source insertion point is bound to the document and revision seen when it was chosen.
+    /// </summary>
     internal readonly struct NodePlacement
     {
         readonly string parent;
@@ -31,22 +33,34 @@ namespace URUI.Authoring.Windows
         internal static NodePlacement ChildOf(SourceDocument.Node node)
         {
             if (!Editing)
+            {
                 return default;
+            }
             if (node == null || node.IsVoid)
+            {
                 node = AuthoringEnvironment.Author.Model.Nodes.FirstOrDefault(item => item.Tag == "body");
+            }
             return node == null ? default : new NodePlacement(node, -1);
         }
 
         internal static NodePlacement Beside(SourceDocument.Node node, bool after)
         {
             if (!Editing)
+            {
                 return default;
+            }
             if (node == null || node.Tag == "body" || node.Parent == null)
+            {
                 return ChildOf(null);
+            }
             var children = node.Parent.Children;
             for (int i = 0; i < children.Count; i++)
+            {
                 if (children[i] == node)
+                {
                     return new NodePlacement(node.Parent, after ? i + 1 : i);
+                }
+            }
             return default;
         }
 
@@ -57,14 +71,18 @@ namespace URUI.Authoring.Windows
         internal void InsertMarkup(string markup)
         {
             if (!IsValid || !Editing)
+            {
                 throw new InvalidOperationException("No editable parent.");
+            }
             var editor = AuthoringEnvironment.Author;
             var ids = new HashSet<string>(editor.Model.Nodes.Select(node => node.Attribute("id")), StringComparer.Ordinal);
             foreach (var node in SourceDocument.Parse(markup).Nodes)
             {
                 string id = node.Attribute("id");
                 if (!string.IsNullOrEmpty(id) && !ids.Add(id))
+                {
                     throw new InvalidOperationException("The pasted markup contains an id already in use: " + id);
+                }
             }
             string[] created = null;
             var placement = this;
@@ -78,10 +96,16 @@ namespace URUI.Authoring.Windows
             string key = author.ResolveIdentity(nodeIdentity);
             string parentKey = author.ResolveIdentity(parent);
             if (key == null || parentKey == null || author.Model.Find(key).Tag is "html" or "head" or "body")
+            {
                 return false;
+            }
             for (var node = author.Model.Find(parentKey); node != null; node = node.Parent)
+            {
                 if (node.Key == key)
+                {
                     return false;
+                }
+            }
             return true;
         }
 
@@ -89,12 +113,22 @@ namespace URUI.Authoring.Windows
         {
             var editor = AuthoringEnvironment.Author;
             if (!IsValid || !Editing || dragRevision != revision || revision != editor.Revision)
+            {
                 throw new InvalidOperationException("source_conflict: stale drag target");
+            }
             string key = editor.ResolveIdentity(nodeIdentity);
             string parentKey = editor.ResolveIdentity(parent);
             if (key == null || parentKey == null)
+            {
                 throw new InvalidOperationException("stale_node");
-            var command = new AuthoringEdit { Operation = "move", Node = key, Parent = parentKey, Index = index };
+            }
+            var command = new AuthoringEdit
+            {
+                Operation = "move",
+                Node = key,
+                Parent = parentKey,
+                Index = index
+            };
             SessionUndoBridge.Record(editor, () => editor.Execute(new[] { command }, dragRevision));
             AuthoringEnvironment.Select(ElementSelectionProxy.ForAuthor(editor.ResolveIdentity(nodeIdentity)));
         }
@@ -106,7 +140,9 @@ namespace URUI.Authoring.Windows
             var used = new HashSet<string>(AuthoringEnvironment.Author.Model.Nodes.Select(node => node.Attribute("id")));
             string id = stem;
             for (int suffix = 1; used.Contains(id); suffix++)
+            {
                 id = stem + suffix;
+            }
             return template.SetAttribute(template.Roots[0].Key, "id", id);
         }
 
@@ -120,56 +156,80 @@ namespace URUI.Authoring.Windows
             {
                 string id = node.Attribute("id");
                 if (string.IsNullOrEmpty(id))
+                {
                     continue;
+                }
                 if (!fragmentIds.Add(id))
+                {
                     throw new InvalidOperationException("The pasted markup contains a duplicate id: " + id);
+                }
                 used.Add(id);
             }
             var renamed = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (string id in fragmentIds)
             {
                 if (!existing.Contains(id))
+                {
                     continue;
+                }
                 string stem = id + "-copy";
                 string candidate = stem;
                 for (int suffix = 2; !used.Add(candidate); suffix++)
+                {
                     candidate = stem + "-" + suffix;
+                }
                 renamed.Add(id, candidate);
             }
             if (renamed.Count == 0)
+            {
                 return markup;
+            }
 
             var result = source;
             for (int i = 0; i < source.Nodes.Count; i++)
+            {
                 foreach (var attribute in source.Nodes[i].Attributes)
                 {
                     if (string.IsNullOrEmpty(attribute.Value))
+                    {
                         continue;
+                    }
                     string value = RenameReference(attribute.Name, attribute.Value, renamed);
                     if (value != attribute.Value)
+                    {
                         result = SourceDocument.Parse(result.SetAttribute(result.Nodes[i].Key, attribute.Name, value));
+                    }
                 }
+            }
             return result.Text;
         }
 
         static string RenameReference(string name, string value, Dictionary<string, string> renamed)
         {
             if (name is "id" or "for" or "list" or "form")
+            {
                 return renamed.TryGetValue(value, out string target) ? target : value;
+            }
             if (name == "href" && value.StartsWith("#", StringComparison.Ordinal))
+            {
                 return renamed.TryGetValue(value.Substring(1), out string anchor) ? "#" + anchor : value;
+            }
             if (name is "aria-labelledby" or "aria-describedby" or "aria-controls" or "aria-owns" or "headers")
             {
                 string[] ids = value.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
                 bool changed = false;
                 for (int i = 0; i < ids.Length; i++)
+                {
                     if (renamed.TryGetValue(ids[i], out string replacement))
                     {
                         ids[i] = replacement;
                         changed = true;
                     }
+                }
                 if (changed)
+                {
                     return string.Join(" ", ids);
+                }
             }
             return value;
         }
@@ -178,7 +238,9 @@ namespace URUI.Authoring.Windows
     internal sealed class WorkbenchDrag
     {
         const string Key = "URUI.Authoring.NodePlacement";
-        internal readonly string Kind, Identity, Fragment;
+        internal readonly string Kind;
+        internal readonly string Identity;
+        internal readonly string Fragment;
         readonly long revision;
         internal WorkbenchDrag(string kind = null, string identity = null, string fragment = null)
         {
@@ -195,7 +257,9 @@ namespace URUI.Authoring.Windows
         internal void Begin(string label)
         {
             if (!NodePlacement.Editing)
+            {
                 return;
+            }
             DragAndDrop.PrepareStartDrag();
             DragAndDrop.SetGenericData(Key, this);
             DragAndDrop.StartDrag(label);
@@ -208,18 +272,26 @@ namespace URUI.Authoring.Windows
         internal void Drop(NodePlacement placement, bool nativeDrag = true)
         {
             if (!CanDrop(placement))
+            {
                 return;
+            }
             if (nativeDrag)
             {
                 DragAndDrop.AcceptDrag();
                 DragAndDrop.SetGenericData(Key, null);
             }
             if (Kind != null)
+            {
                 placement.Insert(Kind);
+            }
             else if (Fragment != null)
+            {
                 placement.InsertMarkup(Fragment);
+            }
             else
+            {
                 placement.Move(Identity, revision);
+            }
         }
     }
 }

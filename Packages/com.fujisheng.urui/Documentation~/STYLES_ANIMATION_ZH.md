@@ -133,12 +133,12 @@ public static class AnimationExamples
 
 ## UI 时钟
 
-`IUiClock` 提供 `double Now` 与 `float Delta`。Surface 默认 `UnityUiClock.Unscaled`，不受 Time.timeScale 影响；`UnityUiClock.Scaled` 随游戏时间缩放。需在所有文档卸载时配置 Surface.UiClock，活动页面期间替换会抛异常。
+`IUIClock` 提供 `double Now` 与 `float Delta`。Surface 默认 `UnityUIClock.Unscaled`，不受 Time.timeScale 影响；`UnityUIClock.Scaled` 随游戏时间缩放。需在所有文档卸载时配置 Surface.UIClock，活动页面期间替换会抛异常。
 
 ```csharp
 using URUI.Animation;
 
-public sealed class ManualUiClock : IUiClock
+public sealed class ManualUiClock : IUIClock
 {
     public double Now { get; private set; }
     public float Delta { get; private set; }
@@ -152,7 +152,7 @@ public sealed class ManualUiClock : IUiClock
 }
 ```
 
-加载前将此实例赋给 surface.UiClock，在主线程推进，保持 Now 单调递增。`document.Effects.BindClock(element, clock)` 为单个效果节点建立独立租约，Dispose 恢复文档时钟；它不改变 CSS 动画或媒体解码时基。
+加载前将此实例赋给 surface.UIClock，在主线程推进，保持 Now 单调递增。`document.Effects.BindClock(element, clock)` 为单个效果节点建立独立租约，Dispose 恢复文档时钟；它不改变 CSS 动画或媒体解码时基。
 
 ## 通用行为
 

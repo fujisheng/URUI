@@ -4,84 +4,93 @@
 #include "FontProvider.h"
 #include <stdexcept>
 
-namespace URUI {
-
-void FontEngineInterfaceDefault::Initialize()
+namespace URUI
 {
-	if (!FontProvider::Initialise())
-		throw std::runtime_error("Cannot initialize the URUI font engine");
-}
 
-void FontEngineInterfaceDefault::Shutdown()
-{
-	FontProvider::Shutdown();
-}
+    void FontEngineInterfaceDefault::Initialize()
+    {
+        if (!FontProvider::Initialise())
+        {
+            throw std::runtime_error("Cannot initialize the URUI font engine");
+        }
+    }
 
-bool FontEngineInterfaceDefault::LoadFontFace(const String& file_name, int face_index, bool fallback_face, Style::FontWeight weight)
-{
-	return FontProvider::LoadFontFace(file_name, face_index, fallback_face, weight);
-}
+    void FontEngineInterfaceDefault::Shutdown()
+    {
+        FontProvider::Shutdown();
+    }
 
-bool FontEngineInterfaceDefault::LoadFontFace(const String& file_name, int face_index, const String& font_family, Style::FontStyle style,
-	Style::FontWeight weight, bool fallback_face)
-{
-	return FontProvider::LoadFontFace(file_name, face_index, font_family, style, weight, fallback_face);
-}
+    bool FontEngineInterfaceDefault::LoadFontFace(const String& file_name, int face_index, bool fallback_face,
+                                                  Style::FontWeight weight)
+    {
+        return FontProvider::LoadFontFace(file_name, face_index, fallback_face, weight);
+    }
 
-bool FontEngineInterfaceDefault::LoadFontFace(Span<const byte> data, int face_index, const String& font_family, Style::FontStyle style,
-	Style::FontWeight weight, bool fallback_face)
-{
-	return FontProvider::LoadFontFace(data, face_index, font_family, style, weight, fallback_face);
-}
+    bool FontEngineInterfaceDefault::LoadFontFace(const String& file_name, int face_index, const String& font_family,
+                                                  Style::FontStyle style, Style::FontWeight weight, bool fallback_face)
+    {
+        return FontProvider::LoadFontFace(file_name, face_index, font_family, style, weight, fallback_face);
+    }
 
-FontFaceHandle FontEngineInterfaceDefault::GetFontFaceHandle(const String& family, Style::FontStyle style, Style::FontWeight weight, float size)
-{
-	auto handle = FontProvider::GetFontFaceHandle(family, style, weight, size);
-	return reinterpret_cast<FontFaceHandle>(handle);
-}
+    bool FontEngineInterfaceDefault::LoadFontFace(Span<const byte> data, int face_index, const String& font_family,
+                                                  Style::FontStyle style, Style::FontWeight weight, bool fallback_face)
+    {
+        return FontProvider::LoadFontFace(data, face_index, font_family, style, weight, fallback_face);
+    }
 
-FontFaceHandle FontEngineInterfaceDefault::GetFontFaceHandleChain(Span<const FontFaceHandle> handles)
-{
-	return reinterpret_cast<FontFaceHandle>(FontProvider::GetFontFaceHandleChain(handles));
-}
+    FontFaceHandle FontEngineInterfaceDefault::GetFontFaceHandle(const String& family, Style::FontStyle style,
+                                                                 Style::FontWeight weight, float size)
+    {
+        auto handle = FontProvider::GetFontFaceHandle(family, style, weight, size);
+        return reinterpret_cast<FontFaceHandle>(handle);
+    }
 
-FontEffectsHandle FontEngineInterfaceDefault::PrepareFontEffects(FontFaceHandle handle, const FontEffectList& font_effects)
-{
-	auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
-	return (FontEffectsHandle)handle_default->GenerateLayerConfiguration(font_effects);
-}
+    FontFaceHandle FontEngineInterfaceDefault::GetFontFaceHandleChain(Span<const FontFaceHandle> handles)
+    {
+        return reinterpret_cast<FontFaceHandle>(FontProvider::GetFontFaceHandleChain(handles));
+    }
 
-const FontMetrics& FontEngineInterfaceDefault::GetFontMetrics(FontFaceHandle handle)
-{
-	auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
-	return handle_default->GetFontMetrics();
-}
+    FontEffectsHandle FontEngineInterfaceDefault::PrepareFontEffects(FontFaceHandle handle,
+                                                                     const FontEffectList& font_effects)
+    {
+        auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
+        return (FontEffectsHandle)handle_default->GenerateLayerConfiguration(font_effects);
+    }
 
-float FontEngineInterfaceDefault::GetStringWidth(FontFaceHandle handle, StringView string, const TextShapingContext& text_shaping_context,
-	Character prior_character)
-{
-	auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
-	return handle_default->GetStringWidth(string, text_shaping_context, prior_character);
-}
+    const FontMetrics& FontEngineInterfaceDefault::GetFontMetrics(FontFaceHandle handle)
+    {
+        auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
+        return handle_default->GetFontMetrics();
+    }
 
-float FontEngineInterfaceDefault::GenerateString(RenderManager& render_manager, FontFaceHandle handle, FontEffectsHandle font_effects_handle,
-	StringView string, Vector2f position, ColourbPremultiplied colour, float opacity, const TextShapingContext& text_shaping_context,
-	TexturedMeshList& mesh_list)
-{
-	auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
-	return handle_default->GenerateString(render_manager, mesh_list, string, position, colour, opacity, text_shaping_context,
-		(int)font_effects_handle);
-}
+    float FontEngineInterfaceDefault::GetStringWidth(FontFaceHandle handle, StringView string,
+                                                     const TextShapingContext& text_shaping_context,
+                                                     Character prior_character)
+    {
+        auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
+        return handle_default->GetStringWidth(string, text_shaping_context, prior_character);
+    }
 
-int FontEngineInterfaceDefault::GetVersion(FontFaceHandle handle)
-{
-	auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
-	return handle_default->GetVersion();
-}
+    float FontEngineInterfaceDefault::GenerateString(RenderManager& render_manager, FontFaceHandle handle,
+                                                     FontEffectsHandle font_effects_handle, StringView string,
+                                                     Vector2f position, ColourbPremultiplied colour, float opacity,
+                                                     const TextShapingContext& text_shaping_context,
+                                                     TexturedMeshList& mesh_list)
+    {
+        auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
+        return handle_default->GenerateString(render_manager, mesh_list, string, position, colour, opacity,
+                                              text_shaping_context, (int)font_effects_handle);
+    }
 
-void FontEngineInterfaceDefault::ReleaseFontResources()
-{
-	FontProvider::ReleaseFontResources();
-}
+    int FontEngineInterfaceDefault::GetVersion(FontFaceHandle handle)
+    {
+        auto handle_default = reinterpret_cast<FontFaceHandleDefault*>(handle);
+        return handle_default->GetVersion();
+    }
 
-} // namespace URUI
+    void FontEngineInterfaceDefault::ReleaseFontResources()
+    {
+        FontProvider::ReleaseFontResources();
+    }
+
+}

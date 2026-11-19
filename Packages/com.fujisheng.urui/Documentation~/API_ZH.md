@@ -25,7 +25,7 @@
 | 接口 | 用法与约束 |
 | --- | --- |
 | `Surface.Viewport : Vector2Int` | 逻辑 CSS 像素尺寸；零跟随屏幕，否则两维均须为正 |
-| `Surface.UiClock : IUiClock` | 默认非缩放时钟；加载任何文档后不能切换 |
+| `Surface.UIClock : IUIClock` | 默认非缩放时钟；加载任何文档后不能切换 |
 | `Surface.Input : SurfaceInput` | 同一 Surface 的原始输入入口，跨页面分发 |
 | `Document.Surface` | 加载前关联共享宿主 |
 | `Document.CompiledSource : CompiledDocumentAsset` | 正式页面的自动加载源；启用时实例化编译计划 |

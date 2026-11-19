@@ -6,6 +6,9 @@ namespace URUI.Editor.Inspection
     [InitializeOnLoad]
     static class EditorResourceRetirement
     {
-        static EditorResourceRetirement() { EditorApplication.update += ImagePinRetirement.Collect; }
+        static EditorResourceRetirement()
+        {
+            EditorApplication.update += ImagePinRetirement.Collect;
+        }
     }
 }

@@ -2,7 +2,9 @@ using System;
 
 namespace URUI.Authoring.Presentation
 {
-    /// <summary>Editor labels and creation templates; never changes runtime identity or layout rules.</summary>
+    /// <summary>
+    /// Editor labels and creation templates; never changes runtime identity or layout rules.
+    /// </summary>
     public static class NodePresentation
     {
         public static string Name(string tag, string id)
@@ -38,9 +40,13 @@ namespace URUI.Authoring.Presentation
                     return "按钮";
                 case "input":
                     if (inputType == "checkbox" || inputType == "radio")
+                    {
                         return "选择控件";
+                    }
                     if (inputType == "range")
+                    {
                         return "滑动条";
+                    }
                     return "输入框";
                 case "textarea":
                     return "多行输入框";

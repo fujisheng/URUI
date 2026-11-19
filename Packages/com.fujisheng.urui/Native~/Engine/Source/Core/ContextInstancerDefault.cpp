@@ -1,25 +1,31 @@
 #include "ContextInstancerDefault.h"
 #include "../../Include/URUI/Core/Context.h"
 
-namespace URUI {
-
-ContextInstancerDefault::ContextInstancerDefault() {}
-
-ContextInstancerDefault::~ContextInstancerDefault() {}
-
-ContextPtr ContextInstancerDefault::InstanceContext(const String& name, RenderManager* render_manager, TextInputHandler* text_input_handler)
+namespace URUI
 {
-	return ContextPtr(new Context(name, render_manager, text_input_handler));
-}
 
-void ContextInstancerDefault::ReleaseContext(Context* context)
-{
-	delete context;
-}
+    ContextInstancerDefault::ContextInstancerDefault()
+    {
+    }
 
-void ContextInstancerDefault::Release()
-{
-	delete this;
-}
+    ContextInstancerDefault::~ContextInstancerDefault()
+    {
+    }
 
-} // namespace URUI
+    ContextPtr ContextInstancerDefault::InstanceContext(const String& name, RenderManager* render_manager,
+                                                        TextInputHandler* text_input_handler)
+    {
+        return ContextPtr(new Context(name, render_manager, text_input_handler));
+    }
+
+    void ContextInstancerDefault::ReleaseContext(Context* context)
+    {
+        delete context;
+    }
+
+    void ContextInstancerDefault::Release()
+    {
+        delete this;
+    }
+
+}

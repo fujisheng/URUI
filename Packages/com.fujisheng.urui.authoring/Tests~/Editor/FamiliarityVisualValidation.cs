@@ -15,7 +15,7 @@ namespace URUI.Authoring.Tests
         static int frames;
         static string original;
         static double readyAt;
-        static UruiEditorWindow workspace;
+        static AuthoringWindow workspace;
         static FamiliarityInspectorHost inspector;
         static readonly List<string> errors = new List<string>();
         static readonly string[] targets = { "claim", "reward", "PreviewImage", "PreviewInput", "claim" };
@@ -27,15 +27,19 @@ namespace URUI.Authoring.Tests
                 string sample = Path.Combine(UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(AuthoringEnvironment).Assembly).resolvedPath, "Samples~/Animation Demo");
                 Directory.CreateDirectory("Assets/FamiliarityVisual");
                 foreach (string file in Directory.GetFiles(sample))
+                {
                     if (!file.EndsWith(".meta"))
+                    {
                         File.Copy(file, "Assets/FamiliarityVisual/" + Path.GetFileName(file), true);
+                    }
+                }
                 string path = "Assets/FamiliarityVisual/Reward.html";
                 File.WriteAllText(path, File.ReadAllText(path).Replace("</body>", "<img id='PreviewImage' style='width:30px;height:30px;' /><input id='PreviewInput' type='text' /></body>"));
                 AssetDatabase.Refresh();
                 AuthoringEnvironment.Open(path);
                 original = AuthoringEnvironment.Author.File.Text;
                 AnimationEnvironment.EnsureWorkspace();
-                workspace = ScriptableObject.CreateInstance<UruiEditorWindow>();
+                workspace = ScriptableObject.CreateInstance<AuthoringWindow>();
                 workspace.titleContent = new GUIContent("URUI 编辑器");
                 workspace.ShowUtility();
                 workspace.position = new Rect(10, 50, 1000, 800);
@@ -47,12 +51,17 @@ namespace URUI.Authoring.Tests
                 Directory.CreateDirectory("Evidence");
                 EditorApplication.update += Tick;
             }
-            catch (Exception error) { Fail(error); }
+            catch (Exception error)
+            {
+                Fail(error);
+            }
         }
         static void Log(string message, string stack, LogType type)
         {
             if (type == LogType.Error || type == LogType.Exception)
+            {
                 errors.Add(message + "\n" + stack);
+            }
         }
         static void Select(int index)
         {
@@ -74,10 +83,14 @@ namespace URUI.Authoring.Tests
                     File.Delete(selectFile);
                     int selected = Array.IndexOf(targets, binding);
                     if (selected >= 0)
+                    {
                         Select(selected);
+                    }
                 }
                 if (frames == 25 || frames == 50 || frames == 75 || frames == 100)
+                {
                     Select(frames / 25);
+                }
                 if (frames == 105)
                 {
                     AuthoringEnvironment.SetMode(WorkspaceMode.Animation);
@@ -87,11 +100,17 @@ namespace URUI.Authoring.Tests
                 if (frames == 120)
                 {
                     if (errors.Count != 0)
+                    {
                         throw new Exception(string.Join("\n", errors));
+                    }
                     if (FamiliarityInspectorHost.Painted.Count < 4)
+                    {
                         throw new Exception("Inspector did not draw all four node types: " + string.Join(",", FamiliarityInspectorHost.Painted));
+                    }
                     if (AuthoringEnvironment.Author.File.Text != original)
+                    {
                         throw new Exception("GUI observation modified HTML");
+                    }
                     AuthoringEnvironment.Preview.Capture(Path.GetFullPath("Evidence/familiarity-canvas.png"));
 
                     File.WriteAllText("Evidence/familiarity-visual.json", "{\"guiFrames\":120,\"types\":4,\"errors\":0,\"sourceUnchanged\":true}");
@@ -102,7 +121,9 @@ namespace URUI.Authoring.Tests
                 if (readyAt > 0 && (File.Exists("Library/URUI/Familiarity/gui-finish") || EditorApplication.timeSinceStartup - readyAt > 60))
                 {
                     if (errors.Count != 0)
+                    {
                         throw new Exception(string.Join("\n", errors));
+                    }
                     EditorApplication.update -= Tick;
                     AnimationEnvironment.Stop();
                     Application.logMessageReceived -= Log;
@@ -111,7 +132,10 @@ namespace URUI.Authoring.Tests
                     EditorApplication.Exit(0);
                 }
             }
-            catch (Exception error) { Fail(error); }
+            catch (Exception error)
+            {
+                Fail(error);
+            }
         }
         static void Fail(Exception error)
         {
@@ -133,21 +157,29 @@ namespace URUI.Authoring.Tests
         {
             var proxy = (ElementSelectionProxy)activeNode.GetValue(null);
             if (inspector && inspector.target != proxy)
+            {
                 DestroyImmediate(inspector);
+            }
             if (!inspector && proxy)
+            {
                 inspector = UnityEditor.Editor.CreateEditor(proxy, typeof(ElementInspector));
+            }
             using (var area = new EditorGUILayout.ScrollViewScope(scroll))
             {
                 scroll = area.scrollPosition;
                 inspector?.OnInspectorGUI();
                 if (Event.current.type == EventType.Repaint && inspector && proxy)
+                {
                     Painted.Add(proxy.IsLive ? proxy.Node.Tag : proxy.SourceNode.Tag);
+                }
             }
         }
         void OnDisable()
         {
             if (inspector)
+            {
                 DestroyImmediate(inspector);
+            }
         }
     }
 }

@@ -209,7 +209,8 @@ namespace URUI.Tests
                     Need(ReferenceEquals(panel, document.Q("changed")), "rename preserves identity");
                     panel.SetAttribute("id", "panel");
                     Throws<ArgumentOutOfRangeException>(() => panel.Style.SetWidth(float.NaN));
-                    var threadFailure = Task.Run(() => {
+                    var threadFailure = Task.Run(() =>
+                    {
                         try
                         {
                             document.Q("panel");
@@ -221,7 +222,8 @@ namespace URUI.Tests
                         }
                     }).Result;
                     Need(threadFailure, "worker thread rejected before Unity/native access");
-                    Action<ClickEvent> handler = value => {
+                    Action<ClickEvent> handler = value =>
+                    {
                         Need(value.CurrentTarget == action && value.Target.IsValid, "event receiver and actual target");
                         clicks++;
                     };
@@ -333,7 +335,15 @@ namespace URUI.Tests
         void Finish(bool success, string message)
         {
             finished = true;
-            File.WriteAllText("Evidence/api-smoke.json", JsonUtility.ToJson(new Report { passed = success, frames = frames, loaded = loaded, unloaded = unloaded, clicks = clicks, error = message }, true));
+            File.WriteAllText("Evidence/api-smoke.json", JsonUtility.ToJson(new Report
+            {
+                passed = success,
+                frames = frames,
+                loaded = loaded,
+                unloaded = unloaded,
+                clicks = clicks,
+                error = message
+            }, true));
             if (image)
             {
                 Destroy(image);

@@ -7,7 +7,7 @@ namespace URUI.Internal.Interop
     /// retained_bytes/compare_bytes 保留 C ABI 布局；关闭调试时不会收集比较开销。
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct UruiFrameStampNative
+    internal struct FrameStampNative
     {
         public ulong epoch;
         public ulong commands;

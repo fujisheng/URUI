@@ -43,7 +43,11 @@ namespace URUI.Effect.Editor
             if (target)
             {
                 var previous = target;
-                URUI.Resources.GpuRetirement.Retire(() => { previous.Release(); DestroyImmediate(previous); });
+                URUI.Resources.GpuRetirement.Retire(() =>
+                {
+                    previous.Release();
+                    DestroyImmediate(previous);
+                });
                 target = null;
             }
         }
@@ -66,11 +70,15 @@ namespace URUI.Effect.Editor
             time = EditorGUILayout.FloatField(L.Tr("Manual time (s)"), time);
             playing = EditorGUILayout.Toggle(L.Tr("Play clock"), playing);
             if (!float.IsFinite(time))
+            {
                 time = 0;
+            }
             var parameters = preset ? preset.CreateParameters() : new EffectParameters();
             var json = JsonUtility.ToJson(parameters);
             if (preview == null)
+            {
                 preview = new EffectPreview(parameters);
+            }
             if (json != parameterJson)
             {
                 preview.SetParameters(parameters);
@@ -88,7 +96,9 @@ namespace URUI.Effect.Editor
                 EditorGUI.DrawTextureTransparent(rect, target, ScaleMode.ScaleToFit);
             }
             else
+            {
                 GUILayoutUtility.GetRect(128, 512, 128, 512, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            }
             EditorGUILayout.LabelField(L.Tr("生产 Shader / 原始图像网格 / 显式时间"), EditorStyles.miniLabel);
         }
     }

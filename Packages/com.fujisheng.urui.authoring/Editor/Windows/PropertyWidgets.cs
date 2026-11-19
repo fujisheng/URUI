@@ -110,7 +110,9 @@ namespace URUI.Authoring.Windows
         internal static string Draw(string property, string shown, GUIContent label, bool typed)
         {
             if (!typed || !property.StartsWith("style.", StringComparison.Ordinal))
+            {
                 return EditorGUILayout.DelayedTextField(label, shown);
+            }
             string name = property.Substring(6);
             if (choices.TryGetValue(name, out var options))
             {
@@ -142,7 +144,9 @@ namespace URUI.Authoring.Windows
                     nextUnit = units[EditorGUILayout.Popup(index, units, GUILayout.Width(48))];
                 }
                 if (next == value && nextUnit == unit)
+                {
                     return shown;
+                }
                 string updated = StyleFields.WithNumber(shown, next);
                 if (nextUnit != unit)
                 {
@@ -232,10 +236,14 @@ namespace URUI.Authoring.Windows
         static bool TryColor(string text, out Color color)
         {
             if (ColorUtility.TryParseHtmlString(text, out color))
+            {
                 return true;
+            }
             var match = Regex.Match(text ?? "", @"^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$");
             if (!match.Success)
+            {
                 return false;
+            }
             color = new Color(int.Parse(match.Groups[1].Value) / 255f, int.Parse(match.Groups[2].Value) / 255f, int.Parse(match.Groups[3].Value) / 255f,
                 match.Groups[4].Success ? float.Parse(match.Groups[4].Value, CultureInfo.InvariantCulture) : 1);
             return true;

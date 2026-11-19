@@ -6,7 +6,9 @@ using URUI.Elements;
 
 namespace URUI.Tests.Editor
 {
-    /// <summary>创建独立节点 API 回归场景，不创建 Player 构建。</summary>
+    /// <summary>
+    /// 创建独立节点 API 回归场景，不创建 Player 构建。
+    /// </summary>
     public static class ElementTreeValidation
     {
         public static void Run()

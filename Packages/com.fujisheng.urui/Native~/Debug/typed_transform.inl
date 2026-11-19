@@ -18,7 +18,9 @@ inline int ApplyTypedTransformTimed(URUI::Element* el, float x, float y, float s
     {
         ProfileScope scope(typed_probe.apply_ns, measure);
         if (measure)
+        {
             ++typed_probe.clock_pairs;
+        }
         ok = el->SetProperty(URUI::PropertyId::Transform, property);
     }
     if (!ok)

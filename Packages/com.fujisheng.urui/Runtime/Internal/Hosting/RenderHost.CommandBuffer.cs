@@ -11,9 +11,15 @@ namespace URUI.Internal.Hosting
         {
             get
             {
-                if(CanUseColorPass())throw new System.InvalidOperationException("原生共享颜色附件必须通过 SubmitRendering 在实际 SRP 上下文中录制并提交。");
+                if (CanUseColorPass())
+                {
+                    throw new System.InvalidOperationException("原生共享颜色附件必须通过 SubmitRendering 在实际 SRP 上下文中录制并提交。");
+                }
                 PrepareGeometryRecording();
-                if (parameterPages?.Current != null || hasOwnedImages || HasLayerResources || (OwnerSurface && (OwnerSurface.HasPainters || OwnerSurface.HasEffects))) throw new System.InvalidOperationException("持有可释放资源的文档必须通过 Document.SubmitRendering 提交，不能借出未追踪的命令缓冲。");
+                if (parameterPages?.Current != null || hasOwnedImages || HasLayerResources || (OwnerSurface && (OwnerSurface.HasPainters || OwnerSurface.HasEffects)))
+                {
+                    throw new System.InvalidOperationException("持有可释放资源的文档必须通过 Document.SubmitRendering 提交，不能借出未追踪的命令缓冲。");
+                }
                 externalBufferExposed = true;
                 return buffer;
             }

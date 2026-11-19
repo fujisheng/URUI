@@ -6,13 +6,17 @@ namespace URUI.Elements
 {
     public partial class Element
     {
-        /// <summary>实例化作者子树；新根未挂载，由当前文档拥有，卸载文档后同时失效。</summary>
+        /// <summary>
+        /// 实例化作者子树；新根未挂载，由当前文档拥有，卸载文档后同时失效。
+        /// </summary>
         public Element Clone()
         {
             RequireValid();
             return document.CloneElement(this);
         }
-        /// <summary>真实 DOM 父级；文档根和脱离层级的根节点返回 null。</summary>
+        /// <summary>
+        /// 真实 DOM 父级；文档根和脱离层级的根节点返回 null。
+        /// </summary>
         public Element Parent
         {
             get
@@ -22,13 +26,18 @@ namespace URUI.Elements
             }
         }
 
-        /// <summary>直接 DOM 子节点数量，不包括 URUI 的内部非 DOM 装饰节点。</summary>
+        /// <summary>
+        /// 直接 DOM 子节点数量，不包括 URUI 的内部非 DOM 装饰节点。
+        /// </summary>
         public int ChildCount
         {
             get
             {
                 RequireValid();
-                if (!ReferenceEquals(ContentContainer, this)) return ContentContainer.ChildCount;
+                if (!ReferenceEquals(ContentContainer, this))
+                {
+                    return ContentContainer.ChildCount;
+                }
                 int count = NativeMethods.urui_element_child_count(NativeHandle, token);
                 if (count < 0)
                 {
@@ -39,12 +48,17 @@ namespace URUI.Elements
             }
         }
 
-        /// <summary>按 DOM 顺序读取直接子节点，索引必须在 [0, ChildCount) 内。</summary>
+        /// <summary>
+        /// 按 DOM 顺序读取直接子节点，索引必须在 [0, ChildCount) 内。
+        /// </summary>
         public Element this[int index]
         {
             get
             {
-                if (!ReferenceEquals(ContentContainer, this)) return ContentContainer[index];
+                if (!ReferenceEquals(ContentContainer, this))
+                {
+                    return ContentContainer[index];
+                }
                 if (index < 0 || index >= ChildCount)
                 {
                     throw new ArgumentOutOfRangeException(nameof(index));
@@ -55,7 +69,9 @@ namespace URUI.Elements
             }
         }
 
-        /// <summary>直接子节点的有序快照；后续结构变化不会修改此列表。</summary>
+        /// <summary>
+        /// 直接子节点的有序快照；后续结构变化不会修改此列表。
+        /// </summary>
         public IReadOnlyList<Element> Children()
         {
             var result = new Element[ChildCount];
@@ -67,7 +83,9 @@ namespace URUI.Elements
             return result;
         }
 
-        /// <summary>在自身及 DOM 后代中按名字和单个类名查找首项；两个条件同时匹配，null 表示不过滤。</summary>
+        /// <summary>
+        /// 在自身及 DOM 后代中按名字和单个类名查找首项；两个条件同时匹配，null 表示不过滤。
+        /// </summary>
         public Element Q(string name = null, string className = null)
         {
             RequireValid();
@@ -84,7 +102,9 @@ namespace URUI.Elements
             return document.WrapElement(NativeMethods.urui_element_find(NativeHandle, token, name, className));
         }
 
-        /// <summary>自身及 DOM 后代的深度优先有序快照；精确匹配名字/类名，不解析 CSS 或 UQuery 表达式。</summary>
+        /// <summary>
+        /// 自身及 DOM 后代的深度优先有序快照；精确匹配名字/类名，不解析 CSS 或 UQuery 表达式。
+        /// </summary>
         public IReadOnlyList<Element> Query(string name = null, string className = null)
         {
             RequireValid();
@@ -124,10 +144,14 @@ namespace URUI.Elements
             return result;
         }
 
-        /// <summary>将同一文档的节点移动到末尾；可挂载新建或脱离层级的完整子树。</summary>
+        /// <summary>
+        /// 将同一文档的节点移动到末尾；可挂载新建或脱离层级的完整子树。
+        /// </summary>
         public void Add(Element child) => ContentContainer.MoveChild(child, -1);
 
-        /// <summary>移动到最终子节点索引；ChildCount 表示追加，普通校验失败不会移动节点。</summary>
+        /// <summary>
+        /// 移动到最终子节点索引；ChildCount 表示追加，普通校验失败不会移动节点。
+        /// </summary>
         public void Insert(int index, Element child)
         {
             if (index < 0 || index > ChildCount)
@@ -169,7 +193,9 @@ namespace URUI.Elements
             document.RefreshElements(false);
         }
 
-        /// <summary>移出指定的直接子节点，节点和其回调仍可复用。</summary>
+        /// <summary>
+        /// 移出指定的直接子节点，节点和其回调仍可复用。
+        /// </summary>
         public void Remove(Element child)
         {
             RequireValid();
@@ -186,7 +212,9 @@ namespace URUI.Elements
             child.RemoveFromHierarchy();
         }
 
-        /// <summary>脱离父级但保持有效及文档所有权，之后可重新 Add；文档根不能脱离。</summary>
+        /// <summary>
+        /// 脱离父级但保持有效及文档所有权，之后可重新 Add；文档根不能脱离。
+        /// </summary>
         public void RemoveFromHierarchy()
         {
             RequireValid();
@@ -194,7 +222,9 @@ namespace URUI.Elements
             document.RefreshElements(false);
         }
 
-        /// <summary>将所有直接子节点移出层级；它们仍由文档拥有，需要删除时显式 Destroy。</summary>
+        /// <summary>
+        /// 将所有直接子节点移出层级；它们仍由文档拥有，需要删除时显式 Destroy。
+        /// </summary>
         public void Clear()
         {
             RequireValid();
@@ -202,7 +232,9 @@ namespace URUI.Elements
             document.RefreshElements(false);
         }
 
-        /// <summary>销毁此节点及其子树，使相关包装与订阅失效；不能销毁文档根。</summary>
+        /// <summary>
+        /// 销毁此节点及其子树，使相关包装与订阅失效；不能销毁文档根。
+        /// </summary>
         public void Destroy()
         {
             RequireValid();

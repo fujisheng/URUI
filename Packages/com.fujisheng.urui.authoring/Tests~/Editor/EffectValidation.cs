@@ -23,13 +23,17 @@ namespace URUI.Authoring.Tests
         sealed class Context : IAuthoringContext
         {
             internal EditorPreviewHost Host;
-            public string SessionId { get; } = Guid.NewGuid().ToString("N");
+            public string SessionId
+            {
+                get;
+            } = Guid.NewGuid().ToString("N");
             public string TargetId => Node.Id;
             public bool IsLive => false;
             public bool IsObserved => true;
             public InspectedNode Node
             {
-                get; set;
+                get;
+                set;
             }
             public long Revision => 0;
             public void Set(string property, string value) => Node.Write(property, value);
@@ -42,37 +46,45 @@ namespace URUI.Authoring.Tests
         [Serializable]
         sealed class State
         {
-            public long assetRevision; public bool dirty;
+            public long assetRevision;
+            public bool dirty;
         }
         static State ReadState(object result) => JsonUtility.FromJson<State>(JsonUtility.ToJson(result));
         static Dictionary<string, string> Args(params string[] pairs)
         {
             var result = new Dictionary<string, string>();
             for (int i = 0; i < pairs.Length; i += 2)
+            {
                 result.Add(pairs[i], pairs[i + 1]);
+            }
             return result;
         }
         static void Check(bool condition)
         {
             count++;
             if (!condition)
+            {
                 throw new Exception("Effect Authoring assertion " + count);
+            }
         }
         public static int Run()
         {
             var author = URUI.Authoring.Sessions.AuthoringEnvironment.Author;
             string target = null;
             foreach (var node in author.Model.Nodes)
+            {
                 if (node.Tag == "div")
                 {
                     target = node.Key;
                     break;
                 }
+            }
             string rebound = author.SetWithStyleSheet(target, "style.--urui-effect", "ui", "/urui-effect/Effect.css", author.Revision);
             Check(author.File.Text.Contains("href=\"/urui-effect/Effect.css\""));
             Check(URUI.Authoring.Sessions.AuthoringEnvironment.Preview.Node(rebound).Computed("--urui-fx-tone-filter") != null);
             URUI.Authoring.Sessions.AuthoringEnvironment.Preview.Dispose();
-            const string materialPath = "Assets/AuthoringChecks/particles.mat", prefabPath = "Assets/AuthoringChecks/particles.prefab";
+            const string materialPath = "Assets/AuthoringChecks/particles.mat";
+            const string prefabPath = "Assets/AuthoringChecks/particles.prefab";
             AssetDatabase.DeleteAsset(prefabPath);
             AssetDatabase.DeleteAsset(materialPath);
             var material = new Material(Shader.Find("URUI.Effect/Particle"));
@@ -94,139 +106,164 @@ namespace URUI.Authoring.Tests
             PrefabUtility.SaveAsPrefabAsset(source, prefabPath);
             UnityEngine.Object.DestroyImmediate(source);
             AssetDatabase.SaveAssets();
-            string prefabBefore = File.ReadAllText(prefabPath), materialBefore = File.ReadAllText(materialPath);
+            string prefabBefore = File.ReadAllText(prefabPath);
+            string materialBefore = File.ReadAllText(materialPath);
             using (var working = new EffectAssetSession(AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath)))
             {
                 working.SetParticle("startSize", "30");
                 Check(((GameObject)working.Working).GetComponent<ParticleSystem>().main.startSize.constant == 30);
                 Check(AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath).GetComponent<ParticleSystem>().main.startSize.constant == 10);
                 using (var host = RuntimeInspectionBridge.CreatePreview(480, 320))
-                using (var module = new EffectModule(host.Document, new Resolver { Source = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) }))
                 {
-                    host.Document.TextResources = new[] { new TextResource("/urui-effect/Effect.css", UnityEngine.Resources.Load<TextAsset>("URUI.Effect/Effect")) };
-                    host.Document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui-effect/Effect.css'><style>body{height:100%;}.has-particles{--urui-decorator:shader(particles);}</style></head><body><div id='particles' style='position:absolute;left:100px;top:100px;width:100px;height:100px;'></div><urui-particles id='declared' src='fixture' style='position:absolute;left:200px;top:100px;width:100px;height:100px;'></urui-particles></body></html>", "ui/particles.html");
-                    host.Render();
-                    using (var painter = new ParticlePainter(host.Document.Q("particles"), (GameObject)working.Working, false))
+                    using (var module = new EffectModule(host.Document, new Resolver { Source = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) }))
                     {
-                        painter.Seek(.5f, 7);
+                        host.Document.TextResources = new[] { new TextResource("/urui-effect/Effect.css", UnityEngine.Resources.Load<TextAsset>("URUI.Effect/Effect")) };
+                        host.Document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui-effect/Effect.css'><style>body{height:100%;}.has-particles{--urui-decorator:shader(particles);}</style></head><body><div id='particles' style='position:absolute;left:100px;top:100px;width:100px;height:100px;'></div><urui-particles id='declared' src='fixture' style='position:absolute;left:200px;top:100px;width:100px;height:100px;'></urui-particles></body></html>", "ui/particles.html");
                         host.Render();
-                        int before = painter.ParticleCount;
-                        Check(before > 0);
-                        painter.Seek(.5f, 7);
-                        host.Render();
-                        Check(before == painter.ParticleCount);
-                        using (painter.OverridePlayback())
-                            painter.Seek(1, 7);
-                        Check(painter.SimulationTime == .5f);
-                        painter.Step(1f / 60);
-                        Check(painter.SimulationTime > .5f && painter.PlaybackState == ParticlePlaybackState.Paused);
-                        working.SetParticle("emissionRate", "40");
-                        painter.RefreshSource();
-                        painter.Seek(.5f, 7);
-                        host.Render();
-                        Check(painter.ParticleCount > before);
-                    }
-                    var controller = module.GetController(host.Document.Q("particles"));
-                    var preset = ScriptableObject.CreateInstance<EffectPreset>();
-                    var parameters = preset.CreateParameters();
-                    parameters.ToneIntensity = .6f;
-                    preset.SetParameters(parameters);
-                    float original = controller.CreateParameters().ToneIntensity;
-                    using (controller.OverridePreset(preset))
-                        Check(Mathf.Abs(controller.CreateParameters().ToneIntensity - .6f) < .001f);
-                    var outer = controller.OverridePreset(preset);
-                    parameters.ToneIntensity = .2f;
-                    preset.SetParameters(parameters);
-                    var inner = controller.OverridePreset(preset);
-                    outer.Dispose();
-                    Check(Mathf.Abs(controller.CreateParameters().ToneIntensity - .2f) < .001f);
-                    inner.Dispose();
-                    Check(controller.CreateParameters().ToneIntensity == original);
-                    UnityEngine.Object.DestroyImmediate(preset);
-                    using (var extension = new EffectAuthoringExtension())
-                    {
-                        var particles = host.Document.Q<ParticlesElement>("declared");
-                        particles.Seek(.5f);
-                        var context = new Context { Host = host, Node = RuntimeInspectionBridge.Inspect(particles) };
-                        var state = ReadState(extension.Execute(context, "asset.open", Args("path", materialPath)));
-                        state = ReadState(extension.Execute(context, "asset.setMaterial", Args("assetRevision", state.assetRevision.ToString(), "property", "_Color", "value", "#ff0000")));
-                        using (var pixels = host.Capture())
-                            Check(pixels.Texture.GetPixel(201, 219).g < .1f);
-                        Check(material.GetColor("_Color") == Color.white);
-                        var pending = extension.PendingAssets();
-                        Check(pending.Count == 1 && pending[0].Path == materialPath && pending[0].Revision == state.assetRevision);
-                        bool staleApply = false;
-                        try
+                        using (var painter = new ParticlePainter(host.Document.Q("particles"), (GameObject)working.Working, false))
                         {
-                            extension.ApplyAsset(pending[0].Id, pending[0].Revision - 1);
+                            painter.Seek(.5f, 7);
+                            host.Render();
+                            int before = painter.ParticleCount;
+                            Check(before > 0);
+                            painter.Seek(.5f, 7);
+                            host.Render();
+                            Check(before == painter.ParticleCount);
+                            using (painter.OverridePlayback())
+                            {
+                                painter.Seek(1, 7);
+                            }
+                            Check(painter.SimulationTime == .5f);
+                            painter.Step(1f / 60);
+                            Check(painter.SimulationTime > .5f && painter.PlaybackState == ParticlePlaybackState.Paused);
+                            working.SetParticle("emissionRate", "40");
+                            painter.RefreshSource();
+                            painter.Seek(.5f, 7);
+                            host.Render();
+                            Check(painter.ParticleCount > before);
                         }
-                        catch (InvalidOperationException) { staleApply = true; }
-                        Check(staleApply && material.GetColor("_Color") == Color.white);
-                        long editedRevision = state.assetRevision;
-                        Undo.FlushUndoRecordObjects();
-                        Undo.PerformUndo();
-                        state = ReadState(extension.Execute(context, "asset.read", Args()));
-                        Check(state.assetRevision > editedRevision);
-                        Check(!state.dirty);
-                        using (var pixels = host.Capture())
-                            Check(pixels.Texture.GetPixel(201, 219).g > .9f);
-                        Undo.PerformRedo();
-                        using (var pixels = host.Capture())
-                            Check(pixels.Texture.GetPixel(201, 219).g < .1f);
-                        Undo.PerformUndo();
-                        state = ReadState(extension.Execute(context, "asset.read", Args()));
-                        bool rejected = false;
-                        try
+                        var controller = module.GetController(host.Document.Q("particles"));
+                        var preset = ScriptableObject.CreateInstance<EffectPreset>();
+                        var parameters = preset.CreateParameters();
+                        parameters.ToneIntensity = .6f;
+                        preset.SetParameters(parameters);
+                        float original = controller.CreateParameters().ToneIntensity;
+                        using (controller.OverridePreset(preset))
                         {
-                            extension.Execute(context, "asset.setMaterial", Args("assetRevision", editedRevision.ToString(), "property", "_Color", "value", "#00ff00"));
+                            Check(Mathf.Abs(controller.CreateParameters().ToneIntensity - .6f) < .001f);
                         }
-                        catch (InvalidOperationException) { rejected = true; }
-                        Check(rejected);
-                        state = ReadState(extension.Execute(context, "asset.setMaterial", Args("assetRevision", state.assetRevision.ToString(), "property", "_Color", "value", "#ff0000")));
-                        extension.Execute(context, "asset.discard", Args("assetRevision", state.assetRevision.ToString()));
-                        using (var pixels = host.Capture())
-                            Check(pixels.Texture.GetPixel(201, 219).g > .9f);
-                        state = ReadState(extension.Execute(context, "asset.open", Args("path", prefabPath)));
-                        extension.Execute(context, "particles.seek", Args("time", ".5"));
-                        host.Render();
-                        int originalCount = particles.ParticleCount;
-                        state = ReadState(extension.Execute(context, "asset.setParticle", Args("assetRevision", state.assetRevision.ToString(), "property", "emissionRate", "value", "40")));
-                        host.Render();
-                        Check(particles.ParticleCount > originalCount);
-                        editedRevision = state.assetRevision;
-                        Undo.FlushUndoRecordObjects();
-                        Undo.PerformUndo();
-                        host.Render();
-                        state = ReadState(extension.Execute(context, "asset.read", Args()));
-                        Check(state.assetRevision > editedRevision);
-                        Check(particles.ParticleCount == originalCount);
-                        extension.Execute(context, "asset.discard", Args("assetRevision", state.assetRevision.ToString()));
-                        const string presetPath = "Assets/AuthoringChecks/preview-preset.asset";
-                        AssetDatabase.DeleteAsset(presetPath);
-                        var presetAsset = ScriptableObject.CreateInstance<EffectPreset>();
-                        AssetDatabase.CreateAsset(presetAsset, presetPath);
-                        string presetBefore = File.ReadAllText(presetPath);
-                        state = ReadState(extension.Execute(context, "asset.open", Args("path", presetPath)));
-                        state = ReadState(extension.Execute(context, "asset.setPreset", Args("assetRevision", state.assetRevision.ToString(), "property", "ToneIntensity", "value", "0.35")));
-                        Check(Mathf.Abs(module.GetController(particles).CreateParameters().ToneIntensity - .35f) < .001f);
-                        editedRevision = state.assetRevision;
-                        Undo.FlushUndoRecordObjects();
-                        Undo.PerformUndo();
-                        state = ReadState(extension.Execute(context, "asset.read", Args()));
-                        Check(state.assetRevision > editedRevision);
-                        Check(!state.dirty);
-                        Check(module.GetController(particles).CreateParameters().ToneIntensity == 1);
-                        Undo.PerformRedo();
-                        Check(Mathf.Abs(module.GetController(particles).CreateParameters().ToneIntensity - .35f) < .001f);
-                        state = ReadState(extension.Execute(context, "asset.read", Args()));
-                        extension.Execute(context, "asset.discard", Args("assetRevision", state.assetRevision.ToString()));
-                        Check(File.ReadAllText(presetPath) == presetBefore);
-                        Check(extension.PendingAssets().Count == 0);
-                        state = ReadState(extension.Execute(context, "asset.open", Args("path", presetPath)));
-                        state = ReadState(extension.Execute(context, "asset.setPreset", Args("assetRevision", state.assetRevision.ToString(), "property", "ToneIntensity", "value", "0.6")));
-                        var selectedAsset = extension.PendingAssets()[0];
-                        extension.ApplyAsset(selectedAsset.Id, selectedAsset.Revision);
-                        Check(extension.PendingAssets().Count == 0 && Mathf.Abs(presetAsset.CreateParameters().ToneIntensity - .6f) < .001f);
+                        var outer = controller.OverridePreset(preset);
+                        parameters.ToneIntensity = .2f;
+                        preset.SetParameters(parameters);
+                        var inner = controller.OverridePreset(preset);
+                        outer.Dispose();
+                        Check(Mathf.Abs(controller.CreateParameters().ToneIntensity - .2f) < .001f);
+                        inner.Dispose();
+                        Check(controller.CreateParameters().ToneIntensity == original);
+                        UnityEngine.Object.DestroyImmediate(preset);
+                        using (var extension = new EffectAuthoringExtension())
+                        {
+                            var particles = host.Document.Q<ParticlesElement>("declared");
+                            particles.Seek(.5f);
+                            var context = new Context
+                            {
+                                Host = host,
+                                Node = RuntimeInspectionBridge.Inspect(particles)
+                            };
+                            var state = ReadState(extension.Execute(context, "asset.open", Args("path", materialPath)));
+                            state = ReadState(extension.Execute(context, "asset.setMaterial", Args("assetRevision", state.assetRevision.ToString(), "property", "_Color", "value", "#ff0000")));
+                            using (var pixels = host.Capture())
+                            {
+                                Check(pixels.Texture.GetPixel(201, 219).g < .1f);
+                            }
+                            Check(material.GetColor("_Color") == Color.white);
+                            var pending = extension.PendingAssets();
+                            Check(pending.Count == 1 && pending[0].Path == materialPath && pending[0].Revision == state.assetRevision);
+                            bool staleApply = false;
+                            try
+                            {
+                                extension.ApplyAsset(pending[0].Id, pending[0].Revision - 1);
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                staleApply = true;
+                            }
+                            Check(staleApply && material.GetColor("_Color") == Color.white);
+                            long editedRevision = state.assetRevision;
+                            Undo.FlushUndoRecordObjects();
+                            Undo.PerformUndo();
+                            state = ReadState(extension.Execute(context, "asset.read", Args()));
+                            Check(state.assetRevision > editedRevision);
+                            Check(!state.dirty);
+                            using (var pixels = host.Capture())
+                            {
+                                Check(pixels.Texture.GetPixel(201, 219).g > .9f);
+                            }
+                            Undo.PerformRedo();
+                            using (var pixels = host.Capture())
+                            {
+                                Check(pixels.Texture.GetPixel(201, 219).g < .1f);
+                            }
+                            Undo.PerformUndo();
+                            state = ReadState(extension.Execute(context, "asset.read", Args()));
+                            bool rejected = false;
+                            try
+                            {
+                                extension.Execute(context, "asset.setMaterial", Args("assetRevision", editedRevision.ToString(), "property", "_Color", "value", "#00ff00"));
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                rejected = true;
+                            }
+                            Check(rejected);
+                            state = ReadState(extension.Execute(context, "asset.setMaterial", Args("assetRevision", state.assetRevision.ToString(), "property", "_Color", "value", "#ff0000")));
+                            extension.Execute(context, "asset.discard", Args("assetRevision", state.assetRevision.ToString()));
+                            using (var pixels = host.Capture())
+                            {
+                                Check(pixels.Texture.GetPixel(201, 219).g > .9f);
+                            }
+                            state = ReadState(extension.Execute(context, "asset.open", Args("path", prefabPath)));
+                            extension.Execute(context, "particles.seek", Args("time", ".5"));
+                            host.Render();
+                            int originalCount = particles.ParticleCount;
+                            state = ReadState(extension.Execute(context, "asset.setParticle", Args("assetRevision", state.assetRevision.ToString(), "property", "emissionRate", "value", "40")));
+                            host.Render();
+                            Check(particles.ParticleCount > originalCount);
+                            editedRevision = state.assetRevision;
+                            Undo.FlushUndoRecordObjects();
+                            Undo.PerformUndo();
+                            host.Render();
+                            state = ReadState(extension.Execute(context, "asset.read", Args()));
+                            Check(state.assetRevision > editedRevision);
+                            Check(particles.ParticleCount == originalCount);
+                            extension.Execute(context, "asset.discard", Args("assetRevision", state.assetRevision.ToString()));
+                            const string presetPath = "Assets/AuthoringChecks/preview-preset.asset";
+                            AssetDatabase.DeleteAsset(presetPath);
+                            var presetAsset = ScriptableObject.CreateInstance<EffectPreset>();
+                            AssetDatabase.CreateAsset(presetAsset, presetPath);
+                            string presetBefore = File.ReadAllText(presetPath);
+                            state = ReadState(extension.Execute(context, "asset.open", Args("path", presetPath)));
+                            state = ReadState(extension.Execute(context, "asset.setPreset", Args("assetRevision", state.assetRevision.ToString(), "property", "ToneIntensity", "value", "0.35")));
+                            Check(Mathf.Abs(module.GetController(particles).CreateParameters().ToneIntensity - .35f) < .001f);
+                            editedRevision = state.assetRevision;
+                            Undo.FlushUndoRecordObjects();
+                            Undo.PerformUndo();
+                            state = ReadState(extension.Execute(context, "asset.read", Args()));
+                            Check(state.assetRevision > editedRevision);
+                            Check(!state.dirty);
+                            Check(module.GetController(particles).CreateParameters().ToneIntensity == 1);
+                            Undo.PerformRedo();
+                            Check(Mathf.Abs(module.GetController(particles).CreateParameters().ToneIntensity - .35f) < .001f);
+                            state = ReadState(extension.Execute(context, "asset.read", Args()));
+                            extension.Execute(context, "asset.discard", Args("assetRevision", state.assetRevision.ToString()));
+                            Check(File.ReadAllText(presetPath) == presetBefore);
+                            Check(extension.PendingAssets().Count == 0);
+                            state = ReadState(extension.Execute(context, "asset.open", Args("path", presetPath)));
+                            state = ReadState(extension.Execute(context, "asset.setPreset", Args("assetRevision", state.assetRevision.ToString(), "property", "ToneIntensity", "value", "0.6")));
+                            var selectedAsset = extension.PendingAssets()[0];
+                            extension.ApplyAsset(selectedAsset.Id, selectedAsset.Revision);
+                            Check(extension.PendingAssets().Count == 0 && Mathf.Abs(presetAsset.CreateParameters().ToneIntensity - .6f) < .001f);
+                        }
                     }
                 }
             }

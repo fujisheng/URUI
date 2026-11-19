@@ -7,9 +7,17 @@ using URUI.Internal.Interop;
 
 namespace URUI.Controls
 {
-    /// <summary>滑块的物理布局方向。</summary>
-    public enum SliderDirection { Horizontal, Vertical }
-    /// <summary>带范围夹取、独立指针捕获和键盘操作的滑动值控件。</summary>
+    /// <summary>
+    /// 滑块的物理布局方向。
+    /// </summary>
+    public enum SliderDirection
+    {
+        Horizontal,
+        Vertical
+    }
+    /// <summary>
+    /// 带范围夹取、独立指针捕获和键盘操作的滑动值控件。
+    /// </summary>
     public abstract class RangeField<T> : BaseField<T>
     {
         internal event Action PresentationChanged;
@@ -17,37 +25,57 @@ namespace URUI.Controls
         {
             get
             {
-                var low=LowValue;var high=HighValue;
-                var percent=high>low ? (float)(((double)ToNumber(Value)-low)/((double)high-low)*100) : 0;
-                return Inverted ? 100-percent : percent;
+                var low = LowValue;
+                var high = HighValue;
+                var percent = high > low ? (float)(((double)ToNumber(Value) - low) / ((double)high - low) * 100) : 0;
+                return Inverted ? 100 - percent : percent;
             }
         }
-        /// <summary>原生范围和方向属性变更后立即刷新作者皮肤。</summary>
+        /// <summary>
+        /// 原生范围和方向属性变更后立即刷新作者皮肤。
+        /// </summary>
         protected override void OnAttributeChanged(string name)
         {
             base.OnAttributeChanged(name);
-            if (name=="min" || name=="max" || name=="step" || name=="value" || name=="data-urui-orientation" || name=="data-urui-exact-range")
+            if (name == "min" || name == "max" || name == "step" || name == "value" || name == "data-urui-orientation" || name == "data-urui-exact-range")
+            {
                 PresentationChanged?.Invoke();
+            }
         }
-        /// <summary>同步普通写入、静默写入以及原生输入的皮肤状态。</summary>
+        /// <summary>
+        /// 同步普通写入、静默写入以及原生输入的皮肤状态。
+        /// </summary>
         protected override void OnValueSynchronized()
         {
-            base.OnValueSynchronized();PresentationChanged?.Invoke();
+            base.OnValueSynchronized();
+            PresentationChanged?.Invoke();
         }
-        /// <summary>过期节点不保留作者皮肤的引用。</summary>
+        /// <summary>
+        /// 过期节点不保留作者皮肤的引用。
+        /// </summary>
         protected override void OnInvalidated()
         {
-            PresentationChanged=null;dragging=-1;base.OnInvalidated();
+            PresentationChanged = null;
+            dragging = -1;
+            base.OnInvalidated();
         }
         int dragging = -1;
         bool inverted;
-        /// <summary>文档工厂构造入口。</summary>
+        /// <summary>
+        /// 文档工厂构造入口。
+        /// </summary>
         protected RangeField(ElementContext context) : base(context) { }
-        /// <summary>将有类型数值转换成浮点数。</summary>
+        /// <summary>
+        /// 将有类型数值转换成浮点数。
+        /// </summary>
         protected abstract float ToNumber(T value);
-        /// <summary>将浮点数转换成控件数值。</summary>
+        /// <summary>
+        /// 将浮点数转换成控件数值。
+        /// </summary>
         protected abstract T FromNumber(float value);
-        /// <summary>水平或垂直布局，坐标和键盘调整与方向一致。</summary>
+        /// <summary>
+        /// 水平或垂直布局，坐标和键盘调整与方向一致。
+        /// </summary>
         public SliderDirection Direction
         {
             get => GetAttribute("data-urui-orientation") == "vertical" ? SliderDirection.Vertical : SliderDirection.Horizontal;
@@ -61,10 +89,16 @@ namespace URUI.Controls
                 SetAttribute("data-urui-orientation", value == SliderDirection.Vertical ? "vertical" : "horizontal");
             }
         }
-        /// <summary>反转物理方向与数值方向，切换时不改变已提交值。</summary>
+        /// <summary>
+        /// 反转物理方向与数值方向，切换时不改变已提交值。
+        /// </summary>
         public bool Inverted
         {
-            get { RequireValid(); return inverted; }
+            get
+            {
+                RequireValid();
+                return inverted;
+            }
             set
             {
                 RequireValid();
@@ -74,17 +108,28 @@ namespace URUI.Controls
                 }
 
                 T previous = Value;
-                ChangeStructure(() => {
+                ChangeStructure(() =>
+                {
                     inverted = value;
-                    if (value) SetAttribute("data-urui-exact-range", "");
-                    else RemoveAttribute("data-urui-exact-range");
+                    if (value)
+                    {
+                        SetAttribute("data-urui-exact-range", "");
+                    }
+                    else
+                    {
+                        RemoveAttribute("data-urui-exact-range");
+                    }
                     SetValueWithoutNotify(previous);
                 });
             }
         }
-        /// <summary>原生滑块使用物理方向数值，反向模式在边界做对称映射。</summary>
+        /// <summary>
+        /// 原生滑块使用物理方向数值，反向模式在边界做对称映射。
+        /// </summary>
         protected float MapNativeValue(float value) => inverted ? LowValue + (HighValue - value) : value;
-        /// <summary>范围下限，必须不大于上限。</summary>
+        /// <summary>
+        /// 范围下限，必须不大于上限。
+        /// </summary>
         public float LowValue
         {
             get => ReadRange().Min;
@@ -100,7 +145,9 @@ namespace URUI.Controls
                 Value = Value;
             }
         }
-        /// <summary>范围上限，必须不小于下限。</summary>
+        /// <summary>
+        /// 范围上限，必须不小于下限。
+        /// </summary>
         public float HighValue
         {
             get => ReadRange().Max;
@@ -116,7 +163,9 @@ namespace URUI.Controls
                 Value = Value;
             }
         }
-        /// <summary>键盘每次调整的步长，必须为正有限数值。</summary>
+        /// <summary>
+        /// 键盘每次调整的步长，必须为正有限数值。
+        /// </summary>
         public float Step
         {
             get => ReadRange().Step;
@@ -136,18 +185,29 @@ namespace URUI.Controls
         {
             RequireValid();
             if (NativeMethods.urui_control_range_info(NativeHandle, CheckedToken(), out var info) != 1)
+            {
                 throw new InvalidOperationException("无法读取滑块的有效范围。");
+            }
             return info;
         }
-        /// <summary>普通输入由原生统一校验；反向模式先按语义方向计算步进，再映射物理值。</summary>
+        /// <summary>
+        /// 普通输入由原生统一校验；反向模式先按语义方向计算步进，再映射物理值。
+        /// </summary>
         protected override T NormalizeValue(T input)
         {
-            var number = ToNumber(input); ElementStyle.RequireFinite(number);
-            if (!inverted) return input;
+            var number = ToNumber(input);
+            ElementStyle.RequireFinite(number);
+            if (!inverted)
+            {
+                return input;
+            }
             var info = ReadRange();
-            double low = info.Min, high = info.Max, step = info.Step;
+            double low = info.Min;
+            double high = info.Max;
+            double step = info.Step;
             double clamped = Math.Max(low, Math.Min(high, number));
-            if ((info.Flags & 1) == 0 && high > low) {
+            if ((info.Flags & 1) == 0 && high > low)
+            {
                 var last = Math.Floor((high - low) / step);
                 var index = Math.Min(last, Math.Floor((clamped - low) / step + .5));
                 clamped = low + index * step;
@@ -178,7 +238,9 @@ namespace URUI.Controls
             float number = Mathf.Lerp(LowValue, HighValue, ratio);
             Value = FromNumber(number);
         }
-        /// <summary>每个滑块分别持有指针，不复用鼠标拖拽状态。</summary>
+        /// <summary>
+        /// 每个滑块分别持有指针，不复用鼠标拖拽状态。
+        /// </summary>
         protected override void OnEvent(EventBase evt)
         {
             base.OnEvent(evt);
@@ -207,11 +269,15 @@ namespace URUI.Controls
             }
             else if (evt is PointerMoveEvent move && move.PointerId == dragging)
             {
-                FromPointer(move); move.PreventDefault();
+                FromPointer(move);
+                move.PreventDefault();
             }
             else if (evt is PointerUpEvent up && up.PointerId == dragging)
             {
-                FromPointer(up); ReleasePointer(dragging); dragging = -1; up.PreventDefault();
+                FromPointer(up);
+                ReleasePointer(dragging);
+                dragging = -1;
+                up.PreventDefault();
             }
             else if (evt is PointerCancelEvent || evt is PointerCaptureOutEvent)
             {
@@ -240,7 +306,8 @@ namespace URUI.Controls
                     return;
                 }
 
-                Value = FromNumber(number); key.PreventDefault();
+                Value = FromNumber(number);
+                key.PreventDefault();
             }
         }
     }

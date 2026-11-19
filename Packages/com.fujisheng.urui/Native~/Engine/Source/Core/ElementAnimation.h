@@ -4,69 +4,124 @@
 #include "../../Include/URUI/Core/Property.h"
 #include "../../Include/URUI/Core/Tween.h"
 
-namespace URUI {
+namespace URUI
+{
 
-struct AnimationKey {
-	AnimationKey(float time, const Property& property, Tween tween) : time(time), property(property), tween(tween) {}
-	float time;  // Local animation time (Zero means the time when the animation iteration starts)
-	Property property;
-	Tween tween; // Tweening between the previous and this key. Ignored for the first animation key.
-};
+    struct AnimationKey
+    {
+        AnimationKey(float time, const Property& property, Tween tween) : time(time), property(property), tween(tween)
+        {
+        }
+        // Local animation time (Zero means the time when the animation iteration starts)
+        float time;
+        Property property;
+        // Tweening between the previous and this key. Ignored for the first animation key.
+        Tween tween;
+    };
 
-// The origin is tracked for determining its behavior when adding and removing animations.
-// User: Animation started by the Element API
-// Animation: Animation started by the 'animation' property
-// Transition: Animation started by the 'transition' property
-inline uint64_t& AnimationIdentityCounter(){static uint64_t next=1;return next;}
+    // The origin is tracked for determining its behavior when adding and removing animations.
+    // User: Animation started by the Element API
+    // Animation: Animation started by the 'animation' property
+    // Transition: Animation started by the 'transition' property
+    inline uint64_t& AnimationIdentityCounter()
+    {
+        static uint64_t next = 1;
+        return next;
+    }
 
-enum class ElementAnimationOrigin : uint8_t { User, Animation, Transition };
+    enum class ElementAnimationOrigin : uint8_t
+    {
+        User,
+        Animation,
+        Transition
+    };
 
-class ElementAnimation {
-private:
-	PropertyId property_id = PropertyId::Invalid;
-    String animation_name;
-    uint64_t identity=0;
+    class ElementAnimation
+    {
+        PropertyId property_id = PropertyId::Invalid;
+        String animation_name;
+        uint64_t identity = 0;
 
-	float duration = 0;               // for a single iteration
-	int num_iterations = 0;           // -1 for infinity
-	bool alternate_direction = false; // between iterations
+        // for a single iteration
+        float duration = 0;
+        // -1 for infinity
+        int num_iterations = 0;
+        // between iterations
+        bool alternate_direction = false;
 
-	Vector<AnimationKey> keys;
+        Vector<AnimationKey> keys;
 
-	double last_update_world_time = 0;
-	float time_since_iteration_start = 0;
-	int current_iteration = 0;
-	bool reverse_direction = false;
+        double last_update_world_time = 0;
+        float time_since_iteration_start = 0;
+        int current_iteration = 0;
+        bool reverse_direction = false;
 
-	bool animation_complete = false;
-    bool sampled_initial = false;
-	ElementAnimationOrigin origin = ElementAnimationOrigin::User;
+        bool animation_complete = false;
+        bool sampled_initial = false;
+        ElementAnimationOrigin origin = ElementAnimationOrigin::User;
 
-	bool InternalAddKey(float time, const Property& property, Element& element, Tween tween);
+        bool InternalAddKey(float time, const Property& property, Element& element, Tween tween);
 
-	float GetInterpolationFactorAndKeys(int* out_key0, int* out_key1) const;
+        float GetInterpolationFactorAndKeys(int* out_key0, int* out_key1) const;
 
-public:
-	ElementAnimation() {}
-	ElementAnimation(PropertyId property_id, ElementAnimationOrigin origin, const Property& current_value, Element& element, double start_world_time,
-		float duration, int num_iterations, bool alternate_direction);
+    public:
+        ElementAnimation()
+        {
+        }
+        ElementAnimation(PropertyId property_id, ElementAnimationOrigin origin, const Property& current_value,
+                         Element& element, double start_world_time, float duration, int num_iterations,
+                         bool alternate_direction);
 
-	bool AddKey(float target_time, const Property& property, Element& element, Tween tween, bool extend_duration);
+        bool AddKey(float target_time, const Property& property, Element& element, Tween tween, bool extend_duration);
 
-	Property UpdateAndGetProperty(double time, Element& element);
-	Property Sample(float normalized_time, Element& element) const;
+        Property UpdateAndGetProperty(double time, Element& element);
+        Property Sample(float normalized_time, Element& element) const;
 
-	void SetIdentity(const String& name){animation_name=name;identity=AnimationIdentityCounter()++;}
-    const String& GetName() const{return animation_name;}
-    uint64_t GetIdentity() const{return identity;}
-    int GetIterations() const{return num_iterations;}
-	PropertyId GetPropertyId() const { return property_id; }
-	float GetDuration() const { return duration; }
-	bool IsComplete() const { return animation_complete; }
-	bool IsTransition() const { return origin == ElementAnimationOrigin::Transition; }
-	bool IsInitalized() const { return !keys.empty(); }
-	float GetInterpolationFactor() const { return GetInterpolationFactorAndKeys(nullptr, nullptr); }
-	ElementAnimationOrigin GetOrigin() const { return origin; }
-};
+        void SetIdentity(const String& name)
+        {
+            animation_name = name;
+            identity = AnimationIdentityCounter()++;
+        }
+        const String& GetName() const
+        {
+            return animation_name;
+        }
+        uint64_t GetIdentity() const
+        {
+            return identity;
+        }
+        int GetIterations() const
+        {
+            return num_iterations;
+        }
+        PropertyId GetPropertyId() const
+        {
+            return property_id;
+        }
+        float GetDuration() const
+        {
+            return duration;
+        }
+        bool IsComplete() const
+        {
+            return animation_complete;
+        }
+        bool IsTransition() const
+        {
+            return origin == ElementAnimationOrigin::Transition;
+        }
+        bool IsInitalized() const
+        {
+            return !keys.empty();
+        }
+        float GetInterpolationFactor() const
+        {
+            return GetInterpolationFactorAndKeys(nullptr, nullptr);
+        }
+        ElementAnimationOrigin GetOrigin() const
+        {
+            return origin;
+        }
+    };
 
-} // namespace URUI
+}

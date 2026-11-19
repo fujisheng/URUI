@@ -18,7 +18,10 @@ static CompoundSelector Selector(int index)
 static void IdentityAndCopies()
 {
     StyleSheetNode root;
-    for (int index = 0; index < 128; index++) root.GetOrCreateChildNode(Selector(index));
+    for (int index = 0; index < 128; index++)
+    {
+        root.GetOrCreateChildNode(Selector(index));
+    }
     const auto selector = Selector(91);
     auto* first = root.GetOrCreateChildNode(selector);
     auto moved = selector;
@@ -45,7 +48,8 @@ static void IdentityAndCopies()
     assert(root.GetOrCreateChildNode(nth) == odd);
     assert(root.GetOrCreateChildNode(other) == even);
 
-    auto one = Selector(91), two = Selector(91);
+    auto one = Selector(91);
+    auto two = Selector(91);
     one.structural_selectors.emplace_back(StructuralSelectorType::Not, MakeShared<SelectorTree>(), Specificity{});
     two.structural_selectors.emplace_back(StructuralSelectorType::Not, MakeShared<SelectorTree>(), Specificity{});
     assert(root.GetOrCreateChildNode(one) != root.GetOrCreateChildNode(two));
@@ -55,8 +59,14 @@ static double ConstructAndFind(int count)
 {
     StyleSheetNode root;
     const auto start = std::chrono::steady_clock::now();
-    for (int index = 0; index < count; index++) root.GetOrCreateChildNode(Selector(index));
-    for (int index = count - 1; index >= 0; index--) root.GetOrCreateChildNode(Selector(index));
+    for (int index = 0; index < count; index++)
+    {
+        root.GetOrCreateChildNode(Selector(index));
+    }
+    for (int index = count - 1; index >= 0; index--)
+    {
+        root.GetOrCreateChildNode(Selector(index));
+    }
     return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 }
 
@@ -65,8 +75,10 @@ int main()
     assert(urui_create(100, 100) == 1);
     IdentityAndCopies();
     ConstructAndFind(200);
-    double small[3], large[3];
-    for (int repeat = 0; repeat < 3; repeat++) {
+    double small[3];
+    double large[3];
+    for (int repeat = 0; repeat < 3; repeat++)
+    {
         small[repeat] = ConstructAndFind(1500);
         large[repeat] = ConstructAndFind(6000);
     }

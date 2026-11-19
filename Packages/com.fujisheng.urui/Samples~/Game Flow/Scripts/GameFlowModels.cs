@@ -14,15 +14,24 @@ namespace URUI.Samples.GameFlow
     public sealed class PlayerProfile
     {
         public string callSign;
-        public int level, credits, power, rank;
+        public int level;
+        public int credits;
+        public int power;
+        public int rank;
         public PlayerProfile Clone() => (PlayerProfile)MemberwiseClone();
     }
 
     [Serializable]
     public sealed class InventoryItem
     {
-        public string id, name, category, description, rarity, icon;
-        public int count, power;
+        public string id;
+        public string name;
+        public string category;
+        public string description;
+        public string rarity;
+        public string icon;
+        public int count;
+        public int power;
         public bool equipped;
         public InventoryItem Clone() => (InventoryItem)MemberwiseClone();
     }

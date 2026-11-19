@@ -1,21 +1,29 @@
 #include "PropertyParserKeyword.h"
 
-namespace URUI {
-
-PropertyParserKeyword::PropertyParserKeyword() {}
-
-PropertyParserKeyword::~PropertyParserKeyword() {}
-
-bool PropertyParserKeyword::ParseValue(Property& property, const String& value, const ParameterMap& parameters) const
+namespace URUI
 {
-	ParameterMap::const_iterator iterator = parameters.find(StringUtilities::ToLower(value));
-	if (iterator == parameters.end())
-		return false;
 
-	property.value = Variant((*iterator).second);
-	property.unit = Unit::KEYWORD;
+    PropertyParserKeyword::PropertyParserKeyword()
+    {
+    }
 
-	return true;
+    PropertyParserKeyword::~PropertyParserKeyword()
+    {
+    }
+
+    bool PropertyParserKeyword::ParseValue(Property& property, const String& value,
+                                           const ParameterMap& parameters) const
+    {
+        ParameterMap::const_iterator iterator = parameters.find(StringUtilities::ToLower(value));
+        if (iterator == parameters.end())
+        {
+            return false;
+        }
+
+        property.value = Variant((*iterator).second);
+        property.unit = Unit::KEYWORD;
+
+        return true;
+    }
+
 }
-
-} // namespace URUI

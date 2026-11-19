@@ -15,7 +15,9 @@ using URUI.Authoring.Sessions;
 
 namespace URUI.Authoring.Agent
 {
-    /// <summary>按项目启用的 Editor-only loopback HTTP 服务；Unity API 仅在主线程 Pump 调用。</summary>
+    /// <summary>
+    /// 按项目启用的 Editor-only loopback HTTP 服务；Unity API 仅在主线程 Pump 调用。
+    /// </summary>
     [InitializeOnLoad]
     public static class AgentServer
     {
@@ -24,12 +26,15 @@ namespace URUI.Authoring.Agent
         static Thread thread;
         static AgentJobQueue jobs;
         static AgentDispatcher dispatcher;
-        static string token, epoch, url;
+        static string token;
+        static string epoch;
+        static string url;
         static volatile bool running;
         static string Preference => "URUI.Authoring.Agent." + Application.dataPath;
         public static string EndpointPath => Path.Combine(AuthoringEnvironment.ProjectRoot, "Library/URUI/Authoring/endpoint.json");
         public static bool IsRunning => running;
-        [DllImport("libc", SetLastError = true)] static extern int chmod(string path, uint mode);
+        [DllImport("libc", SetLastError = true)]
+        static extern int chmod(string path, uint mode);
         static AgentServer()
         {
             EditorApplication.delayCall += () =>
@@ -41,7 +46,13 @@ namespace URUI.Authoring.Agent
             EditorApplication.update += Pump;
             AssemblyReloadEvents.beforeAssemblyReload += Stop;
             EditorApplication.quitting += Stop;
-            EditorApplication.delayCall += () => { if (EditorPrefs.GetBool(Preference, false)) AuthoringEnvironment.Try(Start); };
+            EditorApplication.delayCall += () =>
+            {
+                if (EditorPrefs.GetBool(Preference, false))
+                {
+                    AuthoringEnvironment.Try(Start);
+                }
+            };
         }
         [MenuItem("Window/URUI/Agent/Enable Local API")]
         static void Enable()
@@ -49,27 +60,35 @@ namespace URUI.Authoring.Agent
             Start();
             EditorPrefs.SetBool(Preference, true);
         }
-        [MenuItem("Window/URUI/Agent/Enable Local API", true)] static bool CanEnable() => !IsRunning;
+        [MenuItem("Window/URUI/Agent/Enable Local API", true)]
+        static bool CanEnable() => !IsRunning;
         [MenuItem("Window/URUI/Agent/Disable Local API")]
         static void Disable()
         {
             EditorPrefs.SetBool(Preference, false);
             Stop();
         }
-        [MenuItem("Window/URUI/Agent/Disable Local API", true)] static bool CanDisable() => IsRunning;
+        [MenuItem("Window/URUI/Agent/Disable Local API", true)]
+        static bool CanDisable() => IsRunning;
         [MenuItem("Window/URUI/Agent/Show Connection File")]
         static void Reveal()
         {
             if (File.Exists(EndpointPath))
+            {
                 EditorUtility.RevealInFinder(EndpointPath);
+            }
             else
+            {
                 AuthoringEnvironment.Report("Enable Local API first.");
+            }
         }
 
         public static void Start()
         {
             if (running)
+            {
                 return;
+            }
             var probe = new TcpListener(IPAddress.Loopback, 0);
             int port;
             try
@@ -77,10 +96,15 @@ namespace URUI.Authoring.Agent
                 probe.Start();
                 port = ((IPEndPoint)probe.LocalEndpoint).Port;
             }
-            finally { probe.Stop(); }
+            finally
+            {
+                probe.Stop();
+            }
             var random = new byte[32];
             using (var rng = RandomNumberGenerator.Create())
+            {
                 rng.GetBytes(random);
+            }
             token = BitConverter.ToString(random).Replace("-", "").ToLowerInvariant();
             epoch = Guid.NewGuid().ToString("N");
             url = "http://127.0.0.1:" + port + "/";
@@ -95,34 +119,60 @@ namespace URUI.Authoring.Agent
                 string temporary = EndpointPath + ".tmp";
                 File.WriteAllText(temporary, AgentJson.Stringify(AgentDispatcher.Obj("apiVersion", 1, "url", url, "token", token, "editorSession", epoch, "project", AuthoringEnvironment.ProjectRoot)), new UTF8Encoding(false));
                 if ((Application.platform == RuntimePlatform.OSXEditor || Application.platform == RuntimePlatform.LinuxEditor) && chmod(temporary, 384) != 0)
+                {
                     throw new IOException("Cannot restrict endpoint file permissions.");
+                }
                 if (File.Exists(EndpointPath))
+                {
                     File.Replace(temporary, EndpointPath, null);
+                }
                 else
+                {
                     File.Move(temporary, EndpointPath);
+                }
                 running = true;
                 AuthoringEnvironment.Observe(true);
-                thread = new Thread(Listen) { IsBackground = true, Name = "URUI Authoring HTTP" };
+                thread = new Thread(Listen)
+                {
+                    IsBackground = true,
+                    Name = "URUI Authoring HTTP"
+                };
                 thread.Start();
                 AuthoringEnvironment.Report("Local Agent API enabled · " + EndpointPath);
             }
-            catch { listener?.Close(); listener = null; jobs?.Invalidate(); if (File.Exists(EndpointPath + ".tmp")) File.Delete(EndpointPath + ".tmp"); throw; }
+            catch
+            {
+                listener?.Close();
+                listener = null;
+                jobs?.Invalidate();
+                if (File.Exists(EndpointPath + ".tmp"))
+                {
+                    File.Delete(EndpointPath + ".tmp");
+                }
+                throw;
+            }
         }
         public static void Stop()
         {
             if (running)
+            {
                 AuthoringEnvironment.Observe(false);
+            }
             running = false;
             jobs?.Invalidate();
             listener?.Close();
             listener = null;
             if (thread != null && thread != Thread.CurrentThread)
+            {
                 thread.Join(1000);
+            }
             thread = null;
             jobs = null;
             dispatcher = null;
             if (File.Exists(EndpointPath))
+            {
                 File.Delete(EndpointPath);
+            }
         }
         static void Listen()
         {
@@ -134,7 +184,10 @@ namespace URUI.Authoring.Agent
                 {
                     context = current.GetContext();
                 }
-                catch (Exception error) when (error is HttpListenerException || error is ObjectDisposedException) { break; }
+                catch (Exception error) when (error is HttpListenerException || error is ObjectDisposedException)
+                {
+                    break;
+                }
                 try
                 {
                     Handle(context);
@@ -147,7 +200,14 @@ namespace URUI.Authoring.Agent
                     }
                     catch (Exception) { }
                 }
-                finally { try { context.Response.Close(); } catch (Exception) { } }
+                finally
+                {
+                    try
+                    {
+                        context.Response.Close();
+                    }
+                    catch (Exception) { }
+                }
             }
         }
         static void Handle(HttpListenerContext context)
@@ -208,7 +268,9 @@ namespace URUI.Authoring.Agent
                     }
                     var json = new UTF8Encoding(false, true).GetString(body.ToArray());
                     if (!(AgentJson.Parse(json) is Dictionary<string, object> command))
+                    {
                         throw new InvalidOperationException("bad_request: expected JSON object");
+                    }
                     var job = jobs.Submit(command);
                     Send(context, 202, AgentJson.Stringify(AgentDispatcher.Obj("job", job.Id, "status", job.Status, "editorSession", epoch)));
                 }
@@ -236,15 +298,21 @@ namespace URUI.Authoring.Agent
                 Send(context, 200, header.Substring(0, header.Length - 1) + ",\"result\":" + (job.ResultJson ?? "null") + "}");
             }
             else
+            {
                 Send(context, 404, "{\"error\":\"not_found\"}");
+            }
         }
         static bool ConstantEquals(string a, string b)
         {
             if (a == null || a.Length != b.Length)
+            {
                 return false;
+            }
             int difference = 0;
             for (int i = 0; i < a.Length; i++)
+            {
                 difference |= a[i] ^ b[i];
+            }
             return difference == 0;
         }
         static void Send(HttpListenerContext context, int status, string text)
@@ -259,7 +327,9 @@ namespace URUI.Authoring.Agent
         static void Pump()
         {
             if (!running || jobs == null)
+            {
                 return;
+            }
             var timer = Stopwatch.StartNew();
             int count = 0;
             while (count++ < 4 && timer.ElapsedMilliseconds < 16 && jobs.RunNext(epoch, request => AgentJson.Stringify(dispatcher.Execute(request))))

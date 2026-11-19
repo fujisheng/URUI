@@ -4,12 +4,19 @@ using URUI.Internal.Interop;
 
 namespace URUI.Elements
 {
-    /// <summary>真实 DOM 层级访问器；组合控件内部节点也包含在内。</summary>
+    /// <summary>
+    /// 真实 DOM 层级访问器；组合控件内部节点也包含在内。
+    /// </summary>
     public readonly struct ElementHierarchy
     {
         readonly Element owner;
-        internal ElementHierarchy(Element owner) { this.owner = owner; }
-        /// <summary>直接 DOM 子节点数量。</summary>
+        internal ElementHierarchy(Element owner)
+        {
+            this.owner = owner;
+        }
+        /// <summary>
+        /// 直接 DOM 子节点数量。
+        /// </summary>
         public int ChildCount
         {
             get
@@ -18,11 +25,16 @@ namespace URUI.Elements
                 return count >= 0 ? count : throw new InvalidOperationException("无法读取层级。");
             }
         }
-        /// <summary>直接 DOM 子节点的有序快照。</summary>
+        /// <summary>
+        /// 直接 DOM 子节点的有序快照。
+        /// </summary>
         public IReadOnlyList<Element> Children()
         {
             int count = ChildCount;
-            if (count == 0) return Array.Empty<Element>();
+            if (count == 0)
+            {
+                return Array.Empty<Element>();
+            }
             var tokens = new ulong[count];
             for (int i = 0; i < count; i++)
             {
@@ -39,9 +51,13 @@ namespace URUI.Elements
         }
         internal Element ChildAt(int index) => owner.Document.WrapElement(
             NativeMethods.urui_element_child_at(owner.NativeHandle, owner.CheckedToken(), index));
-        /// <summary>挂载到真实 DOM 子节点末尾。</summary>
+        /// <summary>
+        /// 挂载到真实 DOM 子节点末尾。
+        /// </summary>
         public void Add(Element child) => owner.MoveChild(child, -1);
-        /// <summary>插入真实 DOM 子节点索引。</summary>
+        /// <summary>
+        /// 插入真实 DOM 子节点索引。
+        /// </summary>
         public void Insert(int index, Element child)
         {
             if (index < 0 || index > ChildCount)
@@ -51,7 +67,9 @@ namespace URUI.Elements
 
             owner.MoveChild(child, index);
         }
-        /// <summary>脱离全部真实 DOM 子节点；节点仍由文档拥有。</summary>
+        /// <summary>
+        /// 脱离全部真实 DOM 子节点；节点仍由文档拥有。
+        /// </summary>
         public void Clear()
         {
             if (NativeMethods.urui_element_clear(owner.NativeHandle, owner.CheckedToken()) != 1)

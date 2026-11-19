@@ -10,7 +10,9 @@ using URUI.Events;
 
 namespace URUI.Tests
 {
-    /// <summary>真实 Unity 文档、输入和控件行为验收。</summary>
+    /// <summary>
+    /// 真实 Unity 文档、输入和控件行为验收。
+    /// </summary>
     public sealed class ElementRuntimeSmoke : MonoBehaviour
     {
         [Serializable]
@@ -92,7 +94,11 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
                 Require(document.Q<Label>("late-loaded") != null, "lazy factory initialization defers reload until native callback returns");
                 document.LoadHtml("<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'><link rel='stylesheet' href='/urui/controls.css'></head><body><input id='focus-reloader' type='text'/></body></html>", "ui/acceptance.html");
             }
-            catch (Exception error) { Finish(error); yield break; }
+            catch (Exception error)
+            {
+                Finish(error);
+                yield break;
+            }
             yield return null;
             yield return null;
             try
@@ -104,7 +110,10 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
                 result.passed = true;
                 Finish(null);
             }
-            catch (Exception error) { Finish(error); }
+            catch (Exception error)
+            {
+                Finish(error);
+            }
         }
 
         void Require(bool value, string message)
@@ -147,8 +156,14 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
             Require(!label.IsValid, "destroy subtree invalidates wrappers");
             var typed = document.Create<Toggle>();
             bool rejectedTypeRemoval = false;
-            try { typed.RemoveAttribute("type"); }
-            catch (InvalidOperationException) { rejectedTypeRemoval = true; }
+            try
+            {
+                typed.RemoveAttribute("type");
+            }
+            catch (InvalidOperationException)
+            {
+                rejectedTypeRemoval = true;
+            }
             Require(rejectedTypeRemoval, "removing type cannot silently change a typed native control");
             document.RegisterElementType("urui-invalidation-probe", context => new InvalidationProbe(context));
             var probe = document.Create<InvalidationProbe>();
@@ -166,7 +181,10 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
                 Require(!probe.IsValid && document.IsLoaded && result.expectedDiagnosticExceptions == 1,
                     "custom invalidation failure preserves document cleanup");
             }
-            finally { Application.logMessageReceived -= diagnostic; }
+            finally
+            {
+                Application.logMessageReceived -= diagnostic;
+            }
         }
 
         void CheckEvents()
@@ -180,24 +198,29 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
             document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25));
             document.Surface.Input.SendPointer(PointerPhase.Up, new Vector2(25, 25));
             Require(string.Join(",", order) == "capture,target,bubble", "event propagation order");
-            capture.Dispose(); target.Dispose(); bubble.Dispose();
+            capture.Dispose();
+            target.Dispose();
+            bubble.Dispose();
             int reached = 0;
             capture = panel.RegisterCallback<PointerDownEvent>(evt => evt.StopImmediatePropagation(), TrickleDown.TrickleDown);
             target = hit.RegisterCallback<PointerDownEvent>(evt => reached++);
             document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25));
             document.Surface.Input.SendPointer(PointerPhase.Cancel, new Vector2(25, 25));
             Require(reached == 0, "stop propagation reaches native dispatch");
-            capture.Dispose(); target.Dispose();
+            capture.Dispose();
+            target.Dispose();
             hit.Name = "";
             int moves = 0;
             using (hit.RegisterCallback<PointerDownEvent>(evt => hit.CapturePointer(evt.PointerId)))
-            using (hit.RegisterCallback<PointerMoveEvent>(evt => moves++))
             {
-                document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25), 11, true);
-                document.Surface.Input.SendPointer(PointerPhase.Move, new Vector2(600, 400), 11, true);
-                Require(hit.HasPointerCapture(11) && moves == 1, "anonymous captured target outside bounds");
-                document.Surface.Input.SendPointer(PointerPhase.Cancel, new Vector2(600, 400), 11, true);
-                Require(!hit.HasPointerCapture(11), "cancel releases capture");
+                using (hit.RegisterCallback<PointerMoveEvent>(evt => moves++))
+                {
+                    document.Surface.Input.SendPointer(PointerPhase.Down, new Vector2(25, 25), 11, true);
+                    document.Surface.Input.SendPointer(PointerPhase.Move, new Vector2(600, 400), 11, true);
+                    Require(hit.HasPointerCapture(11) && moves == 1, "anonymous captured target outside bounds");
+                    document.Surface.Input.SendPointer(PointerPhase.Cancel, new Vector2(600, 400), 11, true);
+                    Require(!hit.HasPointerCapture(11), "cancel releases capture");
+                }
             }
             hit.Name = "hit";
         }
@@ -205,8 +228,10 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
         ListView list;
         List<string> items;
         Element sized;
-        Slider firstSlider, secondSlider;
-        int binds, unbinds;
+        Slider firstSlider;
+        Slider secondSlider;
+        int binds;
+        int unbinds;
 
         void CheckControls()
         {
@@ -234,17 +259,23 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
             document.Surface.Input.SendKey(KeyCode.Backspace, true);
             Require(text.Value == "中文🎮测", "IME caret follows Unicode commit");
             var slider = document.Create<Slider>();
-            slider.LowValue = 0; slider.HighValue = 10; slider.Value = 100;
+            slider.LowValue = 0;
+            slider.HighValue = 10;
+            slider.Value = 100;
             Require(slider.Value == 10, "slider clamps range");
             var a = document.Create<RadioButton>();
             var b = document.Create<RadioButton>();
-            a.GroupName = "test"; b.GroupName = "test";
-            document.DocumentElement.Add(a); document.DocumentElement.Add(b);
-            a.Value = true; b.Value = true;
+            a.GroupName = "test";
+            b.GroupName = "test";
+            document.DocumentElement.Add(a);
+            document.DocumentElement.Add(b);
+            a.Value = true;
+            b.Value = true;
             Require(!a.Value && b.Value, "radio exclusivity");
             var foldout = document.Create<Foldout>();
             var child = document.Create<Label>();
-            document.DocumentElement.Add(foldout); foldout.Add(child);
+            document.DocumentElement.Add(foldout);
+            foldout.Add(child);
             foldout.Text = "Group";
             Require(child.IsValid && foldout.ChildCount == 1, "composite text preserves children");
             sized = document.Create<Element>();
@@ -279,7 +310,11 @@ body{margin:0;font-family:'URUI Sans';color:white;font-size:18px;}
             list.Style.Top = 20;
             list.FixedItemHeight = 24;
             list.MakeItem = () => document.Create<Label>();
-            list.BindItem = (element, index) => { binds++; element.Text = items[index]; };
+            list.BindItem = (element, index) =>
+            {
+                binds++;
+                element.Text = items[index];
+            };
             list.UnbindItem = (element, index) => unbinds++;
             list.ItemsSource = items;
             document.DocumentElement.Add(list);

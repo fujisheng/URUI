@@ -2,16 +2,18 @@
 
 #include "../../../Include/URUI/Core/Types.h"
 
-namespace URUI {
+namespace URUI
+{
 
-namespace LayoutPools {
+    namespace LayoutPools
+    {
 
-	void Initialize();
-	void Shutdown();
+        void Initialize();
+        void Shutdown();
 
-	void* AllocateLayoutChunk(size_t size);
-	void DeallocateLayoutChunk(void* chunk, size_t size);
+        void* AllocateLayoutChunk(size_t size);
+        void DeallocateLayoutChunk(void* chunk, size_t size);
 
-} // namespace LayoutPools
+    }
 
-} // namespace URUI
+}

@@ -1,6 +1,6 @@
 # Generate one optional copy; do not edit upstream URUI sources.
 file(READ "${urui_engine_SOURCE_DIR}/Source/Core/ElementUtilities.cpp" lookup_code)
-set(anchor "Element* ElementUtilities::GetElementById(Element* root_element, const String& id)\n{")
+set(anchor "Element* ElementUtilities::GetElementById(Element* root_element, const String& id)\n    {")
 string(FIND "${lookup_code}" "${anchor}" anchor_position)
 if(anchor_position LESS 0)
  message(FATAL_ERROR "URUI lookup function changed; re-audit before patch")
@@ -11,10 +11,16 @@ string(SUBSTRING "${lookup_code}" 0 ${anchor_position} before_lookup)
 string(SUBSTRING "${lookup_code}" ${anchor_position} ${function_length} lookup_function)
 string(SUBSTRING "${lookup_code}" ${next_function} -1 after_lookup)
 string(SHA256 lookup_function_hash "${lookup_function}")
-if(NOT lookup_function_hash STREQUAL "7d658891d846554b936859391e0c5c22f3439ea70a027976e932e68346440b6a")
+if(NOT lookup_function_hash STREQUAL "cbc4c784cd8b1a47b88b746e4a0afd7d6ecfa6495f3183c191df2ef43bd5299f")
  message(FATAL_ERROR "URUI lookup semantics changed; re-audit exact original body")
 endif()
-string(REPLACE "${anchor}" "${anchor}\n\turui_lookup::Scope lookup_scope;\n\tif(urui_lookup::inline_enabled)return urui_lookup::InlineFind(root_element,id,lookup_scope);" lookup_function "${lookup_function}")
+set(lookup_probe [=[
+        URUI::LookupProbe::Scope lookupScope;
+        if (URUI::LookupProbe::inline_enabled)
+        {
+            return URUI::LookupProbe::InlineFind(root_element, id, lookupScope);
+        }]=])
+string(REPLACE "${anchor}" "${anchor}\n${lookup_probe}" lookup_function "${lookup_function}")
 set(visit_anchor "Element* element = search_queue.front();")
 string(LENGTH "${lookup_function}" lookup_length_before)
 string(REPLACE "${visit_anchor}" "" lookup_without_visit "${lookup_function}")
@@ -24,7 +30,7 @@ math(EXPR lookup_visit_count "(${lookup_length_before}-${lookup_length_after})/$
 if(NOT lookup_visit_count EQUAL 1)
  message(FATAL_ERROR "Lookup visit anchor must occur exactly once")
 endif()
-string(REPLACE "${visit_anchor}" "lookup_scope.Visit(search_queue.size());\n\t\t${visit_anchor}" lookup_function "${lookup_function}")
+string(REPLACE "${visit_anchor}" "lookupScope.Visit(search_queue.size());\n            ${visit_anchor}" lookup_function "${lookup_function}")
 set(lookup_code "${before_lookup}${lookup_function}${after_lookup}")
 string(REPLACE "\"../../Include/URUI/" "\"URUI/" lookup_code "${lookup_code}")
 set(generated_lookup "${CMAKE_CURRENT_BINARY_DIR}/ElementUtilities.lookup.cpp")

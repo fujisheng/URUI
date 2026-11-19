@@ -12,26 +12,46 @@ namespace URUI.Events
         {
             switch (type)
             {
-                case 1: return new ClickEvent();
-                case 2: return new PointerDownEvent();
-                case 3: return new PointerMoveEvent();
-                case 4: return new PointerUpEvent();
-                case 5: return new PointerCancelEvent();
-                case 6: return new PointerEnterEvent();
-                case 7: return new PointerLeaveEvent();
-                case 8: return new WheelEvent();
-                case 9: return new KeyDownEvent();
-                case 10: return new KeyUpEvent();
-                case 11: return new FocusEvent();
-                case 12: return new BlurEvent();
-                case 13: return new NativeValueChangedEvent();
-                case 14: return new TextInputEvent();
-                case 15: return new ScrollEvent();
-                case 16: return new PointerCaptureOutEvent();
-                case 17: return new AnimationEndEvent();
-                case 18: return new TransitionEndEvent();
-                case 19: return new AnimationCreatedEvent();
-                default: throw new NotSupportedException("未知 URUI 原生事件。");
+                case 1:
+                    return new ClickEvent();
+                case 2:
+                    return new PointerDownEvent();
+                case 3:
+                    return new PointerMoveEvent();
+                case 4:
+                    return new PointerUpEvent();
+                case 5:
+                    return new PointerCancelEvent();
+                case 6:
+                    return new PointerEnterEvent();
+                case 7:
+                    return new PointerLeaveEvent();
+                case 8:
+                    return new WheelEvent();
+                case 9:
+                    return new KeyDownEvent();
+                case 10:
+                    return new KeyUpEvent();
+                case 11:
+                    return new FocusEvent();
+                case 12:
+                    return new BlurEvent();
+                case 13:
+                    return new NativeValueChangedEvent();
+                case 14:
+                    return new TextInputEvent();
+                case 15:
+                    return new ScrollEvent();
+                case 16:
+                    return new PointerCaptureOutEvent();
+                case 17:
+                    return new AnimationEndEvent();
+                case 18:
+                    return new TransitionEndEvent();
+                case 19:
+                    return new AnimationCreatedEvent();
+                default:
+                    throw new NotSupportedException("未知 URUI 原生事件。");
             }
         }
     }

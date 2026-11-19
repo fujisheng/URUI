@@ -15,10 +15,13 @@ namespace URUI.Tests.Editor
         const string CssPath = "Assets/URUI-css-migration-test.css";
         const string ReferencePath = "Assets/URUI-css-migration-reference.asset";
         const string ShaderPath = "Assets/URUI-css-migration-test.shader";
-        [TearDown] public void TearDown()
+        [TearDown]
+        public void TearDown()
         {
-            AssetDatabase.DeleteAsset(ReferencePath); AssetDatabase.DeleteAsset(OldPath);
-            AssetDatabase.DeleteAsset(CssPath); AssetDatabase.DeleteAsset(Path);
+            AssetDatabase.DeleteAsset(ReferencePath);
+            AssetDatabase.DeleteAsset(OldPath);
+            AssetDatabase.DeleteAsset(CssPath);
+            AssetDatabase.DeleteAsset(Path);
             AssetDatabase.DeleteAsset(ShaderPath);
         }
 
@@ -29,15 +32,19 @@ namespace URUI.Tests.Editor
             File.WriteAllText(OldPath, content, new UTF8Encoding(false));
             AssetDatabase.ImportAsset(OldPath, ImportAssetOptions.ForceSynchronousImport);
             var source = AssetDatabase.LoadAssetAtPath<TextAsset>(OldPath);
-            var reference = ScriptableObject.CreateInstance<TextReferenceFixture>(); reference.Source = source;
-            AssetDatabase.CreateAsset(reference, ReferencePath); AssetDatabase.SaveAssets();
+            var reference = ScriptableObject.CreateInstance<TextReferenceFixture>();
+            reference.Source = source;
+            AssetDatabase.CreateAsset(reference, ReferencePath);
+            AssetDatabase.SaveAssets();
             global::UnityEngine.Resources.UnloadAsset(reference);
             Assert.Throws<InvalidOperationException>(() => TextAssetRelocation.Move(OldPath, ShaderPath));
             Assert.IsFalse(File.Exists(ShaderPath));
             var restored = AssetDatabase.LoadAssetAtPath<TextAsset>(OldPath);
-            Assert.IsNotNull(restored); Assert.AreEqual(content, restored.text);
+            Assert.IsNotNull(restored);
+            Assert.AreEqual(content, restored.text);
             var restoredReference = AssetDatabase.LoadAssetAtPath<TextReferenceFixture>(ReferencePath);
-            Assert.IsTrue(restoredReference.Source); Assert.AreSame(restored, restoredReference.Source);
+            Assert.IsTrue(restoredReference.Source);
+            Assert.AreSame(restored, restoredReference.Source);
         }
 
         [TestCase(false)]
@@ -49,11 +56,16 @@ namespace URUI.Tests.Editor
             var original = AssetDatabase.LoadAssetAtPath<TextAsset>(OldPath);
             Assert.IsNotNull(original);
             Assert.IsTrue(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(original, out string beforeGuid, out long beforeId));
-            var reference = ScriptableObject.CreateInstance<TextReferenceFixture>(); reference.Source = original;
+            var reference = ScriptableObject.CreateInstance<TextReferenceFixture>();
+            reference.Source = original;
             var literal = "Source: {fileID: " + beforeId + ", guid: " + beforeGuid + ", type: 3}";
-            if (multiline) literal = "First line\n" + literal + "\nLast line";
+            if (multiline)
+            {
+                literal = "First line\n" + literal + "\nLast line";
+            }
             reference.Literal = literal;
-            AssetDatabase.CreateAsset(reference, ReferencePath); AssetDatabase.SaveAssets();
+            AssetDatabase.CreateAsset(reference, ReferencePath);
+            AssetDatabase.SaveAssets();
             global::UnityEngine.Resources.UnloadAsset(reference);
             TextAssetRelocation.Move(OldPath, CssPath);
             AssetDatabase.ImportAsset(CssPath, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
@@ -62,7 +74,8 @@ namespace URUI.Tests.Editor
             Assert.IsTrue(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(migrated, out string afterGuid, out long afterId));
             var restored = AssetDatabase.LoadAssetAtPath<TextReferenceFixture>(ReferencePath);
             Assert.IsTrue(restored.Source, "改扩展名后的 TextAsset 引用失效；localID：" + beforeId + " -> " + afterId);
-            Assert.AreSame(migrated, restored.Source); Assert.AreEqual(beforeGuid, afterGuid);
+            Assert.AreSame(migrated, restored.Source);
+            Assert.AreEqual(beforeGuid, afterGuid);
             Assert.AreEqual(literal, restored.Literal, "字符串内容中的引用外观不能作为真实资源引用改写。");
         }
         [TestCase(false)]

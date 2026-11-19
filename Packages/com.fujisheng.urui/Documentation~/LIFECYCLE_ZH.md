@@ -8,7 +8,7 @@
 
 候选更新、监听器和退役存储在发布前准备。发布后的通知异常单独处理，不把已提交的新页面报告为加载失败；暂时无法完成的呈现焦点会在后续更新中重试。焦点及祖先链先统一提交，回调内重新聚焦不会由外层旧事件覆盖。
 
-启用 Document 时加载配置的 CompiledSource 或动态 Source/SourceUrl，或恢复最近请求。禁用后保留恢复请求；显式 `Unload()` 取消自动恢复。关闭 A 只使 A 的元素、事件和动画失效，不卸载 B；最后页面关闭后 Surface 仍可供新页面使用。禁用 Surface 暂停所有页面，重新启用按各自请求恢复。Surface 的 UiClock 只能在没有已加载页面时更换。
+启用 Document 时加载配置的 CompiledSource 或动态 Source/SourceUrl，或恢复最近请求。禁用后保留恢复请求；显式 `Unload()` 取消自动恢复。关闭 A 只使 A 的元素、事件和动画失效，不卸载 B；最后页面关闭后 Surface 仍可供新页面使用。禁用 Surface 暂停所有页面，重新启用按各自请求恢复。Surface 的 UIClock 只能在没有已加载页面时更换。
 
 Loaded/Unloaded、点击、图片与动画回调中的生命周期变更进入共享队列，在当前原生调用返回后执行。需要同步创建节点的业务操作可用 `RunAfterEvent`。绘制效果的 Prepare/Record 只能消费不可变帧，不能在其中修改 DOM 或安排页面变更。
 

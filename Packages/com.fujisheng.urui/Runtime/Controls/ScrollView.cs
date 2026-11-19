@@ -6,20 +6,29 @@ using URUI.Events;
 
 namespace URUI.Controls
 {
-    /// <summary>带内容容器的滚动区域，支持滚轮和触摸拖动。</summary>
+    /// <summary>
+    /// 带内容容器的滚动区域，支持滚轮和触摸拖动。
+    /// </summary>
     public class ScrollView : Element
     {
         Element content;
         bool generatedContent;
         float contentWidth = float.NaN;
         int dragging = -1;
-        Vector2 start, offset;
+        Vector2 start;
+        Vector2 offset;
         bool moved;
-        /// <summary>文档工厂构造入口。</summary>
+        /// <summary>
+        /// 文档工厂构造入口。
+        /// </summary>
         protected internal ScrollView(ElementContext context) : base(context) { }
-        /// <summary>业务子节点放入滚动内容区。</summary>
+        /// <summary>
+        /// 业务子节点放入滚动内容区。
+        /// </summary>
         public override Element ContentContainer => content ?? this;
-        /// <summary>复用作者显式内容区；空控件为有类型的运行时创建提供内容区。</summary>
+        /// <summary>
+        /// 复用作者显式内容区；空控件为有类型的运行时创建提供内容区。
+        /// </summary>
         protected override void OnInitialize()
         {
             var existing = Hierarchy.Children();
@@ -28,15 +37,26 @@ namespace URUI.Controls
             {
                 if (child.ClassListContains("urui-scroll-content"))
                 {
-                    if (content != null) throw new InvalidOperationException("urui-scroll-view 只能有一个直接的 urui-scroll-content 内容区。");
+                    if (content != null)
+                    {
+                        throw new InvalidOperationException("urui-scroll-view 只能有一个直接的 urui-scroll-content 内容区。");
+                    }
                     content = child;
                 }
-                else if (!ControlMarkup.IsFormattingNode(child)) hasOutsideContent = true;
+                else if (!ControlMarkup.IsFormattingNode(child))
+                {
+                    hasOutsideContent = true;
+                }
             }
             if (hasOutsideContent)
+            {
                 throw new InvalidOperationException("urui-scroll-view 的作者子节点必须放在显式的 urui-scroll-content 内容区内。");
+            }
             Focusable = true;
-            if (content != null) return;
+            if (content != null)
+            {
+                return;
+            }
 
             generatedContent = true;
             Style.Display = DisplayStyle.Block;
@@ -48,7 +68,9 @@ namespace URUI.Controls
             content.Style.Width = Length.Percent(100);
             Hierarchy.Add(content);
         }
-        /// <summary>将同一内容区中的后代滚动到可见范围，已经可见时保留当前位置。</summary>
+        /// <summary>
+        /// 将同一内容区中的后代滚动到可见范围，已经可见时保留当前位置。
+        /// </summary>
         public void ScrollTo(Element child)
         {
             RequireValid();
@@ -74,7 +96,9 @@ namespace URUI.Controls
                 topLeft.y < viewport.yMin ? topLeft.y - viewport.yMin : bottomRight.y > viewport.yMax ? bottomRight.y - viewport.yMax : 0);
             ScrollOffset += delta;
         }
-        /// <summary>布局完成后使用视口实际宽度，避免原生滚动容器的百分比子宽度收缩为零。</summary>
+        /// <summary>
+        /// 布局完成后使用视口实际宽度，避免原生滚动容器的百分比子宽度收缩为零。
+        /// </summary>
         protected override void OnUpdate()
         {
             if (!generatedContent || !HasLayout)
@@ -89,7 +113,9 @@ namespace URUI.Controls
                 content.Style.Width = width;
             }
         }
-        /// <summary>触摸超过拖动阈值后捕获指针，释放时取消误点击。</summary>
+        /// <summary>
+        /// 触摸超过拖动阈值后捕获指针，释放时取消误点击。
+        /// </summary>
         protected override void OnEvent(EventBase evt)
         {
             // A pointer down can transfer keyboard focus from a child to this viewport.
@@ -119,15 +145,32 @@ namespace URUI.Controls
                 var next = ScrollOffset;
                 switch (key.KeyCode)
                 {
-                    case KeyCode.DownArrow: next.y += 40; break;
-                    case KeyCode.UpArrow: next.y -= 40; break;
-                    case KeyCode.RightArrow: next.x += 40; break;
-                    case KeyCode.LeftArrow: next.x -= 40; break;
-                    case KeyCode.PageDown: next.y += ViewportRect.height; break;
-                    case KeyCode.PageUp: next.y -= ViewportRect.height; break;
-                    case KeyCode.Home: next = Vector2.zero; break;
-                    case KeyCode.End: next.y = ScrollSize.y; break;
-                    default: return;
+                    case KeyCode.DownArrow:
+                        next.y += 40;
+                        break;
+                    case KeyCode.UpArrow:
+                        next.y -= 40;
+                        break;
+                    case KeyCode.RightArrow:
+                        next.x += 40;
+                        break;
+                    case KeyCode.LeftArrow:
+                        next.x -= 40;
+                        break;
+                    case KeyCode.PageDown:
+                        next.y += ViewportRect.height;
+                        break;
+                    case KeyCode.PageUp:
+                        next.y -= ViewportRect.height;
+                        break;
+                    case KeyCode.Home:
+                        next = Vector2.zero;
+                        break;
+                    case KeyCode.End:
+                        next.y = ScrollSize.y;
+                        break;
+                    default:
+                        return;
                 }
                 ScrollOffset = next;
                 key.PreventDefault();
@@ -136,19 +179,31 @@ namespace URUI.Controls
 
             if (evt is PointerDownEvent down && down.IsTouch && dragging < 0)
             {
-                dragging = down.PointerId; start = down.Position; offset = ScrollOffset; moved = false;
+                dragging = down.PointerId;
+                start = down.Position;
+                offset = ScrollOffset;
+                moved = false;
             }
             else if (evt is PointerMoveEvent move && move.PointerId == dragging)
             {
                 if (!moved && Vector2.Distance(move.Position, start) > 4)
                 {
-                    moved = true; CapturePointer(dragging);
+                    moved = true;
+                    CapturePointer(dragging);
                 }
-                if (moved) { ScrollOffset = offset + start - move.Position; move.PreventDefault(); }
+                if (moved)
+                {
+                    ScrollOffset = offset + start - move.Position;
+                    move.PreventDefault();
+                }
             }
             else if (evt is PointerUpEvent up && up.PointerId == dragging)
             {
-                if (moved) { up.PreventDefault(); ReleasePointer(dragging); }
+                if (moved)
+                {
+                    up.PreventDefault();
+                    ReleasePointer(dragging);
+                }
                 dragging = -1;
             }
         }

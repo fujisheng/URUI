@@ -3,95 +3,102 @@
 #include "../Header.h"
 #include "ElementFormControl.h"
 
-namespace URUI {
+namespace URUI
+{
 
-class InputType;
-struct RangeControlInfo {
-	float minimum, maximum, step, step_base;
-	int flags; // bit0: authored step=any; bit1: URUI exact physical value.
-};
+    class InputType;
+    struct RangeControlInfo
+    {
+        float minimum;
+        float maximum;
+        float step;
+        float step_base;
+        // bit0: authored step=any; bit1: URUI exact physical value.
+        int flags;
+    };
 
-/**
+    /**
     A form control for the generic input element. All functionality is handled through an input type interface.
  */
 
-class URUI_CORE_API ElementFormControlInput : public ElementFormControl {
-public:
-	URUI_RTTI_DeclareWithParent(ElementFormControlInput, ElementFormControl)
+    class URUI_CORE_API ElementFormControlInput : public ElementFormControl
+    {
+    public:
+        URUI_RTTI_DeclareWithParent(ElementFormControlInput, ElementFormControl)
 
-	/// Constructs a new ElementFormControlInput. This should not be called directly; use the
-	/// Factory instead.
-	/// @param[in] tag The tag the element was declared as in HTML.
-	ElementFormControlInput(const String& tag);
-	virtual ~ElementFormControlInput();
+        /// Constructs a new ElementFormControlInput. This should not be called directly; use the
+        /// Factory instead.
+        /// @param[in] tag The tag the element was declared as in HTML.
+        ElementFormControlInput(const String& tag);
+        virtual ~ElementFormControlInput();
 
-	/// Returns a string representation of the current value of the form control.
-	/// @return The value of the form control.
-	String GetValue() const override;
-	/// Sets the current value of the form control.
-	/// @param value[in] The new value of the form control.
-	void SetValue(const String& value) override;
-	bool GetRangeInfo(RangeControlInfo& info) const;
-	/// Returns if this value's type should be submitted with the form.
-	/// @return True if the form control is to be submitted, false otherwise.
-	bool IsSubmitted() override;
+        /// Returns a string representation of the current value of the form control.
+        /// @return The value of the form control.
+        String GetValue() const override;
+        /// Sets the current value of the form control.
+        /// @param value[in] The new value of the form control.
+        void SetValue(const String& value) override;
+        bool GetRangeInfo(RangeControlInfo& info) const;
+        /// Returns if this value's type should be submitted with the form.
+        /// @return True if the form control is to be submitted, false otherwise.
+        bool IsSubmitted() override;
 
-	/// Selects all text.
-	/// @note Only applies to text and password input types.
-	void Select();
-	/// Selects the text in the given character range.
-	/// @param[in] selection_start The first character to be selected.
-	/// @param[in] selection_end The first character *after* the selection.
-	/// @note Only applies to text and password input types.
-	void SetSelectionRange(int selection_start, int selection_end);
-	/// Retrieves the selection range and text.
-	/// @param[out] selection_start The first character selected.
-	/// @param[out] selection_end The first character *after* the selection.
-	/// @param[out] selected_text The selected text.
-	/// @note Only applies to text and password input types.
-	void GetSelection(int* selection_start, int* selection_end, String* selected_text) const;
+        /// Selects all text.
+        /// @note Only applies to text and password input types.
+        void Select();
+        /// Selects the text in the given character range.
+        /// @param[in] selection_start The first character to be selected.
+        /// @param[in] selection_end The first character *after* the selection.
+        /// @note Only applies to text and password input types.
+        void SetSelectionRange(int selection_start, int selection_end);
+        /// Retrieves the selection range and text.
+        /// @param[out] selection_start The first character selected.
+        /// @param[out] selection_end The first character *after* the selection.
+        /// @param[out] selected_text The selected text.
+        /// @note Only applies to text and password input types.
+        void GetSelection(int* selection_start, int* selection_end, String* selected_text) const;
 
-	/// Sets visual feedback used for the IME composition in the range.
-	/// @param[in] range_start The first character to be selected.
-	/// @param[in] range_end The first character *after* the selection.
-	/// @note Only applies to text and password input types.
-	void SetCompositionRange(int range_start, int range_end);
+        /// Sets visual feedback used for the IME composition in the range.
+        /// @param[in] range_start The first character to be selected.
+        /// @param[in] range_end The first character *after* the selection.
+        /// @note Only applies to text and password input types.
+        void SetCompositionRange(int range_start, int range_end);
 
-protected:
-	/// Updates the element's underlying type.
-	void OnUpdate() override;
-	/// Renders the element's underlying type.
-	void OnRender() override;
-	/// Calls the element's underlying type.
-	void OnResize() override;
-	/// Calls the element's underlying type.
-	void OnLayout() override;
+    protected:
+        /// Updates the element's underlying type.
+        void OnUpdate() override;
+        /// Renders the element's underlying type.
+        void OnRender() override;
+        /// Calls the element's underlying type.
+        void OnResize() override;
+        /// Calls the element's underlying type.
+        void OnLayout() override;
 
-	/// Checks for necessary functional changes in the control as a result of changed attributes.
-	/// @param[in] changed_attributes The list of changed attributes.
-	void OnAttributeChange(const ElementAttributes& changed_attributes) override;
-	/// Called when properties on the control are changed.
-	/// @param[in] changed_properties The properties changed on the element.
-	void OnPropertyChange(const PropertyIdSet& changed_properties) override;
+        /// Checks for necessary functional changes in the control as a result of changed attributes.
+        /// @param[in] changed_attributes The list of changed attributes.
+        void OnAttributeChange(const ElementAttributes& changed_attributes) override;
+        /// Called when properties on the control are changed.
+        /// @param[in] changed_properties The properties changed on the element.
+        void OnPropertyChange(const PropertyIdSet& changed_properties) override;
 
-	/// If we are the added element, this will pass the call onto our type handler.
-	/// @param[in] child The new member of the hierarchy.
-	void OnChildAdd(Element* child) override;
-	/// If we are the removed element, this will pass the call onto our type handler.
-	/// @param[in] child The member of the hierarchy that was just removed.
-	void OnChildRemove(Element* child) override;
+        /// If we are the added element, this will pass the call onto our type handler.
+        /// @param[in] child The new member of the hierarchy.
+        void OnChildAdd(Element* child) override;
+        /// If we are the removed element, this will pass the call onto our type handler.
+        /// @param[in] child The member of the hierarchy that was just removed.
+        void OnChildRemove(Element* child) override;
 
-	/// Checks for necessary functional changes in the control as a result of the event.
-	/// @param[in] event The event to process.
-	void ProcessDefaultAction(Event& event) override;
+        /// Checks for necessary functional changes in the control as a result of the event.
+        /// @param[in] event The event to process.
+        void ProcessDefaultAction(Event& event) override;
 
-	/// Sizes the dimensions to the element's inherent size.
-	/// @return True.
-	bool GetIntrinsicDimensions(Vector2f& dimensions, float& ratio) override;
+        /// Sizes the dimensions to the element's inherent size.
+        /// @return True.
+        bool GetIntrinsicDimensions(Vector2f& dimensions, float& ratio) override;
 
-private:
-	UniquePtr<InputType> type;
-	String type_name;
-};
+    private:
+        UniquePtr<InputType> type;
+        String type_name;
+    };
 
-} // namespace URUI
+}

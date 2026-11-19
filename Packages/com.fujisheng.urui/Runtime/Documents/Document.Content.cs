@@ -9,7 +9,8 @@ namespace URUI.Documents
         sealed class ContentState
         {
             internal ulong Handle;
-            internal uint Generation, LayoutVersion;
+            internal uint Generation;
+            internal uint LayoutVersion;
             internal URUI.Internal.Interop.NativeMethods.ElementRefreshStamp ObservedRefreshStamp;
             internal string SourceUrl;
             internal string SourceMarkup;
@@ -31,8 +32,15 @@ namespace URUI.Documents
                 // 初始化可以重入刷新；新包装器尚未被完整观察，先撤销整份文档的证明。
                 ObservedRefreshStamp = default;
                 CachedUpdateHookCount = -1;
-                if (ElementSnapshot == null) return;
-                if (elementSnapshotCount == ElementSnapshot.Length) { ElementSnapshot = null; return; }
+                if (ElementSnapshot == null)
+                {
+                    return;
+                }
+                if (elementSnapshotCount == ElementSnapshot.Length)
+                {
+                    ElementSnapshot = null;
+                    return;
+                }
                 ElementSnapshot[elementSnapshotCount++] = element;
             }
             internal System.ArraySegment<Element> GetElements()
@@ -48,41 +56,71 @@ namespace URUI.Documents
             }
             internal readonly Dictionary<(ulong element, string shader), PaintRegistration> Painters = new();
             internal readonly Dictionary<(ulong token, EffectKind kind, ulong input), EffectEntry> EffectInstances = new();
-            internal readonly Dictionary<ulong,EffectLayout> EffectLayouts = new();
-            internal readonly Dictionary<string,URUI.Internal.Rendering.NativeProgramLayout> ImageLayouts = new(System.StringComparer.Ordinal);
+            internal readonly Dictionary<ulong, EffectLayout> EffectLayouts = new();
+            internal readonly Dictionary<string, URUI.Internal.Rendering.NativeProgramLayout> ImageLayouts = new(System.StringComparer.Ordinal);
             internal readonly Dictionary<string, ILayerFilterProgram> FilterPrograms = new(System.StringComparer.Ordinal);
         }
-        ContentState content, activeContent, candidateContent;
+        ContentState content;
+        ContentState activeContent;
+        ContentState candidateContent;
         internal string LoadedMarkup
         {
             get
             {
 #if UNITY_EDITOR
-                if (content?.CompiledAsset && content.CompiledAsset.AuthorSource) return content.CompiledAsset.AuthorSource.text;
+                if (content?.CompiledAsset && content.CompiledAsset.AuthorSource)
+                {
+                    return content.CompiledAsset.AuthorSource.text;
+                }
 #endif
                 return content?.SourceMarkup;
             }
         }
         internal System.Func<string, URUI.Resources.ImageLease> ResolverFor(ulong handle)
         {
-            if (candidateContent != null && candidateContent.Handle == handle && !candidateContent.Retired) return candidateContent.ImageResolver;
+            if (candidateContent != null && candidateContent.Handle == handle && !candidateContent.Retired)
+            {
+                return candidateContent.ImageResolver;
+            }
             return activeContent != null && activeContent.Handle == handle && !activeContent.Retired ? activeContent.ImageResolver : null;
         }
         uint nextGeneration;
         uint generation => content?.Generation ?? 0;
         internal ulong NativeHandle => content?.Handle ?? 0;
-        internal int Layer { get; private set; }
-        internal int Order { get; private set; }
-        internal bool Presented { get; private set; } = true;
+        internal int Layer
+        {
+            get;
+            private set;
+        }
+        internal int Order
+        {
+            get;
+            private set;
+        }
+        internal bool Presented
+        {
+            get;
+            private set;
+        } = true;
         bool modal;
-        /// <summary>顶层文档的宿主顺序与模态状态；页面内的 CSS z-index 不改变此顺序。</summary>
+        /// <summary>
+        /// 顶层文档的宿主顺序与模态状态；页面内的 CSS z-index 不改变此顺序。
+        /// </summary>
         public void SetPresentation(int layer, int order, bool visible, bool modal)
         {
             CheckThread();
-            if (Defer(() => SetPresentation(layer, order, visible, modal), false)) return;
-            Layer = layer; Order = order; Presented = visible; this.modal = modal;
+            if (Defer(() => SetPresentation(layer, order, visible, modal), false))
+            {
+                return;
+            }
+            Layer = layer;
+            Order = order;
+            Presented = visible;
+            this.modal = modal;
             if (IsLoaded && URUI.Internal.Interop.NativeMethods.urui_document_set_presentation(NativeHandle, layer, order, visible ? 1 : 0, modal ? 1 : 0) != 1)
+            {
                 throw new System.InvalidOperationException("URUI 文档呈现状态更新失败。");
+            }
             FinishNativeCall();
         }
     }

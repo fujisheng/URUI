@@ -4,23 +4,25 @@
 #include <type_traits>
 #include <utility>
 
-namespace URUI {
+namespace URUI
+{
 
-namespace Detail {
-	struct URUI_CORE_API ObserverPtrBlock {
-		int num_observers;
-		void* pointed_to_object;
-	};
-	URUI_CORE_API ObserverPtrBlock* AllocateObserverPtrBlock();
-	URUI_CORE_API void DeallocateObserverPtrBlockIfEmpty(ObserverPtrBlock* block);
-	void InitializeObserverPtrPool();
-	void ShutdownObserverPtrPool();
-} // namespace Detail
+    namespace Detail
+    {
+        struct URUI_CORE_API ObserverPtrBlock
+        {
+            int num_observers;
+            void* pointed_to_object;
+        };
+        URUI_CORE_API ObserverPtrBlock* AllocateObserverPtrBlock();
+        URUI_CORE_API void DeallocateObserverPtrBlockIfEmpty(ObserverPtrBlock* block);
+        void InitializeObserverPtrPool();
+        void ShutdownObserverPtrPool();
+    }
 
-template <typename T>
-class EnableObserverPtr;
+    template <typename T> class EnableObserverPtr;
 
-/**
+    /**
     Observer pointer.
 
     Holds a weak reference to an object owned by someone else. Can tell whether or not the pointed to object has been destroyed.
@@ -38,130 +40,167 @@ class EnableObserverPtr;
     Note: Not thread safe.
  */
 
-template <typename T>
-class URUI_CORE_API ObserverPtr {
-public:
-	ObserverPtr() noexcept : block(nullptr) {}
-	ObserverPtr(std::nullptr_t) noexcept : block(nullptr) {}
-	~ObserverPtr() noexcept { reset(); }
+    template <typename T> class URUI_CORE_API ObserverPtr
+    {
+    public:
+        ObserverPtr() noexcept : block(nullptr)
+        {
+        }
+        ObserverPtr(std::nullptr_t) noexcept : block(nullptr)
+        {
+        }
+        ~ObserverPtr() noexcept
+        {
+            reset();
+        }
 
-	// Copy
-	ObserverPtr(const ObserverPtr<T>& other) noexcept : block(other.block)
-	{
-		if (block)
-			block->num_observers += 1;
-	}
-	ObserverPtr<T>& operator=(const ObserverPtr<T>& other) noexcept
-	{
-		if (this == &other)
-			return *this;
-		reset();
-		block = other.block;
-		if (block)
-			block->num_observers += 1;
-		return *this;
-	}
+        // Copy
+        ObserverPtr(const ObserverPtr<T>& other) noexcept : block(other.block)
+        {
+            if (block)
+            {
+                block->num_observers += 1;
+            }
+        }
+        ObserverPtr<T>& operator=(const ObserverPtr<T>& other) noexcept
+        {
+            if (this == &other)
+            {
+                return *this;
+            }
+            reset();
+            block = other.block;
+            if (block)
+            {
+                block->num_observers += 1;
+            }
+            return *this;
+        }
 
-	// Move
-	ObserverPtr(ObserverPtr<T>&& other) noexcept : block(std::exchange(other.block, nullptr)) {}
-	ObserverPtr<T>& operator=(ObserverPtr<T>&& other) noexcept
-	{
-		if (this == &other)
-			return *this;
-		reset();
-		block = std::exchange(other.block, nullptr);
-		return *this;
-	}
+        // Move
+        ObserverPtr(ObserverPtr<T>&& other) noexcept : block(std::exchange(other.block, nullptr))
+        {
+        }
+        ObserverPtr<T>& operator=(ObserverPtr<T>&& other) noexcept
+        {
+            if (this == &other)
+            {
+                return *this;
+            }
+            reset();
+            block = std::exchange(other.block, nullptr);
+            return *this;
+        }
 
-	// Returns true if we can dereference the pointer.
-	explicit operator bool() const noexcept { return block && block->pointed_to_object; }
+        // Returns true if we can dereference the pointer.
+        explicit operator bool() const noexcept
+        {
+            return block && block->pointed_to_object;
+        }
 
-	// Comparison operators return true when they point to the same object, or they are both nullptr or expired.
-	bool operator==(const T* other) const noexcept { return get() == other; }
-	bool operator==(const ObserverPtr<T>& other) const noexcept { return get() == other.get(); }
+        // Comparison operators return true when they point to the same object, or they are both nullptr or expired.
+        bool operator==(const T* other) const noexcept
+        {
+            return get() == other;
+        }
+        bool operator==(const ObserverPtr<T>& other) const noexcept
+        {
+            return get() == other.get();
+        }
 
-	// Retrieve the pointer to the observed object if we have one and it's still alive.
-	T* get() const noexcept { return block ? static_cast<T*>(block->pointed_to_object) : nullptr; }
-	// Dereference the pointed to object.
-	T* operator->() const noexcept { return static_cast<T*>(block->pointed_to_object); }
+        // Retrieve the pointer to the observed object if we have one and it's still alive.
+        T* get() const noexcept
+        {
+            return block ? static_cast<T*>(block->pointed_to_object) : nullptr;
+        }
+        // Dereference the pointed to object.
+        T* operator->() const noexcept
+        {
+            return static_cast<T*>(block->pointed_to_object);
+        }
 
-	// Reset the pointer so that it does not point to anything.
-	// When the pointed to object and all observer pointers to it have been destroyed, it will deallocate the block.
-	void reset() noexcept
-	{
-		if (block)
-		{
-			block->num_observers -= 1;
-			Detail::DeallocateObserverPtrBlockIfEmpty(block);
-			block = nullptr;
-		}
-	}
+        // Reset the pointer so that it does not point to anything.
+        // When the pointed to object and all observer pointers to it have been destroyed, it will deallocate the block.
+        void reset() noexcept
+        {
+            if (block)
+            {
+                block->num_observers -= 1;
+                Detail::DeallocateObserverPtrBlockIfEmpty(block);
+                block = nullptr;
+            }
+        }
 
-private:
-	friend class URUI::EnableObserverPtr<T>;
+    private:
+        friend class URUI::EnableObserverPtr<T>;
 
-	explicit ObserverPtr(Detail::ObserverPtrBlock* block) noexcept : block(block)
-	{
-		if (block)
-			block->num_observers += 1;
-	}
+        explicit ObserverPtr(Detail::ObserverPtrBlock* block) noexcept : block(block)
+        {
+            if (block)
+            {
+                block->num_observers += 1;
+            }
+        }
 
-	Detail::ObserverPtrBlock* block;
-};
+        Detail::ObserverPtrBlock* block;
+    };
 
-template <typename T>
-class URUI_CORE_API EnableObserverPtr {
-public:
-	ObserverPtr<T> GetObserverPtr()
-	{
-		InitializeBlock();
-		return ObserverPtr<T>(block);
-	}
+    template <typename T> class URUI_CORE_API EnableObserverPtr
+    {
+    public:
+        ObserverPtr<T> GetObserverPtr()
+        {
+            InitializeBlock();
+            return ObserverPtr<T>(block);
+        }
 
-protected:
-	EnableObserverPtr() noexcept { static_assert(std::is_base_of<EnableObserverPtr<T>, T>::value, "T must derive from EnableObserverPtr<T>."); }
+    protected:
+        EnableObserverPtr() noexcept
+        {
+            static_assert(std::is_base_of<EnableObserverPtr<T>, T>::value, "T must derive from EnableObserverPtr<T>.");
+        }
 
-	~EnableObserverPtr() noexcept
-	{
-		if (block)
-		{
-			block->pointed_to_object = nullptr;
-			Detail::DeallocateObserverPtrBlockIfEmpty(block);
-		}
-	}
+        ~EnableObserverPtr() noexcept
+        {
+            if (block)
+            {
+                block->pointed_to_object = nullptr;
+                Detail::DeallocateObserverPtrBlockIfEmpty(block);
+            }
+        }
 
-	EnableObserverPtr(const EnableObserverPtr<T>&) noexcept
-	{
-		// Do not copy or modify the block, it should always point to the same object.
-	}
-	EnableObserverPtr<T>& operator=(const EnableObserverPtr<T>&) noexcept
-	{
-		// Assignment should not do anything, the block must point to the initially constructed object.
-		return *this;
-	}
+        EnableObserverPtr(const EnableObserverPtr<T>&) noexcept
+        {
+            // Do not copy or modify the block, it should always point to the same object.
+        }
+        EnableObserverPtr<T>& operator=(const EnableObserverPtr<T>&) noexcept
+        {
+            // Assignment should not do anything, the block must point to the initially constructed object.
+            return *this;
+        }
 
-	EnableObserverPtr(EnableObserverPtr<T>&&) noexcept
-	{
-		// Do not move or modify the block, it should always point to the same object.
-	}
-	EnableObserverPtr<T>& operator=(EnableObserverPtr<T>&&) noexcept
-	{
-		// Assignment should not do anything, the block must point to the initially constructed object.
-		return *this;
-	}
+        EnableObserverPtr(EnableObserverPtr<T>&&) noexcept
+        {
+            // Do not move or modify the block, it should always point to the same object.
+        }
+        EnableObserverPtr<T>& operator=(EnableObserverPtr<T>&&) noexcept
+        {
+            // Assignment should not do anything, the block must point to the initially constructed object.
+            return *this;
+        }
 
-private:
-	inline void InitializeBlock()
-	{
-		if (!block)
-		{
-			block = Detail::AllocateObserverPtrBlock();
-			block->num_observers = 0;
-			block->pointed_to_object = static_cast<void*>(static_cast<T*>(this));
-		}
-	}
+    private:
+        inline void InitializeBlock()
+        {
+            if (!block)
+            {
+                block = Detail::AllocateObserverPtrBlock();
+                block->num_observers = 0;
+                block->pointed_to_object = static_cast<void*>(static_cast<T*>(this));
+            }
+        }
 
-	Detail::ObserverPtrBlock* block = nullptr;
-};
+        Detail::ObserverPtrBlock* block = nullptr;
+    };
 
-} // namespace URUI
+}

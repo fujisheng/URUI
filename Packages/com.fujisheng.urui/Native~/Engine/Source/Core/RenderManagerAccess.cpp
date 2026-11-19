@@ -2,47 +2,49 @@
 #include "../../Include/URUI/Core/Texture.h"
 #include "TextureDatabase.h"
 
-namespace URUI {
-
-Vector2i RenderManagerAccess::GetDimensions(RenderManager* render_manager, TextureFileIndex texture)
+namespace URUI
 {
-	return render_manager->texture_database->file_database.GetDimensions(render_manager->render_interface, texture);
-}
 
-Vector2i RenderManagerAccess::GetDimensions(RenderManager* render_manager, StableVectorIndex callback_texture)
-{
-	return render_manager->texture_database->callback_database.GetDimensions(render_manager, render_manager->render_interface, callback_texture);
-}
+    Vector2i RenderManagerAccess::GetDimensions(RenderManager* render_manager, TextureFileIndex texture)
+    {
+        return render_manager->texture_database->file_database.GetDimensions(render_manager->render_interface, texture);
+    }
 
-void RenderManagerAccess::Render(RenderManager* render_manager, const Geometry& geometry, Vector2f translation, Texture texture,
-	const CompiledShader& shader, const DrawParameters& parameters)
-{
-	render_manager->Render(geometry, translation, texture, shader, parameters);
-}
+    Vector2i RenderManagerAccess::GetDimensions(RenderManager* render_manager, StableVectorIndex callback_texture)
+    {
+        return render_manager->texture_database->callback_database.GetDimensions(
+            render_manager, render_manager->render_interface, callback_texture);
+    }
 
-void RenderManagerAccess::GetTextureSourceList(RenderManager* render_manager, StringList& source_list)
-{
-	render_manager->GetTextureSourceList(source_list);
-}
+    void RenderManagerAccess::Render(RenderManager* render_manager, const Geometry& geometry, Vector2f translation,
+                                     Texture texture, const CompiledShader& shader, const DrawParameters& parameters)
+    {
+        render_manager->Render(geometry, translation, texture, shader, parameters);
+    }
 
-const Mesh& RenderManagerAccess::GetMesh(RenderManager* render_manager, const Geometry& geometry)
-{
-	return render_manager->GetMesh(geometry);
-}
+    void RenderManagerAccess::GetTextureSourceList(RenderManager* render_manager, StringList& source_list)
+    {
+        render_manager->GetTextureSourceList(source_list);
+    }
 
-bool RenderManagerAccess::ReleaseTexture(RenderManager* render_manager, const String& texture_source)
-{
-	return render_manager->ReleaseTexture(texture_source);
-}
+    const Mesh& RenderManagerAccess::GetMesh(RenderManager* render_manager, const Geometry& geometry)
+    {
+        return render_manager->GetMesh(geometry);
+    }
 
-void RenderManagerAccess::ReleaseAllTextures(RenderManager* render_manager)
-{
-	render_manager->ReleaseAllTextures();
-}
+    bool RenderManagerAccess::ReleaseTexture(RenderManager* render_manager, const String& texture_source)
+    {
+        return render_manager->ReleaseTexture(texture_source);
+    }
 
-void RenderManagerAccess::ReleaseAllCompiledGeometry(RenderManager* render_manager)
-{
-	render_manager->ReleaseAllCompiledGeometry();
-}
+    void RenderManagerAccess::ReleaseAllTextures(RenderManager* render_manager)
+    {
+        render_manager->ReleaseAllTextures();
+    }
 
-} // namespace URUI
+    void RenderManagerAccess::ReleaseAllCompiledGeometry(RenderManager* render_manager)
+    {
+        render_manager->ReleaseAllCompiledGeometry();
+    }
+
+}

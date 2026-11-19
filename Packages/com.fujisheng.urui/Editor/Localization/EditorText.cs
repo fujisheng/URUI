@@ -7,7 +7,9 @@ using UnityEngine;
 
 namespace URUI.Editor.Localization
 {
-    /// <summary>Follows the effective Unity Editor language, independently of the operating system language.</summary>
+    /// <summary>
+    /// Follows the effective Unity Editor language, independently of the operating system language.
+    /// </summary>
     [InitializeOnLoad]
     public static class EditorText
     {
@@ -33,7 +35,9 @@ namespace URUI.Editor.Localization
             try
             {
                 if (!CanReadEditorLanguage || !(bool)enabled.GetValue(null))
+                {
                     return SystemLanguage.English;
+                }
                 return (SystemLanguage)language.GetValue(null);
             }
             catch (Exception)
@@ -46,11 +50,15 @@ namespace URUI.Editor.Localization
         static void Poll()
         {
             if (EditorApplication.timeSinceStartup < nextPoll)
+            {
                 return;
+            }
             nextPoll = EditorApplication.timeSinceStartup + .25;
             var next = ReadLanguage();
             if (next == current)
+            {
                 return;
+            }
             current = next;
             LanguageChanged?.Invoke();
             InternalEditorUtility.RepaintAllViews();
@@ -61,14 +69,18 @@ namespace URUI.Editor.Localization
         public static string Message(string message) => EditorTextCatalog.Message(message, IsChinese);
         public static string Format(string key, params object[] values) => string.Format(CultureInfo.InvariantCulture, Tr(key), values);
 
-        /// <summary>Names are user data. Only the absent-name annotation is translated.</summary>
+        /// <summary>
+        /// Names are user data. Only the absent-name annotation is translated.
+        /// </summary>
         public static string NodeName(string tag, string id) => string.IsNullOrEmpty(id) ? tag + Tr("（未命名）") : id;
 
         public static void Title(EditorWindow window, string key)
         {
             string text = Tr(key);
             if (window.titleContent.text != text)
+            {
                 window.titleContent = new GUIContent(text, window.titleContent.image, window.titleContent.tooltip);
+            }
         }
     }
 }

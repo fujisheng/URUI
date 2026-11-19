@@ -24,20 +24,25 @@ namespace URUI.Authoring.Windows
         readonly ScrollView entries = new ScrollView();
         readonly ToolbarSearchField search;
         readonly Label destination = new Label();
-        readonly WorkbenchUi.LocalNodeDrag localDrag;
+        readonly WorkbenchUI.LocalNodeDrag localDrag;
         Action firstResult;
         string query = "";
         bool project;
         long resourceRevision = -1;
 
-        internal WorkbenchLibrary(Action close, WorkbenchUi.LocalNodeDrag localDrag)
+        internal WorkbenchLibrary(Action close, WorkbenchUI.LocalNodeDrag localDrag)
         {
             this.localDrag = localDrag;
             AddToClassList("urui-library");
             var header = new VisualElement();
             header.AddToClassList("urui-library-header");
-            header.Add(WorkbenchUi.Heading(L.Tr("控件库")));
-            var collapse = new Button(close) { text = "‹", name = "urui-close-library", tooltip = L.Tr("关闭控件库") };
+            header.Add(WorkbenchUI.Heading(L.Tr("控件库")));
+            var collapse = new Button(close)
+            {
+                text = "‹",
+                name = "urui-close-library",
+                tooltip = L.Tr("关闭控件库")
+            };
             collapse.AddToClassList("urui-library-collapse");
             header.Add(collapse);
             Add(header);
@@ -45,7 +50,11 @@ namespace URUI.Authoring.Windows
                 EnableInClassList("urui-library-compact", evt.newRect.width < 190));
             var tabs = new Toolbar();
             tabs.AddToClassList("urui-tabs");
-            var standardTab = new ToolbarToggle { text = L.Tr("标准控件"), value = true };
+            var standardTab = new ToolbarToggle
+            {
+                text = L.Tr("标准控件"),
+                value = true
+            };
             var projectTab = new ToolbarToggle { text = L.Tr("项目片段") };
             void SetProject(bool enabled)
             {
@@ -61,13 +70,19 @@ namespace URUI.Authoring.Windows
             Add(tabs);
             search = new ToolbarSearchField { tooltip = L.Tr("搜索控件") };
             search.AddToClassList("urui-search");
-            WorkbenchUi.SetPlaceholder(search, L.Tr("搜索控件…"));
-            search.RegisterValueChangedCallback(evt => { query = evt.newValue.Trim(); Populate(); });
+            WorkbenchUI.SetPlaceholder(search, L.Tr("搜索控件…"));
+            search.RegisterValueChangedCallback(evt =>
+            {
+                query = evt.newValue.Trim();
+                Populate();
+            });
             search.RegisterCallback<KeyDownEvent>(evt =>
             {
                 if (!NodePlacement.Editing || query.Length == 0 || firstResult == null ||
                     evt.keyCode is not (KeyCode.Return or KeyCode.KeypadEnter))
+                {
                     return;
+                }
                 firstResult();
                 evt.StopImmediatePropagation();
             }, TrickleDown.TrickleDown);
@@ -88,13 +103,17 @@ namespace URUI.Authoring.Windows
             var selected = AuthoringEnvironment.ActiveNode;
             var node = SelectedAnchor(selected?.SourceNode);
             if (AuthoringEnvironment.Author.Model == null)
+            {
                 destination.text = L.Tr("打开页面后添加控件");
+            }
             else if (node == null || node.Tag == "body")
+            {
                 destination.text = L.Tr("添加到页面");
+            }
             else
             {
                 string text = selected?.SourceKey == node.Key ? selected.Read("text") : null;
-                string title = WorkbenchUi.NodeTitle(node.Tag, node.Attribute("id"), node.Attribute("class"), text, node.Attribute("type"));
+                string title = WorkbenchUI.NodeTitle(node.Tag, node.Attribute("id"), node.Attribute("class"), text, node.Attribute("type"));
                 destination.text = string.Format(L.Tr(NodePlacement.AcceptsChildren(node) ? "添加到 {0}" : "添加到 {0} 之后"), title);
             }
             destination.tooltip = destination.text;
@@ -106,9 +125,13 @@ namespace URUI.Authoring.Windows
             {
                 // Quick add must stay outside buttons, even when their label or decoration is selected.
                 if (ancestor.Tag == "button")
+                {
                     node = ancestor;
+                }
                 if (ancestor.Tag == "body")
+                {
                     return node;
+                }
             }
             return null;
         }
@@ -125,14 +148,20 @@ namespace URUI.Authoring.Windows
             foreach (var entry in Standard)
             {
                 if (entry.Kind == "particles" && !AuthoringEnvironment.Extensions.Any(extension => extension.Id == "effect"))
+                {
                     continue;
+                }
                 string label = L.Tr(entry.Label);
                 if (query.Length != 0 && label.IndexOf(query, System.StringComparison.OrdinalIgnoreCase) < 0 &&
                     entry.Kind.IndexOf(query, System.StringComparison.OrdinalIgnoreCase) < 0)
+                {
                     continue;
+                }
                 var control = new Label(label)
                 {
-                    name = "urui-control-" + entry.Kind, focusable = true, tooltip = label + "\n" + L.Tr("单击添加，或拖到图层和画布")
+                    name = "urui-control-" + entry.Kind,
+                    focusable = true,
+                    tooltip = label + "\n" + L.Tr("单击添加，或拖到图层和画布")
                 };
                 control.AddToClassList("urui-control-tile");
                 control.AddToClassList("urui-standard-tile");
@@ -153,12 +182,14 @@ namespace URUI.Authoring.Windows
                     }
                 });
                 control.AddManipulator(new ContextualMenuManipulator(evt => evt.menu.AppendAction(L.Tr("添加节点"), _ => Insert())));
-                WorkbenchUi.EnableDrag(control, () => NodePlacement.Editing ? new WorkbenchDrag(kind: entry.Kind) : null,
+                WorkbenchUI.EnableDrag(control, () => NodePlacement.Editing ? new WorkbenchDrag(kind: entry.Kind) : null,
                     click: Insert, local: localDrag);
                 entries.Add(control);
             }
             if (entries.childCount == 0)
+            {
                 AddEmptyMessage("未找到匹配的控件");
+            }
         }
 
         void PopulateProject()
@@ -169,8 +200,14 @@ namespace URUI.Authoring.Windows
             {
                 string name = Path.GetFileName(resource.Source);
                 if (query.Length != 0 && name.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0)
+                {
                     continue;
-                var label = new Label(name) { tooltip = resource.Source, focusable = true };
+                }
+                var label = new Label(name)
+                {
+                    tooltip = resource.Source,
+                    focusable = true
+                };
                 label.AddToClassList("urui-control-tile");
                 label.AddToClassList("urui-control-fragment");
                 string path = AuthoringAssetPaths.AssetPath(resource.Source);
@@ -183,20 +220,26 @@ namespace URUI.Authoring.Windows
                 WorkbenchDrag DragFragment()
                 {
                     if (!NodePlacement.Editing)
+                    {
                         return null;
+                    }
                     WorkbenchDrag drag = null;
                     AuthoringEnvironment.Try(() => drag = new WorkbenchDrag(fragment: ValidateFragment(resource.Asset.text)));
                     return drag;
                 }
-                WorkbenchUi.EnableDrag(label, DragFragment, () =>
+                WorkbenchUI.EnableDrag(label, DragFragment, () =>
                 {
                     if (path != null)
+                    {
                         EditorUtility.OpenWithDefaultApp(path);
+                    }
                 }, local: localDrag);
                 entries.Add(label);
             }
             if (entries.childCount == 0)
+            {
                 AddEmptyMessage(query.Length == 0 ? "此页面没有引用项目片段" : "未找到匹配的项目片段");
+            }
         }
 
         void AddEmptyMessage(string message)
@@ -210,13 +253,17 @@ namespace URUI.Authoring.Windows
         {
             var fragment = SourceDocument.Parse(markup);
             if (fragment.Roots.Count != 1 || fragment.Roots[0].Tag is "html" or "body" or "head" or "template")
+            {
                 throw new InvalidOperationException(L.Tr("这个片段不能直接插入当前页面。"));
+            }
             var ids = new System.Collections.Generic.HashSet<string>(AuthoringEnvironment.Author.Model.Nodes.Select(node => node.Attribute("id")).Where(id => !string.IsNullOrEmpty(id)));
             foreach (var node in fragment.Nodes)
             {
                 string id = node.Attribute("id");
                 if (!string.IsNullOrEmpty(id) && !ids.Add(id))
+                {
                     throw new InvalidOperationException(L.Tr("片段包含重复 id。") + " " + id);
+                }
             }
             return markup;
         }

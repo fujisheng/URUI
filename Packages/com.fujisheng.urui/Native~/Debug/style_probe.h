@@ -5,11 +5,11 @@
 #include "../urui.h"
 #include <URUI/Core/Transform.h>
 #include <chrono>
-namespace urui_style_probe
+namespace URUI::StyleProbe
 {
-    extern thread_local UruiStyleProbe total;
+    extern thread_local URUIStyleProbe total;
     extern thread_local int mode;
-    extern thread_local UruiStyleProbe* active;
+    extern thread_local URUIStyleProbe* active;
     struct Scope
     {
         uint64_t* out;
@@ -17,7 +17,9 @@ namespace urui_style_probe
         explicit Scope(uint64_t* p) : out(p)
         {
             if (out)
+            {
                 start = std::chrono::steady_clock::now();
+            }
         }
         ~Scope()
         {
@@ -36,12 +38,28 @@ namespace urui_style_probe
     // 严格 CSS 校验可能提前返回，所有拒绝都必须进入解析计数和耗时。
     struct ParseScope
     {
-        UruiStyleProbe* probe = active;
+        URUIStyleProbe* probe = active;
         Scope timer{probe ? &probe->parse_ns : nullptr};
         bool accepted = false;
-        ParseScope() { if (probe) ++probe->parsed_calls; }
-        ~ParseScope() { if (probe && !accepted) ++probe->rejected_calls; }
-        void Complete() { accepted = true; timer.Stop(); }
+        ParseScope()
+        {
+            if (probe)
+            {
+                ++probe->parsed_calls;
+            }
+        }
+        ~ParseScope()
+        {
+            if (probe && !accepted)
+            {
+                ++probe->rejected_calls;
+            }
+        }
+        void Complete()
+        {
+            accepted = true;
+            timer.Stop();
+        }
     };
     // Exact comparison of the existing inline declaration, not computed style.
     // Complex unknown representations are counted unsupported, never equal.
@@ -51,13 +69,17 @@ namespace urui_style_probe
         {
             auto t = a.Get<URUI::TransformPtr>();
             if (!t)
+            {
                 return true;
+            }
             for (int i = 0; i < t->GetNumPrimitives(); ++i)
             {
                 auto k = t->GetPrimitive(i).type;
                 if (k != URUI::TransformPrimitive::TRANSLATE2D && k != URUI::TransformPrimitive::SCALE2D &&
                     k != URUI::TransformPrimitive::MATRIX2D)
+                {
                     return false;
+                }
             }
             return true;
         }
@@ -77,13 +99,21 @@ namespace urui_style_probe
     {
         supported = Supported(a) && Supported(b);
         if (!supported)
+        {
             return false;
+        }
         if (a.priority.originImportance != b.priority.originImportance)
+        {
             return false;
+        }
         if (a.unit != b.unit)
+        {
             return false;
+        }
         if (a.value.GetType() != b.value.GetType())
+        {
             return false;
+        }
         if (a.unit != URUI::Unit::TRANSFORM)
         {
             switch (a.value.GetType())
@@ -101,16 +131,22 @@ namespace urui_style_probe
         }
         auto x = a.Get<URUI::TransformPtr>(), y = b.Get<URUI::TransformPtr>();
         if (!x || !y)
+        {
             return x == y;
+        }
         if (x->GetNumPrimitives() != y->GetNumPrimitives())
+        {
             return false;
+        }
         bool equal = true;
         for (int i = 0; i < x->GetNumPrimitives(); ++i)
         {
             auto& p = x->GetPrimitive(i);
             auto& q = y->GetPrimitive(i);
             if (p.type != q.type)
+            {
                 return false;
+            }
             switch (p.type)
             {
             case URUI::TransformPrimitive::TRANSLATE2D:
@@ -129,6 +165,6 @@ namespace urui_style_probe
         }
         return equal;
     }
-} // namespace urui_style_probe
+}
 
 #endif

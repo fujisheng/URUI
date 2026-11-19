@@ -19,10 +19,12 @@ namespace URUI.Effect.Tests
                 new TextResource("/urui/behaviors.css", UnityEngine.Resources.Load<TextAsset>("URUI/behaviors"))
             };
             foreach (var family in new[] { "Serif", "Sans", "Mono" })
-            foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
             {
-                var name = "Liberation" + family + "-" + face + ".ttf";
-                files.Add(new TextResource("/urui/Fonts/" + name + ".bytes", UnityEngine.Resources.Load<TextAsset>("URUI/Fonts/" + name)));
+                foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
+                {
+                    var name = "Liberation" + family + "-" + face + ".ttf";
+                    files.Add(new TextResource("/urui/Fonts/" + name + ".bytes", UnityEngine.Resources.Load<TextAsset>("URUI/Fonts/" + name)));
+                }
             }
             document.TextResources = files.ToArray();
             const string html = "<!doctype html><html><head><link rel='stylesheet' href='/urui/base.css'>" +

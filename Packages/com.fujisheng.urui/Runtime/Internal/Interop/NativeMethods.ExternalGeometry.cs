@@ -8,35 +8,67 @@ namespace URUI.Internal.Interop
     {
         internal IntPtr Data;
         internal ulong Bytes;
-        internal uint Stride,Reserved;
+        internal uint Stride;
+        internal uint Reserved;
     }
     [StructLayout(LayoutKind.Sequential)]
     internal struct RenderPlanAttribute
     {
-        internal uint Stream,Offset,Format,Dimension;
+        internal uint Stream;
+        internal uint Offset;
+        internal uint Format;
+        internal uint Dimension;
     }
     [StructLayout(LayoutKind.Sequential)]
     internal struct RenderPlanExternalGeometry
     {
-        internal ulong Geometry,Version;
-        internal RenderPlanVertexStream Stream0,Stream1,Stream2,Stream3;
+        internal ulong Geometry;
+        internal ulong Version;
+        internal RenderPlanVertexStream Stream0;
+        internal RenderPlanVertexStream Stream1;
+        internal RenderPlanVertexStream Stream2;
+        internal RenderPlanVertexStream Stream3;
         internal IntPtr Indices;
         internal ulong IndexBytes;
-        internal uint VertexCount,IndexCount,IndexStart;
+        internal uint VertexCount;
+        internal uint IndexCount;
+        internal uint IndexStart;
         internal int BaseVertex;
-        internal uint StreamCount,IndexStride;
-        internal RenderPlanAttribute Position,Color,Uv;
-        internal void SetStream(int index,RenderPlanVertexStream value)
+        internal uint StreamCount;
+        internal uint IndexStride;
+        internal RenderPlanAttribute Position;
+        internal RenderPlanAttribute Color;
+        internal RenderPlanAttribute Uv;
+        internal void SetStream(int index, RenderPlanVertexStream value)
         {
-            switch(index){case 0:Stream0=value;break;case 1:Stream1=value;break;case 2:Stream2=value;break;case 3:Stream3=value;break;default:throw new ArgumentOutOfRangeException(nameof(index));}
+            switch (index)
+            {
+                case 0:
+                    Stream0 = value;
+                    break;
+                case 1:
+                    Stream1 = value;
+                    break;
+                case 2:
+                    Stream2 = value;
+                    break;
+                case 3:
+                    Stream3 = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index));
+            }
         }
     }
     [StructLayout(LayoutKind.Sequential)]
     internal struct RenderPlanExternalDraw
     {
-        internal uint Command,GeometryIndex;
-        internal ulong Provider,Program;
+        internal uint Command;
+        internal uint GeometryIndex;
+        internal ulong Provider;
+        internal ulong Program;
         internal RenderPlanParameter Parameter;
-        internal uint Flags,Reserved;
+        internal uint Flags;
+        internal uint Reserved;
     }
 }

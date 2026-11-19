@@ -25,13 +25,18 @@ namespace URUI.Effect.Tests
                 new TextResource("/urui-effect/Effect.css", UnityEngine.Resources.Load<TextAsset>("URUI.Effect/Effect"))
             };
             foreach (var family in new[] { "Serif", "Sans", "Mono" })
+            {
                 foreach (var face in new[] { "Regular", "Italic", "Bold", "BoldItalic" })
                 {
                     var name = "Liberation" + family + "-" + face + ".ttf";
                     files.Add(new TextResource("/urui/Fonts/" + name + ".bytes", UnityEngine.Resources.Load<TextAsset>("URUI/Fonts/" + name)));
                 }
+            }
             var unique = new Dictionary<string, TextResource>(System.StringComparer.Ordinal);
-            foreach (var file in files) { unique[file.Source] = file; }
+            foreach (var file in files)
+            {
+                unique[file.Source] = file;
+            }
             document.TextResources = new List<TextResource>(unique.Values).ToArray();
             document.Load(UnityEngine.Resources.Load<TextAsset>(resourceKey), "/" + resourceKey + ".html");
         }

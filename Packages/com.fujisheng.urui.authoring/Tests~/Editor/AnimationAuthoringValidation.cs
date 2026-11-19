@@ -18,7 +18,9 @@ namespace URUI.Authoring.Tests
         {
             count++;
             if (!condition)
+            {
                 throw new Exception(message);
+            }
         }
         static void Reject(Action action)
         {
@@ -27,7 +29,10 @@ namespace URUI.Authoring.Tests
             {
                 action();
             }
-            catch (InvalidOperationException) { return; }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
             throw new Exception("Expected rejection");
         }
         public static void Run()
@@ -37,7 +42,9 @@ namespace URUI.Authoring.Tests
                 const string path = "Assets/AnimationChecks/page.html";
                 Directory.CreateDirectory("Assets/AnimationChecks");
                 foreach (string suffix in new[] { ".animations.css", ".urui-sequence.json" })
+                {
                     File.Delete(Path.ChangeExtension(path, suffix));
+                }
                 string original = "<!doctype html><html><head><style>body{margin:0;}div{position:absolute;left:10px;top:20px;width:100px;height:50px;opacity:.7;background-color:red;}</style></head><body><div></div><div></div><section></section></body></html>";
                 File.WriteAllText(path, original);
                 AuthoringEnvironment.Open(path);
@@ -45,7 +52,8 @@ namespace URUI.Authoring.Tests
                 var author = AuthoringEnvironment.Author;
                 string key = author.Model.Nodes.First(n => n.Tag == "div").Key;
                 var proxy = ElementSelectionProxy.ForAuthor(key);
-                string identity = proxy.TargetId, runtimeId = proxy.Node.Id;
+                string identity = proxy.TargetId;
+                string runtimeId = proxy.Node.Id;
                 proxy.Set("style.width", "120px");
                 Check(proxy.Node.Id == runtimeId, "Ordinary edit reloaded the DOM");
                 long revision = author.Revision;
@@ -53,21 +61,37 @@ namespace URUI.Authoring.Tests
                 int history = author.Workspace.HistoryPosition;
                 using (var gesture = new CanvasGesture(proxy))
                 {
-                    gesture.Preview(new[] { new AuthoringEdit { Node = proxy.SourceKey, Property = "style.left", Value = "30px" } });
-                    gesture.Preview(new[] { new AuthoringEdit { Node = proxy.SourceKey, Property = "style.left", Value = "40px" } });
+                    gesture.Preview(new[] { new AuthoringEdit {
+Node = proxy.SourceKey,
+Property = "style.left",
+Value = "30px"
+} });
+                    gesture.Preview(new[] { new AuthoringEdit {
+Node = proxy.SourceKey,
+Property = "style.left",
+Value = "40px"
+} });
                     Check(author.Revision == revision && author.File.Text == before, "Gesture preview published source");
                 }
                 Check(proxy.Node.Computed("left") == "10px", "Cancel did not restore initial preview");
                 using (var gesture = new CanvasGesture(proxy))
                 {
-                    gesture.Preview(new[] { new AuthoringEdit { Node = proxy.SourceKey, Property = "style.left", Value = "40px" } });
+                    gesture.Preview(new[] { new AuthoringEdit {
+Node = proxy.SourceKey,
+Property = "style.left",
+Value = "40px"
+} });
                     gesture.Commit();
                 }
                 Check(author.Workspace.HistoryPosition == history + 1, "Gesture did not commit exactly once");
                 author.Undo();
                 Check(author.File.Text == before && proxy.IsTargetValid, "Gesture undo lost source or identity");
                 string section = author.Model.Nodes.First(n => n.Tag == "section").Key;
-                author.Execute(new[] { new AuthoringEdit { Operation = "move", Node = proxy.SourceKey, Parent = section } }, author.Revision);
+                author.Execute(new[] { new AuthoringEdit {
+Operation = "move",
+Node = proxy.SourceKey,
+Parent = section
+} }, author.Revision);
                 Check(proxy.IsTargetValid && proxy.TargetId == identity && proxy.SourceNode.Parent.Tag == "section", "Known move lost selected node");
                 author.Undo();
                 Check(proxy.IsTargetValid && proxy.SourceNode.Parent.Tag == "body", "Move undo identity mismatch");
@@ -80,7 +104,8 @@ namespace URUI.Authoring.Tests
                 string track = workspace.AddPreset(proxy.SourceKey, "popup", 0, .3, author.Revision);
                 Check(proxy.IsTargetValid && proxy.TargetId == identity, "Preset creation lost locked selection identity");
                 Check(author.Workspace.HistoryPosition == history + 1, "Preset creation was not one transaction");
-                string sequencePath = workspace.Path, cssPath = Path.ChangeExtension(author.File.Path, ".animations.css");
+                string sequencePath = workspace.Path;
+                string cssPath = Path.ChangeExtension(author.File.Path, ".animations.css");
                 Check(!File.Exists(sequencePath) && !File.Exists(cssPath), "Creation wrote files before Save");
                 Check(author.File.Text.Contains("animations.css") && workspace.Definition.Tracks.Count == 1, "Preset did not link CSS/sequence");
                 author.Undo();
@@ -117,14 +142,20 @@ namespace URUI.Authoring.Tests
                 Check(File.Exists(sequencePath) && File.Exists(cssPath), "Save did not publish the whole workset");
                 Check(SequenceDefinition.Parse(File.ReadAllText(sequencePath)).Tracks.Count == 1, "Saved sequence cannot reopen");
                 Check(File.ReadAllText(path) == author.File.Text, "Saved HTML differs");
-                UruiEditorWindow.Open();
-                UruiAnimationWindow.Open();
+                AuthoringWindow.Open();
+                URUI.Authoring.Windows.AnimationWindow.Open();
                 Directory.CreateDirectory("Evidence");
                 File.WriteAllText("Evidence/animation-authoring.json", "{\"passed\":" + count + ",\"failed\":0}");
                 Debug.Log("URUI Animation Authoring PASS " + count);
                 EditorApplication.Exit(0);
             }
-            catch (Exception error) { Directory.CreateDirectory("Evidence"); File.WriteAllText("Evidence/animation-authoring-failure.txt", error.ToString()); Debug.LogException(error); EditorApplication.Exit(1); }
+            catch (Exception error)
+            {
+                Directory.CreateDirectory("Evidence");
+                File.WriteAllText("Evidence/animation-authoring-failure.txt", error.ToString());
+                Debug.LogException(error);
+                EditorApplication.Exit(1);
+            }
         }
     }
 }

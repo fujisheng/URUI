@@ -6,73 +6,96 @@
 #include "../../Include/URUI/Core/Texture.h"
 #include <algorithm>
 
-namespace URUI {
-
-Decorator::Decorator() {}
-
-Decorator::~Decorator() {}
-
-int Decorator::AddTexture(Texture texture)
+namespace URUI
 {
-	if (!texture)
-		return -1;
 
-	if (!first_texture)
-		first_texture = texture;
+    Decorator::Decorator()
+    {
+    }
 
-	if (first_texture == texture)
-		return 0;
+    Decorator::~Decorator()
+    {
+    }
 
-	auto it = std::find(additional_textures.begin(), additional_textures.end(), texture);
-	if (it != additional_textures.end())
-		return (int)(it - additional_textures.begin()) + 1;
+    int Decorator::AddTexture(Texture texture)
+    {
+        if (!texture)
+        {
+            return -1;
+        }
 
-	additional_textures.push_back(texture);
-	return (int)additional_textures.size();
+        if (!first_texture)
+        {
+            first_texture = texture;
+        }
+
+        if (first_texture == texture)
+        {
+            return 0;
+        }
+
+        auto it = std::find(additional_textures.begin(), additional_textures.end(), texture);
+        if (it != additional_textures.end())
+        {
+            return (int)(it - additional_textures.begin()) + 1;
+        }
+
+        additional_textures.push_back(texture);
+        return (int)additional_textures.size();
+    }
+
+    int Decorator::GetNumTextures() const
+    {
+        int result = (first_texture ? 1 : 0);
+        result += (int)additional_textures.size();
+        return result;
+    }
+
+    Texture Decorator::GetTexture(int index) const
+    {
+        if (index == 0)
+        {
+            return first_texture;
+        }
+
+        index -= 1;
+        if (index < 0 || index >= (int)additional_textures.size())
+        {
+            return {};
+        }
+
+        return additional_textures[index];
+    }
+
+    DecoratorInstancer::DecoratorInstancer()
+    {
+    }
+
+    DecoratorInstancer::~DecoratorInstancer()
+    {
+    }
+
+    const Sprite* DecoratorInstancerInterface::GetSprite(const String& name) const
+    {
+        return resources ? resources->GetSprite(name) : nullptr;
+    }
+
+    Texture DecoratorInstancerInterface::GetTexture(const String& filename) const
+    {
+        if (!property_source)
+        {
+            Log::Message(Log::LT_WARNING,
+                         "Texture name '%s' in decorator could not be loaded, no property source available.",
+                         filename.c_str());
+            return {};
+        }
+
+        return render_manager.LoadTexture(filename, property_source->path, resources);
+    }
+
+    RenderManager& DecoratorInstancerInterface::GetRenderManager() const
+    {
+        return render_manager;
+    }
+
 }
-
-int Decorator::GetNumTextures() const
-{
-	int result = (first_texture ? 1 : 0);
-	result += (int)additional_textures.size();
-	return result;
-}
-
-Texture Decorator::GetTexture(int index) const
-{
-	if (index == 0)
-		return first_texture;
-
-	index -= 1;
-	if (index < 0 || index >= (int)additional_textures.size())
-		return {};
-
-	return additional_textures[index];
-}
-
-DecoratorInstancer::DecoratorInstancer() {}
-
-DecoratorInstancer::~DecoratorInstancer() {}
-
-const Sprite* DecoratorInstancerInterface::GetSprite(const String& name) const
-{
-	return resources ? resources->GetSprite(name) : nullptr;
-}
-
-Texture DecoratorInstancerInterface::GetTexture(const String& filename) const
-{
-	if (!property_source)
-	{
-		Log::Message(Log::LT_WARNING, "Texture name '%s' in decorator could not be loaded, no property source available.", filename.c_str());
-		return {};
-	}
-
-	return render_manager.LoadTexture(filename, property_source->path, resources);
-}
-
-RenderManager& DecoratorInstancerInterface::GetRenderManager() const
-{
-	return render_manager;
-}
-
-} // namespace URUI
