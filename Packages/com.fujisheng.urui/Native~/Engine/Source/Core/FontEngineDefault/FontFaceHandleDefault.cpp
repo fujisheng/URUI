@@ -12,9 +12,6 @@
 namespace URUI
 {
 
-    static constexpr char32_t KerningCache_AsciiSubsetBegin = 32;
-    static constexpr char32_t KerningCache_AsciiSubsetLast = 126;
-
     FontFaceHandleDefault::FontFaceHandleDefault()
     {
         base_layer = nullptr;
@@ -26,6 +23,17 @@ namespace URUI
     {
         glyphs.clear();
         layers.clear();
+    }
+
+    void FontFaceHandleDefault::ReleaseTextures(RenderManager& render_manager)
+    {
+        for (auto& pair : layers)
+        {
+            if (pair.layer)
+            {
+                pair.layer->ReleaseTextures(render_manager);
+            }
+        }
     }
 
     bool FontFaceHandleDefault::Initialize(FontFaceHandleFreetype face, float font_size, bool load_default_glyphs)
@@ -40,7 +48,6 @@ namespace URUI
         }
 
         has_kerning = FreeType::HasKerning(ft_face);
-        FillKerningPairCache();
 
         // Generate the default layer and layer configuration.
         base_layer = GetOrCreateLayer(nullptr);
@@ -269,8 +276,10 @@ namespace URUI
                 mesh_list[geometry_index + tex_index].texture = layer->GetTexture(render_manager, tex_index);
             }
 
-            mesh_list[geometry_index].mesh.indices.reserve(string.size() * 6);
-            mesh_list[geometry_index].mesh.vertices.reserve(string.size() * 4);
+            mesh_list[geometry_index].mesh.indices.reserve(mesh_list[geometry_index].mesh.indices.size() +
+                                                           string.size() * 6);
+            mesh_list[geometry_index].mesh.vertices.reserve(mesh_list[geometry_index].mesh.vertices.size() +
+                                                            string.size() * 4);
 
             for (auto it_string = StringIteratorU8(string); it_string; ++it_string)
             {
@@ -350,26 +359,7 @@ namespace URUI
 
     void FontFaceHandleDefault::FillKerningPairCache()
     {
-        if (!has_kerning)
-        {
-            return;
-        }
-
-        for (char32_t i = KerningCache_AsciiSubsetBegin; i <= KerningCache_AsciiSubsetLast; i++)
-        {
-            for (char32_t j = KerningCache_AsciiSubsetBegin; j <= KerningCache_AsciiSubsetLast; j++)
-            {
-                const bool first_iteration = (i == KerningCache_AsciiSubsetBegin && j == KerningCache_AsciiSubsetBegin);
-
-                // Fetch the kerning from the font face. Submit zero font size on subsequent iterations for performance reasons.
-                const float kerning =
-                    FreeType::GetKerning(ft_face, first_iteration ? metrics.size : 0, Character(i), Character(j));
-                if (kerning != 0)
-                {
-                    kerning_pair_cache.emplace(AsciiPair((i << 8) | j), kerning);
-                }
-            }
-        }
+        // Kerning pairs are now populated lazily in GetKerning() to avoid 9,025 FreeType queries per font face/chain.
     }
 
     float FontFaceHandleDefault::GetKerning(Character lhs, Character rhs, bool& has_set_size) const
@@ -382,22 +372,11 @@ namespace URUI
             return 0;
         }
 
-        // See if the kerning pair has been cached.
-        const bool lhs_in_cache =
-            (char32_t(lhs) >= KerningCache_AsciiSubsetBegin && char32_t(lhs) <= KerningCache_AsciiSubsetLast);
-        const bool rhs_in_cache =
-            (char32_t(rhs) >= KerningCache_AsciiSubsetBegin && char32_t(rhs) <= KerningCache_AsciiSubsetLast);
-
-        if (lhs_in_cache && rhs_in_cache)
+        const KerningPairKey key = (uint64_t(uint32_t(lhs)) << 32) | uint64_t(uint32_t(rhs));
+        const auto it = kerning_pair_cache.find(key);
+        if (it != kerning_pair_cache.end())
         {
-            const auto it = kerning_pair_cache.find(AsciiPair((int(lhs) << 8) | int(rhs)));
-
-            if (it != kerning_pair_cache.end())
-            {
-                return it->second;
-            }
-
-            return 0;
+            return it->second;
         }
 
         // Fetch it from the font face instead.
@@ -405,6 +384,11 @@ namespace URUI
 
         // This is purely an optimization to avoid repeatedly setting the font size in FreeType, which can be a measurable performance hit.
         has_set_size = true;
+
+        if (kerning_pair_cache.size() < 4096)
+        {
+            kerning_pair_cache.emplace(key, result);
+        }
 
         return result;
     }

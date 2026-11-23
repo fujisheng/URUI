@@ -6,7 +6,6 @@ using URUI.Controls;
 using URUI.Events;
 using URUI.Internal.Interop;
 using UnityInput = UnityEngine.Input;
-
 using URUI.Documents;
 
 namespace URUI.Hosting
@@ -17,20 +16,30 @@ namespace URUI.Hosting
     public sealed class SurfaceInput
     {
         readonly Surface surface;
+        readonly List<(int Pointer, int Button, Document Owner)> pointerPresses = new();
         Document document => surface.FocusedDocument ?? surface.TopDocument;
         readonly Dictionary<KeyCode, float> repeating = new Dictionary<KeyCode, float>();
+        readonly HashSet<KeyCode> activeHeldKeys = new HashSet<KeyCode>();
+        readonly List<KeyCode> heldKeyScratch = new List<KeyCode>();
         static readonly KeyCode[] keys = PhysicalKeys();
         string composition = "";
         bool hadFocus = true;
         Element clipboardFocus;
         ulong clipboardVersion;
+        bool hasLastMouseState;
+        Vector2 lastMousePosition;
+        int lastMouseButtons;
+        InputModifiers lastMouseModifiers;
+        ulong lastPollLayoutVersion;
 
         // Shared chrome must also observe presses on empty Surface space or another document.
         internal event Action<Vector2> PointerPressed;
+
         internal SurfaceInput(Surface surface)
         {
             this.surface = surface;
         }
+
         /// <summary>
         /// 是否使用 Unity 旧输入后端。关闭后仍可显式发送输入。
         /// </summary>
@@ -39,6 +48,38 @@ namespace URUI.Hosting
             get;
             set;
         } = true;
+
+        /// <summary>
+        /// 使用 Unity 屏幕坐标判断场景输入是否应让给此 Surface。
+        /// 命中作者节点或存在可见模态文档时由 UI 接管。文档根与 body 的空白区域允许场景输入。
+        /// </summary>
+        public bool BlocksPointer(Vector2 screenPosition)
+        {
+            surface.CheckThread();
+            var host = surface.Host;
+            if (!surface.isActiveAndEnabled || !host || !host.Ready ||
+                Screen.width <= 0 || Screen.height <= 0 ||
+                !new Rect(0, 0, Screen.width, Screen.height).Contains(screenPosition))
+            {
+                return false;
+            }
+
+            foreach (var owner in surface.DocumentsSnapshot())
+            {
+                if (owner && owner.IsLoaded && owner.Presented && owner.IsModal)
+                {
+                    return true;
+                }
+            }
+
+            var surfaceHandle = surface.SurfaceHandle;
+            var point = Position(screenPosition);
+            var token = NativeMethods.urui_surface_pick(surfaceHandle, point.x, point.y, out var handle);
+            var ownerDocument = Surface.FindDocument(surfaceHandle, handle);
+            return token != 0 && ownerDocument && ReferenceEquals(ownerDocument.Surface, surface) &&
+                token != NativeMethods.urui_document_root(surfaceHandle, handle) &&
+                token != NativeMethods.urui_document_body(surfaceHandle, handle);
+        }
 
         void RequireReady(bool allowCancellation = false)
         {
@@ -52,6 +93,7 @@ namespace URUI.Hosting
                 throw new InvalidOperationException("请先加载文档。");
             }
         }
+
         void Complete(int status)
         {
             surface.FinishNativeCall();
@@ -60,6 +102,7 @@ namespace URUI.Hosting
                 throw new InvalidOperationException("URUI 输入被拒绝：" + status);
             }
         }
+
         /// <summary>
         /// 发送文档坐标指针输入；触摸编号必须非负，且在接触期间保持稳定。
         /// </summary>
@@ -72,13 +115,76 @@ namespace URUI.Hosting
                 throw new ArgumentOutOfRangeException(nameof(pointerId));
             }
 
-            Complete(NativeMethods.urui_pointer_event(pointerId, isTouch ? 1 : 0, (int)phase, position.x, position.y,
-                            button, pressedButtons, delta.x, delta.y, (int)modifiers));
+            if (phase == PointerPhase.Down)
+            {
+                ForgetPointerPress(pointerId, button);
+            }
+            int status;
+            try
+            {
+                status = NativeMethods.urui_pointer_event(surface.SurfaceHandle, pointerId, isTouch ? 1 : 0, (int)phase,
+                    position.x, position.y, button, pressedButtons, delta.x, delta.y, (int)modifiers);
+            }
+            finally
+            {
+                if (phase == PointerPhase.Up)
+                {
+                    ForgetPointerPress(pointerId, button);
+                }
+                else if (phase == PointerPhase.Cancel)
+                {
+                    ForgetPointerPress(pointerId);
+                }
+            }
+            Complete(status);
             if (phase == PointerPhase.Down)
             {
                 PointerPressed?.Invoke(position);
             }
         }
+
+        internal void SetPointerPress(int pointer, int button, Document owner)
+        {
+            ForgetPointerPress(pointer, button);
+            pointerPresses.Add((pointer, button, owner));
+        }
+
+        internal bool OwnsPointerPress(int pointer, int button, Document owner)
+        {
+            foreach (var press in pointerPresses)
+            {
+                if (press.Pointer == pointer && press.Button == button && ReferenceEquals(press.Owner, owner))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        internal void ForgetPointerPress(int pointer, int? button = null, Document owner = null)
+        {
+            for (var index = pointerPresses.Count - 1; index >= 0; index--)
+            {
+                var press = pointerPresses[index];
+                if (press.Pointer == pointer && (!button.HasValue || button.Value == press.Button)
+                    && (owner == null || ReferenceEquals(press.Owner, owner)))
+                {
+                    pointerPresses.RemoveAt(index);
+                }
+            }
+        }
+
+        internal void ForgetPointerPresses(Document owner)
+        {
+            for (var index = pointerPresses.Count - 1; index >= 0; index--)
+            {
+                if (ReferenceEquals(pointerPresses[index].Owner, owner))
+                {
+                    pointerPresses.RemoveAt(index);
+                }
+            }
+        }
+
         /// <summary>
         /// 发送键盘事件；文本字符使用 SendText，修饰键随本次事件提供。
         /// </summary>
@@ -107,7 +213,7 @@ namespace URUI.Hosting
                 surface.FinishNativeCall();
                 return;
             }
-            Complete(NativeMethods.urui_key_event((int)key, pressed ? 1 : 0, (int)modifiers));
+            Complete(NativeMethods.urui_key_event(surface.SurfaceHandle, (int)key, pressed ? 1 : 0, (int)modifiers));
         }
 
         void MoveFocus(bool reverse)
@@ -116,12 +222,7 @@ namespace URUI.Hosting
             int position = 0;
             foreach (var element in document.Query())
             {
-                bool eligible = element.Focusable && element.TabIndex >= 0 && element.EnabledInHierarchy && element.HasLayout;
-                for (var parent = element; eligible && parent != null; parent = parent.Parent)
-                {
-                    eligible = parent.Visible && parent.ResolvedStyle.Get("display") != "none";
-                }
-
+                bool eligible = element.Focusable && element.TabIndex >= 0 && element.EnabledInHierarchy && element.HasLayout && element.IsVisibleInHierarchy;
                 if (eligible)
                 {
                     candidates.Add((element, element.TabIndex == 0 ? long.MaxValue : element.TabIndex, position));
@@ -148,6 +249,7 @@ namespace URUI.Hosting
                 }
             }
         }
+
         /// <summary>
         /// 插入已经提交的文本，原生层按 Unicode 字符更新选区和光标。
         /// </summary>
@@ -160,8 +262,9 @@ namespace URUI.Hosting
                 return;
             }
 
-            Complete(NativeMethods.urui_text_input(text));
+            Complete(NativeMethods.urui_text_input(surface.SurfaceHandle, text));
         }
+
         /// <summary>
         /// 更新输入法组合串，预览不产生控件值变化通知。
         /// </summary>
@@ -174,8 +277,9 @@ namespace URUI.Hosting
                 return;
             }
 
-            Complete(NativeMethods.urui_text_composition(text, 0));
+            Complete(NativeMethods.urui_text_composition(surface.SurfaceHandle, text, 0));
         }
+
         /// <summary>
         /// 提交输入法组合串并产生一次值变化通知。
         /// </summary>
@@ -188,16 +292,18 @@ namespace URUI.Hosting
                 return;
             }
 
-            Complete(NativeMethods.urui_text_composition(text, 1));
+            Complete(NativeMethods.urui_text_composition(surface.SurfaceHandle, text, 1));
         }
+
         /// <summary>
         /// 取消组合串，恢复原先的已提交内容和选区。
         /// </summary>
         public void CancelComposition()
         {
             RequireReady(true);
-            Complete(NativeMethods.urui_text_composition("", 2));
+            Complete(NativeMethods.urui_text_composition(surface.SurfaceHandle, "", 2));
         }
+
         /// <summary>
         /// 取消全部按下/捕获状态并释放焦点；应用失焦时自动调用。
         /// </summary>
@@ -211,7 +317,10 @@ namespace URUI.Hosting
 
             composition = "";
             repeating.Clear();
-            Complete(NativeMethods.urui_input_reset());
+            activeHeldKeys.Clear();
+            pointerPresses.Clear();
+            hasLastMouseState = false;
+            Complete(NativeMethods.urui_input_reset(surface.SurfaceHandle));
         }
 
         /// <summary>
@@ -228,14 +337,14 @@ namespace URUI.Hosting
             {
                 throw new ArgumentException("Pointer owner belongs to another document.", nameof(owner));
             }
-            if (owner.Document.Defer(owner.DeferredPointerCancellation, false))
+            if (owner.Document.Defer(owner.DeferredPointerCancellation, Document.DeferInvalidation.None))
             {
                 return;
             }
 
             if (owner.IsValid && owner.Document.IsLoaded)
             {
-                Complete(NativeMethods.urui_cancel_pointers(owner.NativeHandle, owner.Token));
+                Complete(NativeMethods.urui_cancel_pointers(surface.SurfaceHandle, owner.NativeHandle, owner.Token));
             }
         }
 
@@ -245,36 +354,40 @@ namespace URUI.Hosting
             clipboardVersion = 0;
             composition = "";
             repeating.Clear();
+            activeHeldKeys.Clear();
+            hasLastMouseState = false;
         }
 
         ulong UnityClipboardVersion()
         {
-            var version = NativeMethods.urui_clipboard_version();
+            var version = NativeMethods.urui_clipboard_version(surface.SurfaceHandle);
             if (version == 0)
             {
                 throw new InvalidOperationException("剪贴板所属上下文已失效。");
             }
             return version;
         }
+
         void ImportUnityClipboard()
         {
-            var result = NativeMethods.urui_clipboard_write(GUIUtility.systemCopyBuffer ?? "");
-            if (result != 1)
+            var result = NativeMethods.urui_clipboard_write(surface.SurfaceHandle, GUIUtility.systemCopyBuffer ?? "");
+            if (result != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("系统剪贴板同步失败。");
             }
         }
+
         internal void SyncUnityClipboardFocus()
         {
             surface.CheckThread();
-            if (clipboardVersion == 0)
-            {
-                clipboardVersion = UnityClipboardVersion();
-            }
             var focus = document?.FocusedElement;
             if (ReferenceEquals(focus, clipboardFocus))
             {
                 return;
+            }
+            if (clipboardVersion == 0)
+            {
+                clipboardVersion = UnityClipboardVersion();
             }
             FlushUnityClipboard();
             clipboardFocus = focus;
@@ -283,6 +396,7 @@ namespace URUI.Hosting
                 ImportUnityClipboard();
             }
         }
+
         internal void FlushUnityClipboard()
         {
             surface.CheckThread();
@@ -296,9 +410,10 @@ namespace URUI.Hosting
             {
                 return;
             }
-            GUIUtility.systemCopyBuffer = NativeMethods.ReadClipboard() ?? "";
+            GUIUtility.systemCopyBuffer = NativeMethods.ReadClipboard(surface.SurfaceHandle) ?? "";
             clipboardVersion = version;
         }
+
         internal void SendUnityKey(KeyCode key, bool pressed, InputModifiers modifiers)
         {
             SyncUnityClipboardFocus();
@@ -316,7 +431,7 @@ namespace URUI.Hosting
         internal void PollUnityPointer(Vector2 position, int pointer, bool touch, int buttons, InputModifiers modifiers)
         {
             RequireReady();
-            Complete(NativeMethods.urui_pointer_poll(pointer, touch ? 1 : 0, position.x, position.y, buttons, (int)modifiers));
+            Complete(NativeMethods.urui_pointer_poll(surface.SurfaceHandle, pointer, touch ? 1 : 0, position.x, position.y, buttons, (int)modifiers));
         }
 
         internal void PollUnity()
@@ -341,6 +456,7 @@ namespace URUI.Hosting
             var modifiers = CurrentModifiers();
             if (UnityInput.touchCount > 0)
             {
+                hasLastMouseState = false;
                 for (int i = 0; i < UnityInput.touchCount; i++)
                 {
                     var touch = UnityInput.GetTouch(i);
@@ -361,7 +477,7 @@ namespace URUI.Hosting
                     }
                 }
             }
-            else
+            else if (Screen.width > 0 && Screen.height > 0)
             {
                 var point = Position(UnityInput.mousePosition);
                 int buttons = 0;
@@ -373,11 +489,22 @@ namespace URUI.Hosting
                     }
                 }
 
-                PollUnityPointer(point, 0, false, buttons, modifiers);
-                if (!surface.HasLoadedDocuments)
+                var layoutVersion = NativeMethods.urui_surface_layout_version(surface.SurfaceHandle);
+                if (!hasLastMouseState || point != lastMousePosition || buttons != lastMouseButtons ||
+                    modifiers != lastMouseModifiers || layoutVersion != lastPollLayoutVersion)
                 {
-                    return;
+                    PollUnityPointer(point, 0, false, buttons, modifiers);
+                    if (!surface.HasLoadedDocuments)
+                    {
+                        return;
+                    }
+                    lastMousePosition = point;
+                    lastMouseButtons = buttons;
+                    lastMouseModifiers = modifiers;
+                    lastPollLayoutVersion = layoutVersion;
+                    hasLastMouseState = true;
                 }
+
                 for (int b = 0; b < 3; b++)
                 {
                     if (UnityInput.GetMouseButtonDown(b))
@@ -408,77 +535,126 @@ namespace URUI.Hosting
                 return;
             }
 
-            SyncUnityClipboardFocus();
-            foreach (var key in keys)
+            var activeDoc = document;
+            var focusedElement = activeDoc?.FocusedElement;
+            var isTextInput = focusedElement is ITextInputControl;
+            if (isTextInput || clipboardFocus != null)
             {
-                if (UnityInput.GetKeyDown(key))
+                SyncUnityClipboardFocus();
+            }
+
+            var hasKeyActivity = UnityInput.anyKey || UnityInput.anyKeyDown;
+            if (hasKeyActivity)
+            {
+                var now = Time.unscaledTime;
+                foreach (var key in keys)
                 {
-                    SendUnityKey(key, true, modifiers);
+                    if (UnityInput.GetKeyDown(key))
+                    {
+                        activeHeldKeys.Add(key);
+                        SendUnityKey(key, true, modifiers);
+                        if (!surface.HasLoadedDocuments)
+                        {
+                            return;
+                        }
+                        repeating[key] = now + .4f;
+                    }
+                    else if (UnityInput.GetKeyUp(key))
+                    {
+                        activeHeldKeys.Remove(key);
+                        SendUnityKey(key, false, modifiers);
+                        repeating.Remove(key);
+                    }
+                    else if (repeating.TryGetValue(key, out var next) && UnityInput.GetKey(key) && now >= next)
+                    {
+                        SendUnityKey(key, true, modifiers);
+                        if (!surface.HasLoadedDocuments)
+                        {
+                            return;
+                        }
+                        repeating[key] = now + .05f;
+                    }
                     if (!surface.HasLoadedDocuments)
                     {
                         return;
                     }
-                    repeating[key] = Time.unscaledTime + .4f;
                 }
-                else if (UnityInput.GetKeyUp(key))
+            }
+            else if (activeHeldKeys.Count > 0)
+            {
+                heldKeyScratch.Clear();
+                foreach (var key in activeHeldKeys)
                 {
-                    SendUnityKey(key, false, modifiers);
-                    repeating.Remove(key);
+                    heldKeyScratch.Add(key);
                 }
-                else if (repeating.TryGetValue(key, out var next) && UnityInput.GetKey(key) && Time.unscaledTime >= next)
+                for (var i = 0; i < heldKeyScratch.Count; i++)
                 {
-                    SendUnityKey(key, true, modifiers);
-                    if (!surface.HasLoadedDocuments)
+                    var key = heldKeyScratch[i];
+                    if (UnityInput.GetKeyUp(key) || !UnityInput.GetKey(key))
                     {
-                        return;
+                        activeHeldKeys.Remove(key);
+                        repeating.Remove(key);
+                        SendUnityKey(key, false, modifiers);
+                        if (!surface.HasLoadedDocuments)
+                        {
+                            return;
+                        }
                     }
-                    repeating[key] = Time.unscaledTime + .05f;
                 }
+            }
+
+            if (isTextInput || clipboardFocus != null)
+            {
+                FlushUnityClipboard();
+            }
+
+            if (hasKeyActivity || isTextInput || composition.Length > 0)
+            {
+                string nextComposition = UnityInput.compositionString ?? "";
+                string committed = UnityInput.inputString ?? "";
+                if (committed.Length > 0)
+                {
+                    committed = committed.Replace("\b", "").Replace("\r", "").Replace("\n", "");
+                }
+                if (composition.Length > 0 && nextComposition.Length == 0)
+                {
+                    if (committed.Length > 0)
+                    {
+                        CommitComposition(committed);
+                        committed = "";
+                    }
+                    else
+                    {
+                        CancelComposition();
+                    }
+                }
+                else if (nextComposition.Length > 0 && nextComposition != composition)
+                {
+                    SendComposition(nextComposition);
+                }
+
                 if (!surface.HasLoadedDocuments)
                 {
                     return;
                 }
-            }
-            FlushUnityClipboard();
 
-            string nextComposition = UnityInput.compositionString ?? "";
-            string committed = UnityInput.inputString ?? "";
-            committed = committed.Replace("\b", "").Replace("\r", "").Replace("\n", "");
-            if (composition.Length > 0 && nextComposition.Length == 0)
-            {
-                if (committed.Length > 0)
+                composition = nextComposition;
+                if (committed.Length > 0 && nextComposition.Length == 0)
                 {
-                    CommitComposition(committed);
-                    committed = "";
-                }
-                else
-                {
-                    CancelComposition();
+                    SendText(committed);
                 }
             }
-            else if (nextComposition.Length > 0 && nextComposition != composition)
-            {
-                SendComposition(nextComposition);
-            }
 
-            if (!surface.HasLoadedDocuments)
-            {
-                return;
-            }
-
-            composition = nextComposition;
-            if (committed.Length > 0 && nextComposition.Length == 0)
-            {
-                SendText(committed);
-            }
-
-            var field = document?.FocusedElement;
-            if (field != null && field.HasLayout)
+            var field = hasKeyActivity || isTextInput ? document?.FocusedElement : focusedElement;
+            if (field != null && field.HasLayout && surface.Width > 0 && surface.Height > 0)
             {
                 var bounds = field.WorldBound;
-                UnityInput.compositionCursorPos = new Vector2(bounds.x, Screen.height - bounds.yMax);
+                float scaleX = (float)Screen.width / surface.Width;
+                float scaleY = (float)Screen.height / surface.Height;
+                UnityInput.compositionCursorPos = new Vector2(bounds.x * scaleX, Screen.height - bounds.yMax * scaleY);
             }
         }
+
         static KeyCode[] PhysicalKeys()
         {
             var result = new List<KeyCode>();
@@ -493,7 +669,16 @@ namespace URUI.Hosting
 
             return result.ToArray();
         }
-        Vector2 Position(Vector2 point) => new Vector2(point.x * surface.Width / Screen.width, surface.Height - 1 - point.y * surface.Height / Screen.height);
+
+        Vector2 Position(Vector2 point)
+        {
+            if (Screen.width <= 0 || Screen.height <= 0)
+            {
+                return Vector2.zero;
+            }
+            return new Vector2(point.x * surface.Width / Screen.width, surface.Height - 1 - point.y * surface.Height / Screen.height);
+        }
+
         static InputModifiers CurrentModifiers()
         {
             InputModifiers value = 0;
@@ -519,6 +704,7 @@ namespace URUI.Hosting
 
             return value;
         }
+
         internal static KeyCode FromNativeKey(int key) => (KeyCode)key;
     }
 }

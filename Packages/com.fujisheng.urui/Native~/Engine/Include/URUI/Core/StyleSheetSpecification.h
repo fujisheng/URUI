@@ -85,6 +85,7 @@ namespace URUI
 
         static const PropertySpecification& GetPropertySpecification();
         static PropertySpecification& GetMutablePropertySpecification();
+        static SharedPtr<PropertySpecification> GetSharedPropertySpecification();
 
     private:
         StyleSheetSpecification();
@@ -106,6 +107,7 @@ namespace URUI
 
         // The properties defined in the style sheet specification.
         PropertySpecification properties;
+        SharedPtr<PropertySpecification> shared_snapshot;
         uint64_t registered_property_revision = 0;
 
         UniquePtr<DefaultStyleSheetParsers> default_parsers;

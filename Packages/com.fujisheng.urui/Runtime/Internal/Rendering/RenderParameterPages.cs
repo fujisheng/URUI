@@ -1,5 +1,4 @@
 using System;
-using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -10,6 +9,7 @@ namespace URUI.Internal.Rendering
 {
     /// <summary>
     /// 参数纹理版本由录制引用和真实GPU提交引用共同保护。
+    /// 支持尾部行版本归零和连续脏行区间合并上传，避免逐行创建 Texture2D 与逐行 CopyTexture。
     /// </summary>
     internal sealed unsafe class RenderParameterPages : IDisposable
     {
@@ -21,6 +21,7 @@ namespace URUI.Internal.Rendering
         int count;
         long retainedPayloadBytes;
         bool disposed;
+
         internal long ParameterUploadBytes
         {
             get;
@@ -40,16 +41,22 @@ namespace URUI.Internal.Rendering
 
         internal sealed class Page
         {
+            const int SpanRingCapacity = 3;
             readonly RenderParameterPages owner;
-            NativeArray<Vector4> staging;
+            readonly Texture2D[] spanUploads = new Texture2D[SpanRingCapacity];
+            readonly int[] spanUploadHeights = new int[SpanRingCapacity];
+            readonly int[] spanLastUsedFrames = { int.MinValue, int.MinValue, int.MinValue };
+            readonly int[] spanLastFirstRows = { -1, -1, -1 };
+            readonly int[] spanLastRowCounts = { 0, 0, 0 };
+            int nextSpanSlot;
             ulong[] rowVersions;
             int[] changedRows;
-            Texture2D[] rowUploads;
             internal bool Recording;
             int submissions;
             internal ulong Version;
             internal uint ParameterCount;
             internal uint ExtraParameterCount;
+
             internal Texture2D Texture
             {
                 get;
@@ -58,10 +65,12 @@ namespace URUI.Internal.Rendering
             long payloadBytes;
             internal bool Free => !Recording && submissions == 0;
             internal string FailureState => "v=" + Version + ",refs=" + submissions + ",record=" + Recording;
+
             internal Page(RenderParameterPages owner)
             {
                 this.owner = owner;
             }
+
             internal void RetainSubmission()
             {
                 if (owner.disposed || !Texture)
@@ -73,6 +82,7 @@ namespace URUI.Internal.Rendering
                     submissions++;
                 }
             }
+
             internal void ReleaseSubmission()
             {
                 if (submissions == 0)
@@ -80,11 +90,27 @@ namespace URUI.Internal.Rendering
                     throw new InvalidOperationException("参数提交引用被重复释放。");
                 }
                 submissions--;
+                if (submissions == 0)
+                {
+                    ClearSpanInFlightMarkers();
+                }
                 if (owner.disposed && Free)
                 {
                     ReleasePayload();
                 }
             }
+
+            void ClearSpanInFlightMarkers()
+            {
+                for (int s = 0; s < SpanRingCapacity; s++)
+                {
+                    spanLastUsedFrames[s] = int.MinValue;
+                    spanLastFirstRows[s] = -1;
+                    spanLastRowCounts[s] = 0;
+                }
+                nextSpanSlot = 0;
+            }
+
             internal void ReleasePayload()
             {
                 if (!Free)
@@ -96,28 +122,24 @@ namespace URUI.Internal.Rendering
                     URUI.Resources.GpuRetirement.DestroyOwnedObject(Texture);
                     Texture = null;
                 }
-                if (rowUploads != null)
+                for (int s = 0; s < SpanRingCapacity; s++)
                 {
-                    foreach (var row in rowUploads)
+                    if (spanUploads[s])
                     {
-                        if (row)
-                        {
-                            URUI.Resources.GpuRetirement.DestroyOwnedObject(row);
-                        }
+                        URUI.Resources.GpuRetirement.DestroyOwnedObject(spanUploads[s]);
+                        spanUploads[s] = null;
+                        spanUploadHeights[s] = 0;
                     }
                 }
-                if (staging.IsCreated)
-                {
-                    staging.Dispose();
-                }
+                ClearSpanInFlightMarkers();
                 rowVersions = null;
                 changedRows = null;
-                rowUploads = null;
                 owner.retainedPayloadBytes -= payloadBytes;
                 payloadBytes = 0;
                 Version = 0;
                 ParameterCount = ExtraParameterCount = 0;
             }
+
             static void CopyInput(byte* destination, long offset, long count, in RenderPlanPacket packet)
             {
                 var baseBytes = (long)packet.ParameterCount * 128;
@@ -131,6 +153,72 @@ namespace URUI.Internal.Rendering
                     UnsafeUtility.MemCpy(destination + baseCount, (byte*)packet.ExtraParameters + offset + baseCount - baseBytes, count - baseCount);
                 }
             }
+
+            Texture2D EnsureSpanUpload(int slot, int requiredHeight)
+            {
+                if (spanUploads[slot] && spanUploadHeights[slot] >= requiredHeight)
+                {
+                    return spanUploads[slot];
+                }
+                int targetHeight = Math.Max(requiredHeight, spanUploadHeights[slot] > 0 ? spanUploadHeights[slot] * 2 : 1);
+                if (Texture && targetHeight > Texture.height)
+                {
+                    targetHeight = Texture.height;
+                }
+                long oldBytes = spanUploads[slot] ? (long)Width * spanUploadHeights[slot] * 16 * 2 : 0;
+                long newBytes = (long)Width * targetHeight * 16 * 2;
+                long delta = newBytes - oldBytes;
+                if (delta > Budget - owner.retainedPayloadBytes)
+                {
+                    throw new InvalidOperationException("局部参数上传超过48MiB在途数据预算。");
+                }
+                var next = new Texture2D(Width, targetHeight, Format, TextureCreationFlags.None)
+                {
+                    name = "URUI parameter span",
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Clamp,
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                if (spanUploads[slot])
+                {
+                    URUI.Resources.GpuRetirement.DestroyOwnedObject(spanUploads[slot]);
+                }
+                spanUploads[slot] = next;
+                spanUploadHeights[slot] = targetHeight;
+                owner.retainedPayloadBytes += delta;
+                payloadBytes += delta;
+                return next;
+            }
+
+            int TryAcquireSpanSlot(int firstRow, int rowCount, int currentFrame)
+            {
+                // Repeated single-row updates targeting the exact same destination row can safely reuse
+                // that slot without allocating additional staging textures or risking cross-row clobbering.
+                if (rowCount == 1)
+                {
+                    for (int slot = 0; slot < SpanRingCapacity; slot++)
+                    {
+                        if (spanLastRowCounts[slot] == 1 && spanLastFirstRows[slot] == firstRow && spanUploads[slot])
+                        {
+                            return slot;
+                        }
+                    }
+                }
+                // Otherwise pick a slot whose prior CopyTexture is outside the multithreaded render-thread window
+                // or already retired by a GPU fence.
+                for (int offset = 0; offset < SpanRingCapacity; offset++)
+                {
+                    int slot = (nextSpanSlot + offset) % SpanRingCapacity;
+                    bool inFlight = spanLastUsedFrames[slot] != int.MinValue && Math.Abs(currentFrame - spanLastUsedFrames[slot]) < 3;
+                    if (!inFlight)
+                    {
+                        nextSpanSlot = (slot + 1) % SpanRingCapacity;
+                        return slot;
+                    }
+                }
+                return -1;
+            }
+
             internal void Upload(in RenderPlanPacket packet)
             {
                 if (!Free)
@@ -145,9 +233,7 @@ namespace URUI.Internal.Rendering
                     {
                         throw new NotSupportedException("当前图形后端不支持URUI参数纹理契约。");
                     }
-                    // Account for persistent staging, readable Texture2D data and GPU
-                    // payload independently of allocator/object overhead measured by Memory Profiler.
-                    var bytes = (long)Width * rows * 16 * 3 + rows * 20L;
+                    var bytes = (long)Width * rows * 16 * 2 + rows * 12L;
                     if (bytes > Budget - owner.retainedPayloadBytes)
                     {
                         throw new InvalidOperationException("参数版本超过48MiB常驻及在途数据预算。");
@@ -156,11 +242,8 @@ namespace URUI.Internal.Rendering
                     payloadBytes = bytes;
                     try
                     {
-                        staging = new NativeArray<Vector4>(Width * rows, Allocator.Persistent);
                         rowVersions = new ulong[rows];
                         changedRows = new int[rows];
-                        rowUploads = new Texture2D[rows];
-                        // 精确格式保持原有线性RGBAFloat布局，避免旧枚举接口逐次反射校验。
                         Texture = new Texture2D(Width, rows, Format, TextureCreationFlags.None)
                         {
                             name = "URUI render parameters",
@@ -187,51 +270,80 @@ namespace URUI.Internal.Rendering
                 var initialize = Version == 0;
                 // A failed upload must never be exposed under the old version.
                 Version = 0;
-                var destination = (byte*)NativeArrayUnsafeUtility.GetUnsafePtr(staging);
                 var used = checked((long)packet.ParameterCount * 128 + (long)packet.ExtraParameterCount * 16);
-                // WebGL2 may report CopyTextureSupport.None. This selects a valid
-                // transport for the same protocol, never an optional rendering mode.
-                if (initialize || changed * 2 >= Texture.height || (SystemInfo.copyTextureSupport & CopyTextureSupport.Basic) == 0)
+                var currentFrame = Time.frameCount;
+                var spanSlot = (!initialize && changed > 0 && changed * 2 < Texture.height && (SystemInfo.copyTextureSupport & CopyTextureSupport.Basic) != 0)
+                    ? TryAcquireSpanSlot(changedRows[0], changed, currentFrame)
+                    : -1;
+                if (initialize || (changed > 0 && spanSlot < 0))
                 {
+                    var pixels = Texture.GetPixelData<Vector4>(0);
+                    var destination = (byte*)NativeArrayUnsafeUtility.GetUnsafePtr(pixels);
+                    var capacity = (long)pixels.Length * 16;
                     CopyInput(destination, 0, used, packet);
-                    UnsafeUtility.MemClear(destination + used, (long)staging.Length * 16 - used);
-                    Texture.SetPixelData(staging, 0);
+                    UnsafeUtility.MemClear(destination + used, capacity - used);
                     Texture.Apply(false);
-                    owner.ParameterUploadBytes += (long)Texture.width * Texture.height * 16;
-                }
-                else
-                {
-                    for (var changedIndex = 0; changedIndex < changed; changedIndex++)
+                    owner.ParameterUploadBytes += capacity;
+                    ClearSpanInFlightMarkers();
+                    // Clear stale tail row hashes whenever MemClear zeroes rows >= rows.
+                    if (rows < rowVersions.Length)
                     {
-                        var row = changedRows[changedIndex];
-                        if (!rowUploads[row])
-                        {
-                            const long bytes = Width * 16L * 2;
-                            if (bytes > Budget - owner.retainedPayloadBytes)
-                            {
-                                throw new InvalidOperationException("局部参数上传超过48MiB在途数据预算。");
-                            }
-                            var upload = new Texture2D(Width, 1, Format, TextureCreationFlags.None)
-                            {
-                                name = "URUI parameter row",
-                                filterMode = FilterMode.Point,
-                                wrapMode = TextureWrapMode.Clamp,
-                                hideFlags = HideFlags.HideAndDontSave
-                            };
-                            rowUploads[row] = upload;
-                            owner.retainedPayloadBytes += bytes;
-                            payloadBytes += bytes;
-                        }
-                        const int stride = Width * 16;
-                        var bytesToCopy = Math.Min(stride, used - (long)row * stride);
-                        UnsafeUtility.MemClear(destination + row * stride, stride);
-                        CopyInput(destination + row * stride, (long)row * stride, bytesToCopy, packet);
-                        rowUploads[row].SetPixelData(staging, 0, row * Width);
-                        rowUploads[row].Apply(false);
-                        owner.ParameterUploadBytes += stride;
-                        Graphics.CopyTexture(rowUploads[row], 0, 0, 0, 0, Width, 1, Texture, 0, 0, 0, row);
-                        owner.ParameterCopyBytes += stride;
+                        Array.Clear(rowVersions, rows, rowVersions.Length - rows);
                     }
+                }
+                else if (changed > 0)
+                {
+                    // Pack all dirty spans into disjoint rows of a dedicated staging texture, Apply once,
+                    // then CopyTexture each span so multithreaded backends never observe clobbered staging data.
+                    const int stride = Width * 16;
+                    var spanUpload = EnsureSpanUpload(spanSlot, changed);
+                    var stagingPixels = spanUpload.GetPixelData<Vector4>(0);
+                    var destination = (byte*)NativeArrayUnsafeUtility.GetUnsafePtr(stagingPixels);
+                    int srcY = 0;
+                    for (int i = 0; i < changed;)
+                    {
+                        int startRow = changedRows[i];
+                        int j = i + 1;
+                        while (j < changed && changedRows[j] == changedRows[j - 1] + 1)
+                        {
+                            j++;
+                        }
+                        int spanHeight = j - i;
+                        long byteOffset = (long)startRow * stride;
+                        long spanBytes = (long)spanHeight * stride;
+                        long bytesToCopy = Math.Max(0, Math.Min(spanBytes, used - byteOffset));
+                        byte* spanDst = destination + (long)srcY * stride;
+                        if (bytesToCopy > 0)
+                        {
+                            CopyInput(spanDst, byteOffset, bytesToCopy, packet);
+                        }
+                        if (spanBytes > bytesToCopy)
+                        {
+                            UnsafeUtility.MemClear(spanDst + bytesToCopy, spanBytes - bytesToCopy);
+                        }
+                        srcY += spanHeight;
+                        i = j;
+                    }
+                    spanUpload.Apply(false);
+                    owner.ParameterUploadBytes += (long)spanUploadHeights[spanSlot] * stride;
+                    srcY = 0;
+                    for (int i = 0; i < changed;)
+                    {
+                        int startRow = changedRows[i];
+                        int j = i + 1;
+                        while (j < changed && changedRows[j] == changedRows[j - 1] + 1)
+                        {
+                            j++;
+                        }
+                        int spanHeight = j - i;
+                        Graphics.CopyTexture(spanUpload, 0, 0, 0, srcY, Width, spanHeight, Texture, 0, 0, 0, startRow);
+                        owner.ParameterCopyBytes += (long)spanHeight * stride;
+                        srcY += spanHeight;
+                        i = j;
+                    }
+                    spanLastUsedFrames[spanSlot] = currentFrame;
+                    spanLastFirstRows[spanSlot] = changedRows[0];
+                    spanLastRowCounts[spanSlot] = changed;
                 }
                 for (var row = 0; row < rows; row++)
                 {
@@ -303,6 +415,7 @@ namespace URUI.Internal.Rendering
             chosen.Recording = true;
             Current = chosen;
         }
+
         internal void EndRecording()
         {
             if (Current == null)
@@ -316,6 +429,7 @@ namespace URUI.Internal.Rendering
             }
             Current = null;
         }
+
         public void Dispose()
         {
             if (disposed)

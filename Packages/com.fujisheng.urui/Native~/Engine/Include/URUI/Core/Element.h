@@ -86,6 +86,8 @@ namespace URUI
         /// @param[in] class_name The name of the class to add or remove from the class list.
         /// @param[in] activate True if the class is to be added, false to be removed.
         void SetClass(const String& class_name, bool activate);
+        /// Sets or removes a class and keeps the "class" attribute synchronized without re-parsing all classes.
+        void SetClassSyncAttribute(const String& class_name, bool activate);
         /// Checks if a class is set on the element.
         /// @param[in] class_name The name of the class to check for.
         /// @return True if the class is set on the element, false otherwise.
@@ -453,6 +455,7 @@ namespace URUI
         ElementDocument* GetOwnerDocument() const;
         /// Resolves declarations against this node's document, including detached nodes.
         const PropertySpecification& GetPropertySpecification() const;
+        void UpdateDocumentSpecification(const SharedPtr<PropertySpecification>& specification);
 
         /// Gets this element's parent node.
         /// @return This element's parent.
@@ -695,6 +698,7 @@ namespace URUI
 
         enum class DirtyNodes
         {
+            SelfOnly,
             Self,
             SelfAndSiblings
         };
@@ -785,6 +789,7 @@ namespace URUI
         bool dirty_transition : 1;
         bool dirty_transform : 1;
         bool dirty_perspective : 1;
+        bool counted_backdrop_filter : 1;
 
         OwnedElementList children;
         int num_non_dom_children;

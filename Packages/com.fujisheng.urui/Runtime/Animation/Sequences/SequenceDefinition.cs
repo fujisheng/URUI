@@ -27,6 +27,27 @@ namespace URUI.Animation
         public bool Muted;
         public bool Locked;
         public double End => Start + Duration * Iterations;
+
+        /// <summary>
+        /// 返回当前轨道的独立副本。
+        /// </summary>
+        public SequenceTrack Clone() => new SequenceTrack
+        {
+            Id = Id,
+            Kind = Kind,
+            Target = Target,
+            Keyframes = Keyframes,
+            Easing = Easing,
+            Source = Source,
+            Start = Start,
+            Duration = Duration,
+            Speed = Speed,
+            Iterations = Iterations,
+            Seed = Seed,
+            Alternate = Alternate,
+            Muted = Muted,
+            Locked = Locked
+        };
     }
 
     /// <summary>
@@ -40,6 +61,27 @@ namespace URUI.Animation
         public double Duration = 1;
         public bool Loop;
         public List<SequenceTrack> Tracks = new List<SequenceTrack>();
+
+        /// <summary>
+        /// 校验并返回当前序列定义的深拷贝，避免通过 JSON 序列化往返复制。
+        /// </summary>
+        public SequenceDefinition Clone()
+        {
+            Validate();
+            var copy = new SequenceDefinition
+            {
+                Version = Version,
+                Name = Name,
+                Duration = Duration,
+                Loop = Loop,
+                Tracks = new List<SequenceTrack>(Tracks.Count)
+            };
+            for (int i = 0; i < Tracks.Count; i++)
+            {
+                copy.Tracks.Add(Tracks[i].Clone());
+            }
+            return copy;
+        }
 
         public void Validate()
         {

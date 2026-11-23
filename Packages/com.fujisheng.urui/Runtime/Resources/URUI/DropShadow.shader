@@ -6,14 +6,22 @@ Shader "URUI/DropShadow" {
  #pragma fragment Fragment
 #include "UnityCG.cginc"
  sampler2D _InputTex;
- struct Output { float4 position:SV_POSITION;float2 uv:TEXCOORD0; };
- Output Vertex(appdata_img input){Output o;o.position=UnityObjectToClipPos(input.vertex);o.uv=input.texcoord;return o;}
- float4 SampleInput(float2 uv){return tex2D(_InputTex,uv)*step(0,uv.x)*step(uv.x,1)*step(0,uv.y)*step(uv.y,1);}
-
- sampler2D _Shadow;float4 _Offset,_ShadowColor;
+ sampler2D _Shadow;
+ float4 _Offset,_ShadowColor;
+ struct Output { float4 position:SV_POSITION;float2 uv:TEXCOORD0;float2 shadowUv:TEXCOORD1; };
+ Output Vertex(appdata_img input){
+  Output o;
+  o.position=UnityObjectToClipPos(input.vertex);
+  o.uv=input.texcoord;
+  o.shadowUv=input.texcoord-_Offset.xy;
+  return o;
+ }
  float4 Fragment(Output input):SV_Target {
-  float4 original=SampleInput(input.uv);float2 uv=input.uv-_Offset.xy;
-  float alpha=tex2D(_Shadow,uv).a*step(0,uv.x)*step(uv.x,1)*step(0,uv.y)*step(uv.y,1)*_ShadowColor.a;
+  float4 original=tex2Dlod(_InputTex,float4(input.uv,0,0));
+  if (original.a >= 1.0) return original;
+  float2 uv=input.shadowUv;
+  if (uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1) return original;
+  float alpha=tex2Dlod(_Shadow,float4(uv,0,0)).a*_ShadowColor.a;
   return original+float4(_ShadowColor.rgb*alpha,alpha)*(1-original.a);
  }
  ENDCG }

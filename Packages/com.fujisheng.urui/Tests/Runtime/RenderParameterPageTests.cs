@@ -53,7 +53,7 @@ namespace URUI.Tests
                 document.Images = new[] { new ImageAsset("white.png", Texture2D.whiteTexture) };
                 document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}img{position:absolute;left:1px;width:8px;height:8px;transform:translate(4px,0px);}</style></head><body><img id='moving' src='white.png'></body></html>", "/parameter-pages.html");
                 document.SynchronizeLayout();
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var plan = input.Compile(default, out var packet))
                     {
@@ -72,7 +72,7 @@ namespace URUI.Tests
 
                 document.Q("moving").Style.Set("left", "2px");
                 document.SynchronizeLayout();
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var plan = input.Compile(default, out var packet))
                     {
@@ -124,7 +124,7 @@ namespace URUI.Tests
                 document.Surface = surface;
                 document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}div{width:8px;height:8px;background:red;}</style></head><body><div id='p'></div></body></html>", "/parameter-window.html");
                 document.SynchronizeLayout();
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var plan = input.Compile(default, out var packet))
                     {
@@ -138,7 +138,7 @@ namespace URUI.Tests
                 Assert.That(submission.Parameters.Count, Is.EqualTo(1));
                 document.Q("p").Style.Set("transform", "translate(1px,0px)");
                 document.SynchronizeLayout();
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var plan = input.Compile(default, out var packet))
                     {
@@ -178,7 +178,7 @@ namespace URUI.Tests
                 }
                 document.LoadHtml(html.Append("</body></html>").ToString(), "/sparse-parameters.html");
                 document.SynchronizeLayout();
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var plan = input.Compile(default, out var packet))
                     {
@@ -186,6 +186,9 @@ namespace URUI.Tests
                         pages.Apply(plan, packet);
                     }
                 }
+                var pageHeight = pages.Current.Texture.height;
+                Assert.That(pages.RetainedPayloadBytes, Is.EqualTo(pageHeight * (256 * 16 * 2 + 12L)),
+                    "参数页只持有 CPU/GPU 纹理数据和行索引，不需要额外上传缓冲。");
                 pages.EndRecording();
                 var before = pages.ParameterUploadBytes;
                 var retainedBefore = pages.RetainedPayloadBytes;
@@ -199,7 +202,7 @@ namespace URUI.Tests
                     System.GC.KeepAlive(probe);
                     Assert.That(positive.Count, Is.GreaterThan(0), "分配探针必须捕获真实托管分配。");
                 }
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var plan = input.Compile(default, out var packet))
                     {
@@ -222,6 +225,94 @@ namespace URUI.Tests
                 target.Create();
                 Graphics.Blit(Texture2D.whiteTexture, target, material);
                 Assert.That(Read(target).r, Is.EqualTo(3).Within(.001f), "局部上传还必须实际更新GPU内容。");
+            }
+            finally
+            {
+                target.Release();
+                Object.DestroyImmediate(target);
+                Object.DestroyImmediate(material);
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(camera);
+            }
+        }
+
+        [Test]
+        public void DisjointChangedRowsUploadIndependentlyWithoutClobbering()
+        {
+            var camera = new GameObject("Disjoint camera", typeof(Camera));
+            camera.tag = "MainCamera";
+            var root = new GameObject("Disjoint parameters");
+            var target = new RenderTexture(1, 1, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            var material = new Material(UnityEngine.Resources.Load<Shader>("URUI.Tests/RenderParameterContract"));
+            using var pages = new RenderParameterPages();
+            try
+            {
+                var surface = root.AddComponent<Surface>();
+                surface.Input.UseUnityInput = false;
+                var document = root.AddComponent<Document>();
+                document.Surface = surface;
+                document.Images = new[] { new ImageAsset("white.png", Texture2D.whiteTexture) };
+                var html = new StringBuilder("<!doctype html><html><head><style>body{margin:0;}img{position:absolute;width:8px;height:8px;left:7px;}</style></head><body>");
+                for (var i = 0; i < 220; i++)
+                {
+                    html.Append("<img id='n").Append(i).Append("' src='white.png'>");
+                }
+                document.LoadHtml(html.Append("</body></html>").ToString(), "/disjoint-parameters.html");
+                document.SynchronizeLayout();
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
+                {
+                    using (var plan = input.Compile(default, out var packet))
+                    {
+                        Assert.That(packet.ParameterCount, Is.EqualTo(220));
+                        pages.Apply(plan, packet);
+                    }
+                }
+                Assert.That(pages.Current.Texture.height, Is.EqualTo(7));
+                pages.EndRecording();
+
+                // Mutate 3 disjoint rows (row 0, row 2, row 5): 3 * 2 < 7 triggers span CopyTexture upload.
+                document.Q("n2").Style.Set("left", "11px");
+                document.Q("n68").Style.Set("left", "29px");
+                document.Q("n165").Style.Set("left", "47px");
+                document.SynchronizeLayout();
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
+                {
+                    using (var plan = input.Compile(default, out var packet))
+                    {
+                        pages.Apply(plan, packet);
+                    }
+                }
+                target.Create();
+                float ReadLeft(int parameterIndex)
+                {
+                    material.SetTexture("_Parameters", pages.Current.Texture);
+                    material.SetFloat("_ParameterIndex", parameterIndex * 8 + 3);
+                    material.SetFloat("_Mode", 2);
+                    Graphics.Blit(Texture2D.whiteTexture, target, material);
+                    return Read(target).r;
+                }
+                Assert.That(ReadLeft(2), Is.EqualTo(11f).Within(.001f), "Row 0 must not be clobbered by later disjoint spans.");
+                Assert.That(ReadLeft(35), Is.EqualTo(7f).Within(.001f), "Untouched Row 1 must preserve its original value.");
+                Assert.That(ReadLeft(68), Is.EqualTo(29f).Within(.001f), "Row 2 must receive its exact disjoint span.");
+                Assert.That(ReadLeft(165), Is.EqualTo(47f).Within(.001f), "Row 5 must receive its exact disjoint span.");
+
+                // Second back-to-back update on the same frame without GPU fence retirement must not race spanUpload.
+                pages.EndRecording();
+                document.Q("n35").Style.Set("left", "19px");
+                document.Q("n130").Style.Set("left", "61px");
+                document.SynchronizeLayout();
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
+                {
+                    using (var plan = input.Compile(default, out var packet))
+                    {
+                        pages.Apply(plan, packet);
+                    }
+                }
+                Assert.That(ReadLeft(2), Is.EqualTo(11f).Within(.001f));
+                Assert.That(ReadLeft(35), Is.EqualTo(19f).Within(.001f));
+                Assert.That(ReadLeft(68), Is.EqualTo(29f).Within(.001f));
+                Assert.That(ReadLeft(130), Is.EqualTo(61f).Within(.001f));
+                Assert.That(ReadLeft(165), Is.EqualTo(47f).Within(.001f));
             }
             finally
             {

@@ -64,17 +64,25 @@ namespace URUI.Effect.Rendering
             }
             return new global::URUI.Rendering.RenderParameterLayout(key == null ? 1 : 2, fields);
         }
+        static readonly int cssFieldsProperty = Shader.PropertyToID("_CssFields");
+        static readonly int speedProperty = Shader.PropertyToID("_Speed");
+        static readonly int patternSpeedProperty = Shader.PropertyToID("_PatternSpeed");
+        static readonly int ratePropertyId = Shader.PropertyToID("_Rate");
+        static readonly string[] requiredProperties = { "_FilterMode", "_ColorBlend", "_PatternTex", "_Rate", "_Speed", "_PatternSpeed", "_Saturation", "_Brightness" };
+
         sealed class Program
         {
             readonly Material authored;
             readonly Vector4 fields;
+            readonly Action<Material> onReleased;
             Material material;
             int references;
             RenderTimeInput timeInput;
-            internal Program(Material authored, Vector4 fields)
+            internal Program(Material authored, Vector4 fields, Action<Material> onReleased = null)
             {
                 this.authored = authored;
                 this.fields = fields;
+                this.onReleased = onReleased;
             }
             internal sealed class Lease : IDisposable
             {
@@ -97,6 +105,7 @@ namespace URUI.Effect.Rendering
                     {
                         EffectObjectLifetime.Destroy(previous.material);
                         previous.material = null;
+                        previous.onReleased?.Invoke(previous.authored);
                     }
                 }
             }
@@ -111,8 +120,8 @@ namespace URUI.Effect.Rendering
                     }
                     material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
                     material.CopyMatchingPropertiesFromMaterial(authored);
-                    material.SetVector("_CssFields", fields);
-                    timeInput = material.GetFloat("_Speed") != 0 || material.GetVector("_PatternSpeed") != Vector4.zero ? RenderTimeInput.UIClock : RenderTimeInput.None;
+                    material.SetVector(cssFieldsProperty, fields);
+                    timeInput = material.GetFloat(speedProperty) != 0 || material.GetVector(patternSpeedProperty) != Vector4.zero ? RenderTimeInput.UIClock : RenderTimeInput.None;
                 }
                 references++;
                 return new Lease(this);
@@ -121,21 +130,11 @@ namespace URUI.Effect.Rendering
         sealed class Factory : IEffectFactory
         {
             readonly Program program;
-            readonly string rate;
-            readonly string saturation;
-            readonly string brightness;
-            readonly float baseSaturation;
-            readonly float baseBrightness;
             internal Factory(Material authored, string rate, string saturation, string brightness)
             {
                 program = new Program(authored, new Vector4(rate != null ? 1 : 0, saturation != null ? 1 : 0, brightness != null ? 1 : 0, 0));
-                this.rate = rate;
-                this.saturation = saturation;
-                this.brightness = brightness;
-                baseSaturation = authored.GetFloat("_Saturation");
-                baseBrightness = authored.GetFloat("_Brightness");
             }
-            public IElementEffect Create(EffectContext context) => new Instance(context.Own(program.Acquire()), rate, saturation, brightness, baseSaturation, baseBrightness);
+            public IElementEffect Create(EffectContext context) => new Instance(context.Own(program.Acquire()));
         }
         sealed class ResolvedFactory : IEffectFactory
         {
@@ -145,6 +144,7 @@ namespace URUI.Effect.Rendering
             internal readonly string Saturation;
             internal readonly string Brightness;
             readonly System.Collections.Generic.Dictionary<Material, Program> programs = new();
+            readonly Action<Material> removeReleased;
             internal ResolvedFactory(Func<string, Material> resolver, string key, string rate, string saturation, string brightness)
             {
                 Resolver = resolver;
@@ -152,19 +152,20 @@ namespace URUI.Effect.Rendering
                 Rate = rate;
                 Saturation = saturation;
                 Brightness = brightness;
+                removeReleased = released => programs.Remove(released);
             }
             internal Program.Lease Acquire(Material authored)
             {
-                foreach (var property in new[] { "_FilterMode", "_ColorBlend", "_PatternTex", "_Rate", "_Speed", "_PatternSpeed", "_Saturation", "_Brightness" })
+                for (int i = 0; i < requiredProperties.Length; i++)
                 {
-                    if (!authored.HasProperty(property))
+                    if (!authored.HasProperty(requiredProperties[i]))
                     {
-                        throw new ArgumentException("作者纹理效果材质缺少属性：" + property);
+                        throw new ArgumentException("作者纹理效果材质缺少属性：" + requiredProperties[i]);
                     }
                 }
                 if (!programs.TryGetValue(authored, out var program))
                 {
-                    programs.Add(authored, program = new Program(authored, new Vector4(Rate != null ? 1 : 0, Saturation != null ? 1 : 0, Brightness != null ? 1 : 0, 1)));
+                    programs.Add(authored, program = new Program(authored, new Vector4(Rate != null ? 1 : 0, Saturation != null ? 1 : 0, Brightness != null ? 1 : 0, 1), removeReleased));
                 }
                 return program.Acquire();
             }
@@ -179,8 +180,6 @@ namespace URUI.Effect.Rendering
             Program.Lease program;
             Material authored;
             string key;
-            float baseSaturation;
-            float baseBrightness;
             bool hasPreparedKey;
             float preparedKey;
             internal ResolvedInstance(ResolvedFactory factory, EffectContext context)
@@ -218,15 +217,13 @@ namespace URUI.Effect.Rendering
                         }
                         program = next;
                         authored = material;
-                        baseSaturation = material.GetFloat("_Saturation");
-                        baseBrightness = material.GetFloat("_Brightness");
                     }
                     key = requested;
                 }
             }
             public void GetPreviewParameters(Span<Vector4> values)
             {
-                values[0] = new Vector4(Program.GetFloat("_Rate"), 1, 1, 0);
+                values[0] = new Vector4(Program.GetFloat(ratePropertyId), 1, 1, 0);
             }
             public void Record(EffectRenderContext context) => throw new InvalidOperationException("固定参数程序由宿主直接提交。");
             public void Dispose()
@@ -238,7 +235,7 @@ namespace URUI.Effect.Rendering
             readonly Program.Lease program;
             public Material Program => program.Material;
             public RenderTimeInput TimeInput => program.TimeInput;
-            internal Instance(Program.Lease program, string rate, string saturation, string brightness, float baseSaturation, float baseBrightness)
+            internal Instance(Program.Lease program)
             {
                 this.program = program;
             }
@@ -250,7 +247,7 @@ namespace URUI.Effect.Rendering
             }
             public void GetPreviewParameters(Span<Vector4> values)
             {
-                values[0] = new Vector4(Program.GetFloat("_Rate"), 1, 1, 0);
+                values[0] = new Vector4(Program.GetFloat(ratePropertyId), 1, 1, 0);
             }
             public void Record(EffectRenderContext context) => throw new InvalidOperationException("固定参数程序由宿主直接提交。");
             public void Dispose()

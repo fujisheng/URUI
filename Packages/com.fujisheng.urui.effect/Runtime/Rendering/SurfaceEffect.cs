@@ -51,6 +51,7 @@ namespace URUI.Effect.Rendering
     }
     internal sealed class SurfaceEffect : IElementEffect
     {
+        static readonly int effectTimeId = Shader.PropertyToID("_EffectTime");
         readonly SurfaceEffectInput input;
         readonly EffectScheduler scheduler = new();
         readonly MaterialPropertyBlock properties = new();
@@ -84,7 +85,7 @@ namespace URUI.Effect.Rendering
             var changed = materialState.Capture(input.Material, input.UsesTime, frame.Time);
             if (changed)
             {
-                var next = owner.Own(materials.Rent(input.Material, materialState.Keywords));
+                var next = owner.Own(materials.Rent(input.Material, materialState.KeywordHandles, materialState.KeywordStates));
                 if (material != null)
                 {
                     owner.Retire(material);
@@ -97,7 +98,7 @@ namespace URUI.Effect.Rendering
                 return;
             }
             properties.Clear();
-            properties.SetFloat("_EffectTime", (float)frame.Time);
+            properties.SetFloat(effectTimeId, (float)frame.Time);
         }
         public void Record(EffectRenderContext context)
         {

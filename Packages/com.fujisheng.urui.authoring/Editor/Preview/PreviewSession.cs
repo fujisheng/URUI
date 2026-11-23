@@ -116,9 +116,23 @@ namespace URUI.Authoring.Preview
             {
                 return;
             }
-            DisposeHost();
             Width = width;
             Height = height;
+            if (host != null && !EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                try
+                {
+                    host.Resize(width, height);
+                    Refresh();
+                    return;
+                }
+                catch
+                {
+                    DisposeHost();
+                    throw;
+                }
+            }
+            DisposeHost();
             Refresh();
         }
         public void Refresh()
@@ -144,6 +158,7 @@ namespace URUI.Authoring.Preview
             {
                 return;
             }
+            RuntimeInspectionBridge.EnableSourceMapping();
             if (host == null)
             {
                 host = RuntimeInspectionBridge.CreatePreview(Width, Height);
@@ -362,14 +377,43 @@ namespace URUI.Authoring.Preview
         }
         void DisposeHost()
         {
-            BeforeReload?.Invoke();
-            foreach (var extension in extensions)
+            Exception firstError = null;
+            try
             {
-                extension?.Dispose();
+                BeforeReload?.Invoke();
             }
-            extensions.Clear();
-            host?.Dispose();
+            catch (Exception error)
+            {
+                firstError ??= error;
+            }
+            try
+            {
+                for (int i = 0; i < extensions.Count; i++)
+                {
+                    try
+                    {
+                        extensions[i]?.Dispose();
+                    }
+                    catch (Exception error)
+                    {
+                        firstError ??= error;
+                    }
+                }
+            }
+            finally
+            {
+                extensions.Clear();
+            }
+            var currentHost = host;
             host = null;
+            try
+            {
+                currentHost?.Dispose();
+            }
+            catch (Exception error)
+            {
+                firstError ??= error;
+            }
             if (compiledPreview)
             {
                 UnityEngine.Object.DestroyImmediate(compiledPreview);
@@ -386,14 +430,18 @@ namespace URUI.Authoring.Preview
             renderedHtml = null;
             renderedResources = Array.Empty<TextResource>();
             renderedDependencies.Clear();
-            foreach (var asset in textAssets)
+            for (int i = 0; i < textAssets.Count; i++)
             {
-                if (asset)
+                if (textAssets[i])
                 {
-                    UnityEngine.Object.DestroyImmediate(asset);
+                    UnityEngine.Object.DestroyImmediate(textAssets[i]);
                 }
             }
             textAssets.Clear();
+            if (firstError != null)
+            {
+                throw firstError;
+            }
         }
         public void Dispose() => DisposeHost();
     }

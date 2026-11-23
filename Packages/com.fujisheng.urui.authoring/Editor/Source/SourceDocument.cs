@@ -115,6 +115,7 @@ namespace URUI.Authoring.Source
         { "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr" };
         readonly List<Node> nodes = new List<Node>();
         readonly List<Node> roots = new List<Node>();
+        readonly Dictionary<string, Node> nodesByKey = new Dictionary<string, Node>(StringComparer.Ordinal);
         public string Text
         {
             get;
@@ -122,6 +123,52 @@ namespace URUI.Authoring.Source
         }
         public IReadOnlyList<Node> Nodes => nodes;
         public IReadOnlyList<Node> Roots => roots;
+
+        public readonly struct PropertyEdit
+        {
+            public readonly string NodeKey;
+            public readonly string Property;
+            public readonly string Value;
+            public PropertyEdit(string nodeKey, string property, string value)
+            {
+                NodeKey = nodeKey;
+                Property = property;
+                Value = value;
+            }
+        }
+
+        sealed class PendingNodeEdits
+        {
+            internal readonly Node Node;
+            internal readonly Dictionary<string, PendingAttribute> Attributes = new Dictionary<string, PendingAttribute>(StringComparer.Ordinal);
+            internal readonly List<string> AddedOrder = new List<string>();
+            internal bool HasTextEdit;
+            internal string TextValue;
+            internal PendingNodeEdits(Node node) => Node = node;
+        }
+
+        sealed class PendingAttribute
+        {
+            internal AttributeSpan Existing;
+            internal string Value;
+            internal bool Removed;
+            internal bool StyleDiff;
+        }
+
+        readonly struct TextSpanPatch
+        {
+            internal readonly int Start;
+            internal readonly int End;
+            internal readonly string Replacement;
+            internal readonly int Order;
+            internal TextSpanPatch(int start, int end, string replacement, int order)
+            {
+                Start = start;
+                End = end;
+                Replacement = replacement;
+                Order = order;
+            }
+        }
 
         public static SourceDocument Parse(string text)
         {
@@ -136,14 +183,299 @@ namespace URUI.Authoring.Source
 
         public Node Find(string key)
         {
-            foreach (var node in nodes)
+            if (key != null && nodesByKey.TryGetValue(key, out var node))
             {
-                if (node.Key == key)
-                {
-                    return node;
-                }
+                return node;
             }
             throw new InvalidOperationException("stale_node: source node does not exist in this revision");
+        }
+
+        public bool TryApplyPropertyBatch(IReadOnlyList<PropertyEdit> edits, out string result)
+        {
+            result = Text;
+            if (edits == null || edits.Count == 0)
+            {
+                return true;
+            }
+            var byNode = new Dictionary<Node, PendingNodeEdits>();
+            var nodeOrder = new List<PendingNodeEdits>();
+            PendingNodeEdits GetOrCreate(Node node)
+            {
+                if (!byNode.TryGetValue(node, out var pending))
+                {
+                    pending = new PendingNodeEdits(node);
+                    byNode.Add(node, pending);
+                    nodeOrder.Add(pending);
+                }
+                return pending;
+            }
+            AttributeSpan FindExistingAttribute(Node node, string name)
+            {
+                for (int i = 0; i < node.Attributes.Count; i++)
+                {
+                    if (node.Attributes[i].Name == name)
+                    {
+                        return node.Attributes[i];
+                    }
+                }
+                return null;
+            }
+            bool SetPendingAttribute(PendingNodeEdits pending, string name, string value, bool styleDiff)
+            {
+                RequireName(name);
+                if (!pending.Attributes.TryGetValue(name, out var state))
+                {
+                    var existing = FindExistingAttribute(pending.Node, name);
+                    state = new PendingAttribute
+                    {
+                        Existing = existing,
+                        Value = existing?.Value,
+                        StyleDiff = styleDiff
+                    };
+                    pending.Attributes.Add(name, state);
+                    if (existing == null && value != null)
+                    {
+                        pending.AddedOrder.Add(name);
+                    }
+                }
+                else
+                {
+                    if (state.Removed && value != null)
+                    {
+                        return false;
+                    }
+                    if (state.Existing == null && value != null && !pending.AddedOrder.Contains(name))
+                    {
+                        pending.AddedOrder.Add(name);
+                    }
+                    if (!styleDiff)
+                    {
+                        state.StyleDiff = false;
+                    }
+                }
+                if (value == null)
+                {
+                    if (state.Existing != null)
+                    {
+                        state.Removed = true;
+                    }
+                    state.Value = null;
+                }
+                else
+                {
+                    state.Value = value;
+                }
+                return true;
+            }
+
+            for (int i = 0; i < edits.Count; i++)
+            {
+                var edit = edits[i];
+                var node = Find(edit.NodeKey);
+                var pending = GetOrCreate(node);
+                string property = edit.Property;
+                if (property.StartsWith("style.", StringComparison.Ordinal))
+                {
+                    string decl = property.Substring(6);
+                    string currentStyle;
+                    if (pending.Attributes.TryGetValue("style", out var existingState))
+                    {
+                        currentStyle = existingState.Value ?? "";
+                    }
+                    else
+                    {
+                        currentStyle = node.Attribute("style") ?? "";
+                    }
+                    string nextStyle = CssSource.SetDeclaration(currentStyle, decl, edit.Value);
+                    if (nextStyle == currentStyle && !pending.Attributes.ContainsKey("style"))
+                    {
+                        continue;
+                    }
+                    if (!SetPendingAttribute(pending, "style", nextStyle.Length == 0 ? null : nextStyle, styleDiff: true))
+                    {
+                        return false;
+                    }
+                }
+                else if (property.StartsWith("attr.", StringComparison.Ordinal))
+                {
+                    if (!SetPendingAttribute(pending, property.Substring(5), edit.Value, styleDiff: false))
+                    {
+                        return false;
+                    }
+                }
+                else if (property == "text")
+                {
+                    if (node.IsVoid || node.Children.Count != 0 || node.Tag == "style" || node.Tag == "script")
+                    {
+                        throw new InvalidOperationException("Text editing requires a leaf text container.");
+                    }
+                    pending.HasTextEdit = true;
+                    pending.TextValue = edit.Value ?? "";
+                }
+                else if (property == "value")
+                {
+                    string typeAttr = pending.Attributes.TryGetValue("type", out var typeState) ? typeState.Value : node.Attribute("type");
+                    if (typeAttr == "checkbox" || typeAttr == "radio")
+                    {
+                        if (!SetPendingAttribute(pending, "checked", edit.Value == "true" ? "" : null, styleDiff: false))
+                        {
+                            return false;
+                        }
+                    }
+                    else if (node.Tag == "textarea")
+                    {
+                        if (node.IsVoid || node.Children.Count != 0)
+                        {
+                            throw new InvalidOperationException("Text editing requires a leaf text container.");
+                        }
+                        pending.HasTextEdit = true;
+                        pending.TextValue = edit.Value ?? "";
+                    }
+                    else
+                    {
+                        if (!SetPendingAttribute(pending, "value", edit.Value, styleDiff: false))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("unsupported_property: " + property);
+                }
+            }
+
+            var patches = new List<TextSpanPatch>();
+            int order = 0;
+            for (int n = 0; n < nodeOrder.Count; n++)
+            {
+                var pending = nodeOrder[n];
+                var node = pending.Node;
+                foreach (var pair in pending.Attributes)
+                {
+                    var state = pair.Value;
+                    var existing = state.Existing;
+                    if (existing == null)
+                    {
+                        continue;
+                    }
+                    if (state.Value == null)
+                    {
+                        patches.Add(new TextSpanPatch(existing.Start, existing.End, "", order++));
+                        continue;
+                    }
+                    if (state.StyleDiff && existing.Quote != '\0')
+                    {
+                        string old = existing.Value ?? "";
+                        string style = state.Value;
+                        if (style == old)
+                        {
+                            continue;
+                        }
+                        int prefix = 0;
+                        int suffix = 0;
+                        while (prefix < old.Length && prefix < style.Length && old[prefix] == style[prefix])
+                        {
+                            prefix++;
+                        }
+                        if (prefix > 0 && prefix < old.Length && char.IsLowSurrogate(old[prefix]))
+                        {
+                            prefix--;
+                        }
+                        while (suffix < old.Length - prefix && suffix < style.Length - prefix && old[old.Length - suffix - 1] == style[style.Length - suffix - 1])
+                        {
+                            suffix++;
+                        }
+                        if (suffix > 0 && suffix < old.Length && char.IsLowSurrogate(old[old.Length - suffix]))
+                        {
+                            suffix--;
+                        }
+                        var offsets = DecodedOffsets(Text.Substring(existing.ValueStart, existing.ValueEnd - existing.ValueStart));
+                        patches.Add(new TextSpanPatch(
+                            existing.ValueStart + offsets[prefix],
+                            existing.ValueStart + offsets[old.Length - suffix],
+                            Escape(style.Substring(prefix, style.Length - prefix - suffix), existing.Quote),
+                            order++));
+                        continue;
+                    }
+                    char quote = existing.Quote == '\0' ? '"' : existing.Quote;
+                    string encoded = Escape(state.Value, quote);
+                    if (existing.Quote == '\0')
+                    {
+                        patches.Add(new TextSpanPatch(existing.Start, existing.End, pair.Key + "=" + quote + encoded + quote, order++));
+                    }
+                    else
+                    {
+                        patches.Add(new TextSpanPatch(existing.ValueStart, existing.ValueEnd, encoded, order++));
+                    }
+                }
+                if (pending.AddedOrder.Count > 0)
+                {
+                    StringBuilder added = null;
+                    for (int a = 0; a < pending.AddedOrder.Count; a++)
+                    {
+                        string name = pending.AddedOrder[a];
+                        var state = pending.Attributes[name];
+                        if (state.Value == null)
+                        {
+                            continue;
+                        }
+                        added ??= new StringBuilder();
+                        added.Append(' ').Append(name).Append("=\"").Append(Escape(state.Value, '"')).Append('"');
+                    }
+                    if (added != null && added.Length > 0)
+                    {
+                        int at = node.OpenEnd - 1;
+                        if (Text[at - 1] == '/')
+                        {
+                            at--;
+                        }
+                        patches.Add(new TextSpanPatch(at, at, added.ToString(), order++));
+                    }
+                }
+                if (pending.HasTextEdit)
+                {
+                    patches.Add(new TextSpanPatch(node.OpenEnd, node.CloseStart, Escape(pending.TextValue, '\0'), order++));
+                }
+            }
+
+            if (patches.Count == 0)
+            {
+                result = Text;
+                return true;
+            }
+            patches.Sort((a, b) =>
+            {
+                int cmp = a.Start.CompareTo(b.Start);
+                return cmp != 0 ? cmp : a.Order.CompareTo(b.Order);
+            });
+            int delta = 0;
+            for (int i = 0; i < patches.Count; i++)
+            {
+                if (i > 0 && patches[i - 1].End > patches[i].Start)
+                {
+                    return false;
+                }
+                delta += patches[i].Replacement.Length - (patches[i].End - patches[i].Start);
+            }
+            var sb = new StringBuilder(Math.Max(0, Text.Length + delta));
+            int cursor = 0;
+            for (int i = 0; i < patches.Count; i++)
+            {
+                var p = patches[i];
+                if (p.Start > cursor)
+                {
+                    sb.Append(Text, cursor, p.Start - cursor);
+                }
+                sb.Append(p.Replacement);
+                cursor = p.End;
+            }
+            if (cursor < Text.Length)
+            {
+                sb.Append(Text, cursor, Text.Length - cursor);
+            }
+            result = sb.ToString();
+            return true;
         }
 
         public string SetAttribute(string key, string name, string value)
@@ -399,6 +731,7 @@ namespace URUI.Authoring.Source
                     node.Parent.MutableChildren.Add(node);
                 }
                 nodes.Add(node);
+                nodesByKey.Add(node.Key, node);
                 ReadAttributes(node, p, tagEnd);
                 node.IsVoid = voidTags.Contains(tag) || Text[tagEnd - 1] == '/';
                 p = tagEnd + 1;

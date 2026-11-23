@@ -21,7 +21,11 @@ namespace URUI.Controls
         protected override string NormalizeValue(string value)
         {
             RequireText(value, nameof(value));
-            return Multiline ? value : value.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ");
+            if (Multiline || (value.IndexOf('\r') < 0 && value.IndexOf('\n') < 0))
+            {
+                return value;
+            }
+            return value.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ");
         }
         /// <summary>
         /// 读取原生文本。
@@ -68,7 +72,7 @@ namespace URUI.Controls
             base.OnEvent(evt);
             if (evt is NativeValueChangedEvent && ReferenceEquals(evt.Target, this) && IsValid && !Document.HasPendingInvalidation)
             {
-                string raw = NativeMethods.ReadControl(NativeHandle, Token);
+                string raw = NativeMethods.ReadControl(SurfaceHandle, NativeHandle, Token);
                 string normalized = NormalizeValue(raw);
                 if (normalized != raw)
                 {

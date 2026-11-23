@@ -368,7 +368,21 @@ namespace URUI
         }
 
         // Each unique render interface gets its own render manager.
+        const bool inserted_render_manager =
+            core_data->render_managers.find(render_interface_for_context) == core_data->render_managers.end();
         auto& render_manager = core_data->render_managers[render_interface_for_context];
+        struct RenderManagerRollback
+        {
+            RenderInterface* key;
+            bool active;
+            ~RenderManagerRollback()
+            {
+                if (active && core_data)
+                {
+                    core_data->render_managers.erase(key);
+                }
+            }
+        } rm_rollback{render_interface_for_context, inserted_render_manager};
         if (!render_manager)
         {
             render_manager = MakeUnique<RenderManager>(render_interface_for_context);
@@ -385,6 +399,7 @@ namespace URUI
 
         Context* new_context_raw = new_context.get();
         core_data->contexts[name] = std::move(new_context);
+        rm_rollback.active = false;
 
         PluginRegistry::NotifyContextCreate(new_context_raw);
 
@@ -393,7 +408,41 @@ namespace URUI
 
     bool RemoveContext(const String& name)
     {
-        return core_data->contexts.erase(name) != 0;
+        auto it = core_data->contexts.find(name);
+        if (it == core_data->contexts.end())
+        {
+            return false;
+        }
+        RenderManager* removed_rm = &it->second->GetRenderManager();
+        core_data->contexts.erase(it);
+        bool still_used = false;
+        for (const auto& entry : core_data->contexts)
+        {
+            if (&entry.second->GetRenderManager() == removed_rm)
+            {
+                still_used = true;
+                break;
+            }
+        }
+        if (!still_used)
+        {
+            for (auto rm_it = core_data->render_managers.begin(); rm_it != core_data->render_managers.end(); ++rm_it)
+            {
+                if (rm_it->second.get() == removed_rm)
+                {
+                    if (rm_it->first != render_interface)
+                    {
+                        if (font_interface)
+                        {
+                            font_interface->ReleaseTextures(*removed_rm);
+                        }
+                        core_data->render_managers.erase(rm_it);
+                    }
+                    break;
+                }
+            }
+        }
+        return true;
     }
 
     Context* GetContext(const String& name)

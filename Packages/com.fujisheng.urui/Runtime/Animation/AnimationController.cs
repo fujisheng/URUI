@@ -15,6 +15,8 @@ namespace URUI.Animation
         readonly int thread;
         readonly Dictionary<(Element, string), AnimationPlayback> playing = new();
         readonly HashSet<(Element, string)> history = new();
+        static readonly Predicate<(Element, string)> isInvalidHistoryKey = key => !key.Item1.IsValid;
+        ulong lastHistoryRefRevision;
         long serial;
         AnimationPlayback[] snapshot;
         AnimationPlayback[] PlayingSnapshot()
@@ -43,12 +45,40 @@ namespace URUI.Animation
             }
         }
         public AnimationPlayback Play(Element root, string activeClass, AnimationGroup animationNames, CancellationToken token = default)
+            => Play(root, activeClass, animationNames, token, null, null);
+
+        /// <summary>
+        /// 结束帧在绘制前切换到终态类。终态保留到显式移除或再次播放。
+        /// </summary>
+        public AnimationPlayback Play(Element root, string activeClass, AnimationGroup animationNames, CancellationToken token, string completionClass)
+            => Play(root, activeClass, animationNames, token, completionClass, null);
+
+        /// <summary>
+        /// 可选在正式播放前先应用准备类并等待一次布局刷新，再切换到播放类；结束帧在绘制前切换到终态类。
+        /// </summary>
+        public AnimationPlayback Play(Element root, string activeClass, AnimationGroup animationNames, CancellationToken token, string completionClass, string prepareClass)
         {
             CheckThread();
             token.ThrowIfCancellationRequested();
             if (root == null || !root.IsValid || !ReferenceEquals(root.Document, document) || !root.IsAttached || string.IsNullOrWhiteSpace(activeClass) || animationNames == null)
             {
                 throw new ArgumentException("动画需要当前文档的作者根、状态类及命名目标组。");
+            }
+            if (!string.IsNullOrEmpty(completionClass))
+            {
+                Element.RequireClassName(completionClass);
+                if (completionClass == activeClass)
+                {
+                    throw new ArgumentException("终态类必须与播放类不同。", nameof(completionClass));
+                }
+            }
+            if (!string.IsNullOrEmpty(prepareClass))
+            {
+                Element.RequireClassName(prepareClass);
+                if (prepareClass == activeClass || prepareClass == completionClass)
+                {
+                    throw new ArgumentException("准备类必须与播放类和终态类不同。", nameof(prepareClass));
+                }
             }
             var key = (root, activeClass);
             var restart = history.Contains(key) || root.ClassListContains(activeClass);
@@ -60,7 +90,15 @@ namespace URUI.Animation
             {
                 root.RemoveFromClassList(activeClass);
             }
-            var playback = new AnimationPlayback(this, ++serial, root, activeClass, animationNames, restart);
+            if (!string.IsNullOrEmpty(completionClass) && root.ClassListContains(completionClass))
+            {
+                root.RemoveFromClassList(completionClass);
+            }
+            if (!string.IsNullOrEmpty(prepareClass) && root.ClassListContains(prepareClass))
+            {
+                root.RemoveFromClassList(prepareClass);
+            }
+            var playback = new AnimationPlayback(this, ++serial, root, activeClass, animationNames, restart, completionClass, prepareClass);
             playing.Add(key, playback);
             snapshot = null;
             history.Add(key);
@@ -85,6 +123,10 @@ namespace URUI.Animation
                 if (playback.Root.IsValid)
                 {
                     playback.Root.RemoveFromClassList(playback.ActiveClass);
+                    if (!string.IsNullOrEmpty(playback.PrepareClass))
+                    {
+                        playback.Root.RemoveFromClassList(playback.PrepareClass);
+                    }
                 }
             }
         }
@@ -96,7 +138,14 @@ namespace URUI.Animation
             }
             if (Thread.CurrentThread.ManagedThreadId == thread)
             {
-                Stop();
+                if (document && document.Surface != null && document.Surface.IsExecutingCallback)
+                {
+                    document.RunAfterEvent(Stop);
+                }
+                else
+                {
+                    Stop();
+                }
             }
             else
             {
@@ -105,11 +154,38 @@ namespace URUI.Animation
         }
         void Update(Document owner)
         {
-            foreach (var value in PlayingSnapshot())
+            if (playing.Count > 0)
             {
-                value.Tick();
+                var items = PlayingSnapshot();
+                for (int i = 0; i < items.Length; i++)
+                {
+                    var value = items[i];
+                    if (!value.HasCompletionClass)
+                    {
+                        value.Tick();
+                    }
+                }
             }
-            history.RemoveWhere(key => !key.Item1.IsValid);
+            PruneHistory();
+        }
+        internal bool CommitCompletionClasses()
+        {
+            if (playing.Count == 0)
+            {
+                return false;
+            }
+            var changed = false;
+            var items = PlayingSnapshot();
+            for (int i = 0; i < items.Length; i++)
+            {
+                var playback = items[i];
+                if (playback.HasCompletionClass && playback.IsPlaying)
+                {
+                    playback.Tick();
+                    changed |= playback.Finished.IsCompletedSuccessfully;
+                }
+            }
+            return changed;
         }
         void Unload(Document owner)
         {
@@ -117,14 +193,33 @@ namespace URUI.Animation
         }
         internal void DiscardInvalid()
         {
-            foreach (var value in PlayingSnapshot())
+            if (playing.Count > 0)
             {
-                if (!value.Root.IsValid)
+                var items = PlayingSnapshot();
+                for (int i = 0; i < items.Length; i++)
                 {
-                    value.Cancel();
+                    if (!items[i].Root.IsValid)
+                    {
+                        items[i].Cancel();
+                    }
                 }
             }
-            history.RemoveWhere(key => !key.Item1.IsValid);
+            lastHistoryRefRevision = 0;
+            PruneHistory();
+        }
+        void PruneHistory()
+        {
+            if (history.Count == 0)
+            {
+                return;
+            }
+            var revision = document.RefRevision;
+            if (revision != 0 && revision == lastHistoryRefRevision)
+            {
+                return;
+            }
+            lastHistoryRefRevision = revision;
+            history.RemoveWhere(isInvalidHistoryKey);
         }
     }
 }

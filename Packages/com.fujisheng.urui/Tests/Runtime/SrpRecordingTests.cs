@@ -34,16 +34,12 @@ namespace URUI.Tests
             }
         }
         [UnityTest]
-        public IEnumerator SharedColorPassKeepsContextValidationAndPixels()
+        public IEnumerator ProjectColorSpaceSubmissionPreservesPixelsAndContext()
         {
-            if (QualitySettings.activeColorSpace != ColorSpace.Linear || SystemInfo.graphicsDeviceType != GraphicsDeviceType.Metal || !SystemInfo.supportsMemorylessTextures)
-            {
-                Assert.Ignore("此用例验证真实Metal共享颜色Pass。");
-            }
             var previous = GraphicsSettings.defaultRenderPipeline;
             var quality = QualitySettings.renderPipeline;
             var pipeline = ScriptableObject.CreateInstance<PipelineAsset>();
-            var cameraObject = new GameObject("Shared color validation camera", typeof(Camera));
+            var cameraObject = new GameObject("Project color validation camera", typeof(Camera));
             cameraObject.tag = "MainCamera";
             var camera = cameraObject.GetComponent<Camera>();
             camera.allowHDR = false;
@@ -63,7 +59,7 @@ namespace URUI.Tests
                 GraphicsSettings.defaultRenderPipeline = pipeline;
                 QualitySettings.renderPipeline = pipeline;
                 yield return null;
-                root = new GameObject("Shared color validation Surface");
+                root = new GameObject("Project color validation Surface");
                 var surface = root.AddComponent<Surface>();
                 surface.Viewport = new Vector2Int(64, 64);
                 surface.Input.UseUnityInput = false;
@@ -78,7 +74,7 @@ namespace URUI.Tests
                     invoked = true;
                     try
                     {
-                        document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}div{position:absolute;width:24px;height:24px;}</style></head><body><div style='opacity:.5;left:4px;top:4px;'><div style='background:red;'></div><div style='left:12px;top:12px;background:lime;'></div></div><div style='left:44px;top:44px;background:rgba(255,0,0,.25);'></div></body></html>", "/shared-color-validation.html");
+                        document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}div{position:absolute;width:24px;height:24px;}</style></head><body><div style='opacity:.5;left:4px;top:4px;'><div style='background:red;'></div><div style='left:12px;top:12px;background:lime;'></div></div><div style='left:44px;top:44px;background:rgba(255,0,0,.25);'></div></body></html>", "/project-color-validation.html");
                         clear.SetRenderTarget(actual);
                         clear.ClearRenderTarget(false, true, Color.blue);
                         clear.SetRenderTarget(reference);
@@ -86,16 +82,6 @@ namespace URUI.Tests
                         context.SetupCameraProperties(camera);
                         context.ExecuteCommandBuffer(clear);
                         Assert.IsTrue(surface.SubmitRendering(context, actual, new Rect(0, 0, 64, 64), URUI.Rendering.RenderTargetInfo.FromTexture(actual)));
-                        Assert.Greater(surface.Host.RecordedRasterResolves, 0, "必须实际录制颜色转换，不能由未命中路径虚假通过。");
-                        var targets = (System.Collections.IDictionary)surface.Host.GetType().GetField("preparedLayerTargets", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(surface.Host);
-                        var transient = false;
-                        foreach (var value in targets.Values)
-                        {
-                            var texture = (RenderTexture)value.GetType().GetProperty("Texture", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public).GetValue(value);
-                            transient |= texture.memorylessMode == RenderTextureMemoryless.Color;
-                        }
-                        Assert.IsTrue(transient, "必须实际使用原生共享Pass的memoryless附件。");
-                        // 未知目标元数据使用既有独立转换，作为相同输入的完整像素参考。
                         Assert.IsTrue(surface.SubmitRendering(context, reference, new Rect(0, 0, 64, 64)));
                         valid = context.SubmitForRenderPassValidation();
                         context.Submit();
@@ -117,8 +103,13 @@ namespace URUI.Tests
                 var b = UnityEngine.Rendering.AsyncGPUReadback.Request(reference, 0);
                 b.WaitForCompletion();
                 Assert.IsFalse(a.hasError || b.hasError);
-                CollectionAssert.AreEqual(b.GetData<byte>().ToArray(), a.GetData<byte>().ToArray(), "共享与完整转换必须逐字节一致。");
-                Assert.IsTrue(valid, "宿主录制的复制/清屏与原生Pass不能污染URP提交校验并触发整管线回退。");
+                var result = a.GetData<Color32>();
+                CollectionAssert.AreEqual(b.GetData<byte>().ToArray(), a.GetData<byte>().ToArray(), "目标元数据不应改变普通透明度。");
+                var sample = result[55 * 64 + 8];
+                Assert.That(sample.r, Is.InRange(123, 132));
+                Assert.That(sample.g, Is.EqualTo(0));
+                Assert.That(sample.b, Is.InRange(123, 132));
+                Assert.IsTrue(valid, "普通叠绘必须通过渲染通道校验。");
             }
             finally
             {
@@ -145,7 +136,7 @@ namespace URUI.Tests
             {
                 Assert.Ignore("验证Metal颜色附件路径的目标信息。");
             }
-            var fetch = UnityEngine.Resources.Load<Shader>("URUI/PremultipliedFetch");
+            var fetch = UnityEngine.Resources.Load<Shader>("URUI/LayerCompositeFetch");
             if (!fetch || !fetch.isSupported)
             {
                 Assert.Ignore("当前设备不支持颜色附件读取。");
@@ -195,11 +186,10 @@ namespace URUI.Tests
                         Assert.IsFalse(Active(), "只有identifier时不能借用相机的格式证明。");
                         Assert.IsTrue(surface.SubmitRendering(context, half, viewport));
                         Assert.IsTrue(Active());
-                        Assert.Zero(surface.Host.RecordedRasterResolves);
                         Assert.IsTrue(surface.SubmitRendering(context, identifier, viewport));
                         Assert.IsFalse(Active(), "同一目标的信息变为未知也必须重新录制。");
                         Assert.IsTrue(surface.SubmitRendering(context, ldr, viewport));
-                        Assert.Greater(surface.Host.RecordedRasterResolves, 0, "相机为Half也不能让线性LDR目标绕过编码累积。");
+                        Assert.IsTrue(Active(), "当前目标的格式和采样信息可用于遮罩优化。");
                     }
                     catch (Exception error)
                     {
@@ -338,6 +328,102 @@ namespace URUI.Tests
             }
         }
         [UnityTest]
+        public IEnumerator UnloadingOneDocumentBeforeSubmissionStillDrawsTheRemainingDocument()
+        {
+            var previous = GraphicsSettings.defaultRenderPipeline;
+            var quality = QualitySettings.renderPipeline;
+            var pipeline = ScriptableObject.CreateInstance<PipelineAsset>();
+            var cameraObject = new GameObject("Late document unload camera", typeof(Camera));
+            cameraObject.tag = "MainCamera";
+            var camera = cameraObject.GetComponent<Camera>();
+            var target = new RenderTexture(32, 32, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            target.Create();
+            camera.targetTexture = target;
+            GameObject root = null;
+            var invoked = false;
+            Exception failure = null;
+            using var clear = new CommandBuffer();
+            try
+            {
+                GraphicsSettings.defaultRenderPipeline = pipeline;
+                QualitySettings.renderPipeline = pipeline;
+                yield return null;
+
+                root = new GameObject("Shared Surface");
+                var surface = root.AddComponent<Surface>();
+                surface.Viewport = new Vector2Int(32, 32);
+                surface.Input.UseUnityInput = false;
+                var background = root.AddComponent<Document>();
+                background.Surface = surface;
+                background.LoadHtml("<!doctype html><html><head></head><body style='margin:0;width:32px;height:32px;background:lime;'></body></html>", "/background.html");
+                var popupObject = new GameObject("Popup");
+                popupObject.transform.SetParent(root.transform, false);
+                var popup = popupObject.AddComponent<Document>();
+                popup.Surface = surface;
+                popup.SetPresentation(1, 0, true, false);
+                popup.LoadHtml("<!doctype html><html><head></head><body style='margin:0;width:32px;height:32px;background:red;'></body></html>", "/popup.html");
+
+                clear.SetRenderTarget(target);
+                clear.ClearRenderTarget(false, true, Color.black);
+                var viewport = new Rect(0, 0, 32, 32);
+                pipeline.Draw = context =>
+                {
+                    if (invoked)
+                    {
+                        return;
+                    }
+                    invoked = true;
+                    try
+                    {
+                        context.SetupCameraProperties(camera);
+                        context.ExecuteCommandBuffer(clear);
+                        Assert.IsTrue(surface.SubmitRendering(context, target, viewport));
+
+                        // Unload after the frame was recorded, then submit to the same camera output.
+                        popup.Unload();
+                        context.ExecuteCommandBuffer(clear);
+                        Assert.IsTrue(surface.SubmitRendering(context, target, viewport));
+                    }
+                    catch (Exception error)
+                    {
+                        failure = error;
+                    }
+                };
+                for (var i = 0; i < 10 && !invoked; i++)
+                {
+                    yield return null;
+                }
+                pipeline.Draw = null;
+                Assert.That(invoked, Is.True);
+                Assert.That(failure, Is.Null);
+                Assert.That(background.IsLoaded, Is.True);
+                Assert.That(popup.IsLoaded, Is.False);
+
+                var readback = AsyncGPUReadback.Request(target, 0, TextureFormat.RGBA32);
+                readback.WaitForCompletion();
+                Assert.That(readback.hasError, Is.False);
+                var pixel = readback.GetData<Color32>()[16 * 32 + 16];
+                Assert.That(pixel.g, Is.GreaterThan(250), "提交前关闭弹窗时，下层文档在同一帧仍须绘制。");
+                Assert.That(pixel.r, Is.LessThan(5), "已卸载的弹窗不能沿用旧命令重绘。");
+            }
+            finally
+            {
+                pipeline.Draw = null;
+                if (root)
+                {
+                    UnityEngine.Object.DestroyImmediate(root);
+                }
+                camera.targetTexture = null;
+                GraphicsSettings.defaultRenderPipeline = previous;
+                QualitySettings.renderPipeline = quality;
+                UnityEngine.Object.DestroyImmediate(pipeline);
+                UnityEngine.Object.DestroyImmediate(cameraObject);
+                target.Release();
+                UnityEngine.Object.DestroyImmediate(target);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator MultipleResourceRetirementsPreserveDrawsUntilDelayedSrpSubmit()
         {
             var previous = GraphicsSettings.defaultRenderPipeline;
@@ -425,10 +511,6 @@ namespace URUI.Tests
                         read.ReadPixels(new Rect(8, 64 - 8, 1, 1), 0, 0);
                         read.Apply();
                         var expected = Color.Lerp(Color.blue, colors[i], .5f);
-                        if (QualitySettings.activeColorSpace == ColorSpace.Linear)
-                        {
-                            expected = expected.linear;
-                        }
                         var actual = read.GetPixel(0, 0);
                         Assert.That(actual.r, Is.EqualTo(expected.r).Within(3f / 255), "r target " + i);
                         Assert.That(actual.g, Is.EqualTo(expected.g).Within(3f / 255), "g target " + i);

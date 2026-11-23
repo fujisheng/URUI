@@ -1,4 +1,5 @@
 #include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <algorithm>
 #include <array>
@@ -14,12 +15,12 @@ static void Warm(int count = 16)
 {
     for (int n = 0; n < count; n++)
     {
-        urui_update();
+        urui_surface_update(g_test_surface);
     }
 }
 static double Idle(int nodes, bool hidden_input)
 {
-    assert(urui_create(128, 128) == 1 && urui_set_ui_time(0) == 1);
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1 && urui_surface_set_ui_time(g_test_surface, 0) == 1);
     std::string html =
         "<!doctype html><html><head><style>body{margin:0;}div{position:absolute;width:4px;height:4px;}</style></head><body>";
     for (int n = 0; n < nodes; n++)
@@ -27,11 +28,11 @@ static double Idle(int nodes, bool hidden_input)
         html += "<div></div>";
     }
     html += "</body></html>";
-    LoadTestDocument(html.c_str(), "/idle-many.html");
-    auto* context = URUI::GetContext("urui");
+    LoadTestDocument(g_test_surface, html.c_str(), "/idle-many.html");
+    auto* context = URUI::GetContext(0);
     if (hidden_input)
     {
-        LoadTestDocument("<!doctype html><html><head></head><body><input type='text'></body></html>",
+        LoadTestDocument(g_test_surface, "<!doctype html><html><head></head><body><input type='text'></body></html>",
                          "/hidden-input.html");
         context->GetDocument(1)->Hide();
     }
@@ -42,58 +43,58 @@ static double Idle(int nodes, bool hidden_input)
         const auto start = std::chrono::steady_clock::now();
         for (int n = 0; n < 128; n++)
         {
-            urui_update();
+            urui_surface_update(g_test_surface);
         }
         time = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count() / 128;
     }
     std::sort(times.begin(), times.end());
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     return times[2];
 }
 static void Mutations()
 {
-    assert(urui_create(128, 128) == 1 && urui_set_ui_time(0) == 1);
-    LoadTestDocument(Markup, "/idle-mutations.html");
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1 && urui_surface_set_ui_time(g_test_surface, 0) == 1);
+    LoadTestDocument(g_test_surface, Markup, "/idle-mutations.html");
+    auto* context = URUI::GetContext(0);
     auto* doc = context->GetDocument(0);
     auto* box = doc->GetElementById("box");
     Warm();
     assert(box->GetOffsetWidth() == 10);
     box->SetClass("wide", true);
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(box->GetOffsetWidth() == 70);
     Warm();
     box->SetClass("wide", false);
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(box->GetOffsetWidth() == 10);
     Warm();
     box->SetProperty("width", "30px");
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(box->GetOffsetWidth() == 30);
     Warm();
     box->RemoveProperty("width");
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(box->GetOffsetWidth() == 10);
     Warm();
     auto child = doc->CreateElement("div");
     auto* added = child.get();
     box->AppendChild(std::move(child));
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(added->GetOffsetWidth() == 10);
     Warm();
     added->SetProperty("width", "42px");
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(added->GetOffsetWidth() == 42);
     Warm();
     auto removed = box->RemoveChild(added);
     removed.reset();
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(box->GetNumChildren() == 0);
     Warm();
     box->SetOffset({30, 12}, box->GetOffsetParent());
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(box->GetAbsoluteOffset().x == 30);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 class EndListener : public URUI::EventListener
 {
@@ -112,9 +113,9 @@ public:
 };
 static void DelayedAnimation(bool hidden)
 {
-    assert(urui_create(128, 128) == 1 && urui_set_ui_time(0) == 1);
-    LoadTestDocument(Markup, "/idle-animation.html");
-    auto* doc = URUI::GetContext("urui")->GetDocument(0);
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1 && urui_surface_set_ui_time(g_test_surface, 0) == 1);
+    LoadTestDocument(g_test_surface, Markup, "/idle-animation.html");
+    auto* doc = URUI::GetContext(0)->GetDocument(0);
     auto* box = doc->GetElementById("box");
     EndListener ended;
     ended.document = doc;
@@ -127,18 +128,18 @@ static void DelayedAnimation(bool hidden)
     assert(box->Animate("width", URUI::Property(70.f, URUI::Unit::PX), 1.f, URUI::Tween{}, 1, false, .5f));
     Warm();
     assert(ended.count == 0);
-    assert(urui_set_ui_time(.25) == 1);
+    assert(urui_surface_set_ui_time(g_test_surface, .25) == 1);
     Warm();
     assert(ended.count == 0);
-    assert(urui_set_ui_time(.75) == 1);
-    urui_update();
+    assert(urui_surface_set_ui_time(g_test_surface, .75) == 1);
+    urui_surface_update(g_test_surface);
     assert(box->GetOffsetWidth() > 10 && box->GetOffsetWidth() < 70);
-    assert(urui_set_ui_time(2) == 1);
-    urui_update();
+    assert(urui_surface_set_ui_time(g_test_surface, 2) == 1);
+    urui_surface_update(g_test_surface);
     assert(ended.count == 1);
     Warm();
     assert(ended.count == 1);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 static bool throw_tween;
 static int tween_calls;
@@ -154,15 +155,15 @@ static float ThrowingTween(float value)
 }
 static void FailedUpdate()
 {
-    assert(urui_create(128, 128) == 1 && urui_set_ui_time(0) == 1);
-    LoadTestDocument(Markup, "/idle-failed.html");
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1 && urui_surface_set_ui_time(g_test_surface, 0) == 1);
+    LoadTestDocument(g_test_surface, Markup, "/idle-failed.html");
+    auto* context = URUI::GetContext(0);
     auto* box = context->GetDocument(0)->GetElementById("box");
     Warm();
     assert(box->Animate("width", URUI::Property(70.f, URUI::Unit::PX), 1.f, URUI::Tween(ThrowingTween), 1, false));
     throw_tween = true;
     tween_calls = 0;
-    assert(urui_set_ui_time(.25) == 1);
+    assert(urui_surface_set_ui_time(g_test_surface, .25) == 1);
     bool caught = false;
     try
     {
@@ -173,10 +174,10 @@ static void FailedUpdate()
         caught = true;
     }
     assert(caught && tween_calls == 1);
-    assert(urui_set_ui_time(.5) == 1);
+    assert(urui_surface_set_ui_time(g_test_surface, .5) == 1);
     assert(context->Update());
     assert(tween_calls > 1);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 class TickProbe : public URUI::Element
 {
@@ -193,12 +194,12 @@ public:
 int TickProbe::calls = 0;
 static void UnknownUpdate()
 {
-    assert(urui_create(128, 128) == 1 && urui_set_ui_time(0) == 1);
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1 && urui_surface_set_ui_time(g_test_surface, 0) == 1);
     URUI::ElementInstancerGeneric<TickProbe> instancer;
     URUI::Factory::RegisterElementInstancer("urui-tick-probe", &instancer);
-    LoadTestDocument("<!doctype html><html><head></head><body><urui-tick-probe></urui-tick-probe></body></html>",
+    LoadTestDocument(g_test_surface, "<!doctype html><html><head></head><body><urui-tick-probe></urui-tick-probe></body></html>",
                      "/idle-unknown.html");
-    auto* doc = URUI::GetContext("urui")->GetDocument(0);
+    auto* doc = URUI::GetContext(0)->GetDocument(0);
     Warm();
     TickProbe::calls = 0;
     Warm(31);
@@ -207,15 +208,15 @@ static void UnknownUpdate()
     TickProbe::calls = 0;
     Warm(31);
     assert(TickProbe::calls == 31);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 static void NestedDocumentUpdate()
 {
-    assert(urui_create(128, 128) == 1 && urui_set_ui_time(0) == 1);
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1 && urui_surface_set_ui_time(g_test_surface, 0) == 1);
     URUI::ElementInstancerGeneric<TickProbe> instancer;
     URUI::Factory::RegisterElementInstancer("urui-tick-probe", &instancer);
-    LoadTestDocument(Markup, "/idle-outer.html");
-    auto* context = URUI::GetContext("urui");
+    LoadTestDocument(g_test_surface, Markup, "/idle-outer.html");
+    auto* context = URUI::GetContext(0);
     auto* outer = context->GetDocument(0);
     auto* middle = context->CreateDocument();
     auto* inner = context->CreateDocument();
@@ -234,7 +235,7 @@ static void NestedDocumentUpdate()
     TickProbe::calls = 0;
     Warm(31);
     assert(TickProbe::calls == 31);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 int main(int argc, char** argv)
 {

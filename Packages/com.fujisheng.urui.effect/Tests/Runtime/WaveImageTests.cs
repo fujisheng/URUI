@@ -86,9 +86,8 @@ namespace URUI.Effect.Tests
                 var center = Pixel(70, 70);
                 var first = read.GetPixels();
                 var linear = target.sRGB ? center.linear : center;
-                var half = EffectHtmlFixtureAssets.TargetChannel(.5f);
-                Assert.That(linear.r, Is.EqualTo(transparentTarget ? .5f : half).Within(.025f));
-                Assert.That(linear.b, Is.EqualTo(transparentTarget ? 0 : half).Within(.025f));
+                Assert.That(linear.r, Is.EqualTo(.5f).Within(.025f));
+                Assert.That(linear.b, Is.EqualTo(transparentTarget ? 0 : .5f).Within(.025f));
                 Assert.That(center.a, Is.EqualTo(transparentTarget ? .5f : 1).Within(.02f), "透明覆盖率必须只应用一次，并正确参与后续图层合成。");
                 clock.Now = 1;
                 yield return null;

@@ -10,18 +10,20 @@ using URUI.Internal.Interop;
 namespace URUI.Hosting
 {
     /// <summary>
-    /// 拥有共享原生上下文、视口、时钟、输入与绘制资源；顶层页面显式关联此组件。
+    /// 拥有共享原生 Surface、视口、时钟、输入与绘制资源；顶层页面显式关联此组件。
+    /// 支持多个 Surface 实例并发共存。
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("URUI/Surface")]
     [DefaultExecutionOrder(-10000)]
     public sealed class Surface : MonoBehaviour
     {
-        static readonly Dictionary<ulong, Document> owners = new();
+        static readonly Dictionary<(ulong Surface, ulong Document), Document> owners = new();
         readonly HashSet<Document> documents = new();
-        Document[] documentsSnapshot;
+        readonly HashSet<Document> loadedDocuments = new();
+        [NonSerialized] Document[] documentsSnapshot;
         readonly Queue<Document.DeferredAction> deferred = new();
-        RenderHost host;
+        [NonSerialized] RenderHost host;
         SurfaceInput input;
         IUIClock clock = UnityUIClock.Unscaled;
         int ownerThread;
@@ -34,12 +36,16 @@ namespace URUI.Hosting
         Vector2Int viewport;
         internal Camera PreviewCamera;
         internal bool ManualDrive;
+
+        internal ulong SurfaceHandle => host && host.Ready ? host.SurfaceHandle : 0;
+
         internal void InitializeForEditor(Camera camera)
         {
             ownerThread = Thread.CurrentThread.ManagedThreadId;
             PreviewCamera = camera;
             ManualDrive = true;
         }
+
         internal void ReleaseForEditor()
         {
             CheckThread();
@@ -47,7 +53,7 @@ namespace URUI.Hosting
             {
                 throw new InvalidOperationException("Only an explicitly owned preview can be released by the editor.");
             }
-            OnDisable();
+            DisableSurface(force: true);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -55,10 +61,12 @@ namespace URUI.Hosting
         {
             owners.Clear();
         }
+
         void Awake()
         {
             ownerThread = Thread.CurrentThread.ManagedThreadId;
         }
+
         internal void CheckThread()
         {
             if (ownerThread == 0 || Thread.CurrentThread.ManagedThreadId != ownerThread)
@@ -66,6 +74,7 @@ namespace URUI.Hosting
                 throw new InvalidOperationException("URUI Surface 必须在 Unity 主线程使用。");
             }
         }
+
         /// <summary>
         /// 同一 Surface 的所有页面共享此时钟；加载期间不能更换时基。
         /// </summary>
@@ -99,6 +108,7 @@ namespace URUI.Hosting
                 }
             }
         }
+
         /// <summary>
         /// 逻辑 CSS 像素尺寸；零表示跟随屏幕尺寸。
         /// </summary>
@@ -119,12 +129,14 @@ namespace URUI.Hosting
                 viewport = value;
                 if (host && host.Ready)
                 {
-                    NativeMethods.urui_resize(Width, Height);
+                    NativeMethods.urui_surface_resize(SurfaceHandle, Width, Height);
                 }
             }
         }
+
         internal int Width => viewport.x > 0 ? viewport.x : Screen.width;
         internal int Height => viewport.y > 0 ? viewport.y : Screen.height;
+
         /// <summary>
         /// 一次分发到整个 Surface 的输入入口。
         /// </summary>
@@ -136,6 +148,7 @@ namespace URUI.Hosting
                 return input ??= new SurfaceInput(this);
             }
         }
+
         /// <summary>
         /// 当前位于同步分发、加载事务或效果回调中，尚不能同步创建顶层页面。
         /// </summary>
@@ -147,6 +160,7 @@ namespace URUI.Hosting
                 return IsBusy || IsEffectCallback;
             }
         }
+
         /// <summary>
         /// 在 Surface 的同步分发和原生调用返回后执行；空闲时立即执行。
         /// </summary>
@@ -177,15 +191,18 @@ namespace URUI.Hosting
             }
             action();
         }
+
         internal bool IsDispatching => dispatchDepth != 0;
         internal bool IsBusy => dispatchDepth != 0 || transactionDepth != 0;
         internal bool IsRefreshingDocuments => documentRefreshDepth != 0;
         internal bool IsEffectCallback => effectDepth != 0;
+
         /// <summary>
         /// 提交同一 Surface 的完整 UI，一次调用覆盖所有活动文档。
         /// </summary>
         public bool SubmitRendering(UnityEngine.Rendering.ScriptableRenderContext context, UnityEngine.Rendering.RenderTargetIdentifier target, Rect viewport)
             => SubmitRendering(context, target, viewport, default);
+
         /// <summary>
         /// 提交到真实纹理，并据其格式与采样信息选择正确的颜色累积方式。
         /// </summary>
@@ -194,6 +211,7 @@ namespace URUI.Hosting
             CheckThread();
             return SubmitRendering(context, new UnityEngine.Rendering.RenderTargetIdentifier(target), viewport, URUI.Rendering.RenderTargetInfo.FromTexture(target));
         }
+
         /// <summary>
         /// 由渲染管线提供实际输出信息；未知信息保持保守的颜色累积方式。
         /// </summary>
@@ -207,6 +225,10 @@ namespace URUI.Hosting
             }
             if (!host || !host.Ready || !HasLoadedDocuments)
             {
+                if (host && host.Ready)
+                {
+                    host.CollectPendingRetirements();
+                }
                 return false;
             }
             // 与 Document 提交一致，页面变更须等到命令和 fence 都已排队后再执行。
@@ -221,26 +243,68 @@ namespace URUI.Hosting
                 FinishNativeCall();
             }
         }
-        internal bool HasLoadedDocuments
+
+        /// <summary>
+        /// Unity 6 RenderGraph UnsafePass 路径：直接向调用方提供的 CommandBuffer 录制全部 UI 命令与 GPU fence。
+        /// </summary>
+        public bool SubmitRendering(UnityEngine.Rendering.CommandBuffer commandBuffer, UnityEngine.Rendering.RenderTargetIdentifier target, Rect viewport, URUI.Rendering.RenderTargetInfo targetInfo = default)
         {
-            get
+            CheckThread();
+            if (commandBuffer == null)
             {
-                foreach (var document in documents)
+                throw new ArgumentNullException(nameof(commandBuffer));
+            }
+            if (!float.IsFinite(viewport.x) || !float.IsFinite(viewport.y) ||
+                !float.IsFinite(viewport.width) || !float.IsFinite(viewport.height) || viewport.width <= 0 || viewport.height <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(viewport), "提交视口必须为有限且宽高为正的目标像素范围。");
+            }
+            if (!host || !host.Ready || !HasLoadedDocuments)
+            {
+                if (host && host.Ready)
                 {
-                    if (document && document.IsLoaded)
-                    {
-                        return true;
-                    }
+                    host.CollectPendingRetirements();
                 }
                 return false;
             }
+            BeginDispatch();
+            try
+            {
+                return host.SubmitRendering(commandBuffer, target, viewport, targetInfo);
+            }
+            finally
+            {
+                EndDispatch();
+                FinishNativeCall();
+            }
         }
+
+        internal bool HasLoadedDocuments => loadedDocuments.Count > 0 && host && host.Ready;
+        internal int LoadedDocumentCount => host && host.Ready ? loadedDocuments.Count : 0;
+
+        internal void MarkDocumentLoaded(Document document)
+        {
+            if (document)
+            {
+                loadedDocuments.Add(document);
+            }
+        }
+
+        internal void MarkDocumentUnloaded(Document document)
+        {
+            if (!ReferenceEquals(document, null))
+            {
+                loadedDocuments.Remove(document);
+            }
+        }
+
         internal RenderHost Host => host;
+
         internal bool HasEffects
         {
             get
             {
-                foreach (var document in documents)
+                foreach (var document in loadedDocuments)
                 {
                     if (document && document.IsLoaded && document.HasEffects)
                     {
@@ -250,11 +314,12 @@ namespace URUI.Hosting
                 return false;
             }
         }
+
         internal bool HasPainters
         {
             get
             {
-                foreach (var document in documents)
+                foreach (var document in loadedDocuments)
                 {
                     if (document && document.IsLoaded && document.HasPainters)
                     {
@@ -264,14 +329,18 @@ namespace URUI.Hosting
                 return false;
             }
         }
+
         internal Document FilterOwner(ulong filter)
         {
-            if (NativeMethods.urui_filter_api_version() != 3)
+            var surfaceHandle = SurfaceHandle;
+            if (NativeMethods.urui_filter_api_version() != NativeMethods.ExpectedFilterApiVersion)
             {
-                throw new NotSupportedException("共享 Surface 的滤镜需要所属文档协议 v3。");
+                throw new NotSupportedException($"共享 Surface 的滤镜需要所属文档协议 v{NativeMethods.ExpectedFilterApiVersion}。");
             }
-            return FindDocument(NativeMethods.urui_filter_document(filter)) ?? throw new InvalidOperationException("滤镜所属文档已失效。");
+            return FindDocument(surfaceHandle, NativeMethods.urui_filter_document(surfaceHandle, filter))
+                ?? throw new InvalidOperationException("滤镜所属文档已失效。");
         }
+
         internal Document[] DocumentsSnapshot()
         {
             if (documentsSnapshot == null)
@@ -281,18 +350,34 @@ namespace URUI.Hosting
             }
             return documentsSnapshot;
         }
-        internal static Document FindDocument(ulong owner) => owners.TryGetValue(owner, out var document) ? document : null;
-        internal Document ElementOwner(ulong token) => FindDocument(NativeMethods.urui_surface_element_owner(token));
-        internal Document FocusedDocument => FindDocument(NativeMethods.urui_surface_focused_document());
+
+        internal static Document FindDocument(ulong surfaceHandle, ulong owner)
+            => owners.TryGetValue((surfaceHandle, owner), out var document) ? document : null;
+
+        internal Document ElementOwner(ulong token)
+        {
+            var surfaceHandle = SurfaceHandle;
+            return surfaceHandle != 0 ? FindDocument(surfaceHandle, NativeMethods.urui_surface_element_owner(surfaceHandle, token)) : null;
+        }
+
+        internal Document FocusedDocument
+        {
+            get
+            {
+                var surfaceHandle = SurfaceHandle;
+                return surfaceHandle != 0 ? FindDocument(surfaceHandle, NativeMethods.urui_surface_focused_document(surfaceHandle)) : null;
+            }
+        }
+
         internal Document TopDocument
         {
             get
             {
                 Document result = null;
-                foreach (var document in documents)
+                foreach (var document in loadedDocuments)
                 {
                     if (document && document.IsLoaded && document.Presented &&
-                                        (!result || document.Layer > result.Layer || document.Layer == result.Layer && document.Order > result.Order))
+                        (!result || document.Layer > result.Layer || document.Layer == result.Layer && document.Order > result.Order))
                     {
                         result = document;
                     }
@@ -300,6 +385,7 @@ namespace URUI.Hosting
                 return result;
             }
         }
+
         internal RenderHost EnsureStarted(Document document)
         {
             CheckThread();
@@ -326,58 +412,48 @@ namespace URUI.Hosting
             }
             return host;
         }
-        internal void Bind(ulong handle, Document document)
+
+        internal void Bind(ulong surfaceHandle, ulong handle, Document document)
         {
-            owners.Add(handle, document);
+            owners.Add((surfaceHandle, handle), document);
         }
-        internal void Unbind(ulong handle)
+
+        internal void Unbind(ulong surfaceHandle, ulong handle)
         {
-            owners.Remove(handle);
+            owners.Remove((surfaceHandle, handle));
         }
+
         internal void Forget(Document document)
         {
+            loadedDocuments.Remove(document);
             if (documents.Remove(document))
             {
                 documentsSnapshot = null;
             }
         }
-        internal void BeginDispatch()
-        {
-            dispatchDepth++;
-        }
-        internal void EndDispatch()
-        {
-            dispatchDepth--;
-        }
-        internal void BeginEffect()
-        {
-            effectDepth++;
-        }
-        internal void EndEffect()
-        {
-            effectDepth--;
-        }
-        internal void BeginTransaction()
-        {
-            transactionDepth++;
-        }
-        internal void EndTransaction()
-        {
-            transactionDepth--;
-        }
+
+        internal void BeginDispatch() => dispatchDepth++;
+        internal void EndDispatch() => dispatchDepth--;
+        internal void BeginEffect() => effectDepth++;
+        internal void EndEffect() => effectDepth--;
+        internal void BeginTransaction() => transactionDepth++;
+        internal void EndTransaction() => transactionDepth--;
+
         internal void Enqueue(Document.DeferredAction action)
         {
             deferred.Enqueue(action);
         }
+
         internal bool Defer(Action action)
         {
             if (!IsBusy)
             {
                 return false;
             }
-            deferred.Enqueue(new Document.DeferredAction(null, action, false, false));
+            deferred.Enqueue(new Document.DeferredAction(null, action, Document.DeferInvalidation.None, false));
             return true;
         }
+
         internal void FinishNativeCall()
         {
             if (IsBusy || flushing)
@@ -385,22 +461,43 @@ namespace URUI.Hosting
                 return;
             }
             flushing = true;
+            Exception firstError = null;
             try
             {
-                if (host && host.Ready)
+                if (!ReferenceEquals(host, null) && host.Ready)
                 {
-                    NativeMethods.urui_process_deferred_operations();
+                    NativeMethods.urui_process_deferred_operations(host.SurfaceHandle);
                 }
                 while (deferred.Count > 0)
                 {
-                    deferred.Dequeue().Invoke();
+                    var item = deferred.Dequeue();
+                    try
+                    {
+                        item.Invoke();
+                    }
+                    catch (Exception error)
+                    {
+                        if (firstError == null)
+                        {
+                            firstError = error;
+                        }
+                        else
+                        {
+                            Debug.LogException(error);
+                        }
+                    }
                 }
             }
             finally
             {
                 flushing = false;
             }
+            if (firstError != null)
+            {
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(firstError).Throw();
+            }
         }
+
         internal void RefreshDocuments(bool layout)
         {
             // OnUpdate 不经过事件分发，仍须阻止命令借用递归进入同步准备。
@@ -420,6 +517,7 @@ namespace URUI.Hosting
                 documentRefreshDepth--;
             }
         }
+
         internal void NotifyLayoutUpdated()
         {
             foreach (var document in DocumentsSnapshot())
@@ -430,9 +528,18 @@ namespace URUI.Hosting
                 }
             }
         }
-        void OnDisable()
+
+        void OnDisable() => DisableSurface(force: false, deferredDisable: false);
+
+        void DisableSurface(bool force, bool deferredDisable = false)
         {
-            if (stopping || Defer(OnDisable))
+            if (stopping || Defer(() => DisableSurface(force, deferredDisable: true)))
+            {
+                return;
+            }
+            // Only skip teardown if OnDisable was deferred and the Surface was re-enabled before drain.
+            // Direct OnDisable (including Unity Editor Domain Reload while isActiveAndEnabled == true) must tear down.
+            if (deferredDisable && !force && this && isActiveAndEnabled)
             {
                 return;
             }
@@ -442,23 +549,28 @@ namespace URUI.Hosting
             {
                 foreach (var document in DocumentsSnapshot())
                 {
-                    if (document)
+                    if (!ReferenceEquals(document, null))
                     {
                         document.SuspendForSurface();
                     }
                 }
-                if (host)
+                loadedDocuments.Clear();
+                if (!ReferenceEquals(host, null))
                 {
-                    host.ReleaseForSurface();
-                    if (Application.isPlaying)
-                    {
-                        Destroy(host.gameObject);
-                    }
-                    else
-                    {
-                        DestroyImmediate(host.gameObject);
-                    }
+                    var currentHost = host;
                     host = null;
+                    currentHost.ReleaseForSurface();
+                    if (currentHost)
+                    {
+                        if (Application.isPlaying)
+                        {
+                            Destroy(currentHost.gameObject);
+                        }
+                        else
+                        {
+                            DestroyImmediate(currentHost.gameObject);
+                        }
+                    }
                 }
             }
             finally
@@ -468,6 +580,7 @@ namespace URUI.Hosting
                 FinishNativeCall();
             }
         }
+
         void OnEnable()
         {
             foreach (var document in DocumentsSnapshot())

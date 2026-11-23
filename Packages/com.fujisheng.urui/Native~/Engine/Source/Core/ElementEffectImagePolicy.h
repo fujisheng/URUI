@@ -17,7 +17,7 @@ namespace URUI
         {
             return false;
         }
-        const auto* image = element->GetProperty("--urui-image-effect");
+        const auto* image = element->GetProperty(PropertyId::ImageEffect);
         const auto image_name = image ? image->Get<String>() : String();
         if (!image_name.empty() && image_name != "none")
         {

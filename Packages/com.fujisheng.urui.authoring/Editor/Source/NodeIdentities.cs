@@ -10,11 +10,16 @@ namespace URUI.Authoring.Source
     public sealed class NodeIdentities
     {
         readonly Dictionary<string, string> identities = new Dictionary<string, string>(StringComparer.Ordinal);
+        readonly Dictionary<string, string> keysByIdentity = new Dictionary<string, string>(StringComparer.Ordinal);
+        NodeIdentities() { }
         public NodeIdentities(SourceDocument model)
         {
-            foreach (var node in model.Nodes)
+            for (int i = 0; i < model.Nodes.Count; i++)
             {
-                identities[node.Key] = Guid.NewGuid().ToString("N");
+                var key = model.Nodes[i].Key;
+                string id = Guid.NewGuid().ToString("N");
+                identities[key] = id;
+                keysByIdentity[id] = key;
             }
         }
         NodeIdentities(Dictionary<string, string> values)
@@ -22,20 +27,11 @@ namespace URUI.Authoring.Source
             foreach (var pair in values)
             {
                 identities.Add(pair.Key, pair.Value);
+                keysByIdentity.Add(pair.Value, pair.Key);
             }
         }
         public string Identity(string key) => key != null && identities.TryGetValue(key, out var value) ? value : null;
-        public string Key(string identity)
-        {
-            foreach (var pair in identities)
-            {
-                if (pair.Value == identity)
-                {
-                    return pair.Key;
-                }
-            }
-            return null;
-        }
+        public string Key(string identity) => identity != null && keysByIdentity.TryGetValue(identity, out var key) ? key : null;
         public NodeIdentities Copy() => new NodeIdentities(identities);
         public NodeIdentities Transform(SourceDocument model, SourceDocument result, Func<SourceDocument, string> operation)
         {
@@ -59,18 +55,17 @@ namespace URUI.Authoring.Source
             {
                 throw new InvalidOperationException("节点对应关系校验失败。");
             }
-            var next = new NodeIdentities(result);
+            var next = new NodeIdentities();
             for (int i = 0; i < result.Nodes.Count; i++)
             {
                 if (result.Nodes[i].Tag != transformed.Nodes[i].Tag)
                 {
                     throw new InvalidOperationException("节点对应关系结构不匹配。");
                 }
-                string identity = transformed.Nodes[i].Attribute(marker);
-                if (identity != null)
-                {
-                    next.identities[result.Nodes[i].Key] = identity;
-                }
+                string key = result.Nodes[i].Key;
+                string identity = transformed.Nodes[i].Attribute(marker) ?? Guid.NewGuid().ToString("N");
+                next.identities[key] = identity;
+                next.keysByIdentity[identity] = key;
             }
             return next;
         }

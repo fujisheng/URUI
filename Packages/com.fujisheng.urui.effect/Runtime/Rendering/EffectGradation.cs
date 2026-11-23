@@ -7,14 +7,6 @@ namespace URUI.Effect.Rendering
 {
     internal static class EffectGradation
     {
-        internal static readonly StylePropertyDefinition[] Parameters = {
-            new("--urui-fx-gradation-mode",StyleValueType.Keyword),new("--urui-fx-gradation-color-filter",StyleValueType.Keyword),
-            new("--urui-fx-gradation-intensity",StyleValueType.Number),new("--urui-fx-gradation-offset",StyleValueType.Number),
-            new("--urui-fx-gradation-scale",StyleValueType.Number),new("--urui-fx-gradation-rotation",StyleValueType.Number),
-            new("--urui-fx-gradation-gradient",StyleValueType.Image),
-            new("--urui-fx-gradation-color1",StyleValueType.Color),new("--urui-fx-gradation-color2",StyleValueType.Color),
-            new("--urui-fx-gradation-color3",StyleValueType.Color),new("--urui-fx-gradation-color4",StyleValueType.Color)
-        };
         internal static void Read(EffectStyleView style, EffectParameters p)
         {
             p.GradationMode = style.GetKeyword("--urui-fx-gradation-mode") switch

@@ -13,18 +13,12 @@ namespace URUI.Internal.Hosting
             {
                 return false;
             }
-            // 原生pass的上下文归实际SRP回调所有，不能在LateUpdate录制后跨回调重放。
-            // 这里只失效记录；真实提交统一完成准备和录制，不再额外录制一份旧后端命令。
-            if (!recordingForContext && CanUseColorPass())
-            {
-                geometryRecordingPending = true;
-                return true;
-            }
             var completed = false;
             effectSubmitted.Clear();
             OwnerSurface.BeginDispatch();
             try
             {
+                CommitAnimationCompletionClasses();
                 DrawFrameCore(ref phase);
                 geometryRecordingPending = false;
                 completed = true;
@@ -41,11 +35,34 @@ namespace URUI.Internal.Hosting
             return true;
         }
 
+        void CommitAnimationCompletionClasses()
+        {
+            var changed = false;
+            foreach (var document in OwnerSurface.DocumentsSnapshot())
+            {
+                if (document)
+                {
+                    changed |= document.CommitAnimationCompletionClasses();
+                }
+            }
+            if (!changed)
+            {
+                return;
+            }
+            // 原生动画轨道已结束。录制前同步终态类，避免先绘制退场前的样式。
+            using (nativeUpdatePhase.Auto())
+            {
+                NativeMethods.urui_surface_update(SurfaceHandle);
+            }
+            OwnerSurface.RefreshDocuments(true);
+        }
+
         Mesh UploadMesh(string name, Vector3[] positions, Vector2[] uv, Color32[] colors, int[] indices, int vertices, int count, Vector2[] sourceSlots)
         {
             var mesh = new Mesh
             {
                 name = name,
+                hideFlags = HideFlags.HideAndDontSave,
                 indexFormat = vertices > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16
             };
             mesh.SetVertices(positions, 0, vertices);
@@ -56,6 +73,7 @@ namespace URUI.Internal.Hosting
             GeometryUploadBytes += (long)vertices * 32 + (long)count * sizeof(int);
             return mesh;
         }
+
         unsafe MeshCache ReadGeometry(ulong id)
         {
             if (meshes.TryGetValue(id, out var existing))
@@ -91,19 +109,13 @@ namespace URUI.Internal.Hosting
             new ReadOnlySpan<int>((void*)view.Indices, indices).CopyTo(value.indices);
             value.vertexCount = vertices;
             value.indexCount = indices;
-            var minimum = new Vector3(float.PositiveInfinity, float.PositiveInfinity, 0);
-            var maximum = new Vector3(float.NegativeInfinity, float.NegativeInfinity, 0);
             for (var index = 0; index < vertices; index++)
             {
                 var source = sourceVertices[index];
-                var position = source.Position;
-                value.positions[index] = position;
+                value.positions[index] = source.Position;
                 value.uv[index] = source.Uv;
                 value.colors[index] = source.Color;
-                minimum = Vector3.Min(minimum, position);
-                maximum = Vector3.Max(maximum, position);
             }
-            value.bounds = new Bounds((minimum + maximum) * .5f, maximum - minimum);
             meshes.Add(id, value);
             return value;
         }
@@ -127,6 +139,7 @@ namespace URUI.Internal.Hosting
             idleGeometry.Add(value);
             pooledGeometryBytes += value.CapacityBytes;
         }
+
         Mesh SourceMesh(MeshCache value)
         {
             if (!value.mesh)

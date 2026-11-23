@@ -5,6 +5,7 @@
 #include "../../../Include/URUI/Core/Profiling.h"
 #include "ContainerBox.h"
 #include "FormattingContext.h"
+#include "LayoutDetails.h"
 
 namespace URUI
 {
@@ -12,6 +13,8 @@ namespace URUI
     void LayoutEngine::FormatElement(Element* element, Vector2f containing_block)
     {
         URUI_ASSERT(element && containing_block.x >= 0 && containing_block.y >= 0);
+
+        LayoutDetails::ScopedMeasureCache measure_cache;
 
         RootBox root(containing_block, element->GetOwnerDocument() == element ? element->GetParentNode() : nullptr);
 

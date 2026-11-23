@@ -12,26 +12,96 @@ namespace URUI::Bridge
     class FileResourceCache
     {
     public:
+        struct ContentDigest
+        {
+            uint64_t h1 = 0;
+            uint64_t h2 = 0;
+            size_t size = 0;
+            bool operator==(const ContentDigest& other) const
+            {
+                return size == other.size && h1 == other.h1 && h2 == other.h2;
+            }
+        };
+        static ContentDigest HashBytes(const uint8_t* data, size_t length)
+        {
+            uint64_t h1 = 14695981039346656037ull;
+            uint64_t h2 = 1099511628211ull ^ (uint64_t(length) * 0x9e3779b97f4a7c15ull);
+            size_t i = 0;
+            for (; i + 8 <= length; i += 8)
+            {
+                uint64_t word = 0;
+                std::memcpy(&word, data + i, 8);
+                h1 = (h1 ^ word) * 1099511628211ull;
+                h2 ^= word + 0x9e3779b97f4a7c15ull + (h2 << 6) + (h2 >> 2);
+                h2 *= 0xbf58476d1ce4e5b9ull;
+            }
+            for (; i < length; ++i)
+            {
+                h1 = (h1 ^ data[i]) * 1099511628211ull;
+                h2 = (h2 ^ (uint64_t(data[i]) << ((i & 7) * 8))) * 0x94d049bb133111ebull;
+            }
+            h1 ^= h1 >> 33;
+            h1 *= 0xff51afd7ed558ccdull;
+            h1 ^= h1 >> 33;
+            h2 ^= h2 >> 30;
+            h2 *= 0xbf58476d1ce4e5b9ull;
+            h2 ^= h2 >> 27;
+            return {h1, h2, length};
+        }
         struct Claim
         {
             uint64_t group;
             ResourceFiles::Data bytes;
             URUI::String kind;
+            ContentDigest digest;
         };
         using Reference = std::shared_ptr<const Claim>;
 
     private:
+        struct ContentEntry
+        {
+            ContentDigest digest;
+            std::weak_ptr<const std::vector<uint8_t>> bytes;
+        };
         struct Entry
         {
             std::vector<std::weak_ptr<const Claim>> claims;
-            std::vector<std::weak_ptr<const std::vector<uint8_t>>> contents;
+            std::vector<ContentEntry> contents;
         };
         std::unordered_map<URUI::String, Entry> entries;
+        size_t acquireCounter = 0;
+
+        void PruneEmptyKeys()
+        {
+            for (auto it = entries.begin(); it != entries.end();)
+            {
+                auto& entry = it->second;
+                entry.claims.erase(std::remove_if(entry.claims.begin(), entry.claims.end(),
+                                                  [](const auto& weak) { return weak.expired(); }),
+                                   entry.claims.end());
+                entry.contents.erase(std::remove_if(entry.contents.begin(), entry.contents.end(),
+                                                    [](const auto& c) { return c.bytes.expired(); }),
+                                     entry.contents.end());
+                if (entry.claims.empty() && entry.contents.empty())
+                {
+                    it = entries.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
 
     public:
         Reference Acquire(uint64_t group, const URUI::String& source, const uint8_t* bytes, size_t length,
-                          const URUI::String& kind = "file")
+                          const URUI::String& kind = "file", bool retainBytes = true)
         {
+            if ((++acquireCounter & 255u) == 0 && entries.size() > 64)
+            {
+                PruneEmptyKeys();
+            }
+            const ContentDigest digest = HashBytes(bytes, length);
             auto& entry = entries[source];
             auto equal = [bytes, length](const auto& value)
             { return value.size() == length && (!length || std::memcmp(value.data(), bytes, length) == 0); };
@@ -39,43 +109,49 @@ namespace URUI::Bridge
                                               [](const auto& weak) { return weak.expired(); }),
                                entry.claims.end());
             entry.contents.erase(std::remove_if(entry.contents.begin(), entry.contents.end(),
-                                                [](const auto& weak) { return weak.expired(); }),
+                                                [](const auto& c) { return c.bytes.expired(); }),
                                  entry.contents.end());
             ResourceFiles::Data shared;
             for (const auto& weak : entry.claims)
             {
                 if (auto claim = weak.lock(); claim && claim->group != group)
                 {
-                    if (claim->kind != kind || (claim->bytes != shared && !equal(*claim->bytes)))
+                    if (claim->kind != kind || !(claim->digest == digest) ||
+                        (claim->bytes && claim->bytes != shared && !equal(*claim->bytes)))
                     {
                         throw std::invalid_argument("Resource URI has a different source: " + source);
                     }
-                    // 活动声明通常共享同一份不可变数据；相同 backing 只比较一次。
                     shared = claim->bytes;
                 }
             }
-            if (!shared)
+            if (retainBytes)
             {
-                for (const auto& weak : entry.contents)
+                if (!shared)
                 {
-                    if (auto content = weak.lock(); content && equal(*content))
+                    for (const auto& contentEntry : entry.contents)
                     {
-                        shared = std::move(content);
-                        break;
+                        if (contentEntry.digest == digest)
+                        {
+                            if (auto content = contentEntry.bytes.lock(); content && equal(*content))
+                            {
+                                shared = std::move(content);
+                                break;
+                            }
+                        }
                     }
                 }
-            }
-            if (!shared)
-            {
-                auto copy = std::make_shared<std::vector<uint8_t>>();
-                if (length)
+                if (!shared)
                 {
-                    copy->assign(bytes, bytes + length);
+                    auto copy = std::make_shared<std::vector<uint8_t>>();
+                    if (length)
+                    {
+                        copy->assign(bytes, bytes + length);
+                    }
+                    shared = std::move(copy);
+                    entry.contents.push_back({digest, shared});
                 }
-                shared = std::move(copy);
-                entry.contents.push_back(shared);
             }
-            auto claim = std::make_shared<Claim>(Claim{group, std::move(shared), kind});
+            auto claim = std::make_shared<Claim>(Claim{group, std::move(shared), kind, digest});
             entry.claims.push_back(claim);
             return claim;
         }
@@ -157,7 +233,9 @@ namespace URUI::Bridge
             {
                 throw std::logic_error("Resource generation is retired");
             }
-            return cache.Acquire(group, source, bytes, length, kind);
+            // Image claims only validate cross-document URI consistency via strong 128-bit digest + length,
+            // avoiding keeping a permanent unpremultiplied pixel copy alongside Renderer::textures.
+            return cache.Acquire(group, source, bytes, length, kind, false);
         }
         uint64_t FindImage(const URUI::String& source) const
         {

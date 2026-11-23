@@ -21,10 +21,23 @@ namespace URUI.Internal.Rendering
         static long idleColorBytes;
         static long createdTargets;
         static long reuses;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            liveTargets = 0;
+            leasedTargets = 0;
+            liveColorBytes = 0;
+            leasedColorBytes = 0;
+            idleColorBytes = 0;
+            createdTargets = 0;
+            reuses = 0;
+        }
         internal static URUI.Rendering.Effects.EffectTargetStatistics Statistics => new(liveTargets, leasedTargets, liveColorBytes, leasedColorBytes, idleColorBytes, createdTargets, reuses);
         bool disposed;
         readonly Dictionary<RenderTextureFormat, bool> supportedFormats = new();
         readonly Stack<Lease> idleLeases = new();
+        readonly Stack<IdleTargets> idleBuckets = new();
         const int MaximumFreeTargets = 2048;
         const long DefaultFreeBytes = 56L * 1024 * 1024;
         const long MaximumFreeBytes = 64L * 1024 * 1024;
@@ -131,7 +144,18 @@ namespace URUI.Internal.Rendering
             {
                 var reused = entries.Pop();
                 var bytes = Bytes(reused);
-                Touch(entries, bytes);
+                if (entries.Count == 0)
+                {
+                    free.Remove(key);
+                    if (idleBuckets.Count < 128)
+                    {
+                        idleBuckets.Push(entries);
+                    }
+                }
+                else
+                {
+                    Touch(entries, bytes);
+                }
                 freeTargets--;
                 freeBytes -= bytes;
                 idleColorBytes -= bytes;
@@ -220,7 +244,7 @@ namespace URUI.Internal.Rendering
                     }
                     free.Remove(empty);
                 }
-                free.Add(key, entries = new IdleTargets());
+                free.Add(key, entries = idleBuckets.Count > 0 ? idleBuckets.Pop() : new IdleTargets());
             }
             // 淘汰可能推进全局年龄，归还目标按新的年龄计分，不能立即变成旧项。
             Touch(entries, bytes);
@@ -255,6 +279,7 @@ namespace URUI.Internal.Rendering
         }
         bool EvictLeastValuable()
         {
+            (int, int, RenderTextureFormat, bool, RenderTextureMemoryless) oldestKey = default;
             IdleTargets oldest = null;
             foreach (var pair in free)
             {
@@ -262,6 +287,7 @@ namespace URUI.Internal.Rendering
                 if (candidate.Count > 0 && (oldest == null || candidate.Priority < oldest.Priority ||
                     (candidate.Priority == oldest.Priority && candidate.LastUsed < oldest.LastUsed)))
                 {
+                    oldestKey = pair.Key;
                     oldest = candidate;
                 }
             }
@@ -270,8 +296,15 @@ namespace URUI.Internal.Rendering
                 return false;
             }
             evictionAge = oldest.Priority;
-            // 相同尺寸仍可服务完整提交窗口，容量压力只释放其中一张。
             var texture = oldest.Pop();
+            if (oldest.Count == 0)
+            {
+                free.Remove(oldestKey);
+                if (idleBuckets.Count < 128)
+                {
+                    idleBuckets.Push(oldest);
+                }
+            }
             var bytes = Bytes(texture);
             freeTargets--;
             freeBytes -= bytes;

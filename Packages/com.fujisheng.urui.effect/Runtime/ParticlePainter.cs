@@ -29,15 +29,64 @@ namespace URUI.Effect
             internal uint OriginalSeed;
             internal bool OriginalAutoSeed;
         }
+        static GameObject sharedCameraObject;
+        static Camera sharedCamera;
+        static int sharedCameraUsers;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            particleShader = null;
+            if (sharedCameraObject)
+            {
+                EffectObjectLifetime.Destroy(sharedCameraObject);
+            }
+            sharedCameraObject = null;
+            sharedCamera = null;
+            sharedCameraUsers = 0;
+        }
+
+        static Camera AcquireBakingCamera()
+        {
+            if (!sharedCameraObject || !sharedCamera)
+            {
+                sharedCameraObject = new GameObject("URUI particle baking camera") { hideFlags = HideFlags.HideAndDontSave };
+                sharedCamera = sharedCameraObject.AddComponent<Camera>();
+                sharedCamera.enabled = false;
+                sharedCamera.orthographic = true;
+                sharedCamera.aspect = 1;
+                sharedCamera.transform.position = new Vector3(0, 0, -1000);
+            }
+            sharedCameraUsers++;
+            return sharedCamera;
+        }
+
+        static void ReleaseBakingCamera()
+        {
+            if (sharedCameraUsers > 0 && --sharedCameraUsers == 0)
+            {
+                if (sharedCameraObject)
+                {
+                    EffectObjectLifetime.Destroy(sharedCameraObject);
+                }
+                sharedCameraObject = null;
+                sharedCamera = null;
+            }
+        }
+
         sealed class SourceState : IDisposable
         {
             internal GameObject Instance;
-            internal GameObject CameraObject;
             internal Camera Camera;
+            bool cameraAcquired;
             internal readonly List<Emitter> Emitters = new();
             sealed class Programs
             {
                 internal readonly List<(ProgramState State, ExternalGeometryProgram Program)> Values = new();
+                internal bool HasLast;
+                internal int LastCrc;
+                internal Shader LastShader;
+                internal ExternalGeometryProgram LastProgram;
             }
             readonly Dictionary<Material, Programs> programs = new();
             internal ExternalGeometryProgram Program(Material material)
@@ -51,11 +100,22 @@ namespace URUI.Effect
                     entry = new Programs();
                     programs.Add(material, entry);
                 }
-                var state = ReadProgramState(material);
-                foreach (var value in entry.Values)
+                var crc = material.ComputeCRC();
+                var matShader = material.shader;
+                if (entry.HasLast && entry.LastCrc == crc && entry.LastShader == matShader)
                 {
+                    return entry.LastProgram;
+                }
+                var state = ReadProgramState(material);
+                for (var i = 0; i < entry.Values.Count; i++)
+                {
+                    var value = entry.Values[i];
                     if (value.State.Equals(state))
                     {
+                        entry.HasLast = true;
+                        entry.LastCrc = crc;
+                        entry.LastShader = matShader;
+                        entry.LastProgram = value.Program;
                         return value.Program;
                     }
                 }
@@ -65,6 +125,10 @@ namespace URUI.Effect
                 }
                 var program = CreateProgram(material);
                 entry.Values.Add((state, program));
+                entry.HasLast = true;
+                entry.LastCrc = crc;
+                entry.LastShader = matShader;
+                entry.LastProgram = program;
                 return program;
             }
             internal int Version;
@@ -89,12 +153,8 @@ namespace URUI.Effect
                     Instance.name = "URUI particles: " + source.name;
                     Instance.hideFlags = HideFlags.HideAndDontSave;
                     Instance.transform.position = Vector3.zero;
-                    CameraObject = new GameObject("URUI particle baking camera") { hideFlags = HideFlags.HideAndDontSave };
-                    Camera = CameraObject.AddComponent<Camera>();
-                    Camera.enabled = false;
-                    Camera.orthographic = true;
-                    Camera.aspect = 1;
-                    Camera.transform.position = new Vector3(0, 0, -1000);
+                    Camera = AcquireBakingCamera();
+                    cameraAcquired = true;
                     foreach (var system in Instance.GetComponentsInChildren<ParticleSystem>(true))
                     {
                         var renderer = system.GetComponent<ParticleSystemRenderer>();
@@ -125,6 +185,10 @@ namespace URUI.Effect
                         var main = system.main;
                         main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
                         system.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+                        var mesh = new Mesh { name = "URUI particle mesh", hideFlags = HideFlags.HideAndDontSave };
+                        mesh.MarkDynamic();
+                        var trails = new Mesh { name = "URUI particle trails", hideFlags = HideFlags.HideAndDontSave };
+                        trails.MarkDynamic();
                         Emitters.Add(new Emitter
                         {
                             System = system,
@@ -132,8 +196,8 @@ namespace URUI.Effect
                             Materials = materials,
                             OriginalSeed = system.randomSeed,
                             OriginalAutoSeed = system.useAutoRandomSeed,
-                            Mesh = new Mesh { name = "URUI particle mesh" },
-                            Trails = new Mesh { name = "URUI particle trails" }
+                            Mesh = mesh,
+                            Trails = trails
                         });
                     }
                     if (Emitters.Count == 0)
@@ -182,7 +246,13 @@ namespace URUI.Effect
                 Emitters.Clear();
                 programs.Clear();
                 EffectObjectLifetime.Destroy(Instance);
-                EffectObjectLifetime.Destroy(CameraObject);
+                Instance = null;
+                Camera = null;
+                if (cameraAcquired)
+                {
+                    cameraAcquired = false;
+                    ReleaseBakingCamera();
+                }
             }
         }
         readonly Element element;
@@ -279,8 +349,49 @@ namespace URUI.Effect
         }
         internal static void ValidateSequenceSource(GameObject value)
         {
-            using (var candidate = new SourceState(value))
+            if (!value)
             {
+                throw new ArgumentNullException(nameof(value));
+            }
+            var components = value.GetComponentsInChildren<Component>(true);
+            for (int i = 0; i < components.Length; i++)
+            {
+                var component = components[i];
+                if (!(component is Transform || component is ParticleSystem || component is ParticleSystemRenderer))
+                {
+                    throw new ArgumentException("粒子源含有非粒子组件：" + component?.GetType().Name, nameof(value));
+                }
+            }
+            var systems = value.GetComponentsInChildren<ParticleSystem>(true);
+            if (systems.Length == 0)
+            {
+                throw new ArgumentException("粒子源没有粒子系统。", nameof(value));
+            }
+            for (int i = 0; i < systems.Length; i++)
+            {
+                var system = systems[i];
+                var renderer = system.GetComponent<ParticleSystemRenderer>();
+                if (!renderer)
+                {
+                    throw new ArgumentException("粒子源缺少 Renderer。", nameof(value));
+                }
+                if (system.main.simulationSpace == ParticleSystemSimulationSpace.Custom)
+                {
+                    throw new NotSupportedException("自定义模拟空间需先声明坐标映射。");
+                }
+                var materials = renderer.sharedMaterials;
+                if (materials.Length == 0)
+                {
+                    throw new ArgumentException("粒子源没有材质。", nameof(value));
+                }
+                for (int m = 0; m < materials.Length; m++)
+                {
+                    CreateProgram(materials[m]);
+                }
+                if (system.trails.enabled && materials.Length < 2)
+                {
+                    throw new ArgumentException("开启尾迹的粒子缺少尾迹材质。", nameof(value));
+                }
             }
         }
         public ParticlePainter(Element element, GameObject source, bool restartOnShow = true) : this(element, source, new ParticlePlaybackOptions { RestartOnShow = restartOnShow }) { }
@@ -494,11 +605,17 @@ namespace URUI.Effect
         void Update(Document owner) => UpdateVisibility();
         internal void UpdateVisibility()
         {
-            if (disposed || !element.IsValid)
+            if (disposed)
             {
                 return;
             }
-            var displayed = element.IsAttached && element.HasLayout && element.IsVisibleInHierarchy;
+            const ElementState RequiredVisible = ElementState.Valid | ElementState.Attached | ElementState.VisibleInHierarchy;
+            var flags = element.StateFlags;
+            if ((flags & ElementState.Valid) == 0)
+            {
+                return;
+            }
+            var displayed = (flags & RequiredVisible) == RequiredVisible && element.HasLayout;
             if (displayed == visible)
             {
                 return;
@@ -626,23 +743,49 @@ namespace URUI.Effect
                 return;
             }
             ParticleCount = 0;
-            foreach (var emitter in state.Emitters)
+            bool simulating = !state.Manual && PlaybackState == ParticlePlaybackState.Playing && (visible || !options.PauseWhenHidden);
+            for (int i = 0; i < state.Emitters.Count; i++)
             {
+                var emitter = state.Emitters[i];
                 if (!emitter.System.gameObject.activeInHierarchy)
                 {
                     continue;
                 }
-                if (emitter.Frame != Time.frameCount || emitter.Version != state.Version)
+                var trailsModule = emitter.System.trails;
+                var trailsEnabled = trailsModule.enabled;
+                bool needsBake = emitter.Version != state.Version || (simulating && emitter.Frame != Time.frameCount);
+                if (needsBake)
                 {
+                    var liveParticles = emitter.System.particleCount;
+                    if (liveParticles == 0 && (!trailsEnabled || trailsModule.dieWithParticles))
+                    {
+                        if (emitter.Count != 0 || emitter.Mesh.vertexCount != 0 || (trailsEnabled && emitter.Trails.vertexCount != 0))
+                        {
+                            emitter.Mesh.Clear(false);
+                            if (trailsEnabled)
+                            {
+                                emitter.Trails.Clear(false);
+                            }
+                            emitter.Count = 0;
+                            if (emitter.GeometryVersion == ulong.MaxValue)
+                            {
+                                throw new InvalidOperationException("粒子几何版本已耗尽。");
+                            }
+                            emitter.GeometryVersion++;
+                        }
+                        emitter.Frame = Time.frameCount;
+                        emitter.Version = state.Version;
+                        continue;
+                    }
                     var start = Stopwatch.GetTimestamp();
-                    FitBakingCamera(emitter);
+                    FitBakingCamera(emitter, liveParticles);
                     readTicks += Stopwatch.GetTimestamp() - start;
                     particleReads++;
                     start = Stopwatch.GetTimestamp();
                     emitter.Renderer.BakeMesh(emitter.Mesh, state.Camera, true);
                     bodyTicks += Stopwatch.GetTimestamp() - start;
                     bodyBakes++;
-                    if (emitter.System.trails.enabled)
+                    if (trailsEnabled)
                     {
                         start = Stopwatch.GetTimestamp();
                         emitter.Renderer.BakeTrailsMesh(emitter.Trails, state.Camera, true);
@@ -658,24 +801,29 @@ namespace URUI.Effect
                     emitter.Version = state.Version;
                 }
                 ParticleCount += emitter.Count;
+                var bodyVerts = emitter.Mesh.vertexCount;
+                var trailVerts = trailsEnabled ? emitter.Trails.vertexCount : 0;
+                if (bodyVerts == 0 && trailVerts == 0)
+                {
+                    continue;
+                }
                 var offset = emitter.System.main.simulationSpace == ParticleSystemSimulationSpace.Local ? emitter.System.transform.position : Vector3.zero;
                 offset.z = 0;
                 var matrix = Matrix4x4.Scale(new Vector3(1, -1, 1)) * Matrix4x4.Translate(offset);
                 var record = Stopwatch.GetTimestamp();
-                if (emitter.Mesh.vertexCount > 0)
+                if (bodyVerts > 0)
                 {
                     context.Draw(new ExternalGeometryInput(emitter.Mesh, emitter.GeometryVersion), state.Program(emitter.Materials[0]), matrix);
                 }
-                if (emitter.System.trails.enabled && emitter.Trails.vertexCount > 0)
+                if (trailVerts > 0)
                 {
                     context.Draw(new ExternalGeometryInput(emitter.Trails, emitter.GeometryVersion), state.Program(emitter.Materials[1]), matrix);
                 }
                 recordTicks += Stopwatch.GetTimestamp() - record;
             }
         }
-        void FitBakingCamera(Emitter emitter)
+        void FitBakingCamera(Emitter emitter, int count)
         {
-            var count = emitter.System.particleCount;
             if (emitter.Particles.Length < count)
             {
                 emitter.Particles = new ParticleSystem.Particle[Mathf.NextPowerOfTwo(count)];

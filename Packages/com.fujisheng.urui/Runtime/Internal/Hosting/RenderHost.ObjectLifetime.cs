@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using URUI.Internal.Resources;
+using URUI.Resources;
 
 namespace URUI.Internal.Hosting
 {
@@ -17,11 +18,12 @@ namespace URUI.Internal.Hosting
             {
                 if (value)
                 {
-                    UnityEngine.Object.DestroyImmediate(value);
+                    GpuRetirement.DestroyOwnedObject(value);
                 }
                 value = null;
             }
         }
+
         static void DestroyRenderObject(UnityEngine.Object value)
         {
             if (!value)
@@ -30,7 +32,8 @@ namespace URUI.Internal.Hosting
             }
             if (Application.isPlaying)
             {
-                UnityEngine.Object.Destroy(value);
+                // Batch Play Mode GPU object disposals into one end-of-frame GPU fence.
+                ImagePinRetirement.RetireDeferred(new RetiredObject(value));
             }
             else
             {

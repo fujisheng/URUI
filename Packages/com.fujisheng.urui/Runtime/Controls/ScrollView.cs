@@ -14,10 +14,13 @@ namespace URUI.Controls
         Element content;
         bool generatedContent;
         float contentWidth = float.NaN;
+        ulong lastWidthLayoutVersion;
         int dragging = -1;
         Vector2 start;
         Vector2 offset;
         bool moved;
+
+        internal override bool HasUpdateHook => generatedContent || (GetType() != typeof(ScrollView) && HasCustomUpdateHook);
         /// <summary>
         /// 文档工厂构造入口。
         /// </summary>
@@ -105,6 +108,12 @@ namespace URUI.Controls
             {
                 return;
             }
+            var layoutVersion = Document.NativeLayoutVersion;
+            if (layoutVersion != 0 && layoutVersion == lastWidthLayoutVersion && !float.IsNaN(contentWidth))
+            {
+                return;
+            }
+            lastWidthLayoutVersion = layoutVersion;
 
             float width = ViewportRect.width;
             if (contentWidth != width)

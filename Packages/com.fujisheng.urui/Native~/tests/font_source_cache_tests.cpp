@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <URUI/Core/ResourceContext.h>
 #include "../Engine/Source/Core/DocumentFontContext.h"
@@ -76,7 +78,7 @@ Data Read(const char* name)
 }
 int main()
 {
-    assert(urui_create(400, 200) == 1);
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
     {
         auto resources = URUI::MakeShared<FontResources>();
         resources->files.data = Read("LatoLatin-Regular.ttf");
@@ -104,6 +106,6 @@ int main()
         assert(first.ResolveFace("example", normal, weight, 20) == one);
         assert(resources->files.read_bytes == 0);
     }
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Immutable font reuse and changed-content isolation passed\n";
 }

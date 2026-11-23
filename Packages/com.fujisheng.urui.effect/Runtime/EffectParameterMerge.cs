@@ -5,7 +5,7 @@ namespace URUI.Effect
         internal static EffectParameters Merge(EffectParameters destination, EffectParameters source)
         {
             var p = destination.Clone();
-            var s = source.Clone();
+            var s = source;
             if (s.ToneFilter != ToneFilter.None)
             {
                 p.ToneFilter = s.ToneFilter;
@@ -23,11 +23,14 @@ namespace URUI.Effect
                 p.SamplingFilter = s.SamplingFilter;
                 p.SamplingIntensity = s.SamplingIntensity;
                 p.SamplingWidth = s.SamplingWidth;
+                p.SamplingScale = s.SamplingScale;
             }
             if (s.TransitionFilter != TransitionFilter.None)
             {
                 p.TransitionFilter = s.TransitionFilter;
                 p.TransitionProgress = s.TransitionProgress;
+                p.TransitionReverse = s.TransitionReverse;
+                p.TransitionTexture = s.TransitionTexture;
                 p.TransitionTextureScale = s.TransitionTextureScale;
                 p.TransitionTextureOffset = s.TransitionTextureOffset;
                 p.TransitionTextureSpeed = s.TransitionTextureSpeed;
@@ -99,6 +102,7 @@ namespace URUI.Effect
                 p.DetailIntensity = s.DetailIntensity;
                 p.DetailColor = s.DetailColor;
                 p.DetailThreshold = s.DetailThreshold;
+                p.DetailTexture = s.DetailTexture;
                 p.DetailTextureScale = s.DetailTextureScale;
                 p.DetailTextureOffset = s.DetailTextureOffset;
                 p.DetailTextureSpeed = s.DetailTextureSpeed;

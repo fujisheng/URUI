@@ -126,6 +126,7 @@ namespace URUI
         if (dimensions != _dimensions)
         {
             dimensions = _dimensions;
+            DirtyHitTest();
             render_manager->SetViewport(dimensions);
             root->SetBox(Box(Vector2f(dimensions)));
             root->DirtyLayout();
@@ -155,6 +156,7 @@ namespace URUI
         if (density_independent_pixel_ratio != dp_ratio)
         {
             density_independent_pixel_ratio = dp_ratio;
+            DirtyHitTest();
 
             for (int i = 0; i < root->GetNumChildren(true); ++i)
             {
@@ -281,6 +283,7 @@ namespace URUI
 
         document->context = this;
         DirtyNativeRendering();
+        DirtyHitTest();
         root->AppendChild(std::move(element));
 
         PluginRegistry::NotifyDocumentLoad(document);
@@ -332,6 +335,7 @@ namespace URUI
         unloaded_documents.reserve(unloaded_documents.size() + 1);
         root->AppendChild(std::move(element));
         DirtyNativeRendering();
+        DirtyHitTest();
         try
         {
 
@@ -389,6 +393,7 @@ namespace URUI
         if (document->GetParentNode() == root.get())
         {
             DirtyNativeRendering();
+            DirtyHitTest();
             // All storage is prepared before the host revokes old identities. Unload
             // notifications must not interrupt the structural commit under memory pressure.
             ReserveDocumentRetirement();
@@ -452,6 +457,8 @@ namespace URUI
         clear_chain(hover_chain);
         clear_chain(active_chain);
         clear_chain(drag_hover_chain);
+        last_hover_hit_test_revision = 0;
+        hover_chain_valid = false;
         if (belongs(root->focus))
         {
             root->focus = nullptr;
@@ -545,6 +552,7 @@ namespace URUI
             {
                 hover = nullptr;
                 hover_chain.clear();
+                hover_chain_valid = false;
             }
         }
     }
@@ -664,6 +672,7 @@ namespace URUI
                     root->children.erase(root->children.begin() + i);
                     root->children.insert(root->children.begin() + root->GetNumChildren(), std::move(element));
                     DirtyNativeRendering();
+                    DirtyHitTest();
 
                     root->DirtyStackingContext();
                 }
@@ -684,6 +693,7 @@ namespace URUI
                     root->children.erase(root->children.begin() + i);
                     root->children.insert(root->children.begin(), std::move(element));
                     DirtyNativeRendering();
+                    DirtyHitTest();
 
                     root->DirtyStackingContext();
                 }
@@ -1563,6 +1573,14 @@ namespace URUI
     void Context::UpdateHoverChain(Vector2i old_mouse_position, int key_modifier_state, Dictionary* out_parameters,
                                    Dictionary* out_drag_parameters)
     {
+        if (!drag && !out_parameters && !out_drag_parameters && mouse_position == old_mouse_position &&
+            hover_chain_valid && last_hover_hit_test_revision == hit_test_revision &&
+            last_hover_mouse_position == mouse_position && last_hover_mouse_active == mouse_active &&
+            scroll_controller->GetMode() != ScrollController::Mode::Autoscroll)
+        {
+            return;
+        }
+
         const Vector2f position(mouse_position);
 
         Dictionary local_parameters;
@@ -1570,17 +1588,42 @@ namespace URUI
         Dictionary& parameters = out_parameters ? *out_parameters : local_parameters;
         Dictionary& drag_parameters = out_drag_parameters ? *out_drag_parameters : local_drag_parameters;
 
-        // Generate the parameters for the mouse events (there could be a few!).
-        GenerateMouseEventParameters(parameters);
-        GenerateKeyModifierEventParameters(parameters, key_modifier_state);
+        bool parameters_built = false;
+        auto ensure_parameters = [&]()
+        {
+            if (!parameters_built)
+            {
+                GenerateMouseEventParameters(parameters);
+                GenerateKeyModifierEventParameters(parameters, key_modifier_state);
+                parameters_built = true;
+            }
+        };
 
-        GenerateMouseEventParameters(drag_parameters);
-        GenerateDragEventParameters(drag_parameters);
-        GenerateKeyModifierEventParameters(drag_parameters, key_modifier_state);
+        bool drag_parameters_built = false;
+        auto ensure_drag_parameters = [&]()
+        {
+            if (!drag_parameters_built)
+            {
+                GenerateMouseEventParameters(drag_parameters);
+                GenerateDragEventParameters(drag_parameters);
+                GenerateKeyModifierEventParameters(drag_parameters, key_modifier_state);
+                drag_parameters_built = true;
+            }
+        };
+
+        if (out_parameters)
+        {
+            ensure_parameters();
+        }
+        if (out_drag_parameters)
+        {
+            ensure_drag_parameters();
+        }
 
         // Send out drag events.
         if (drag)
         {
+            ensure_drag_parameters();
             if (mouse_position != old_mouse_position)
             {
                 if (!drag_started)
@@ -1602,6 +1645,7 @@ namespace URUI
             }
         }
 
+        Element* prev_hover = hover;
         hover = mouse_active ? GetElementAtPoint(position) : nullptr;
 
         if (enable_cursor)
@@ -1629,18 +1673,28 @@ namespace URUI
             }
         }
 
-        // Build the new hover chain.
-        ElementSet new_hover_chain;
-        Element* element = hover;
-        while (element != nullptr)
+        if (!hover_chain_valid || hover != prev_hover)
         {
-            new_hover_chain.insert(element);
-            element = element->GetParentNode();
-        }
+            // Build the new hover chain.
+            ElementSet new_hover_chain;
+            Element* element = hover;
+            while (element != nullptr)
+            {
+                new_hover_chain.insert(element);
+                element = element->GetParentNode();
+            }
 
-        // Send mouseout / mouseover events.
-        SendEvents(hover_chain, new_hover_chain, EventId::Mouseout, parameters);
-        SendEvents(new_hover_chain, hover_chain, EventId::Mouseover, parameters);
+            if (hover_chain != new_hover_chain)
+            {
+                ensure_parameters();
+                // Send mouseout / mouseover events.
+                SendEvents(hover_chain, new_hover_chain, EventId::Mouseout, parameters);
+                SendEvents(new_hover_chain, hover_chain, EventId::Mouseover, parameters);
+            }
+
+            // Swap the new chain in.
+            hover_chain.swap(new_hover_chain);
+        }
 
         // Send out drag events.
         if (drag && mouse_active)
@@ -1648,7 +1702,7 @@ namespace URUI
             drag_hover = GetElementAtPoint(position, drag);
 
             ElementSet new_drag_hover_chain;
-            element = drag_hover;
+            Element* element = drag_hover;
             while (element != nullptr)
             {
                 new_drag_hover_chain.insert(element);
@@ -1657,6 +1711,7 @@ namespace URUI
 
             if (drag_started && drag_verbose)
             {
+                ensure_drag_parameters();
                 // Send out ondragover and ondragout events as appropriate.
                 SendEvents(drag_hover_chain, new_drag_hover_chain, EventId::Dragout, drag_parameters);
                 SendEvents(new_drag_hover_chain, drag_hover_chain, EventId::Dragover, drag_parameters);
@@ -1665,8 +1720,10 @@ namespace URUI
             drag_hover_chain.swap(new_drag_hover_chain);
         }
 
-        // Swap the new chain in.
-        hover_chain.swap(new_hover_chain);
+        last_hover_hit_test_revision = hit_test_revision;
+        last_hover_mouse_position = mouse_position;
+        last_hover_mouse_active = mouse_active;
+        hover_chain_valid = true;
     }
 
     void Context::ResetActiveChain()
@@ -1747,7 +1804,7 @@ namespace URUI
 
     Element* Context::GetElementAtPoint(Vector2f point, const Element* ignore_element, Element* element) const
     {
-        const auto revision = native_render_revision;
+        const auto revision = hit_test_revision;
         // 未知命中虚函数或字体实现可自行变化；只复用已有来源证明所覆盖的普通节点。
         const bool reusable = !ignore_element && !element && AllowsNativeRecordingReuse();
         if (reusable)
@@ -1780,7 +1837,7 @@ namespace URUI
             }
             throw;
         }
-        if (reusable && revision == native_render_revision && AllowsNativeRecordingReuse())
+        if (reusable && revision == hit_test_revision && AllowsNativeRecordingReuse())
         {
             auto& query = hit_queries[hit_query_cursor++ % 2];
             query.point = point;
@@ -1959,6 +2016,7 @@ namespace URUI
         // resource/font provenance and a frozen property registry for this drag.
         auto& proxy = *cursor_proxy_document;
         proxy.style_specification = document->GetStyleSpecification().Clone();
+        proxy.owns_style_specification = true;
         proxy.document_specification = proxy.style_specification;
         proxy.font_context = MakeUnique<DocumentFontContext>(*document->font_context);
         proxy.SetResourceContext(document->GetResourceContext());

@@ -524,6 +524,8 @@ namespace URUI.Authoring.Agent
                 AuthoringEnvironment.Preview.Refresh();
             }
         }
+        const int MaxCaptureFiles = 64;
+
         object Capture(bool live)
         {
             string folder = Path.Combine(AuthoringEnvironment.ProjectRoot, "Library/URUI/Authoring/Captures");
@@ -542,7 +544,36 @@ namespace URUI.Authoring.Agent
             {
                 AuthoringEnvironment.Preview.Capture(path);
             }
+            PruneOldCaptures(folder, path);
             return Obj("path", path);
+        }
+
+        static void PruneOldCaptures(string folder, string newestPath)
+        {
+            try
+            {
+                string[] files = Directory.GetFiles(folder, "*.png");
+                if (files.Length <= MaxCaptureFiles)
+                {
+                    return;
+                }
+                Array.Sort(files, (a, b) => File.GetLastWriteTimeUtc(a).CompareTo(File.GetLastWriteTimeUtc(b)));
+                int toDelete = files.Length - MaxCaptureFiles;
+                for (int i = 0; i < files.Length && toDelete > 0; i++)
+                {
+                    if (string.Equals(files[i], newestPath, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+                    try
+                    {
+                        File.Delete(files[i]);
+                        toDelete--;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
         }
         object ApplyLive(Dictionary<string, object> request, bool live)
         {

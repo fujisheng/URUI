@@ -34,8 +34,9 @@ namespace URUI.Documents
             {
                 return null;
             }
-            var status = NativeMethods.urui_element_compiled_info(NativeHandle, root.Token, 0, null, out var info);
-            if (status != 1 || (info.Flags & 1) == 0)
+            var surfaceHandle = SurfaceHandle;
+            var status = NativeMethods.urui_element_compiled_info(surfaceHandle, NativeHandle, root.Token, 0, null, out var info);
+            if (status != NativeStatus.Ok || (info.Flags & 1) == 0)
             {
                 return null;
             }
@@ -45,7 +46,7 @@ namespace URUI.Documents
                 return null;
             }
             var tokens = new ulong[end - first];
-            if (NativeMethods.urui_element_compiled_tokens(NativeHandle, root.Token, info.Identity, info.Revision, tokens, tokens.Length) != 1)
+            if (NativeMethods.urui_element_compiled_tokens(surfaceHandle, NativeHandle, root.Token, info.Identity, info.Revision, tokens, tokens.Length) != NativeStatus.Ok)
             {
                 return null;
             }
@@ -83,10 +84,45 @@ namespace URUI.Documents
         }
 
         /// <summary>
+        /// 按裸 ID 名称查询，避免拼接 "#id" 临时字符串。
+        /// </summary>
+        public bool TryQueryById(string id, out CompiledQueryResult result)
+        {
+            owner.CheckThread();
+            result = default;
+            if (string.IsNullOrEmpty(id) || id.IndexOf('\0') >= 0)
+            {
+                return false;
+            }
+            if (!owner.IsCompiledQueryCurrent(generation, fingerprint) || !root.IsValid)
+            {
+                return false;
+            }
+            var indices = index.QueryPrefixed('#', id, first, end);
+            var status = NativeMethods.urui_element_compiled_info(owner.SurfaceHandle, root.NativeHandle, root.Token, 1, id, out var info);
+            if (status != NativeStatus.Ok || info.Identity != index.Identity || (info.Flags & 3) != 3 || info.End != end)
+            {
+                return false;
+            }
+            var includeRoot = info.RootMatch != 0;
+            var count = includeRoot ? 1 : 0;
+            for (var i = 0; i < indices.Count; i++)
+            {
+                if (tokens[indices.Array[indices.Offset + i] - first] != 0)
+                {
+                    count++;
+                }
+            }
+            result = new CompiledQueryResult(owner, root, generation, fingerprint, tokens, first, indices, includeRoot, count);
+            return true;
+        }
+
+        /// <summary>
         /// 缓存已失效时返回 false，调用者继续使用真实 DOM 查询。
         /// </summary>
         public bool TryQuery(string selector, out CompiledQueryResult result)
         {
+            owner.CheckThread();
             result = default;
             if (string.IsNullOrEmpty(selector) || selector.Length < 2 || (selector[0] != '#' && selector[0] != '.') || selector.IndexOf('\0') >= 0)
             {
@@ -102,9 +138,9 @@ namespace URUI.Documents
             {
                 key = selector.Substring(1);
             }
-            var status = NativeMethods.urui_element_compiled_info(root.NativeHandle, root.Token, kind, key, out var info);
+            var status = NativeMethods.urui_element_compiled_info(owner.SurfaceHandle, root.NativeHandle, root.Token, kind, key, out var info);
             var required = 1 | (kind == 1 ? 2 : 4);
-            if (status != 1 || info.Identity != index.Identity || (info.Flags & required) != required || info.End != end)
+            if (status != NativeStatus.Ok || info.Identity != index.Identity || (info.Flags & required) != required || info.End != end)
             {
                 return false;
             }
@@ -170,7 +206,12 @@ namespace URUI.Documents
             }
             public bool MoveNext()
             {
-                if (!result.owner || !result.owner.IsCompiledQueryCurrent(result.generation, result.fingerprint))
+                if (!result.owner)
+                {
+                    throw new InvalidOperationException("编译查询快照已失效。");
+                }
+                result.owner.CheckThread();
+                if (!result.owner.IsCompiledQueryCurrent(result.generation, result.fingerprint))
                 {
                     throw new InvalidOperationException("编译查询快照已失效。");
                 }

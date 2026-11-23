@@ -393,6 +393,13 @@ namespace URUI
     ElementPtr Factory::InstanceCompiledDocument(Context* context, CompiledDocument&& compiled,
                                                  Vector<Diagnostic>& diagnostics, SharedPtr<ResourceContext> resources)
     {
+        return InstanceCompiledDocument(context, static_cast<const CompiledDocument&>(compiled), diagnostics,
+                                        std::move(resources));
+    }
+
+    ElementPtr Factory::InstanceCompiledDocument(Context* context, const CompiledDocument& compiled,
+                                                 Vector<Diagnostic>& diagnostics, SharedPtr<ResourceContext> resources)
+    {
         auto element = Factory::InstanceElement(nullptr, "html", "html", {});
         auto* document = urui_dynamic_cast<ElementDocument*>(element.get());
         if (!document)
@@ -401,7 +408,7 @@ namespace URUI
         }
         document->context = context;
         document->SetResourceContext(std::move(resources));
-        if (!BuildCompiledDocument(*document, std::move(compiled), diagnostics))
+        if (!BuildCompiledDocument(*document, compiled, diagnostics))
         {
             return nullptr;
         }

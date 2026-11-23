@@ -45,6 +45,7 @@ namespace URUI
     {
         root->SetOrigin(origin);
         node_cache.clear();
+        node_index_built = false;
     }
 
     void StyleSheet::MergeStyleSheet(const StyleSheet& other_sheet)
@@ -54,6 +55,7 @@ namespace URUI
         root->MergeHierarchy(other_sheet.root.get(), source_order_offset);
         font_faces.insert(font_faces.end(), other_sheet.font_faces.begin(), other_sheet.font_faces.end());
         source_order_offset += other_sheet.source_order_offset;
+        node_index_built = false;
 
         // Any matching @keyframe names are overridden as per CSS rules
         keyframes.reserve(keyframes.size() + other_sheet.keyframes.size());
@@ -76,9 +78,14 @@ namespace URUI
 
     void StyleSheet::BuildNodeIndex()
     {
+        if (node_index_built)
+        {
+            return;
+        }
         URUI_ZoneScoped;
         styled_node_index = {};
         root->BuildIndex(styled_node_index);
+        node_index_built = true;
     }
 
     const NamedDecorator* StyleSheet::GetNamedDecorator(const String& name) const
@@ -251,6 +258,16 @@ namespace URUI
         AddApplicableNodes(styled_node_index.tags, tag);
 
         // Also check all remaining nodes that don't contain any indexed requirements.
+        if (!styled_node_index.other_attr.empty() && element->GetNumAttributes() > 0)
+        {
+            for (const StyleSheetNode* node : styled_node_index.other_attr)
+            {
+                if (node->IsApplicable(element, nullptr))
+                {
+                    applicable_nodes.push_back(node);
+                }
+            }
+        }
         for (const StyleSheetNode* node : styled_node_index.other)
         {
             if (node->IsApplicable(element, nullptr))

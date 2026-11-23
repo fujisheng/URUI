@@ -52,6 +52,8 @@ def protocol_version(name):
 bridge_abi = protocol_version("urui_bridge_abi_version")
 render_plan_version = protocol_version("urui_render_plan_version")
 element_api_version = protocol_version("urui_element_api_version")
+texture_protocol_version = protocol_version("urui_texture_protocol_version")
+sequence_api_version = protocol_version("urui_sequence_api_version")
 
 
 expected_exports = set(re.findall(r"URUI_API\s+[^;{]+?\b(urui_\w+)\s*\(",
@@ -109,7 +111,7 @@ def build(platform):
                 subprocess.run([str(strip), "--strip-debug", str(binary)], check=True)
             exports = check_exports(platform, binary)
             row.update(bytes=binary.stat().st_size, sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
-                       abi_version=bridge_abi, render_plan_version=render_plan_version, element_api_version=element_api_version, texture_protocol_version=1, sequence_api_version=1, urui_exports=exports, native_source_sha256=before)
+                       abi_version=bridge_abi, render_plan_version=render_plan_version, element_api_version=element_api_version, texture_protocol_version=texture_protocol_version, sequence_api_version=sequence_api_version, urui_exports=exports, native_source_sha256=before)
             if source_hash() != before:
                 raise ValueError("Native sources changed during this build; rebuild incrementally")
             if platform.startswith("android"):
@@ -148,7 +150,7 @@ if args.install:
         shutil.copy2(row["binary"], temporary)
         temporary.replace(destination)
         invalidate_runtime_evidence(entry)
-        entry.update(bytes=row["bytes"], sha256=row["sha256"], abi_version=row["abi_version"], render_plan_version=row["render_plan_version"], element_api_version=element_api_version, texture_protocol_version=1, sequence_api_version=1,
+        entry.update(bytes=row["bytes"], sha256=row["sha256"], abi_version=row["abi_version"], render_plan_version=row["render_plan_version"], element_api_version=element_api_version, texture_protocol_version=texture_protocol_version, sequence_api_version=sequence_api_version,
                      runtime_validation=None, compiled=True, URUI_DEBUG=False,
                      urui_exports=row["urui_exports"], native_source_sha256=row["native_source_sha256"],
                      abi_validation=f"ABI{bridge_abi} / render-plan{render_plan_version}; export set verified against declarations; runtime evidence is separate")
@@ -156,8 +158,8 @@ if args.install:
             entry["load_segment_alignments"] = row["load_segment_alignments"]
     manifest["required_abi_version"] = bridge_abi
     manifest["render_plan_version"] = render_plan_version
-    manifest["texture_protocol_version"] = 1
-    manifest["sequence_api_version"] = 1
+    manifest["texture_protocol_version"] = texture_protocol_version
+    manifest["sequence_api_version"] = sequence_api_version
     manifest["sourceSha256"] = source_hash()
     manifest["production_exports"] = sorted(expected_exports)
     manifest["production_export_set_sha256"] = hashlib.sha256(("\n".join(sorted(expected_exports)) + "\n").encode()).hexdigest()

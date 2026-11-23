@@ -31,6 +31,9 @@ namespace URUI
         /// Clear the style sheet cache.
         static void ClearStyleSheetCache();
 
+        /// Returns a cached parsed User-Agent stylesheet container for the given inline CSS.
+        static SharedPtr<StyleSheetContainer> GetUserAgentStyleSheet(const String& css);
+
         /// Returns one of the available node selectors.
         /// @param name[in] The name of the desired selector.
         /// @return The selector registered with the given name, or nullptr if none exists.
@@ -45,6 +48,7 @@ namespace URUI
         // Individual loaded stylesheets
         using StyleSheets = UnorderedMap<String, UniquePtr<const StyleSheetContainer>>;
         StyleSheets stylesheets;
+        UnorderedMap<String, SharedPtr<StyleSheetContainer>> ua_stylesheets;
 
         // Custom complex selectors available for style sheets.
         using SelectorMap = UnorderedMap<String, StructuralSelectorType>;

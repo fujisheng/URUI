@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core/StyleSheetSpecification.h>
 #include <URUI/Core/PropertyDefinition.h>
 #include <URUI/Core/PropertyIdSet.h>
@@ -32,7 +34,7 @@ static void Quote(std::ostream& out, const std::string& value)
 
 int main(int argc, char** argv)
 {
-    if (argc != 2 || urui_create(1280, 720) != 1)
+    if (argc != 2 || urui_surface_create(1280, 720, &g_test_surface) != 1)
     {
         return 2;
     }
@@ -72,14 +74,14 @@ int main(int argc, char** argv)
             !URUI::StyleSheetSpecification::GetProperty(std::string("--urui-") + name))
         {
             std::cerr << "Unmigrated private property: " << name << std::endl;
-            urui_destroy();
+            urui_surface_destroy(g_test_surface);
             return 5;
         }
     }
     std::ofstream output(argv[1]);
     if (!output)
     {
-        urui_destroy();
+        urui_surface_destroy(g_test_surface);
         return 3;
     }
     output << "{\"abi\":" << urui_bridge_abi_version() << ",\"properties\":[";
@@ -116,6 +118,6 @@ int main(int argc, char** argv)
         Quote(output, URUI::StyleSheetSpecification::GetShorthandName(id));
     }
     output << "]}\n";
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     return output.good() ? 0 : 4;
 }

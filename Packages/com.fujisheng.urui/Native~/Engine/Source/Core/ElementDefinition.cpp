@@ -16,6 +16,10 @@ namespace URUI
         for (auto& property : properties.GetProperties())
         {
             property_ids.Insert(property.first);
+            if (property.second.unit == Unit::VAR_EXPRESSION || property.second.unit == Unit::CSS_WIDE)
+            {
+                has_var_or_inherit = true;
+            }
         }
     }
 

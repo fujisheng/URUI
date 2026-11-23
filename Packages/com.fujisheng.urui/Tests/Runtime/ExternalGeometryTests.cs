@@ -100,7 +100,7 @@ namespace URUI.Tests
         }
         [TestCase(false)]
         [TestCase(true)]
-        public void ColorResolveDoesNotRecordTheSameTargetSetupAgain(bool unknown)
+        public void OrdinaryAndExternalGeometryShareTheSameOutput(bool unknown)
         {
             var source = unknown ? new Material(UnityEngine.Resources.Load<Shader>("URUI/Tests/ExternalRawGeometry")) : material;
             if (unknown)
@@ -110,7 +110,7 @@ namespace URUI.Tests
             var program = new ExternalGeometryProgram(source, unknown ? default : Descriptor);
             try
             {
-                (long bytes, int resolves, Color color) Record(bool externalFirst)
+                (long bytes, Color color) Record(bool externalFirst)
                 {
                     const string ordinary = "<div style='position:absolute;width:8px;height:8px;background:rgba(0,255,0,.5);'></div>";
                     const string external = "<div id='p' style='position:absolute;width:8px;height:8px;'></div>";
@@ -129,31 +129,17 @@ namespace URUI.Tests
                         bytes += commands.sizeInBytes;
                     }
                     camera.Render();
-                    return (bytes, Renderer.RecordedRasterResolves, Pixel(3, 3));
+                    return (bytes, Pixel(3, 3));
                 }
                 var afterOrdinary = Record(false);
                 var beforeOrdinary = Record(true);
                 Assert.That(afterOrdinary.color.r, Is.GreaterThan(.99f));
                 Assert.That(afterOrdinary.color.g + afterOrdinary.color.b, Is.LessThan(.01f));
                 var expected = new Color(.5f, .5f, 0);
-                if (QualitySettings.activeColorSpace == ColorSpace.Linear)
-                {
-                    expected = expected.linear;
-                }
                 Assert.That(beforeOrdinary.color.r, Is.EqualTo(expected.r).Within(3f / 255));
                 Assert.That(beforeOrdinary.color.g, Is.EqualTo(expected.g).Within(3f / 255));
                 Assert.That(beforeOrdinary.color.b, Is.LessThan(.01f));
-                var encoded = QualitySettings.activeColorSpace == ColorSpace.Linear;
-                Assert.That(afterOrdinary.resolves, Is.EqualTo(encoded ? 1 : 0));
-                Assert.That(beforeOrdinary.resolves, Is.EqualTo(afterOrdinary.resolves));
-                using var setup = new CommandBuffer();
-                setup.SetRenderTarget(target);
-                setup.SetViewport(new Rect(0, 0, 128, 128));
-                setup.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(0, 128, 128, 0, -1, 1));
-                var saved = beforeOrdinary.bytes - afterOrdinary.bytes;
-                TestContext.WriteLine($"ordinary-first={afterOrdinary.bytes}; external-first={beforeOrdinary.bytes}; target-setup={setup.sizeInBytes}; saved={saved}");
-                Assert.That(saved, encoded ? Is.GreaterThanOrEqualTo((long)setup.sizeInBytes) : Is.EqualTo(0),
-                    "同一缓冲中的颜色解析已设置目标、视口和矩阵，紧邻外部绘制应复用该状态。");
+                Assert.That(afterOrdinary.bytes, Is.EqualTo(beforeOrdinary.bytes));
             }
             finally
             {
@@ -376,12 +362,8 @@ namespace URUI.Tests
             }
         }
         [UnityTest]
-        public IEnumerator SharedColorPassUsesTransientStorageAndPreservesOrderedPixels()
+        public IEnumerator ContextDrawingPreservesOrderWithoutCopyingTheOutput()
         {
-            if (QualitySettings.activeColorSpace != ColorSpace.Linear || !SystemInfo.supportsMemorylessTextures)
-            {
-                Assert.Ignore("需要Linear及原生memoryless附件。");
-            }
             camera.targetTexture = null;
             target.Release();
             UnityEngine.Object.DestroyImmediate(target);
@@ -440,7 +422,7 @@ namespace URUI.Tests
                     read.ReadPixels(new Rect(35, 140, 1, 1), 0, 0);
                     read.Apply();
                     var pixel = read.GetPixel(0, 0);
-                    var expected = new Color(.5f, .5f, 0).linear;
+                    var expected = new Color(.5f, .5f, 0);
                     Assert.That(pixel.r, Is.EqualTo(expected.r).Within(3f / 255));
                     Assert.That(pixel.g, Is.EqualTo(expected.g).Within(3f / 255));
                     Assert.That(pixel.b, Is.LessThan(.01f));
@@ -453,10 +435,8 @@ namespace URUI.Tests
                 var after = URUI.Rendering.Effects.EffectStatistics.GetTargets().LeasedColorBytes;
                 var targets = (Dictionary<(ulong, int), URUI.Internal.Rendering.EffectTargetPool.Lease>)typeof(RenderHost)
                     .GetField("preparedLayerTargets", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(Renderer);
-                var scratch = targets[(0, -1)].Texture;
-                var bytes = UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(scratch);
-                TestContext.WriteLine($"scratch={bytes}; leased before={before}, after={after}");
-                Assert.That(bytes, Is.LessThan(4096), "颜色往返的编码附件只能保留对象元数据，不得再持有离片颜色存储。");
+                Assert.That(targets, Is.Empty, "普通绘制与外部几何应直接使用输出目标。");
+                Assert.That(after, Is.EqualTo(before));
             }
             finally
             {
@@ -470,135 +450,7 @@ namespace URUI.Tests
                 UnityEngine.Object.DestroyImmediate(pipeline);
             }
         }
-        [UnityTest]
-        public IEnumerator SharedColorPassMatchesStoredScreenPresentation()
-        {
-            if (QualitySettings.activeColorSpace != ColorSpace.Linear || !SystemInfo.supportsMemorylessTextures)
-            {
-                Assert.Ignore("需要Linear及原生memoryless附件。");
-            }
-            camera.targetTexture = null;
-            target.Release();
-            UnityEngine.Object.DestroyImmediate(target);
-            target = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32);
-            target.Create();
-            camera.targetTexture = target;
-            camera.allowHDR = true;
-            var dummy = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32);
-            dummy.Create();
-            var pattern = new Texture2D(Screen.width, Screen.height, TextureFormat.RGBA32, false, true);
-            var colors = new Color32[Screen.width * Screen.height];
-            for (var y = 0; y < Screen.height; y++)
-            {
-                for (var x = 0; x < Screen.width; x++)
-                {
-                    colors[y * Screen.width + x] = new Color32((byte)((x * 13 + y * 7) % 251), (byte)((x * 3 + y * 17) % 241), (byte)((x * 11 + y * 5) % 239), 37);
-                }
-            }
-            pattern.SetPixels32(colors);
-            pattern.Apply();
-            document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}</style></head><body><div style='position:absolute;width:8px;height:8px;background:rgba(0,255,0,.004);'></div><div id='p' style='position:absolute;width:8px;height:8px;'></div><div style='position:absolute;width:8px;height:8px;background:rgba(0,255,0,.5);'></div><div id='p2' style='position:absolute;width:8px;height:8px;'></div></body></html>", "/shared-screen.html");
-            material.SetColor("_TestTint", new Color(2, .5f, .1f, .1f));
-            var program = new ExternalGeometryProgram(material, Descriptor);
-            using var registration = Attach(context => context.Draw(new ExternalGeometryInput(mesh, 1), program, Matrix4x4.identity));
-            var last = document.Q("p2");
-            using var lastRegistration = document.AttachGeometryProvider(last, "geometry", context => context.Draw(new ExternalGeometryInput(mesh, 1), program, Matrix4x4.identity));
-            last.Style.Set("--urui-decorator", "shader(geometry)");
-            var previous = GraphicsSettings.defaultRenderPipeline;
-            var quality = QualitySettings.renderPipeline;
-            var pipeline = ScriptableObject.CreateInstance<QueuedPipelineAsset>();
-            var submitted = false;
-            Exception failure = null;
-            Color32[] ReadTarget()
-            {
-                var old = RenderTexture.active;
-                var read = new Texture2D(target.width, target.height, TextureFormat.RGBA32, false, true);
-                try
-                {
-                    RenderTexture.active = target;
-                    read.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
-                    return read.GetPixels32();
-                }
-                finally
-                {
-                    RenderTexture.active = old;
-                    UnityEngine.Object.DestroyImmediate(read);
-                }
-            }
-            try
-            {
-                pipeline.Draw = context =>
-                {
-                    if (submitted)
-                    {
-                        return;
-                    }
-                    submitted = true;
-                    try
-                    {
-                        Color32[] reference = null;
-                        foreach (var native in new[] { false, true })
-                        {
-                            // 用实际相机绑定关系构造能力负对照，不在产品中增加测试开关。
-                            camera.targetTexture = native ? target : dummy;
-                            context.SetupCameraProperties(camera);
-                            using var seed = new CommandBuffer();
-                            seed.Blit(pattern, target);
-                            context.ExecuteCommandBuffer(seed);
-                            document.SynchronizeGeometry();
-                            Assert.That(document.Surface.SubmitRendering(context, target, new Rect(32, 16, 128, 128), RenderTargetInfo.FromScreen()), Is.True,
-                                $"native={native}; ready={Renderer.Ready}; loaded={document.IsLoaded}; camera={camera.isActiveAndEnabled}; size={Screen.width}x{Screen.height}");
-                            context.Submit();
-                            var actual = ReadTarget();
-                            if (!native)
-                            {
-                                reference = actual;
-                                continue;
-                            }
-                            var targets = (Dictionary<(ulong, int), URUI.Internal.Rendering.EffectTargetPool.Lease>)typeof(RenderHost)
-                                .GetField("preparedLayerTargets", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(Renderer);
-                            Assert.That(targets[(0, -1)].Texture.memorylessMode, Is.EqualTo(RenderTextureMemoryless.Color));
-                            var maximum = 0;
-                            for (var i = 0; i < actual.Length; i++)
-                            {
-                                maximum = Math.Max(maximum, Math.Abs(actual[i].r - reference[i].r));
-                                maximum = Math.Max(maximum, Math.Abs(actual[i].g - reference[i].g));
-                                maximum = Math.Max(maximum, Math.Abs(actual[i].b - reference[i].b));
-                                maximum = Math.Max(maximum, Math.Abs(actual[i].a - reference[i].a));
-                            }
-                            TestContext.WriteLine($"screen maximum byte error={maximum}; pixels={actual.Length}");
-                            Assert.That(maximum, Is.LessThanOrEqualTo(1), "共享区间的最终附件须保持屏幕颜色、方向、HDR钳制和视口外像素。");
-                        }
-                    }
-                    catch (Exception error)
-                    {
-                        failure = error;
-                    }
-                };
-                QualitySettings.renderPipeline = null;
-                GraphicsSettings.defaultRenderPipeline = pipeline;
-                for (var i = 0; i < 4; i++)
-                {
-                    yield return null;
-                }
-                Assert.That(submitted, Is.True);
-                if (failure != null)
-                {
-                    throw failure;
-                }
-            }
-            finally
-            {
-                pipeline.Draw = null;
-                GraphicsSettings.defaultRenderPipeline = previous;
-                QualitySettings.renderPipeline = quality;
-                camera.targetTexture = target;
-                UnityEngine.Object.DestroyImmediate(pipeline);
-                dummy.Release();
-                UnityEngine.Object.DestroyImmediate(dummy);
-                UnityEngine.Object.DestroyImmediate(pattern);
-            }
-        }
+
         [UnityTest]
         public IEnumerator OffscreenCallbackPreservesParentColorQuantization()
         {
@@ -660,7 +512,6 @@ namespace URUI.Tests
                 }
                 Assert.That(submitted, Is.True);
                 Assert.That(Pixel(3, 3), Is.EqualTo(expected));
-                Assert.That(Renderer.RecordedRasterResolves, Is.EqualTo(1), "只写离屏的回调不能新增父层LDR量化边界。");
             }
             finally
             {
@@ -679,7 +530,7 @@ namespace URUI.Tests
         [UnityTest]
         public IEnumerator QueuedUnknownMaterialVersionsAreImmutable() => VerifyQueuedMaterial(true);
         [UnityTest]
-        public IEnumerator SharedColorPassKeepsQueuedMaterialVersions() => VerifyQueuedMaterial(false, true);
+        public IEnumerator ContextKeepsQueuedMaterialVersions() => VerifyQueuedMaterial(false, true);
         IEnumerator VerifyQueuedMaterial(bool unknown, bool shared = false)
         {
             if (shared)
@@ -772,9 +623,9 @@ namespace URUI.Tests
         [UnityTest]
         public IEnumerator QueuedUnknownGeometryVersionsAreImmutable() => VerifyQueued(true);
         [UnityTest]
-        public IEnumerator SharedColorPassKeepsQueuedGeometryVersions() => VerifyQueued(false, true);
+        public IEnumerator ContextKeepsQueuedGeometryVersions() => VerifyQueued(false, true);
         [UnityTest]
-        public IEnumerator SharedColorPassEndsBeforeUnknownPrograms() => VerifyQueued(true, true);
+        public IEnumerator ContextPreservesQueuedUnknownGeometryVersions() => VerifyQueued(true, true);
         void PrepareSharedQueue()
         {
             if (QualitySettings.activeColorSpace != ColorSpace.Linear || !SystemInfo.supportsMemorylessTextures)

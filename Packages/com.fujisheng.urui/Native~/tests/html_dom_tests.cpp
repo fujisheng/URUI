@@ -1,4 +1,5 @@
 #include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include "urui.h"
 #include <URUI/Core.h>
 #include <URUI/Core/Elements/ElementFormControlSelect.h>
@@ -40,8 +41,8 @@ public:
 
 int main()
 {
-    assert(urui_create(400, 200) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
+    auto* context = URUI::GetContext(0);
     // Standard data-* attributes are inert application data, including old binding names.
     DataAttributeLog data_log;
     auto* previous_system = URUI::GetSystemInterface();
@@ -167,17 +168,18 @@ int main()
     instances.clear();
     templateClone.reset();
 #endif
-    const auto owner = LoadTestDocument(
+    const auto owner = LoadTestDocument(g_test_surface, 
         "<!doctype html><html><head></head><body><div id='kept'>before</div></body></html>", "ui/transaction.html");
-    const auto root = urui_document_root(owner);
-    const auto kept = urui_element_find(owner, root, "kept", nullptr);
+    const auto root = urui_document_root(g_test_surface, owner);
+    const auto kept = urui_element_find(g_test_surface, owner, root, "kept", nullptr);
     assert(kept != 0 && kept != UINT64_MAX);
-    assert(urui_document_load_html(owner, "<!doctype html><html><head></head><body><div/></body></html>",
-                                   "ui/invalid.html") == -9);
-    assert(urui_document_root(owner) == root && urui_element_find(owner, root, "kept", nullptr) == kept);
-    assert(urui_element_write(owner, kept, 3, nullptr, "<div/>") == -2);
-    assert(urui_element_set_inner_html(owner, kept, "<p>broken", "ui/fragment.html") == -9);
-    assert(urui_element_child_count(owner, kept) == 1);
-    urui_destroy();
+    assert(urui_document_load_html(g_test_surface, owner, "<!doctype html><html><head></head><body><div/></body></html>",
+                                   "ui/invalid.html") == URUI_ERR_VALIDATION);
+    assert(urui_document_root(g_test_surface, owner) == root && urui_element_find(g_test_surface, owner, root, "kept", nullptr) == kept);
+    assert(urui_element_write(g_test_surface, owner, kept, 3, nullptr, "<div/>") == URUI_ERR_VALIDATION);
+    assert(urui_element_set_inner_html(g_test_surface, owner, kept, "<p>broken", "ui/fragment.html") ==
+           URUI_ERR_VALIDATION);
+    assert(urui_element_child_count(g_test_surface, owner, kept) == 1);
+    urui_surface_destroy(g_test_surface);
     std::cout << "HTML DOM contracts passed\n";
 }

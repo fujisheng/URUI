@@ -1,8 +1,10 @@
 #pragma once
 #include "element_references.h"
-#include <URUI/Core/Context.h>
-#include "Engine/Source/Core/HtmlBuilder.h"
 #include "Engine/Source/Core/CompiledDocument.h"
+#include "Engine/Source/Core/HtmlBuilder.h"
+#include <URUI/Core/Context.h>
+#include <atomic>
+#include <deque>
 #include <memory>
 #include <thread>
 #include <unordered_map>
@@ -12,7 +14,7 @@ namespace URUI::Bridge
     class DocumentResources;
     struct DocumentState
     {
-        uint64_t handle;
+        uint64_t handle = 0;
         URUI::ObserverPtr<URUI::Element> root;
         int layer = 0;
         int order = 0;
@@ -26,6 +28,7 @@ namespace URUI::Bridge
         std::shared_ptr<DocumentResources> pendingResources;
         URUI::UniquePtr<URUI::InnerHtmlReplacement> fragment;
         URUI::CompiledTemplateCache templates;
+        std::deque<URUI::ObserverPtr<URUI::Element>> clicks;
         URUI::ElementDocument* Element() const
         {
             return static_cast<URUI::ElementDocument*>(root.get());
@@ -36,22 +39,24 @@ namespace URUI::Bridge
     class DocumentRegistry
     {
     public:
-        using RetireDocument = void (*)(URUI::ElementDocument*) noexcept;
+        using RetireDocument = void (*)(void* user, uint64_t handle, URUI::ElementDocument* document) noexcept;
 
     private:
         URUI::Context& context;
         ElementReferences& references;
-        std::thread::id owner;
+        std::atomic<std::thread::id> owner;
         RetireDocument retireDocument;
+        void* retireUser;
         std::unordered_map<uint64_t, std::unique_ptr<DocumentState>> states;
         std::unordered_map<URUI::ElementDocument*, uint64_t> handles;
-        bool Owner() const
+        bool Owner() const noexcept
         {
-            return owner == std::this_thread::get_id();
+            return owner.load(std::memory_order_acquire) == std::this_thread::get_id();
         }
 
     public:
-        DocumentRegistry(URUI::Context& context, ElementReferences& references, RetireDocument retire = nullptr);
+        DocumentRegistry(URUI::Context& context, ElementReferences& references, RetireDocument retire = nullptr,
+                         void* user = nullptr);
         ~DocumentRegistry();
         DocumentRegistry(const DocumentRegistry&) = delete;
         DocumentRegistry& operator=(const DocumentRegistry&) = delete;

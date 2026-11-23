@@ -23,11 +23,11 @@ namespace URUI.Media
                     name = name,
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp,
-                    hideFlags = HideFlags.DontSave
+                    hideFlags = HideFlags.HideAndDontSave
                 };
                 if (!texture.Create())
                 {
-                    Destroy(texture);
+                    GpuRetirement.DestroyOwnedObject(texture);
                     throw new InvalidOperationException("无法创建视频输出纹理。");
                 }
                 var previous = RenderTexture.active;
@@ -82,6 +82,7 @@ namespace URUI.Media
         {
             if (requested)
             {
+                Configure();
                 player.Prepare();
             }
         }

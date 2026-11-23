@@ -36,6 +36,8 @@ namespace URUI.Controls
         bool scrolling;
         bool published;
         bool publishPending;
+        Vector2 cachedLimit;
+        URUI.Internal.Interop.NativeMethods.ElementRefreshStamp lastIdleStamp;
 
         /// <summary>
         /// 配置与变换声明在作者 CSS 中；内容必须是视口的直接子节点。
@@ -337,14 +339,29 @@ namespace URUI.Controls
             {
                 return;
             }
+            var hadInit = initialized;
+            var prevNativeBefore = previousNative;
             AdoptExternal();
+            var externalChanged = !hadInit || previousNative != prevNativeBefore;
+            if (!externalChanged && !dragging && !scrolling && velocity == Vector2.zero && published && !publishPending
+                && document.TryGetRefreshStamp(out var idleStamp) && idleStamp.Matches(lastIdleStamp))
+            {
+                var cachedClamped = Vector2.Min(Vector2.Max(position, Vector2.zero), cachedLimit);
+                if ((cachedClamped - position).sqrMagnitude <= 1e-6f)
+                {
+                    return;
+                }
+            }
             var dt = document.Surface.UIClock.Delta;
             if (dt <= 0)
             {
                 return;
             }
             var boundary = Boundary;
-            var offset = Clamp(position) - position;
+            var limit = Limit;
+            cachedLimit = limit;
+            var clamped = Vector2.Min(Vector2.Max(position, Vector2.zero), limit);
+            var offset = clamped - position;
             if (!dragging)
             {
                 for (var axis = 0; axis < 2; axis++)
@@ -355,24 +372,28 @@ namespace URUI.Controls
                         var elasticity = Number("--urui-scroll-elasticity", .001f) * (scrolling ? 3 : 1);
                         position[axis] = Mathf.SmoothDamp(position[axis], position[axis] + offset[axis], ref speed, elasticity, Mathf.Infinity, dt);
                         velocity[axis] = Mathf.Abs(speed) < 1 ? 0 : speed;
-                        if (Mathf.Abs(Clamp(position)[axis] - position[axis]) < .01f)
+                        var postClamped = Mathf.Clamp(position[axis], 0, limit[axis]);
+                        if (Mathf.Abs(postClamped - position[axis]) < .01f)
                         {
-                            position[axis] = Clamp(position)[axis];
+                            position[axis] = postClamped;
                         }
                     }
                     else
                     {
-                        velocity[axis] *= Mathf.Pow(Number("--urui-scroll-deceleration", 0, 1), dt);
-                        if (Mathf.Abs(velocity[axis]) < 1)
+                        if (velocity[axis] != 0)
                         {
-                            velocity[axis] = 0;
+                            velocity[axis] *= Mathf.Pow(Number("--urui-scroll-deceleration", 0, 1), dt);
+                            if (Mathf.Abs(velocity[axis]) < 1)
+                            {
+                                velocity[axis] = 0;
+                            }
+                            position[axis] += velocity[axis] * dt;
                         }
-                        position[axis] += velocity[axis] * dt;
                     }
                 }
                 if (boundary == "clamped")
                 {
-                    position = Clamp(position);
+                    position = Vector2.Min(Vector2.Max(position, Vector2.zero), limit);
                 }
             }
             else
@@ -382,6 +403,10 @@ namespace URUI.Controls
             Publish();
             previousPosition = position;
             scrolling = false;
+            if (!dragging && !publishPending && velocity == Vector2.zero && published && document.TryGetRefreshStamp(out var afterStamp))
+            {
+                lastIdleStamp = afterStamp;
+            }
         }
         void Unloaded(Document owner) => Dispose();
         /// <summary>

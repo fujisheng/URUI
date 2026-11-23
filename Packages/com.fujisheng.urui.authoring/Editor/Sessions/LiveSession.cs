@@ -21,6 +21,7 @@ namespace URUI.Authoring.Sessions
     /// </summary>
     public sealed class LiveSession : IDisposable
     {
+        const int MaxHistoryEntries = 128;
         sealed class Change
         {
             internal InspectedNode Node;
@@ -123,6 +124,11 @@ namespace URUI.Authoring.Sessions
             if (cursor < history.Count)
             {
                 history.RemoveRange(cursor, history.Count - cursor);
+            }
+            if (history.Count >= MaxHistoryEntries)
+            {
+                history.RemoveAt(0);
+                cursor--;
             }
             history.Add(changes);
             cursor++;

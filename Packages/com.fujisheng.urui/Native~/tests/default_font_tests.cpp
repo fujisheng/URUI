@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <cassert>
 #include <fstream>
@@ -8,7 +10,7 @@
 
 int main(int argc, char** argv)
 {
-    assert(argc == 2 && urui_create(400, 200) == 1);
+    assert(argc == 2 && urui_surface_create(400, 200, &g_test_surface) == 1);
     const char* families[] = {"LiberationSerif", "LiberationSans", "LiberationMono"};
     const char* faces[] = {"Regular", "Italic", "Bold", "BoldItalic"};
     std::vector<uint8_t> regular_serif;
@@ -20,7 +22,7 @@ int main(int argc, char** argv)
             std::ifstream input(path, std::ios::binary);
             std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(input)), {});
             assert(!bytes.empty());
-            assert(urui_surface_set_default_font_face(family, bytes.data(), int(bytes.size()), 0, face % 2,
+            assert(urui_surface_set_default_font_face(g_test_surface, family, bytes.data(), int(bytes.size()), 0, face % 2,
                                                       face < 2 ? 400 : 700) == 1);
             if (family == 0 && face == 0)
             {
@@ -29,8 +31,8 @@ int main(int argc, char** argv)
         }
     }
     const uint8_t invalid[] = {0, 1, 2};
-    assert(urui_surface_set_default_font_face(0, invalid, sizeof(invalid), 0, 0, 400) < 0);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_set_default_font_face(g_test_surface, 0, invalid, sizeof(invalid), 0, 0, 400) < 0);
+    auto* context = URUI::GetContext(0);
     const URUI::String mono = URUI::String(argv[1]) + "/LiberationMono-Regular.ttf.bytes";
     const URUI::String regular = URUI::String(argv[1]) + "/LiberationSerif-Regular.ttf.bytes";
     const URUI::String bold = URUI::String(argv[1]) + "/LiberationSerif-Bold.ttf.bytes";
@@ -66,41 +68,42 @@ int main(int argc, char** argv)
     assert(Face("w500") == root_face && Face("w501") == Face("bold") && Face("w550") == Face("bold"));
     assert(Face("i550") == Face("ibold") && Face("i550") != Face("italic"));
     assert(Face("a501") == Face("a700") && Face("a501") != Face("a400"));
-    assert(urui_surface_set_default_font_face(0, regular_serif.data(), int(regular_serif.size()), 0, 0, 400) == -5);
-    urui_render();
-    assert(urui_command_count() > 0);
+    assert(urui_surface_set_default_font_face(g_test_surface, 0, regular_serif.data(), int(regular_serif.size()), 0, 0,
+                                              400) == URUI_ERR_REENTRANCY);
+    urui_surface_render(g_test_surface);
+    assert(urui_command_count(g_test_surface) > 0);
     document->Close();
     context->Update();
     URUIDocumentHandle owner = 0;
-    assert(urui_document_create(&owner) == 1);
+    assert(urui_document_create(g_test_surface, &owner) == 1);
     assert(
-        urui_document_load_html(
+        urui_document_load_html(g_test_surface, 
             owner,
             "<!doctype html><html><head><style>body{margin:0;}#glyph{position:absolute;left:20px;top:20px;font-family:sans-serif;font-size:40px;color:#4080c080;}</style></head><body><span id='glyph'>Weight</span></body></html>",
             "ui/weight.html") == 1);
-    assert(urui_document_set_presentation(owner, 0, 0, 1, 0) == 1);
+    assert(urui_document_set_presentation(g_test_surface, owner, 0, 0, 1, 0) == 1);
     uint64_t last_texture = 0;
     int font_stage = 0;
     auto bounds = [&]()
     {
-        urui_update();
-        urui_render();
+        urui_surface_update(g_test_surface);
+        urui_surface_render(g_test_surface);
         ++font_stage;
-        if (urui_command_count() != 1)
+        if (urui_command_count(g_test_surface) != 1)
         {
-            std::cerr << "font stage " << font_stage << " draw commands " << urui_command_count() << '\n';
+            std::cerr << "font stage " << font_stage << " draw commands " << urui_command_count(g_test_surface) << '\n';
         }
         // 膨胀替换普通单色字形，不增加绘制。
-        assert(urui_command_count() == 1);
+        assert(urui_command_count(g_test_surface) == 1);
         URUICommand command{};
-        assert(urui_get_commands(&command, 1) == 1);
+        assert(urui_get_commands(g_test_surface, &command, 1) == 1);
         last_texture = command.texture;
         int nv = 0;
         int ni = 0;
-        assert(urui_get_geometry_info(command.geometry, &nv, &ni) == 1);
+        assert(urui_get_geometry_info(g_test_surface, command.geometry, &nv, &ni) == 1);
         std::vector<URUIVertex> vertices(nv);
         std::vector<int> indices(ni);
-        assert(urui_copy_geometry(command.geometry, vertices.data(), nv, indices.data(), ni) == 1);
+        assert(urui_copy_geometry(g_test_surface, command.geometry, vertices.data(), nv, indices.data(), ni) == 1);
         URUI::Vector2f lo(1e6f, 1e6f), hi(-1e6f, -1e6f);
         for (const auto& vertex : vertices)
         {
@@ -113,7 +116,7 @@ int main(int argc, char** argv)
         return hi - lo;
     };
     const auto plain = bounds();
-    assert(urui_set_style(owner, "glyph", "--urui-font-effect", "dilate(0.5px)") == 1);
+    assert(TestSetStyle(g_test_surface, owner, "glyph", "--urui-font-effect", "dilate(0.5px)") == 1);
     const auto expanded = bounds();
     assert(expanded.x > plain.x && expanded.y > plain.y);
     auto alpha_sum = [&]()
@@ -121,9 +124,9 @@ int main(int argc, char** argv)
         int width = 0;
         int height = 0;
         int bytes = 0;
-        assert(urui_get_texture_info(last_texture, &width, &height, &bytes) == 1);
+        assert(urui_get_texture_info(g_test_surface, last_texture, &width, &height, &bytes) == 1);
         std::vector<uint8_t> pixels(bytes);
-        assert(urui_copy_texture(last_texture, pixels.data(), bytes) == 1);
+        assert(urui_copy_texture(g_test_surface, last_texture, pixels.data(), bytes) == 1);
         uint64_t sum = 0;
         for (int i = 3; i < bytes; i += 4)
         {
@@ -132,11 +135,11 @@ int main(int argc, char** argv)
         return sum;
     };
     const auto half_pixel_alpha = alpha_sum();
-    assert(urui_set_style(owner, "glyph", "--urui-font-effect", "dilate(0.0125em)") == 1);
+    assert(TestSetStyle(g_test_surface, owner, "glyph", "--urui-font-effect", "dilate(0.0125em)") == 1);
     assert(bounds() == expanded);
     assert(alpha_sum() == half_pixel_alpha);
-    assert(urui_set_style(owner, "glyph", "--urui-font-effect", "none") == 1);
+    assert(TestSetStyle(g_test_surface, owner, "glyph", "--urui-font-effect", "none") == 1);
     assert(bounds() == plain);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Packaged default fonts, family matching, styles and frozen Surface bootstrap passed\n";
 }

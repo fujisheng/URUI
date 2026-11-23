@@ -9,37 +9,78 @@
 #include "../../Include/URUI/Core/StyleSheetTypes.h"
 #include <limits>
 #include <algorithm>
+#include <cstring>
 #include <unordered_map>
 
 namespace URUI
 {
     namespace
     {
+        using ImmutableBytes = SharedPtr<const Vector<byte>>;
+
+        struct ContentDigest
+        {
+            uint64_t h1 = 0;
+            uint64_t h2 = 0;
+            size_t size = 0;
+            bool operator==(const ContentDigest& other) const
+            {
+                return size == other.size && h1 == other.h1 && h2 == other.h2;
+            }
+        };
+
+        ContentDigest HashBytes(const byte* data, size_t size)
+        {
+            uint64_t h1 = 14695981039346656037ull;
+            uint64_t h2 = 1099511628211ull ^ (uint64_t(size) * 0x9e3779b97f4a7c15ull);
+            size_t i = 0;
+            for (; i + 8 <= size; i += 8)
+            {
+                uint64_t word = 0;
+                std::memcpy(&word, data + i, 8);
+                h1 = (h1 ^ word) * 1099511628211ull;
+                h2 ^= word + 0x9e3779b97f4a7c15ull + (h2 << 6) + (h2 >> 2);
+                h2 *= 0xbf58476d1ce4e5b9ull;
+            }
+            for (; i < size; ++i)
+            {
+                h1 = (h1 ^ data[i]) * 1099511628211ull;
+                h2 = (h2 ^ (uint64_t(data[i]) << ((i & 7) * 8))) * 0x94d049bb133111ebull;
+            }
+            h1 ^= h1 >> 33;
+            h1 *= 0xff51afd7ed558ccdull;
+            h1 ^= h1 >> 33;
+            h2 ^= h2 >> 30;
+            h2 *= 0xbf58476d1ce4e5b9ull;
+            h2 ^= h2 >> 27;
+            return {h1, h2, size};
+        }
+
         struct SourceKey
         {
-            String bytes;
+            ContentDigest digest;
             int index;
             Style::FontStyle style;
             Style::FontWeight weight;
             bool operator==(const SourceKey& other) const
             {
-                return index == other.index && style == other.style && weight == other.weight && bytes == other.bytes;
+                return index == other.index && style == other.style && weight == other.weight && digest == other.digest;
             }
         };
         struct SourceHash
         {
             size_t operator()(const SourceKey& key) const
             {
-                return std::hash<String>{}(key.bytes) ^ (size_t(key.index) << 1) ^ (size_t(key.style) << 9) ^
-                       (size_t(key.weight) << 12);
+                return size_t(key.digest.h1 ^ (key.digest.h2 * 0x9e3779b97f4a7c15ull)) ^ (size_t(key.index) << 1) ^
+                       (size_t(key.style) << 9) ^ (size_t(key.weight) << 12);
             }
         };
         struct Source
         {
             String alias;
+            ImmutableBytes storage;
             bool loaded = false;
         };
-        using ImmutableBytes = SharedPtr<const Vector<byte>>;
         struct ImmutableKey
         {
             const Vector<byte>* bytes;
@@ -80,7 +121,7 @@ namespace URUI
         };
         ControlledLifetimeResource<Sources> sources;
 
-        const Source* LoadSource(SourceKey key, bool fallback)
+        const Source* LoadSource(const SourceKey& key, Span<const byte> raw, ImmutableBytes shared_bytes, bool fallback)
         {
             auto found = sources->entries.find(key);
             if (found == sources->entries.end())
@@ -89,13 +130,16 @@ namespace URUI
                 {
                     return nullptr;
                 }
+                if (!shared_bytes)
+                {
+                    auto copy = MakeShared<Vector<byte>>(raw.begin(), raw.end());
+                    shared_bytes = std::move(copy);
+                }
                 const String alias = "urui-font-source-" + std::to_string(++sources->next);
-                found = sources->entries.emplace(std::move(key), Source{alias, false}).first;
-                const auto& bytes = found->first.bytes;
-                const auto& stored = found->first;
-                found->second.loaded =
-                    GetFontEngineInterface()->LoadFontFace({reinterpret_cast<const byte*>(bytes.data()), bytes.size()},
-                                                           stored.index, alias, stored.style, stored.weight, fallback);
+                found = sources->entries.emplace(key, Source{alias, std::move(shared_bytes), false}).first;
+                const auto& bytes = *found->second.storage;
+                found->second.loaded = GetFontEngineInterface()->LoadFontFace(
+                    {bytes.data(), bytes.size()}, key.index, alias, key.style, key.weight, fallback);
                 if (!found->second.loaded)
                 {
                     sources->entries.erase(found);
@@ -119,8 +163,8 @@ namespace URUI
             {
                 return found->second.source;
             }
-            const auto* source = LoadSource(
-                {String(reinterpret_cast<const char*>(bytes->data()), bytes->size()), index, style, weight}, false);
+            const SourceKey source_key{HashBytes(bytes->data(), bytes->size()), index, style, weight};
+            const auto* source = LoadSource(source_key, {bytes->data(), bytes->size()}, bytes, false);
             if (!source)
             {
                 return nullptr;
@@ -226,7 +270,7 @@ namespace URUI
         {
             return false;
         }
-        SourceKey key{String(reinterpret_cast<const char*>(bytes.data()), bytes.size()), face_index, style, weight};
+        const SourceKey key{HashBytes(bytes.data(), bytes.size()), face_index, style, weight};
         for (const auto& face : sources->defaults)
         {
             if (face.family == family && face.style == style && face.weight == weight)
@@ -236,7 +280,7 @@ namespace URUI
                        existing->second.alias == face.source;
             }
         }
-        const auto* source = LoadSource(std::move(key), true);
+        const auto* source = LoadSource(key, bytes, {}, true);
         if (!source)
         {
             return false;
@@ -270,6 +314,7 @@ namespace URUI
         if (candidate.faces != faces)
         {
             faces.swap(candidate.faces);
+            resolve_cache.clear();
             ++revision;
         }
         return true;
@@ -300,29 +345,48 @@ namespace URUI
         }
         else
         {
-            SourceKey key{String(files->Length(handle), '\0'), face_index, style, weight};
-            if (key.bytes.empty() || files->Read(key.bytes.data(), key.bytes.size(), handle) != key.bytes.size())
+            auto buffer = MakeShared<Vector<byte>>(files->Length(handle));
+            if (buffer->empty() || files->Read(buffer->data(), buffer->size(), handle) != buffer->size())
             {
                 return false;
             }
-            source = LoadSource(std::move(key), false);
+            const SourceKey key{HashBytes(buffer->data(), buffer->size()), face_index, style, weight};
+            source = LoadSource(key, {buffer->data(), buffer->size()}, std::move(buffer), false);
         }
         if (!source)
         {
             return false;
         }
         faces.push_back({AsciiLowerCss(family), source->alias, style, weight});
+        resolve_cache.clear();
         return true;
     }
 
     FontFaceHandle DocumentFontContext::ResolveFace(const String& value, Style::FontStyle style,
                                                     Style::FontWeight weight, float size) const
     {
+        uint32_t size_bits = 0;
+        std::memcpy(&size_bits, &size, sizeof(size_bits));
+        if (size_bits == 0x80000000u)
+        {
+            size_bits = 0u;
+        }
+        ResolveKey cache_key{value, style, weight, size_bits};
+        if (auto it = resolve_cache.find(cache_key); it != resolve_cache.end())
+        {
+            return it->second;
+        }
+
         auto* engine = GetFontEngineInterface();
         Vector<CssFontFamily> families;
         if (!ParseCssFontFamilies(value, families))
         {
-            return DefaultHandle(0, style, weight, size);
+            const FontFaceHandle resolved = DefaultHandle(0, style, weight, size);
+            if (resolved != 0)
+            {
+                resolve_cache.emplace(std::move(cache_key), resolved);
+            }
+            return resolved;
         }
         Vector<FontFaceHandle> handles;
         auto append = [&](FontFaceHandle handle)
@@ -370,7 +434,12 @@ namespace URUI
         {
             append(DefaultHandle(0, style, weight, size));
         }
-        return engine->GetFontFaceHandleChain({handles.data(), handles.size()});
+        const FontFaceHandle resolved = engine->GetFontFaceHandleChain({handles.data(), handles.size()});
+        if (resolved != 0)
+        {
+            resolve_cache.emplace(std::move(cache_key), resolved);
+        }
+        return resolved;
     }
 
 }

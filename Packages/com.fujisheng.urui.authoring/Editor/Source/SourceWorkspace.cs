@@ -45,7 +45,55 @@ namespace URUI.Authoring.Source
         public string DiskVersion => DiskHash;
         internal string SavedText;
         internal string DiskHash;
+        internal long DiskWriteTicks;
+        internal long DiskLength = -1;
         internal bool Bom;
+
+        /// <summary>
+        /// Fast background poll check using filesystem metadata when outside the racy-mtime window;
+        /// falls back to exact SHA-256 hashing whenever length/mtime differs or file was recently modified.
+        /// </summary>
+        internal bool HasExternalChangeFast()
+        {
+            if (!File.Exists(Path))
+            {
+                return DiskHash != null;
+            }
+            if (DiskHash == null)
+            {
+                return true;
+            }
+            var info = new FileInfo(Path);
+            long writeTicks = info.LastWriteTimeUtc.Ticks;
+            long length = info.Length;
+            if (length == DiskLength && writeTicks == DiskWriteTicks && (DateTime.UtcNow.Ticks - writeTicks) > TimeSpan.TicksPerSecond)
+            {
+                return false;
+            }
+            string hash = SourceWorkspace.Hash(File.ReadAllBytes(Path));
+            if (hash == DiskHash)
+            {
+                DiskWriteTicks = writeTicks;
+                DiskLength = length;
+                return false;
+            }
+            return true;
+        }
+
+        internal void RecordDiskMetadata()
+        {
+            if (File.Exists(Path))
+            {
+                var info = new FileInfo(Path);
+                DiskWriteTicks = info.LastWriteTimeUtc.Ticks;
+                DiskLength = info.Length;
+            }
+            else
+            {
+                DiskWriteTicks = 0;
+                DiskLength = -1;
+            }
+        }
     }
 
     /// <summary>
@@ -53,12 +101,13 @@ namespace URUI.Authoring.Source
     /// </summary>
     public sealed class SourceWorkspace
     {
+        public const int MaxHistoryEntries = 128;
         readonly string root;
         readonly Func<string, string, string> validate;
         readonly Action<string, string> replaceFile;
         readonly Dictionary<string, SourceFile> files = new Dictionary<string, SourceFile>(StringComparer.Ordinal);
-        readonly Stack<List<SourceChange>> undo = new Stack<List<SourceChange>>();
-        readonly Stack<List<SourceChange>> redo = new Stack<List<SourceChange>>();
+        readonly List<List<SourceChange>> undo = new List<List<SourceChange>>();
+        readonly List<List<SourceChange>> redo = new List<List<SourceChange>>();
         long revision;
         public long Revision => revision;
         public string ProjectRoot => root;
@@ -164,7 +213,7 @@ namespace URUI.Authoring.Source
                 files[file.Path] = file;
             }
             Apply(candidates);
-            undo.Push(inverse);
+            PushHistory(undo, inverse);
             redo.Clear();
             HistoryPosition++;
         }
@@ -174,21 +223,30 @@ namespace URUI.Authoring.Source
         }
         public void Undo() => Replay(undo, redo);
         public void Redo() => Replay(redo, undo);
-        void Replay(Stack<List<SourceChange>> from, Stack<List<SourceChange>> to)
+        static void PushHistory(List<List<SourceChange>> stack, List<SourceChange> entry)
+        {
+            if (stack.Count >= MaxHistoryEntries)
+            {
+                stack.RemoveAt(0);
+            }
+            stack.Add(entry);
+        }
+        void Replay(List<List<SourceChange>> from, List<List<SourceChange>> to)
         {
             if (from.Count == 0)
             {
                 return;
             }
-            var changes = from.Peek();
-            var inverse = new List<SourceChange>();
+            int last = from.Count - 1;
+            var changes = from[last];
+            var inverse = new List<SourceChange>(changes.Count);
             foreach (var change in changes)
             {
                 inverse.Add(new SourceChange(change.Path, files[change.Path].Text, 0));
             }
             Apply(changes);
-            from.Pop();
-            to.Push(inverse);
+            from.RemoveAt(last);
+            PushHistory(to, inverse);
             HistoryPosition += ReferenceEquals(from, undo) ? -1 : 1;
         }
         void Apply(List<SourceChange> changes)
@@ -246,6 +304,7 @@ namespace URUI.Authoring.Source
             file.Text = text;
             file.SavedText = file.Text;
             file.DiskHash = Hash(bytes);
+            file.RecordDiskMetadata();
             file.Revision = ++revision;
         }
 
@@ -355,6 +414,7 @@ namespace URUI.Authoring.Source
                 {
                     targets[i].SavedText = targets[i].Text;
                     targets[i].DiskHash = publishedHashes[i];
+                    targets[i].RecordDiskMetadata();
                 }
             }
             catch (Exception error)

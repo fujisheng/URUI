@@ -53,11 +53,29 @@ namespace URUI.Effect
         static long processingPasses;
         static long clearPasses;
         static long meshRebuilds;
+        static readonly int mainTexProperty = Shader.PropertyToID("_MainTex");
+        static readonly int effectTimeProperty = Shader.PropertyToID("_EffectTime");
+        static readonly Vector2[] quadUv = { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
+        static readonly Color32[] quadColors = { new Color32(255, 255, 255, 255), new Color32(255, 255, 255, 255), new Color32(255, 255, 255, 255), new Color32(255, 255, 255, 255) };
+        static readonly int[] quadTriangles = { 0, 1, 2, 0, 2, 3 };
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            liveSurfaces = 0;
+            liveColorBytes = 0;
+            processingPasses = 0;
+            clearPasses = 0;
+            meshRebuilds = 0;
+        }
+
         public static Statistics GetStatistics() => new Statistics(liveSurfaces, liveColorBytes, processingPasses, clearPasses, meshRebuilds);
         readonly RenderTexture output;
         readonly ImageLeaseSource source;
         readonly CommandBuffer commands;
         readonly Mesh quad;
+        readonly Vector3[] quadVertices = new Vector3[4];
+        bool quadInitialized;
         Vector2 layoutSize;
         bool disposed;
         public ImageLeaseSource Output => source;
@@ -84,7 +102,8 @@ namespace URUI.Effect
             {
                 name = "URUI Effect Surface",
                 filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp
+                wrapMode = TextureWrapMode.Clamp,
+                hideFlags = HideFlags.HideAndDontSave
             };
             if (!output.Create())
             {
@@ -101,7 +120,8 @@ namespace URUI.Effect
             {
                 RenderTexture.active = previous;
             }
-            quad = new Mesh { name = "URUI Effect Quad" };
+            quad = new Mesh { name = "URUI Effect Quad", hideFlags = HideFlags.HideAndDontSave };
+            quad.MarkDynamic();
             commands = new CommandBuffer { name = "URUI Effect Processing" };
             var colorBytes = checked((long)output.width * output.height * 8);
             source = new ImageLeaseSource(output, () => GpuRetirement.Retire(() =>
@@ -141,10 +161,18 @@ namespace URUI.Effect
             if (layoutSize != size)
             {
                 var half = size * .5f;
-                quad.vertices = new[] { new Vector3(-half.x, -half.y), new Vector3(half.x, -half.y), new Vector3(half.x, half.y), new Vector3(-half.x, half.y) };
-                quad.uv = new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
-                quad.colors32 = new[] { new Color32(255, 255, 255, 255), new Color32(255, 255, 255, 255), new Color32(255, 255, 255, 255), new Color32(255, 255, 255, 255) };
-                quad.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+                quadVertices[0] = new Vector3(-half.x, -half.y);
+                quadVertices[1] = new Vector3(half.x, -half.y);
+                quadVertices[2] = new Vector3(half.x, half.y);
+                quadVertices[3] = new Vector3(-half.x, half.y);
+                quad.vertices = quadVertices;
+                if (!quadInitialized)
+                {
+                    quad.uv = quadUv;
+                    quad.colors32 = quadColors;
+                    quad.triangles = quadTriangles;
+                    quadInitialized = true;
+                }
                 quad.RecalculateBounds();
                 layoutSize = size;
                 meshRebuilds++;
@@ -163,7 +191,7 @@ namespace URUI.Effect
             {
                 throw new InvalidOperationException("先 Prepare 再 Record。");
             }
-            properties.SetTexture("_MainTex", input);
+            properties.SetTexture(mainTexProperty, input);
             context.RecordSurface(output, quad, material, Matrix4x4.Ortho(-layoutSize.x * .5f, layoutSize.x * .5f, -layoutSize.y * .5f, layoutSize.y * .5f, -1, 1), properties);
             context.AfterSubmission(countSubmitted);
         }
@@ -184,7 +212,7 @@ namespace URUI.Effect
             }
             Prepare(size);
             material.mainTexture = input;
-            material.SetFloat("_EffectTime", Time.unscaledTime);
+            material.SetFloat(effectTimeProperty, Time.unscaledTime);
             var projection = Matrix4x4.Ortho(-size.x * .5f, size.x * .5f, -size.y * .5f, size.y * .5f, -1, 1);
             commands.Clear();
             commands.SetRenderTarget(output);

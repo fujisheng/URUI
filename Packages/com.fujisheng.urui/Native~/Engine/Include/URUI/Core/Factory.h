@@ -96,6 +96,9 @@ namespace URUI
         static ElementPtr InstanceCompiledDocument(Context* context, CompiledDocument&& compiled,
                                                    Vector<Diagnostic>& diagnostics,
                                                    SharedPtr<ResourceContext> resources = nullptr);
+        static ElementPtr InstanceCompiledDocument(Context* context, const CompiledDocument& compiled,
+                                                   Vector<Diagnostic>& diagnostics,
+                                                   SharedPtr<ResourceContext> resources = nullptr);
 
         /// Registers a non-owning pointer to an instancer that will be used to instance decorators.
         /// @param[in] name The name of the decorator the instancer will be called for.

@@ -51,14 +51,16 @@ namespace URUI
 
         Mesh mesh;
 
-        const ComputedValues& computed = element->GetComputedValues();
         const byte alpha = byte(1.f * 255.f);
         MeshUtilities::GenerateBackground(mesh, render_box, ColourbPremultiplied(alpha, alpha));
 
         const Vector2f offset = render_box.GetFillOffset();
+        const float inv_w = dimensions.x > 0.f ? 1.f / dimensions.x : 0.f;
+        const float inv_h = dimensions.y > 0.f ? 1.f / dimensions.y : 0.f;
         for (Vertex& vertex : mesh.vertices)
         {
-            vertex.tex_coord = (vertex.position - offset) / dimensions;
+            const Vector2f delta = vertex.position - offset;
+            vertex.tex_coord = Vector2f(delta.x * inv_w, delta.y * inv_h);
         }
 
         ShaderElementData* element_data = GetShaderElementDataPool().AllocateAndConstruct(

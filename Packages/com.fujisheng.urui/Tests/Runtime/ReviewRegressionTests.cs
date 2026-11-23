@@ -74,14 +74,14 @@ namespace URUI.Tests
                 document.Surface = surface;
                 document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}div{width:16px;height:16px;background:red;}</style></head><body><div></div></body></html>", "/review-mesh.html");
                 document.SynchronizeLayout();
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var lease = input.Compile(default, out var packet))
                     {
                         resources.Apply(lease, packet);
                     }
                 }
-                resources.PinSubmission(readers);
+                resources.PinSubmission(readers, new HashSet<RenderPlanResources.Entry>());
                 Assert.That(readers.Count, Is.GreaterThan(0));
                 var mesh = readers[0].Mesh;
                 var bytes = resources.RetainedBytes;
@@ -367,7 +367,7 @@ namespace URUI.Tests
                 read.Apply();
                 var pixel = read.GetPixel(20, 127 - 16);
                 var alpha = maskWidth == 2 ? .71875f : 1f;
-                var expected = QualitySettings.activeColorSpace == ColorSpace.Linear ? Mathf.GammaToLinearSpace(alpha) : alpha;
+                var expected = alpha;
                 Assert.That(pixel.g, Is.EqualTo(expected).Within(3f / 255), "两像素蒙版保留线性过滤；高分辨率硬边蒙版采样不透明内部。");
             }
             finally
@@ -436,10 +436,6 @@ namespace URUI.Tests
                 read.ReadPixels(new Rect(negativeScale ? 24 : 40, 64 - 20, 1, 1), 0, 0);
                 read.Apply();
                 var expected = new Color(.5f, 0, .5f);
-                if (QualitySettings.activeColorSpace == ColorSpace.Linear)
-                {
-                    expected = expected.linear;
-                }
                 var actual = read.GetPixel(0, 0);
                 Assert.That(actual.r, Is.EqualTo(expected.r).Within(3f / 255), "组边界必须包含作者盒之外的 painter 输出。");
                 Assert.That(actual.b, Is.EqualTo(expected.b).Within(3f / 255));

@@ -7,7 +7,9 @@
 // Independent heap probe: do not trust only the planner's own accounting when
 // checking that a helper/standard-library control block has not escaped it.
 static thread_local bool watch_heap = false;
-static thread_local uint64_t heap_allocations = 0, heap_frees = 0, heap_bytes = 0;
+static thread_local uint64_t heap_allocations = 0;
+static thread_local uint64_t heap_frees = 0;
+static thread_local uint64_t heap_bytes = 0;
 void* operator new(std::size_t bytes)
 {
     void* value = std::malloc(bytes ? bytes : 1);
@@ -216,7 +218,7 @@ static void RetiredEpochStorageRegression()
     {
         assert(pinned.Begin(450, &draw, &identity, 1, nullptr, 0, nullptr, 0, item) == 1);
     }
-    assert(pinned.Begin(499, &draw, &identity, 1, nullptr, 0, nullptr, 0, input) == -5);
+    assert(pinned.Begin(499, &draw, &identity, 1, nullptr, 0, nullptr, 0, input) == URUI_ERR_REENTRANCY);
     URUIPlanPreparePacket prepared{};
     assert(pinned.Resolve(pending[0].lease, nullptr, Resolve, prepared) == 1);
     for (auto& item : pending)
@@ -241,189 +243,88 @@ static void RetiredEpochStorageRegression()
     assert(pinned.Release(input.lease) == 1 && pinned.Release(held.lease) == 1);
 }
 
-static void SharedRasterPassRegression()
+static void LocalImageInvalidation()
 {
-    // 真实颜色域交错不能重排；超过16个subpass须在已解析的线性边界分段。
-    for (const uint32_t groups : {1u, 3u, 8u, 9u, 17u})
+    Session session;
+    session.Viewport(256, 256);
+    URUICommand draws[2]{};
+    draws[0].geometry = draws[1].geometry = 1;
+    draws[1].tx = 40;
+    draws[1].ty = 70;
+    std::array<float, 16> transforms[2] = {identity, identity};
+    transforms[0][0] = transforms[0][5] = 32;
+    URUILayerCommand layers[3]{};
+    layers[0].kind = 1;
+    layers[0].target = 1;
+    layers[1].kind = 4;
+    layers[1].source = 1;
+    layers[1].command_index = 2;
+    layers[2].kind = 2;
+    layers[2].source = 1;
+    layers[2].command_index = 2;
+    const URUIPaintCommand paint{31, 51, 1, 1};
+    URUIPlanBindings bindings{};
+    bindings.frame_flags = URUI_PLAN_RESOURCE_HDR_CAMERA | URUI_PLAN_RESOURCE_FRAMEBUFFER_FETCH;
+    uint64_t initial_version = 0;
+    for (int frame = 0; frame < 6; frame++)
     {
-        for (const bool capable : {false, true})
+        if (frame == 2)
         {
-            Session session;
-            session.Viewport(128, 128);
-            std::vector<URUICommand> draws(groups * 2);
-            std::vector<std::array<float, 16>> transforms(draws.size(), identity);
-            for (uint32_t n = 0; n < draws.size(); n++)
-            {
-                draws[n].geometry = 1;
-                draws[n].texture = n % 2 ? 202 : 101;
-            }
-            URUIPlanTextureBinding textures[2] = {{101, 1, 0, 1}, {202, 1, 1, 1}};
-            URUIPlanBindings bindings{};
-            bindings.textures = textures;
-            bindings.texture_count = 2;
-            bindings.frame_flags = 1 | 8 | 16 | 64 | (capable ? 256 : 0);
-            URUIPlanInputPacket input{};
-            URUIRenderPlanPacket plan{};
-            assert(session.Begin(198, draws.data(), transforms.data(), uint32_t(draws.size()), nullptr, 0, nullptr, 0,
-                                 input) == 1);
-            assert(session.Compile(input.lease, bindings, Resolve, plan) == 1);
-            assert(plan.operation_count == groups * 2 + 2);
-            uint32_t starts = 0;
-            uint32_t ends = 0;
-            uint32_t total_groups = 0;
-            for (uint32_t n = 0; n < plan.operation_count; n++)
-            {
-                const auto& op = plan.operations[n];
-                if (op.reason & 0x20000000u)
-                {
-                    starts++;
-                    total_groups += ((op.reason >> 24) & 7) + 1;
-                    assert(op.kind == URUI_PLAN_GEOMETRY && op.textures[0] == 101);
-                }
-                if (op.reason & 0x10000000u)
-                {
-                    ends++;
-                    assert(op.kind == URUI_PLAN_GEOMETRY && op.textures[0] == 202);
-                }
-            }
-            std::cout << "shared groups=" << groups << " capable=" << capable << " starts=" << starts
-                      << " ends=" << ends << std::endl;
-            assert(starts == (capable ? (groups + 7) / 8 : 0) && ends == starts);
-            assert(total_groups == (capable ? groups : 0));
-            bool encoded = false;
-            for (uint32_t n = 0; n < plan.target_count; n++)
-            {
-                if (plan.targets[n].slot == -1)
-                {
-                    encoded = true;
-                    assert(plan.targets[n].kind == (capable ? 7u : 2u));
-                }
-            }
-            assert(encoded);
-            assert(session.Release(plan.lease) == 1 && session.Release(input.lease) == 1);
+            draws[0].tx = 1;
         }
-    }
-    {
-        Session callbacks;
-        callbacks.Viewport(128, 128);
-        URUICommand draws[6]{};
-        std::array<float, 16> transforms[6] = {identity, identity, identity, identity, identity, identity};
-        for (uint32_t n = 0; n < 6; n++)
+        if (frame == 3)
         {
-            draws[n].geometry = 1;
-            draws[n].texture = n % 2 ? 202 : 101;
+            draws[1].tx = 60;
         }
-        URUIPaintCommand paint{11, 22, 2, 0};
-        URUIPlanExternalBinding callback{2, 1};
-        URUIPlanTextureBinding textures[2] = {{101, 1, 0, 1}, {202, 1, 1, 1}};
-        URUIPlanBindings bindings{};
-        bindings.frame_flags = 1 | 8 | 16 | 64 | 256;
-        bindings.textures = textures;
-        bindings.texture_count = 2;
-        bindings.externals = &callback;
-        bindings.external_count = 1;
         URUIPlanInputPacket input{};
+        URUIPlanPreparePacket prepare{};
         URUIRenderPlanPacket plan{};
-        assert(callbacks.Begin(199, draws, transforms, 6, &paint, 1, nullptr, 0, input) == 1);
-        assert(callbacks.Compile(input.lease, bindings, Resolve, plan) == 1);
-        bool inside = false;
-        uint32_t spans = 0;
-        for (uint32_t n = 0; n < plan.operation_count; n++)
+        assert(session.Begin(301, draws, transforms, 2, &paint, 1, layers, 3, input) == 1);
+        assert(session.Resolve(input.lease, nullptr, Resolve, prepare, &bindings) == 1 && !prepare.ready);
+        const auto& request = prepare.requests[0];
+        assert(session.SetImageProgram(input.lease, request.request, 71, 2,
+                                       [&](const URUIPlanPrepareRequest&, float* values, uint32_t)
+                                       {
+                                           std::fill_n(values, 8, 0);
+                                           values[4] = float(frame);
+                                           return 1;
+                                       }) == 1);
+        URUIPlanFeedback reply{};
+        reply.request = request.request;
+        reply.kind = request.kind;
+        reply.ink[2] = reply.ink[3] = frame == 5 ? 240 : 8;
+        reply.capabilities = frame == 4 ? 0 : URUI_PLAN_IMAGE_LOCAL;
+        assert(session.Resolve(input.lease, &reply, Resolve, prepare) == 1 && prepare.ready);
+        const auto& layer = prepare.regions[0];
+        assert(prepare.region_count == 1 && layer.layer == 1 && !(layer.flags & 16));
+        if (frame == 0)
         {
-            const auto& op = plan.operations[n];
-            if (op.reason & 0x20000000u)
-            {
-                assert(!inside);
-                inside = true;
-                spans++;
-            }
-            if (op.kind == URUI_PLAN_EXTERNAL)
-            {
-                assert(!inside);
-            }
-            if (op.reason & 0x10000000u)
-            {
-                assert(inside);
-                inside = false;
-            }
+            initial_version = layer.version;
         }
-        assert(!inside && spans == 2);
-        assert(callbacks.Release(plan.lease) == 1 && callbacks.Release(input.lease) == 1);
-    }
-    {
-        Session offscreen;
-        offscreen.Viewport(128, 128);
-        URUICommand draws[3]{};
-        std::array<float, 16> transforms[3] = {identity, identity, identity};
-        for (auto& draw : draws)
+        if (frame == 1)
         {
-            draw.geometry = 1;
-            draw.texture = 101;
+            assert(layer.version == initial_version);
         }
-        URUIPaintCommand paint{11, 22, 1, 0};
-        URUIPlanExternalBinding callback{1, 4};
-        URUIPlanTextureBinding texture{101, 1, 0, 1};
-        URUIPlanBindings bindings{};
-        bindings.frame_flags = 1 | 8 | 16 | 64 | 256;
-        bindings.textures = &texture;
-        bindings.texture_count = 1;
-        bindings.externals = &callback;
-        bindings.external_count = 1;
-        URUIPlanInputPacket input{};
-        URUIRenderPlanPacket plan{};
-        assert(offscreen.Begin(200, draws, transforms, 3, &paint, 1, nullptr, 0, input) == 1);
-        assert(offscreen.Compile(input.lease, bindings, Resolve, plan) == 1);
-        // 离屏回调不应迫使父层提前解析到LDR，再编码会改变低alpha的量化边界。
-        for (uint32_t n = 0; n < plan.operation_count; n++)
+        if (frame == 2 || frame == 3)
         {
-            assert(!(plan.operations[n].reason & 0x20000000u));
+            assert(layer.version != initial_version);
         }
-        for (uint32_t n = 0; n < plan.target_count; n++)
+        assert(session.Compile(input.lease, bindings, Resolve, plan) == 1);
+        const auto& begin = plan.operations[0];
+        assert(begin.kind == URUI_PLAN_LAYER && begin.layer_index == 0);
+        assert(bool(begin.reason & URUI_PLAN_LAYER_DAMAGE) == (frame < 4));
+        if (frame < 4)
         {
-            if (plan.targets[n].slot == -1)
-            {
-                assert(plan.targets[n].kind == 2);
-            }
+            assert(begin.bounds[0] == draws[1].tx - 2 && begin.bounds[1] == draws[1].ty - 2);
+            assert(begin.bounds[2] == 12 && begin.bounds[3] == 12);
         }
-        assert(offscreen.Release(plan.lease) == 1 && offscreen.Release(input.lease) == 1);
-    }
-    {
-        Session final_encoded;
-        final_encoded.Viewport(128, 128);
-        URUICommand draws[3]{};
-        std::array<float, 16> transforms[3] = {identity, identity, identity};
-        for (uint32_t n = 0; n < 3; n++)
-        {
-            draws[n].geometry = 1;
-            draws[n].texture = n == 1 ? 202 : 101;
-        }
-        URUIPlanTextureBinding textures[2] = {{101, 1, 0, 1}, {202, 1, 1, 1}};
-        URUIPlanBindings bindings{};
-        bindings.frame_flags = 1 | 8 | 16 | 64 | 256;
-        bindings.textures = textures;
-        bindings.texture_count = 2;
-        URUIPlanInputPacket input{};
-        URUIRenderPlanPacket plan{};
-        assert(final_encoded.Begin(201, draws, transforms, 3, nullptr, 0, nullptr, 0, input) == 1);
-        assert(final_encoded.Compile(input.lease, bindings, Resolve, plan) == 1);
-        // 最后仍处于编码域时，必须保留旧的直接解析；不能为了共享而新增整屏复制。
-        for (uint32_t n = 0; n < plan.operation_count; n++)
-        {
-            assert(!(plan.operations[n].reason & 0x20000000u));
-        }
-        for (uint32_t n = 0; n < plan.target_count; n++)
-        {
-            if (plan.targets[n].slot == -1)
-            {
-                assert(plan.targets[n].kind == 2);
-            }
-        }
-        assert(final_encoded.Release(plan.lease) == 1 && final_encoded.Release(input.lease) == 1);
+        assert(session.Release(input.lease) == 1 && session.Release(plan.lease) == 1);
     }
 }
+
 int main()
 {
-    SharedRasterPassRegression();
+    LocalImageInvalidation();
     watch_heap = true;
     auto* positive = ::operator new(4096);
     ::operator delete(positive);
@@ -591,11 +492,13 @@ int main()
                     assert(cached.Geometry(out.lease, out.operations[op].geometry, geometry) == 1);
                     for (uint32_t v = 0; v < geometry.vertex_count; v += 4, position++)
                     {
-                        if (geometry.vertices[v].parameter == 8)
+                        const uint32_t param =
+                            static_cast<uint32_t>(geometry.vertices[v].parameter) + out.operations[op].base_parameter;
+                        if (param == 8)
                         {
                             early = position;
                         }
-                        if (geometry.vertices[v].parameter == 9)
+                        if (param == 9)
                         {
                             late = position;
                         }
@@ -937,7 +840,7 @@ int main()
     URUIPlanBindings mask_bindings{};
     mask_bindings.textures = mask_textures;
     mask_bindings.texture_count = 2;
-    mask_bindings.frame_flags = 9;
+    mask_bindings.frame_flags = URUI_PLAN_RESOURCE_PIXEL_ALIGNED_ROOT;
     URUIPlanPreparePacket mask_ready{};
     assert(session.Begin(1, masked, matrices, 2, nullptr, 0, mask_layers, 8, input) == 1);
     assert(session.Resolve(input.lease, nullptr, Resolve, mask_ready, &mask_bindings) == 1 && mask_ready.ready);
@@ -945,16 +848,7 @@ int main()
     assert(session.Compile(input.lease, mask_bindings, Resolve, plan) == 1);
     assert(plan.operation_count == 1 && plan.operations[0].kind == URUI_PLAN_GEOMETRY && plan.operations[0].count == 1);
     assert(plan.operations[0].mask_texture == 8 && (int(plan.parameters[0].metadata[0]) & 256));
-    assert(plan.target_count == 1 && plan.targets[0].layer == 0 && plan.targets[0].slot == -1);
-    assert(session.Release(plan.lease) == 1 && session.Release(input.lease) == 1);
-    // 降为根几何的遮罩仍须保留屏幕读取语义，不能按原始离屏 layer 跳过。
-    mask_bindings.frame_flags = 1 | 8 | 16;
-    assert(session.Begin(1, masked, matrices, 2, nullptr, 0, mask_layers, 8, input) == 1);
-    assert(session.Resolve(input.lease, nullptr, Resolve, mask_ready, &mask_bindings) == 1 && mask_ready.ready);
-    assert(mask_ready.target_flags & 1);
-    assert(session.Compile(input.lease, mask_bindings, Resolve, plan) == 1 && plan.operation_count == 3);
-    assert(plan.operations[0].kind == URUI_PLAN_ROOT_COPY && plan.operations[2].kind == URUI_PLAN_ROOT_PRESENT);
-    assert(plan.operations[0].reason & 1);
+    assert(plan.target_count == 0);
     assert(session.Release(plan.lease) == 1 && session.Release(input.lease) == 1);
     mask_bindings.frame_flags = 0;
     assert(session.Begin(1, masked, matrices, 2, nullptr, 0, mask_layers, 8, input) == 1);
@@ -1012,7 +906,7 @@ int main()
     }
     assert(saved_mask && mask_source &&
            std::memcmp(saved_mask->bounds, mask_source->bounds, sizeof(saved_mask->bounds)) == 0);
-    assert((saved_mask->flags & 8) && saved_mask->reserved == 2);
+    assert((saved_mask->flags & URUI_PLAN_LAYER_REGION_ALIAS) && saved_mask->alias_layer == 2);
     assert(session.Release(input.lease) == 1);
     // A write after saving requires a distinct snapshot, even with the same bounds.
     std::copy_n(mask_layers, 3, alias_layers);
@@ -1102,13 +996,14 @@ int main()
     {
         assert(session.Begin(3, commands, matrices, 3, nullptr, 0, nullptr, 0, item) == 1);
     }
-    assert(session.Begin(3, commands, matrices, 3, nullptr, 0, nullptr, 0, input) == -5 && !input.lease);
+    assert(session.Begin(3, commands, matrices, 3, nullptr, 0, nullptr, 0, input) == URUI_ERR_REENTRANCY &&
+           !input.lease);
     for (auto& item : held)
     {
         assert(session.Release(item.lease) == 1);
     }
     Session tiny(128, 128);
-    assert(tiny.Begin(1, commands, matrices, 3, nullptr, 0, nullptr, 0, input) == -4 && !input.lease);
+    assert(tiny.Begin(1, commands, matrices, 3, nullptr, 0, nullptr, 0, input) == URUI_ERR_BUDGET && !input.lease);
 
     // Extension callbacks still receive effective source colors/UV, even though
     // the upstream native topology is now white with unit UV.
@@ -1174,7 +1069,7 @@ int main()
         assert(leased.Begin(251, &draw, &identity, 1, &image, 1, nullptr, 0, in) == 1);
         assert(leased.Resolve(in.lease, nullptr, larger, request) == 1);
         const auto identity_before = request.requests[0].geometry;
-        assert(leased.Geometry(in.lease, identity_before, source) == -4 && !source.vertices);
+        assert(leased.Geometry(in.lease, identity_before, source) == URUI_ERR_BUDGET && !source.vertices);
         assert(held.vertices[0].r == 255 && held.vertices[20].x == 80);
         assert(leased.Release(output.lease) == 1);
         assert(leased.Geometry(in.lease, identity_before, source) == 1 && source.vertex_count == 16);
@@ -1588,7 +1483,7 @@ int main()
     URUIPaintCommand analytic_paint{600, 750, 1, 0};
     URUIPlanExternalBinding analytic_provider{1, 8};
     auto analytic_bindings = mask_bindings;
-    analytic_bindings.frame_flags = 9;
+    analytic_bindings.frame_flags = URUI_PLAN_RESOURCE_PIXEL_ALIGNED_ROOT;
     analytic_bindings.externals = &analytic_provider;
     analytic_bindings.external_count = 1;
     analytic_bindings.external_geometry = &analytic_geometry;
@@ -1605,7 +1500,7 @@ int main()
         assert(plan.operations[0].mask_texture == 0 && (int(plan.parameters[0].metadata[0]) & 256));
         assert(plan.extra_parameter_count == 8 && plan.extra_parameters[8] == analytic_draw.parameter.tint[0] &&
                plan.extra_parameters[11] == 4);
-        assert(plan.target_count == 1 && plan.targets[0].layer == 0 && plan.targets[0].slot == -1);
+        assert(plan.target_count == 0);
         const auto geometry = plan.operations[0].geometry;
         assert(session.Release(plan.lease) == 1 && session.Release(input.lease) == 1);
         return geometry;
@@ -1666,7 +1561,9 @@ int main()
            plan.operations[0].program == 800);
     assert(session.Geometry(plan.lease, plan.operations[0].geometry, mesh) == 1 && mesh.vertex_count == 16 &&
            mesh.index_count == 24);
-    assert(mesh.vertices[4].x == 0 && mesh.vertices[4].parameter == 3 && plan.parameters[3].matrix[12] == 16);
+    assert(mesh.vertices[4].x == 0 &&
+           static_cast<uint32_t>(mesh.vertices[4].parameter) + plan.operations[0].base_parameter == 3 &&
+           plan.parameters[3].matrix[12] == 16);
     const auto external_batch = plan.operations[0].geometry;
     external_draws[0].parameter.matrix[12] = 5;
     assert(session.Release(plan.lease) == 1 && session.Release(input.lease) == 1);
@@ -1861,7 +1758,7 @@ int main()
         assert(session.Geometry(plan.lease, plan.operations[n].geometry, mesh) == 1);
         for (uint32_t v = 0; v < mesh.vertex_count; v += 4)
         {
-            assert(mesh.vertices[v].parameter == float(expected++));
+            assert(static_cast<uint32_t>(mesh.vertices[v].parameter) + plan.operations[n].base_parameter == expected++);
         }
     }
     assert(expected == 27);
@@ -1911,13 +1808,6 @@ int main()
     {
         Session targets;
         URUIPlanBindings resources{};
-        resources.frame_flags = 8;
-        assert(targets.Begin(9, commands, matrices, 1, nullptr, 0, nullptr, 0, input) == 1);
-        assert(targets.Compile(input.lease, resources, Resolve, plan) == 1);
-        assert(plan.target_count == 1 && plan.targets[0].layer == 0 && plan.targets[0].slot == -1 &&
-               plan.targets[0].kind == 2);
-        assert(plan.targets[0].first_operation == 0 && plan.targets[0].last_operation == 0);
-        assert(targets.Release(plan.lease) == 1 && targets.Release(input.lease) == 1);
         URUILayerCommand opacity_layers[3]{};
         opacity_layers[0].kind = 1;
         opacity_layers[0].target = 1;
@@ -1946,7 +1836,7 @@ int main()
         assert(primary && scratch);
         assert(targets.Release(plan.lease) == 1 && targets.Release(input.lease) == 1);
     }
-    // 颜色附件可读取时，CSS over 不再申请离屏背景；表面采样仍保留原有读回。
+    // Surface readback still requests URUI_PLAN_TARGET_ROOT_CAPTURE while ordinary groups need none.
     {
         Session fetch;
         fetch.Viewport(128, 128);
@@ -1965,25 +1855,14 @@ int main()
         layers[3].source = 1;
         layers[3].command_index = 1;
         URUIPlanBindings resources{};
-        resources.frame_flags = 2 | 16 | 64;
+        resources.frame_flags = URUI_PLAN_RESOURCE_SCREEN_OUTPUT | URUI_PLAN_RESOURCE_FRAMEBUFFER_FETCH;
         assert(fetch.Begin(810, &draw, &identity, 1, nullptr, 0, layers, 4, input) == 1);
         assert(fetch.Compile(input.lease, resources, Resolve, plan) == 1 && plan.operation_count > 0);
         for (uint32_t n = 0; n < plan.target_count; n++)
         {
-            assert(plan.targets[n].kind != 2 && plan.targets[n].kind != 4 && plan.targets[n].kind != 5 &&
-                   plan.targets[n].kind != 6);
+            assert(plan.targets[n].kind != URUI_PLAN_TARGET_ROOT_CAPTURE);
         }
         assert(fetch.Release(plan.lease) == 1 && fetch.Release(input.lease) == 1);
-        // 没有能力声明时仍需 CSS 背景，不把后端能力变成用户配置。
-        resources.frame_flags = 2 | 16;
-        assert(fetch.Begin(811, &draw, &identity, 1, nullptr, 0, layers, 4, input) == 1);
-        assert(fetch.Compile(input.lease, resources, Resolve, plan) == 1);
-        bool backdrop = false;
-        for (uint32_t n = 0; n < plan.target_count; n++)
-        {
-            backdrop |= plan.targets[n].kind == 4;
-        }
-        assert(backdrop && fetch.Release(plan.lease) == 1 && fetch.Release(input.lease) == 1);
         URUILayerCommand surface_layers[5]{};
         surface_layers[0].kind = 1;
         surface_layers[0].target = 1;
@@ -1995,38 +1874,15 @@ int main()
         surface_layers[3] = layers[2];
         surface_layers[4] = layers[3];
         // 显式表面读取发生在创建目标后、几何前。
-        resources.frame_flags = 2 | 16 | 64;
+        resources.frame_flags = URUI_PLAN_RESOURCE_SCREEN_OUTPUT | URUI_PLAN_RESOURCE_FRAMEBUFFER_FETCH;
         assert(fetch.Begin(812, &draw, &identity, 1, nullptr, 0, surface_layers, 5, input) == 1);
         assert(fetch.Compile(input.lease, resources, Resolve, plan) == 1);
         bool capture = false;
         for (uint32_t n = 0; n < plan.target_count; n++)
         {
-            capture |= plan.targets[n].kind == 6;
+            capture |= plan.targets[n].kind == URUI_PLAN_TARGET_ROOT_CAPTURE;
         }
         assert(capture && fetch.Release(plan.lease) == 1 && fetch.Release(input.lease) == 1);
-    }
-    // 普通图元只在实际高精度目标上直写；8位根目标仍保留编码累积。
-    {
-        Session precision;
-        precision.Viewport(128, 128);
-        URUICommand draw{};
-        draw.geometry = 1;
-        for (int high = 0; high < 2; high++)
-        {
-            URUIPlanBindings resources{};
-            resources.frame_flags = 2 | 8 | 16 | 64 | (high ? 128 : 0);
-            assert(precision.Begin(820 + high, &draw, &identity, 1, nullptr, 0, nullptr, 0, input) == 1);
-            assert(precision.Compile(input.lease, resources, Resolve, plan) == 1);
-            bool encoded = false;
-            bool root = false;
-            for (uint32_t n = 0; n < plan.target_count; n++)
-            {
-                encoded |= plan.targets[n].kind == 2;
-                root |= plan.targets[n].kind == 5;
-            }
-            assert(encoded == !high && root == !high);
-            assert(precision.Release(plan.lease) == 1 && precision.Release(input.lease) == 1);
-        }
     }
     // A rejected unpublished large input must not strand high-water storage
     // that permanently prevents a much smaller valid input from compiling.
@@ -2035,7 +1891,8 @@ int main()
         Session recovery(64u * 1024 * 1024, limit);
         std::vector<URUICommand> oversized(1024, commands[0]);
         std::vector<std::array<float, 16>> large_matrices(1024, identity);
-        assert(recovery.Begin(12, oversized.data(), large_matrices.data(), 1024, nullptr, 0, nullptr, 0, input) == -4 &&
+        assert(recovery.Begin(12, oversized.data(), large_matrices.data(), 1024, nullptr, 0, nullptr, 0, input) ==
+                   URUI_ERR_BUDGET &&
                input.lease == 0);
         assert(recovery.Begin(12, commands, matrices, 1, nullptr, 0, nullptr, 0, input) == 1);
         assert(recovery.Compile(input.lease, bindings, Resolve, plan) == 1);
@@ -2060,22 +1917,28 @@ int main()
             assert(images.Resolve(input.lease, nullptr, Resolve, request) == 1);
             while (!request.ready)
             {
-                auto pending = request.requests[0];
-                auto fill = [&](const URUIPlanPrepareRequest&, float* rows, uint32_t count)
+                assert(request.count <= 8);
+                URUIPlanFeedback replies[8]{};
+                for (uint32_t r = 0; r < request.count; ++r)
                 {
-                    assert(count == 2);
-                    std::fill_n(rows, 8, 0);
-                    rows[4] = field;
-                    return 1;
-                };
-                assert(images.SetImageProgram(input.lease, pending.request + 1, 71, 2, fill) == -2);
-                assert(images.SetImageProgram(input.lease, pending.request, 71, 2, fill) == 1);
-                assert(images.SetImageProgram(input.lease, pending.request, 71, 2, fill) == -5);
-                URUIPlanFeedback feedback{};
-                feedback.request = pending.request;
-                feedback.kind = pending.kind;
-                feedback.ink[2] = feedback.ink[3] = 8;
-                assert(images.Resolve(input.lease, &feedback, Resolve, request) == 1);
+                    auto pending = request.requests[r];
+                    auto fill = [&](const URUIPlanPrepareRequest&, float* rows, uint32_t count)
+                    {
+                        assert(count == 2);
+                        std::fill_n(rows, 8, 0);
+                        rows[4] = field;
+                        return 1;
+                    };
+                    assert(images.SetImageProgram(input.lease, pending.request + 1000, 71, 2, fill) == -2);
+                    assert(images.SetImageProgram(input.lease, pending.request, 71, 2, fill) == 1);
+                    assert(images.SetImageProgram(input.lease, pending.request, 71, 2, fill) == URUI_ERR_REENTRANCY);
+                    URUIPlanFeedback feedback{};
+                    feedback.request = pending.request;
+                    feedback.kind = pending.kind;
+                    feedback.ink[2] = feedback.ink[3] = 8;
+                    replies[r] = feedback;
+                }
+                assert(images.Resolve(input.lease, replies, request.count, Resolve, request) == 1);
             }
             assert(images.Compile(input.lease, bindings, Resolve, plan) == 1);
             assert(plan.operation_count == 1 && plan.operations[0].kind == URUI_PLAN_PARAMETER_IMAGE);
@@ -2210,23 +2073,31 @@ int main()
             assert(templates.Resolve(input.lease, nullptr, Resolve, request) == 1);
             while (!request.ready)
             {
-                auto pending = request.requests[0];
-                auto local = identity;
-                local[12] = float(4 + pending.slot * 5);
-                assert(templates.SetImageGeometry(input.lease, pending.request + 1, geometry, local.data()) == -2);
-                assert(templates.SetImageGeometry(input.lease, pending.request, geometry, local.data()) == 1);
-                assert(templates.SetImageGeometry(input.lease, pending.request, geometry, local.data()) == -5);
-                auto fill = [](const URUIPlanPrepareRequest&, float* rows, uint32_t count)
+                assert(request.count <= 8);
+                URUIPlanFeedback replies[8]{};
+                for (uint32_t r = 0; r < request.count; ++r)
                 {
-                    std::fill_n(rows, count * 4, 0);
-                    return 1;
-                };
-                assert(templates.SetImageProgram(input.lease, pending.request, 91, 3, fill) == 1);
-                URUIPlanFeedback feedback{};
-                feedback.request = pending.request;
-                feedback.kind = pending.kind;
-                feedback.ink[2] = feedback.ink[3] = 8;
-                assert(templates.Resolve(input.lease, &feedback, Resolve, request) == 1);
+                    auto pending = request.requests[r];
+                    auto local = identity;
+                    local[12] = float(4 + pending.slot * 5);
+                    assert(templates.SetImageGeometry(input.lease, pending.request + 1000, geometry, local.data()) ==
+                           -2);
+                    assert(templates.SetImageGeometry(input.lease, pending.request, geometry, local.data()) == 1);
+                    assert(templates.SetImageGeometry(input.lease, pending.request, geometry, local.data()) ==
+                           URUI_ERR_REENTRANCY);
+                    auto fill = [](const URUIPlanPrepareRequest&, float* rows, uint32_t count)
+                    {
+                        std::fill_n(rows, count * 4, 0);
+                        return 1;
+                    };
+                    assert(templates.SetImageProgram(input.lease, pending.request, 91, 3, fill) == 1);
+                    URUIPlanFeedback feedback{};
+                    feedback.request = pending.request;
+                    feedback.kind = pending.kind;
+                    feedback.ink[2] = feedback.ink[3] = 8;
+                    replies[r] = feedback;
+                }
+                assert(templates.Resolve(input.lease, replies, request.count, Resolve, request) == 1);
             }
             assert(templates.Compile(input.lease, bindings, Resolve, plan) == 1 && plan.operation_count == 1 &&
                    plan.operations[0].kind == 8);
@@ -2333,7 +2204,7 @@ int main()
             }
             assert(operation && operation->program == 91 && operation->geometry);
             assert(captured.Geometry(plan.lease, operation->geometry, mesh) == 1 && mesh.vertex_count == 4);
-            const auto parameter = uint32_t(mesh.vertices[0].parameter);
+            const auto parameter = uint32_t(mesh.vertices[0].parameter) + operation->base_parameter;
             assert(parameter < plan.parameter_count);
             assert(plan.parameters[parameter].matrix[12] == 5);
             assert(plan.extra_parameters[60] == float(round));
@@ -2385,91 +2256,7 @@ int main()
         assert(numeric.Compile(input.lease, bindings, Resolve, plan) == -1 && !plan.lease && !plan.operations);
         assert(numeric.Release(input.lease) == 1);
     }
-    // Screen roots that must be sampled use one native-planned texture; explicit
-    // texture roots and streams containing only texture-domain draws need none.
-    {
-        Session screen;
-        URUICommand draw{};
-        draw.geometry = 1;
-        draw.texture = 7;
-        URUIPlanTextureBinding texture{7, 1, 0, 1};
-        URUIPlanBindings resources{};
-        resources.textures = &texture;
-        resources.texture_count = 1;
-        resources.frame_flags = 8 | 16;
-        URUIPlanPreparePacket ready{};
-        assert(screen.Begin(90, &draw, &identity, 1, nullptr, 0, nullptr, 0, input) == 1);
-        assert(screen.Resolve(input.lease, nullptr, Resolve, ready, &resources) == 1 && ready.ready);
-        assert(ready.target_flags == 1);
-        assert(screen.Compile(input.lease, resources, Resolve, plan) == 1);
-        assert(plan.operation_count == 3 && plan.operations[0].kind == 9 &&
-               plan.operations[1].kind == URUI_PLAN_GEOMETRY && plan.operations[2].kind == 10);
-        bool root = false;
-        for (uint32_t n = 0; n < plan.target_count; n++)
-        {
-            if (plan.targets[n].kind == 5)
-            {
-                const auto& request = plan.targets[n];
-                assert(request.layer == 0 && request.slot == -2 && request.first_operation == 0 &&
-                       request.last_operation == 2);
-                root = true;
-            }
-        }
-        bool full_capture = false;
-        for (uint32_t n = 0; n < plan.target_count; n++)
-        {
-            if (plan.targets[n].kind == 6)
-            {
-                assert(plan.targets[n].slot == -3 && plan.targets[n].layer == 0);
-                full_capture = true;
-            }
-        }
-        // 完整根快照在一次标准 Blit 内归一化，不应再申请同尺寸中转目标。
-        assert(!full_capture);
-        assert(root && screen.Release(plan.lease) == 1 && screen.Release(input.lease) == 1);
-        // Identical inputs exercise cached native operations without duplicate copies.
-        assert(screen.Begin(90, &draw, &identity, 1, nullptr, 0, nullptr, 0, input) == 1);
-        assert(screen.Compile(input.lease, resources, Resolve, plan) == 1 && plan.operation_count == 3);
-        assert(screen.Release(plan.lease) == 1 && screen.Release(input.lease) == 1);
-        for (int scenario = 0; scenario < 3; scenario++)
-        {
-            resources.frame_flags = scenario == 0 ? 8 : 8 | 16;
-            texture.domain = scenario == 1 ? 1 : 0;
-            assert(screen.Begin(91, &draw, &identity, scenario == 2 ? 0 : 1, nullptr, 0, nullptr, 0, input) == 1);
-            assert(screen.Resolve(input.lease, nullptr, Resolve, ready, &resources) == 1 && ready.ready &&
-                   ready.target_flags == 0);
-            assert(screen.Compile(input.lease, resources, Resolve, plan) == 1);
-            for (uint32_t n = 0; n < plan.target_count; n++)
-            {
-                assert(plan.targets[n].kind != 5);
-            }
-            for (uint32_t n = 0; n < plan.operation_count; n++)
-            {
-                assert(plan.operations[n].kind != 9 && plan.operations[n].kind != 10);
-            }
-            assert(screen.Release(plan.lease) == 1 && screen.Release(input.lease) == 1);
-        }
-    }
-    {
-        Session empty_callback;
-        URUICommand draw{};
-        draw.geometry = 1;
-        URUIPaintCommand paint{11, 22, 0, 0};
-        URUIPlanBindings resources{};
-        resources.frame_flags = 8 | 16;
-        URUIPlanPreparePacket ready{};
-        assert(empty_callback.Begin(92, &draw, &identity, 1, &paint, 1, nullptr, 0, input) == 1);
-        assert(empty_callback.Resolve(input.lease, nullptr, Resolve, ready, &resources) == 1 && ready.ready &&
-               ready.target_flags == 1);
-        URUIPlanExternalBinding callback{0, 0};
-        resources.externals = &callback;
-        resources.external_count = 1;
-        assert(empty_callback.Compile(input.lease, resources, Resolve, plan) == 1 && plan.operation_count == 0 &&
-               plan.target_count == 0);
-        assert(empty_callback.Release(plan.lease) == 1 && empty_callback.Release(input.lease) == 1);
-    }
-    // Only the native plan chooses a proven root region, and raw-paint input
-    // contracts cannot silently reintroduce original geometry after preparation.
+    // Raw-paint input contracts cannot silently reintroduce original geometry after preparation.
     {
         Session region;
         region.Viewport(640, 360);
@@ -2478,24 +2265,8 @@ int main()
         draw.tx = 64;
         draw.ty = 32;
         URUIPlanBindings resources{};
-        resources.frame_flags = 1 | 8 | 16 | 32;
-        assert(region.Begin(94, &draw, &identity, 1, nullptr, 0, nullptr, 0, input) == 1);
-        assert(region.Compile(input.lease, resources, Resolve, plan) == 1);
-        const auto& copy = plan.operations[0];
-        assert(copy.kind == URUI_PLAN_ROOT_COPY && (copy.reason & 1));
-        assert(copy.bounds[0] == 64 && copy.bounds[1] == 32 && copy.bounds[2] == 72 && copy.bounds[3] == 40);
-        bool screen_capture = false;
-        for (uint32_t n = 0; n < plan.target_count; n++)
-        {
-            if (plan.targets[n].kind == 6)
-            {
-                assert(plan.targets[n].slot == -3 && plan.targets[n].layer == 0);
-                screen_capture = true;
-            }
-        }
-        // 纯几何可直接把屏幕来源的归一化合入编码，无需第三个根目标。
-        assert(!screen_capture);
-        assert(region.Release(plan.lease) == 1 && region.Release(input.lease) == 1);
+        resources.frame_flags =
+            URUI_PLAN_RESOURCE_PIXEL_ALIGNED_ROOT | URUI_PLAN_RESOURCE_SCREEN_OUTPUT | URUI_PLAN_RESOURCE_SHADER_IMAGE_PAINT;
         URUIPaintCommand painter{11, 22, 0, 0};
         URUIPlanPreparePacket ready{};
         assert(region.Begin(95, &draw, &identity, 1, &painter, 1, nullptr, 0, input) == 1);
@@ -2510,43 +2281,6 @@ int main()
         raw.flags = 2;
         assert(region.Compile(input.lease, resources, Resolve, plan) == -1 && !plan.lease);
         assert(region.Release(input.lease) == 1);
-    }
-    // A group can take the root snapshot already requested by its composite;
-    // it must not add a second full-screen working copy just to read that snapshot.
-    {
-        Session group;
-        group.Viewport(640, 360);
-        URUICommand draw{};
-        draw.geometry = 1;
-        URUILayerCommand layers[4]{};
-        layers[0].kind = 1;
-        layers[0].target = 1;
-        layers[1].kind = 2;
-        layers[1].source = 1;
-        layers[1].command_index = 1;
-        layers[2].kind = 4;
-        layers[2].source = 1;
-        layers[2].command_index = 1;
-        layers[3].kind = 5;
-        layers[3].source = 1;
-        layers[3].command_index = 1;
-        URUIPlanBindings resources{};
-        resources.frame_flags = 1 | 2 | 8 | 16 | 32;
-        URUIPlanPreparePacket ready{};
-        assert(group.Begin(96, &draw, &identity, 1, nullptr, 0, layers, 4, input) == 1);
-        assert(group.Resolve(input.lease, nullptr, Resolve, ready, &resources) == 1 && ready.ready &&
-               ready.target_flags == 0);
-        assert(group.Compile(input.lease, resources, Resolve, plan) == 1);
-        bool backdrop = false;
-        bool screen_capture = false;
-        for (uint32_t n = 0; n < plan.target_count; n++)
-        {
-            assert(plan.targets[n].kind != 5);
-            backdrop |= plan.targets[n].kind == 4;
-            screen_capture |= plan.targets[n].kind == 6;
-        }
-        // 没有根工作目标时，局部背景仍须解析屏幕别名，不能一并删除。
-        assert(backdrop && screen_capture && group.Release(plan.lease) == 1 && group.Release(input.lease) == 1);
     }
     std::cout << "render plan compiler contracts passed\n";
 }

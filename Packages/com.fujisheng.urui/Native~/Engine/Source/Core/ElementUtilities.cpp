@@ -16,12 +16,22 @@
 #include "Layout/LayoutEngine.h"
 #include "TransformState.h"
 #include <limits>
+#if defined(URUI_DEBUG)
+#include "Debug/lookup_probe.h"
+#endif
 
 namespace URUI
 {
 
     Element* ElementUtilities::GetElementById(Element* root_element, const String& id)
     {
+#if defined(URUI_DEBUG)
+        URUI::LookupProbe::Scope lookupScope;
+        if (URUI::LookupProbe::inline_enabled)
+        {
+            return URUI::LookupProbe::InlineFind(root_element, id, lookupScope);
+        }
+#endif
         // Breadth first search on elements for the corresponding id
         typedef Queue<Element*> SearchQueue;
         SearchQueue search_queue;
@@ -29,6 +39,9 @@ namespace URUI
 
         while (!search_queue.empty())
         {
+#if defined(URUI_DEBUG)
+            lookupScope.Visit(search_queue.size());
+#endif
             Element* element = search_queue.front();
             search_queue.pop();
 

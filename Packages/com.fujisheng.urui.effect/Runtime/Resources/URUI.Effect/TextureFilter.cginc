@@ -10,16 +10,19 @@
     return lerp(source, target, strength * _BandColor.a);
    }
 
-float4 ApplyTextureFilter(float4 color,float2 uv,float time,float2 referenceSize,float inputRate,float saturation,float brightness)
+float2 ComputeTextureFilterLocal(float2 uv, float2 referenceSize)
 {
     float angle=radians(_Rotation), s=sin(angle), c=cos(angle);
     float2 centered=(uv-0.5)*referenceSize/max(referenceSize.x,referenceSize.y);
-    float2 local=0.5+mul(float2x2(c,-s,s,c),centered)/max(abs(c-s),abs(c+s));
-    float rate=frac(_Speed*time+inputRate*0.9999);
+    return 0.5+mul(float2x2(c,-s,s,c),centered)/max(abs(c-s),abs(c+s));
+}
+
+float4 ApplyTextureFilterCore(float4 color, float2 local, float time, float rate, float saturation, float brightness, bool premultipliedOut)
+{
     if (_FilterMode<1.5)
     {
-     float2 uv=local*lerp(100,1,_Width)+float2(-rate*2,0)+time*_PatternSpeed.xy;
-     float alpha=tex2D(_PatternTex,uv).a;
+     float2 puv=local*lerp(100,1,_Width)+float2(-rate*2,0)+time*_PatternSpeed.xy;
+     float alpha=tex2D(_PatternTex,puv).a;
      float ramp=min(saturate((local.x-_Range.x)/max(0.001,_Range.y-_Range.x)),0.995);
      float mask=step(1-alpha,ramp);
      color.rgb=BlendColor(color.rgb,mask,1);
@@ -37,11 +40,27 @@ float4 ApplyTextureFilter(float4 color,float2 uv,float time,float2 referenceSize
     // The document consumes straight alpha. Preserve emission when coverage drops;
     // a small positive coverage also represents fully additive light without NaN/Inf.
     float coverage=max(1.0/4096.0,1-glow*intensity);
-    color.rgb/=coverage;
-    color.a*=coverage;
+    float origAlpha=color.a;
+    if (!premultipliedOut)
+    {
+     color.rgb/=coverage;
+    }
+    color.a=origAlpha*coverage;
     color.rgb=lerp(dot(color.rgb,float3(.3,.59,.11)).xxx,color.rgb,saturate(saturation));
     color.rgb*=max(0,brightness);
+    if (premultipliedOut)
+    {
+     // Dividing by coverage then multiplying by (origAlpha * coverage) cancels coverage algebraically.
+     color.rgb*=origAlpha;
+    }
     return color;
+}
+
+float4 ApplyTextureFilter(float4 color,float2 uv,float time,float2 referenceSize,float inputRate,float saturation,float brightness)
+{
+    float2 local=ComputeTextureFilterLocal(uv,referenceSize);
+    float rate=frac(_Speed*time+inputRate*0.9999);
+    return ApplyTextureFilterCore(color,local,time,rate,saturation,brightness,false);
 }
 
 float4 ApplyTextureFilter(float4 color,float2 uv,float time)

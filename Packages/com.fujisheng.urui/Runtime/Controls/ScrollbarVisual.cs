@@ -33,6 +33,13 @@ namespace URUI.Controls
         bool? shown;
         float writtenLength = float.NaN;
         float writtenPosition = float.NaN;
+        bool writtenMin;
+        float writtenLimit = float.NaN;
+        float writtenOffset = float.NaN;
+        int writtenAxis = -1;
+        bool? writtenEnabled;
+        float lastObservedScroll = float.NaN;
+        URUI.Internal.Interop.NativeMethods.ElementRefreshStamp lastStamp;
 
         /// <summary>
         /// 三个节点须在同一文档，滑钮是轨道的直接子节点；轨道位于视口外。
@@ -125,6 +132,11 @@ namespace URUI.Controls
         }
         void RefreshNow()
         {
+            if (previousAxis >= 0 && document.TryGetRefreshStamp(out var stamp) && stamp.Matches(lastStamp)
+                && viewport.ScrollOffset[previousAxis] == lastObservedScroll)
+            {
+                return;
+            }
             int axis = Axis;
             if (previousAxis >= 0 && previousAxis != axis)
             {
@@ -141,7 +153,9 @@ namespace URUI.Controls
             var snapshot = document.Styles.GetComputed(thumb);
             snapshot.TryGetPixels(axis == 0 ? "min-width" : "min-height", out var minimum);
             thumbLength = Mathf.Clamp(Mathf.Max(minimum, content > 0 ? trackLength * page / content : trackLength), 0, trackLength);
-            float offset = Mathf.Clamp(viewport.ScrollOffset[axis], 0, limit);
+            float rawScroll = viewport.ScrollOffset[axis];
+            lastObservedScroll = rawScroll;
+            float offset = Mathf.Clamp(rawScroll, 0, limit);
             thumbPosition = limit > 0 ? (trackLength - thumbLength) * offset / limit : 0;
             if (writtenLength != thumbLength)
             {
@@ -159,11 +173,36 @@ namespace URUI.Controls
                 track.Visible = visible;
                 shown = visible;
             }
-            track.SetAttribute("aria-valuemin", "0");
-            track.SetAttribute("aria-valuemax", limit.ToString("R", CultureInfo.InvariantCulture));
-            track.SetAttribute("aria-valuenow", offset.ToString("R", CultureInfo.InvariantCulture));
-            track.SetAttribute("aria-orientation", axis == 0 ? "horizontal" : "vertical");
-            track.SetAttribute("aria-disabled", viewport.EnabledInHierarchy ? "false" : "true");
+            if (!writtenMin)
+            {
+                track.SetAttribute("aria-valuemin", "0");
+                writtenMin = true;
+            }
+            if (writtenLimit != limit)
+            {
+                track.SetAttribute("aria-valuemax", limit.ToString("R", CultureInfo.InvariantCulture));
+                writtenLimit = limit;
+            }
+            if (writtenOffset != offset)
+            {
+                track.SetAttribute("aria-valuenow", offset.ToString("R", CultureInfo.InvariantCulture));
+                writtenOffset = offset;
+            }
+            if (writtenAxis != axis)
+            {
+                track.SetAttribute("aria-orientation", axis == 0 ? "horizontal" : "vertical");
+                writtenAxis = axis;
+            }
+            bool enabled = viewport.EnabledInHierarchy;
+            if (writtenEnabled != enabled)
+            {
+                track.SetAttribute("aria-disabled", enabled ? "false" : "true");
+                writtenEnabled = enabled;
+            }
+            if (document.TryGetRefreshStamp(out var afterStamp))
+            {
+                lastStamp = afterStamp;
+            }
         }
         float Coordinate(Vector2 world)
         {

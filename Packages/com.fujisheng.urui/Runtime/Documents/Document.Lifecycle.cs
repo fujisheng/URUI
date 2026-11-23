@@ -7,10 +7,13 @@ namespace URUI.Documents
 {
     public sealed partial class Document
     {
+        bool destroying;
+
         void Awake()
         {
             ownerThread = Thread.CurrentThread.ManagedThreadId;
         }
+
         void OnEnable()
         {
             if (!loadRequested)
@@ -30,6 +33,7 @@ namespace URUI.Documents
                 Load(source, sourceUrl);
             }
         }
+
         void Start()
         {
             if (!loadRequested || IsLoaded)
@@ -45,29 +49,43 @@ namespace URUI.Documents
                 Load(source, sourceUrl);
             }
         }
+
         void OnDisable()
         {
-            ReleaseContent();
+            ReleaseContent(clearDelegatesAfterRelease: false);
         }
+
         void OnDestroy()
         {
-            ReleaseContent();
+            destroying = true;
+            // Preserve Unloaded subscribers when ReleaseContent is deferred until the
+            // native dispatch unwinds; clear delegates only after retirement completes.
+            if (!ReleaseContent(clearDelegatesAfterRelease: true))
+            {
+                ClearLifecycleDelegates();
+            }
             if (!ReferenceEquals(surface, null))
             {
                 surface.Forget(this);
             }
+        }
+
+        void ClearLifecycleDelegates()
+        {
             Loaded = null;
             Unloaded = null;
             layoutUpdated = null;
             layoutCallbacks = null;
         }
+
         internal void SuspendForSurface()
         {
-            ReleaseContent();
+            ReleaseContent(clearDelegatesAfterRelease: false);
         }
+
         internal void RestoreForSurface()
         {
-            if (this && isActiveAndEnabled && loadRequested)
+            if (this && !destroying && isActiveAndEnabled && loadRequested)
             {
                 OnEnable();
             }
@@ -102,62 +120,80 @@ namespace URUI.Documents
 
         void RetireContent(ContentState state, bool notify)
         {
-            var selected = content;
-            content = state;
-            try
+            var surfaceHandle = state.SurfaceHandle;
+            if (!ReferenceEquals(host, null) && host.Ready)
             {
                 host.PrepareDocumentRetirement();
-                if (NativeMethods.urui_document_close(state.Handle) != 1)
+                if (NativeMethods.urui_document_close(surfaceHandle, state.Handle) != NativeStatus.Ok)
                 {
-                    throw new InvalidOperationException("URUI 文档关闭失败：" + NativeMethods.LastError());
+                    throw new InvalidOperationException("URUI 文档关闭失败：" + NativeMethods.LastError(surfaceHandle));
                 }
-                state.Retired = true;
                 host.ReleaseDocumentResources(state.Handle);
-                foreach (var element in state.Elements.Values)
+            }
+            state.Retired = true;
+            state.InvalidationSerial++;
+            foreach (var element in state.Elements.Values)
+            {
+                element.Invalidate();
+            }
+            state.Elements.Clear();
+            state.ElementSnapshot = null;
+            state.EffectLayouts.Clear();
+            ReleaseEffects(state);
+            ReleasePainters(state);
+            if (!ReferenceEquals(surface, null))
+            {
+                surface.Unbind(surfaceHandle, state.Handle);
+                if (ReferenceEquals(activeContent, state))
                 {
-                    element.Invalidate();
+                    surface.MarkDocumentUnloaded(this);
                 }
-                state.Elements.Clear();
-                state.ElementSnapshot = null;
-                state.EffectLayouts.Clear();
-                ReleaseEffects();
-                ReleasePainters();
-                surface.Unbind(state.Handle);
-                if (notify)
+                if (candidateContent == null && !surface.HasLoadedDocuments && !ReferenceEquals(host, null) && host.Ready)
                 {
-                    NotifyLifecycle(Unloaded);
+                    host.ReleaseEmptySurfaceTargets();
                 }
             }
-            finally
+            if (notify)
             {
-                content = selected;
+                NotifyLifecycle(Unloaded);
             }
         }
 
-        void ReleaseContent()
+        // Returns true if deferred so OnDestroy keeps Unloaded subscribers alive until drain.
+        bool ReleaseContent(bool clearDelegatesAfterRelease)
         {
-            if (DeferLifecycle(ReleaseContent))
+            if (DeferLifecycle(() => ReleaseContent(clearDelegatesAfterRelease)))
             {
-                return;
+                return true;
             }
             if (activeContent == null)
             {
-                return;
+                if (clearDelegatesAfterRelease)
+                {
+                    ClearLifecycleDelegates();
+                }
+                return false;
             }
+            var target = activeContent;
             changingContent = true;
             surface.BeginTransaction();
             try
             {
-                content = activeContent;
-                RetireContent(activeContent, true);
                 content = activeContent = null;
+                surface.MarkDocumentUnloaded(this);
+                RetireContent(target, notify: true);
             }
             finally
             {
                 changingContent = false;
                 surface.EndTransaction();
+                if (clearDelegatesAfterRelease)
+                {
+                    ClearLifecycleDelegates();
+                }
                 FinishNativeCall();
             }
+            return false;
         }
     }
 }

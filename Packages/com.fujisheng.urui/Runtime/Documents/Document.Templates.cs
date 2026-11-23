@@ -17,7 +17,7 @@ namespace URUI.Documents
         {
             CheckThread();
             RequireName(source, nameof(source));
-            if (Defer(() => ReleaseImage(source)))
+            if (Defer(() => ReleaseImage(source), DeferInvalidation.None))
             {
                 return;
             }
@@ -47,7 +47,7 @@ namespace URUI.Documents
             {
                 throw new ArgumentNullException(nameof(asset));
             }
-            if (Defer(() => AddStyleSheet(asset, sourceUrl, beforeAuthor)))
+            if (Defer(() => AddStyleSheet(asset, sourceUrl, beforeAuthor), DeferInvalidation.None))
             {
                 return;
             }
@@ -59,28 +59,35 @@ namespace URUI.Documents
             {
                 throw new ArgumentException("样式资源不能为空或包含 NUL。", nameof(asset));
             }
-            if (NativeMethods.urui_document_add_stylesheet(NativeHandle, asset.text, sourceUrl, beforeAuthor ? 1 : 0) != 1)
+            if (NativeMethods.urui_document_add_stylesheet(SurfaceHandle, NativeHandle, asset.text, sourceUrl, beforeAuthor ? 1 : 0) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("样式资源加载失败：" + asset.name);
             }
+            MarkGeometryChanged();
         }
 
         internal Element CloneElement(Element source)
         {
             CheckThread();
             source.RequireValid();
-            var token = NativeMethods.urui_element_clone(NativeHandle, source.Token);
+            var surfaceHandle = SurfaceHandle;
+            var token = NativeMethods.urui_element_clone(surfaceHandle, NativeHandle, source.Token);
             if (token == 0)
             {
                 throw new InvalidOperationException("作者模板无法克隆。");
             }
             try
             {
-                return WrapElement(token);
+                var cloned = WrapNewElement(token);
+                if (cloned != null)
+                {
+                    RecordPendingSubtreeLayout(cloned);
+                }
+                return cloned;
             }
             catch
             {
-                NativeMethods.urui_element_destroy(NativeHandle, token);
+                NativeMethods.urui_element_destroy(surfaceHandle, NativeHandle, token);
                 SweepInvalidElements();
                 throw;
             }

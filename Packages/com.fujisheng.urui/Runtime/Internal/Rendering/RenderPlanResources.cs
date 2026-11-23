@@ -19,6 +19,7 @@ namespace URUI.Internal.Rendering
             new(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2),
             new(VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 2)
         };
+        const long SoftBudget = 48L * 1024 * 1024;
         const long Budget = 64L * 1024 * 1024;
         readonly Dictionary<ulong, Entry> meshes = new();
         readonly HashSet<ulong> used = new();
@@ -26,55 +27,118 @@ namespace URUI.Internal.Rendering
         long allocatedBytes;
         long use;
         bool disposed;
+
         internal long GeometryUploadBytes
         {
             get;
             private set;
         }
         internal long RetainedBytes => allocatedBytes;
+
         internal RenderPlanResources(Action<IDisposable> retire)
         {
             this.retire = retire ?? throw new ArgumentNullException(nameof(retire));
         }
+
         void Reserve(long bytes)
         {
             if (bytes > Budget)
             {
                 throw new InvalidOperationException("原生绘制的单批次超出64MiB几何预算。");
             }
-            var needed = allocatedBytes + bytes - Budget;
-            long scheduled = 0;
+            // First synchronously reclaim oldest unreferenced idle entries (References == 0)
+            // so allocatedBytes drops immediately without needlessly waiting on a GPU fence.
             while (allocatedBytes + bytes > Budget)
             {
-                if (scheduled >= needed)
-                {
-                    throw new InvalidOperationException("几何预算等待已退役GPU版本的fence完成。");
-                }
-                ulong oldest = 0;
-                Entry candidate = null;
+                ulong oldestIdle = 0;
+                Entry idleCandidate = null;
                 foreach (var pair in meshes)
                 {
-                    if (used.Contains(pair.Key))
+                    if (used.Contains(pair.Key) || pair.Value.References != 0)
                     {
                         continue;
                     }
-                    if (candidate == null || pair.Value.Used < candidate.Used)
+                    if (idleCandidate == null || pair.Value.Used < idleCandidate.Used)
                     {
-                        oldest = pair.Key;
-                        candidate = pair.Value;
+                        oldestIdle = pair.Key;
+                        idleCandidate = pair.Value;
                     }
                 }
-                if (candidate == null)
+                if (idleCandidate != null)
                 {
-                    throw new InvalidOperationException("几何预算仍被当前记录或在途GPU版本占用。");
+                    meshes.Remove(oldestIdle);
+                    idleCandidate.Dispose();
+                    continue;
                 }
-                meshes.Remove(oldest);
-                scheduled += candidate.Bytes;
-                retire(candidate);
-                // Retirement is allowed to complete asynchronously. Its bytes remain
-                // charged until the GPU fence releases the actual Unity object.
+
+                // No idle entries left; retire oldest non-current GPU-referenced entries to free once their fences pass.
+                var needed = allocatedBytes + bytes - Budget;
+                long scheduled = 0;
+                while (allocatedBytes + bytes > Budget && scheduled < needed)
+                {
+                    ulong oldest = 0;
+                    Entry candidate = null;
+                    foreach (var pair in meshes)
+                    {
+                        if (used.Contains(pair.Key))
+                        {
+                            continue;
+                        }
+                        if (candidate == null || pair.Value.Used < candidate.Used)
+                        {
+                            oldest = pair.Key;
+                            candidate = pair.Value;
+                        }
+                    }
+                    if (candidate == null)
+                    {
+                        throw new InvalidOperationException("几何预算仍被当前记录或在途GPU版本占用。");
+                    }
+                    meshes.Remove(oldest);
+                    if (candidate.References == 0)
+                    {
+                        candidate.Dispose();
+                    }
+                    else
+                    {
+                        scheduled += candidate.Bytes;
+                        retire(candidate);
+                    }
+                }
+                if (allocatedBytes + bytes > Budget)
+                {
+                    throw new InvalidOperationException("几何预算等待已退役GPU版本的fence完成。");
+                }
             }
         }
+
+        void TrimToSoftBudget()
+        {
+            while (allocatedBytes > SoftBudget)
+            {
+                ulong oldestIdle = 0;
+                Entry idleCandidate = null;
+                foreach (var pair in meshes)
+                {
+                    if (used.Contains(pair.Key) || pair.Value.References != 0)
+                    {
+                        continue;
+                    }
+                    if (idleCandidate == null || pair.Value.Used < idleCandidate.Used)
+                    {
+                        oldestIdle = pair.Key;
+                        idleCandidate = pair.Value;
+                    }
+                }
+                if (idleCandidate == null)
+                {
+                    break;
+                }
+                meshes.Remove(oldestIdle);
+                idleCandidate.Dispose();
+            }
+        }
+
         internal void Apply(NativeRenderPlanLease lease, in RenderPlanPacket packet, IRawGeometryBindings raw = null)
         {
             if (disposed)
@@ -89,23 +153,25 @@ namespace URUI.Internal.Rendering
             used.Clear();
             foreach (var operation in operations)
             {
-                if (operation.Kind == 1 || operation.Kind == 6 || operation.Kind == 8 || operation.Kind == 5 && operation.Program != 0)
+                if (operation.Kind == PlanOperationKind.Geometry || operation.Kind == PlanOperationKind.ExternalGeometry ||
+                    operation.Kind == PlanOperationKind.ParameterImage || (operation.Kind == PlanOperationKind.Layer && operation.Program != 0))
                 {
                     used.Add(operation.Geometry);
                 }
-                else if (operation.Kind == 7)
+                else if (operation.Kind == PlanOperationKind.ExternalRawGeometry)
                 {
                     used.Add((raw ?? throw new InvalidOperationException("缺少原始几何消费窗口。")).RawGeometry(operation.LayerIndex).Identity);
                 }
             }
             foreach (var operation in operations)
             {
-                if (operation.Kind == 7)
+                if (operation.Kind == PlanOperationKind.ExternalRawGeometry)
                 {
                     ApplyRaw(raw.RawGeometry(operation.LayerIndex));
                     continue;
                 }
-                if (operation.Kind != 1 && operation.Kind != 6 && operation.Kind != 8 && !(operation.Kind == 5 && operation.Program != 0))
+                if (operation.Kind != PlanOperationKind.Geometry && operation.Kind != PlanOperationKind.ExternalGeometry &&
+                    operation.Kind != PlanOperationKind.ParameterImage && !(operation.Kind == PlanOperationKind.Layer && operation.Program != 0))
                 {
                     continue;
                 }
@@ -115,7 +181,7 @@ namespace URUI.Internal.Rendering
                     continue;
                 }
                 var view = lease.Geometry(operation.Geometry);
-                var entry = Acquire(operation.Geometry, checked((int)view.VertexCount), checked((int)view.IndexCount), IndexFormat.UInt32, layout, 32, operation.Kind == 6, out var configure);
+                var entry = Acquire(operation.Geometry, checked((int)view.VertexCount), checked((int)view.IndexCount), IndexFormat.UInt32, layout, 32, operation.Kind == PlanOperationKind.ExternalGeometry, out var configure);
                 var vertices = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<RenderPlanVertex>((void*)view.Vertices, checked((int)view.VertexCount), Allocator.None);
                 var indices = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<uint>((void*)view.Indices, checked((int)view.IndexCount), Allocator.None);
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
@@ -140,13 +206,23 @@ namespace URUI.Internal.Rendering
                 }
                 catch
                 {
-                    retire(entry);
+                    if (entry.References == 0)
+                    {
+                        entry.Dispose();
+                    }
+                    else
+                    {
+                        retire(entry);
+                    }
                     throw;
                 }
             }
             CommitRecording();
+            TrimToSoftBudget();
         }
+
         internal Mesh Mesh(ulong geometry) => meshes.TryGetValue(geometry, out var value) ? value.Mesh : throw new InvalidOperationException("原生批次尚未上传。");
+
         public void Dispose()
         {
             if (disposed)
@@ -157,7 +233,14 @@ namespace URUI.Internal.Rendering
             EndRecording();
             foreach (var entry in meshes.Values)
             {
-                retire(entry);
+                if (entry.References == 0)
+                {
+                    entry.Dispose();
+                }
+                else
+                {
+                    retire(entry);
+                }
             }
             meshes.Clear();
         }

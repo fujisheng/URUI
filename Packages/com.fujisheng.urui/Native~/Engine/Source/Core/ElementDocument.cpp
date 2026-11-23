@@ -165,7 +165,8 @@ namespace URUI
 
     ElementDocument::ElementDocument(const String& tag) : Element(tag)
     {
-        style_specification = StyleSheetSpecification::GetPropertySpecification().Clone();
+        style_specification = StyleSheetSpecification::GetSharedPropertySpecification();
+        owns_style_specification = false;
         font_context = MakeUnique<DocumentFontContext>();
         context = nullptr;
 
@@ -186,9 +187,20 @@ namespace URUI
         SetOwnerDocument(nullptr, true);
     }
 
+    const SharedPtr<PropertySpecification>& ElementDocument::EnsureMutableStyleSpecificationStorage()
+    {
+        if (!owns_style_specification)
+        {
+            style_specification = SharedPtr<PropertySpecification>(style_specification->Clone());
+            owns_style_specification = true;
+            UpdateDocumentSpecification(style_specification);
+        }
+        return style_specification;
+    }
+
     PropertySpecification& ElementDocument::GetStyleSpecification()
     {
-        return *style_specification;
+        return *EnsureMutableStyleSpecificationStorage();
     }
     const PropertySpecification& ElementDocument::GetStyleSpecification() const
     {
@@ -231,13 +243,26 @@ namespace URUI
         {
             if (css.is_inline)
             {
-                auto inline_sheet = MakeShared<StyleSheetContainer>();
-                auto stream = MakeUnique<StreamMemory>((const byte*)css.content.c_str(), css.content.size());
-                stream->SetSourceURL(css.path);
-
-                if (inline_sheet->LoadStyleSheetContainer(stream.get(), css.line, this))
+                SharedPtr<StyleSheetContainer> inline_sheet;
+                bool loaded = false;
+                if (css.origin == CssOrigin::UserAgent)
                 {
-                    inline_sheet->SetOrigin(css.origin);
+                    inline_sheet = StyleSheetFactory::GetUserAgentStyleSheet(css.content);
+                    loaded = static_cast<bool>(inline_sheet);
+                }
+                if (!loaded)
+                {
+                    inline_sheet = MakeShared<StyleSheetContainer>();
+                    auto stream = MakeUnique<StreamMemory>((const byte*)css.content.c_str(), css.content.size());
+                    stream->SetSourceURL(css.path);
+                    loaded = inline_sheet->LoadStyleSheetContainer(stream.get(), css.line, this);
+                    if (loaded)
+                    {
+                        inline_sheet->SetOrigin(css.origin);
+                    }
+                }
+                if (loaded)
+                {
                     if (new_style_sheet)
                     {
                         new_style_sheet->MergeStyleSheetContainer(*inline_sheet);
@@ -253,8 +278,6 @@ namespace URUI
                                                                               : inline_sheet->GetResourceError();
                     return false;
                 }
-
-                stream.reset();
             }
             else
             {
@@ -313,7 +336,8 @@ namespace URUI
         source_url = source;
         title = compiled_title;
         style_specification = std::move(specification);
-        document_specification = style_specification;
+        owns_style_specification = false;
+        UpdateDocumentSpecification(style_specification);
         SetStyleSheetContainer(std::move(styles));
         const float dp_ratio = context ? context->GetDensityIndependentPixelRatio() : 1.f;
         const Vector2f dimensions = context ? Vector2f(context->GetDimensions()) : Vector2f(1.f);
@@ -385,7 +409,7 @@ namespace URUI
             return;
         }
 
-        auto stream = MakeUnique<StreamFile>();
+        auto stream = MakeUnique<StreamFile>(GetResourceFileInterface());
         if (!stream->Open(source_url))
         {
             Log::Message(Log::LT_WARNING, "Failed to open file to reload style sheet in document: %s",
@@ -454,9 +478,13 @@ namespace URUI
         pending_show = true;
 
         // Hosting visibility is independent of the author's CSS visibility.
-        if (!presented && context)
+        if (context)
         {
-            context->DirtyNativeRendering();
+            if (!presented)
+            {
+                context->DirtyNativeRendering();
+            }
+            context->DirtyHitTest();
         }
         presented = true;
         if (auto* parent = GetParentNode())
@@ -543,9 +571,13 @@ namespace URUI
 
     void ElementDocument::Hide()
     {
-        if (presented && context)
+        if (context)
         {
-            context->DirtyNativeRendering();
+            if (presented)
+            {
+                context->DirtyNativeRendering();
+            }
+            context->DirtyHitTest();
         }
         presented = false;
         pending_focus = FocusFlag::None;
@@ -575,6 +607,7 @@ namespace URUI
         if (context)
         {
             context->DirtyNativeRendering();
+            context->DirtyHitTest();
         }
         presentation_layer = layer;
         presentation_order = order;
@@ -671,6 +704,7 @@ namespace URUI
             // Ignore dirtied layout during document formatting. Layouting must not require re-iteration.
             // In particular, scrollbars being enabled may set the dirty flag, but this case is already handled within the layout engine.
             layout_dirty = false;
+            BumpLayoutVersion();
         }
     }
 
@@ -681,6 +715,7 @@ namespace URUI
             URUI_ZoneScoped;
 
             position_dirty = false;
+            BumpLayoutVersion();
 
             Element* root = GetParentNode();
 

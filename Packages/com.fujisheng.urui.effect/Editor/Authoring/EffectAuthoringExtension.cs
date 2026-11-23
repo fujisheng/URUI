@@ -15,8 +15,13 @@ namespace URUI.Effect.Editor.Authoring
     /// <summary>
     /// 通过 Core Editor 契约发现的可选扩展，不引用 Authoring 程序集。
     /// </summary>
-    public sealed class EffectAuthoringExtension : IAuthoringExtension, IAuthoringAssetWorkspace
+    public sealed class EffectAuthoringExtension : IAuthoringExtension, IAuthoringAssetWorkspace, IAuthoringResourceMounts
     {
+        static readonly AuthoringResourceMount[] resourceMounts =
+        {
+            new AuthoringResourceMount("/urui-effect/", "Packages/com.fujisheng.urui.effect/Runtime/Resources/URUI.Effect/")
+        };
+        public IReadOnlyList<AuthoringResourceMount> ResourceMounts => resourceMounts;
         sealed class PreviewBinding : IDisposable
         {
             internal Document Document;

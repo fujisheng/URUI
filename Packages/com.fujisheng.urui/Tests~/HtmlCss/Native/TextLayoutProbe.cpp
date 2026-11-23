@@ -12,25 +12,33 @@ try
     {
         return -1;
     }
-    auto* context = URUI::GetContext("urui");
-    if (!context)
+    const int num_contexts = URUI::GetNumContexts();
+    if (num_contexts <= 0)
     {
         return -2;
     }
     URUI::ElementDocument* document = nullptr;
-    for (int i = 0; i < context->GetNumDocuments(); ++i)
+    for (int c = 0; c < num_contexts; ++c)
     {
-        auto* candidate = context->GetDocument(i);
-        if (candidate->GetSourceURL() != source_url)
+        auto* context = URUI::GetContext(c);
+        if (!context)
         {
             continue;
         }
-        if (document)
+        for (int i = 0; i < context->GetNumDocuments(); ++i)
         {
-            // URL 歧义不能静默选择另一个页面。
-            return -2;
+            auto* candidate = context->GetDocument(i);
+            if (candidate->GetSourceURL() != source_url)
+            {
+                continue;
+            }
+            if (document)
+            {
+                // URL 歧义不能静默选择另一个页面。
+                return -2;
+            }
+            document = candidate;
         }
-        document = candidate;
     }
     auto* target = document ? document->GetElementById(id) : nullptr;
     if (!target)

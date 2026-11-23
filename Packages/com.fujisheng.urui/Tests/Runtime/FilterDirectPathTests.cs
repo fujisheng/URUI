@@ -74,11 +74,11 @@ namespace URUI.Tests
                 Assert.That(EffectStatistics.FilterProcessingPasses - beforePasses, Is.LessThanOrEqualTo(baselinePasses), "新增三条图片滤镜链不能增加处理 Pass；已有子层可在 fence 完成后命中缓存");
                 Capture();
                 var alpha = 128f / 255;
-                AssertPixel(16, new Color(.75f, .45f, .75f) * (alpha * .5f));
-                AssertPixel(56, new Color(1, .7f, 1) * (alpha * .5f));
-                var gray = (.2126f * .8f + .7152f * .2f + .0722f * .6f) * .5f * alpha;
-                AssertPixel(96, new Color(gray, gray, gray));
-                AssertPixel(136, new Color(.75f, .45f, .75f) * (alpha * .5f));
+                AssertPixel(16, new Color(.75f, .45f, .75f), alpha * .5f);
+                AssertPixel(56, new Color(1, .7f, 1), alpha * .5f);
+                var gray = (.2126f * .8f + .7152f * .2f + .0722f * .6f) * .5f;
+                AssertPixel(96, new Color(gray, gray, gray), alpha);
+                AssertPixel(136, new Color(.75f, .45f, .75f), alpha * .5f);
                 var captureRoot = System.Environment.GetEnvironmentVariable("URUI_EFFECT_CAPTURE_OUTPUT") ??
                     Path.GetFullPath(Path.Combine(Application.dataPath, "../../../candidate"));
                 var output = Path.Combine(captureRoot, QualitySettings.activeColorSpace.ToString());
@@ -100,14 +100,14 @@ namespace URUI.Tests
                 document.SynchronizeLayout();
                 camera.Render();
                 Capture();
-                AssertPixel(136, new Color(.65f, .35f, .55f) * (alpha * .5f));
+                AssertPixel(136, new Color(.65f, .35f, .55f), alpha * .5f);
                 document.SynchronizeLayout();
                 camera.Render();
                 document.Q("fallback-input").Style.Set("filter", "brightness(.25)");
                 document.SynchronizeLayout();
                 camera.Render();
                 Capture();
-                AssertPixel(136, new Color(.45f, .3f, .4f) * (alpha * .5f));
+                AssertPixel(136, new Color(.45f, .3f, .4f), alpha * .5f);
                 void Capture()
                 {
                     var previous = RenderTexture.active;
@@ -122,9 +122,10 @@ namespace URUI.Tests
                         RenderTexture.active = previous;
                     }
                 }
-                void AssertPixel(int x, Color encoded)
+                void AssertPixel(int x, Color encoded, float opacity)
                 {
-                    var expected = QualitySettings.activeColorSpace == ColorSpace.Linear ? encoded.linear : encoded;
+                    var color = QualitySettings.activeColorSpace == ColorSpace.Linear ? encoded.linear : encoded;
+                    var expected = color * opacity;
                     var actual = read.GetPixel(x, 31);
                     for (var channel = 0; channel < 3; channel++)
                     {

@@ -33,6 +33,10 @@ namespace URUI.Effect
         readonly List<EffectController> controllerScratch = new();
         readonly HashSet<URUI.Effect.Elements.ParticlesElement> particles = new();
         bool disposed;
+        readonly IDisposable particlesTypeRegistration;
+        readonly IDisposable uiEffectRegistration;
+        readonly IDisposable waveEffectRegistration;
+        readonly IDisposable surfaceEffectRegistration;
         readonly IDisposable sequenceRegistration;
         sealed class SurfaceFactory : IEffectFactory
         {
@@ -77,22 +81,31 @@ namespace URUI.Effect
             {
                 throw new InvalidOperationException("This document already owns an EffectModule.");
             }
-            document.RegisterElementType("urui-particles", context =>
+            try
             {
-                var element = new URUI.Effect.Elements.ParticlesElement(context, resources, value => particles.Remove(value), () => disposed);
-                particles.Add(element);
-                return element;
-            });
-            document.Effects.Register(new EffectDefinition("ui", EffectKind.Element, new UIEffectFactory(resources, RenderingParameters),
-                "ui:v1", "UIEffect 5.8.4; premultiplied RGBA; active render color space; HDR", UIEffectFactory.Parameters,
-                false, default, null, new EffectImageCondition("--urui-fx-blend-type", "alpha-blend"), null, null, EffectProgramDescriptors.UI, UIEffectParameters.Layout));
-            document.Effects.Register(WaveEffect.Define());
-            document.Effects.Register(new EffectDefinition("surface-output", EffectKind.Image, new SurfaceFactory(this), "surface:v1", "straight-alpha input/output; HDR; document color space", renderProgram: EffectProgramDescriptors.Surface));
-            document.Effects.Updating += UpdateControllers;
-            document.Effects.ParametersPreparing += FreezeControllers;
-            document.Unloaded += Unloaded;
-            sequenceRegistration = URUI.Animation.SequenceTrackRegistry.Register(document, new SequenceTrackFactory(resources));
-            installed.Add(document, this);
+                particlesTypeRegistration = document.RegisterElementType("urui-particles", context =>
+                {
+                    var element = new URUI.Effect.Elements.ParticlesElement(context, resources, value => particles.Remove(value), () => disposed);
+                    particles.Add(element);
+                    return element;
+                });
+                uiEffectRegistration = document.Effects.Register(new EffectDefinition("ui", EffectKind.Element, new UIEffectFactory(resources, RenderingParameters),
+                    "ui:v1", "UIEffect 5.8.4; premultiplied RGBA; active render color space; HDR", UIEffectFactory.Parameters,
+                    false, default, null, new EffectImageCondition("--urui-fx-blend-type", "alpha-blend"), null, null, EffectProgramDescriptors.UI, UIEffectParameters.Layout));
+                waveEffectRegistration = document.Effects.Register(WaveEffect.Define());
+                surfaceEffectRegistration = document.Effects.Register(new EffectDefinition("surface-output", EffectKind.Image, new SurfaceFactory(this), "surface:v1", "straight-alpha input/output; HDR; document color space", renderProgram: EffectProgramDescriptors.Surface));
+                document.Effects.Updating += UpdateControllers;
+                document.Effects.ParametersPreparing += FreezeControllers;
+                document.Unloaded += Unloaded;
+                sequenceRegistration = URUI.Animation.SequenceTrackRegistry.Register(document, new SequenceTrackFactory(resources));
+                installed.Add(document, this);
+            }
+            catch
+            {
+                DisposeRegistrations();
+                Dispose();
+                throw;
+            }
         }
         public EffectController GetController(Element element)
         {
@@ -118,26 +131,42 @@ namespace URUI.Effect
         }
         void UpdateControllers()
         {
-            SnapshotControllers();
-            foreach (var value in controllerScratch)
+            if (controllers.Count == 0)
             {
-                value.Tick();
+                return;
             }
+            SnapshotControllers();
+            for (var i = 0; i < controllerScratch.Count; i++)
+            {
+                controllerScratch[i].Tick();
+            }
+            controllerScratch.Clear();
         }
         void FreezeControllers()
         {
-            SnapshotControllers();
-            foreach (var value in controllerScratch)
+            if (controllers.Count == 0)
             {
-                value.Freeze();
+                return;
             }
+            SnapshotControllers();
+            for (var i = 0; i < controllerScratch.Count; i++)
+            {
+                controllerScratch[i].Freeze();
+            }
+            controllerScratch.Clear();
         }
         void Unloaded(Document owner)
         {
-            foreach (var value in new List<EffectController>(controllers.Values))
+            if (controllers.Count == 0)
             {
-                value.Dispose();
+                return;
             }
+            SnapshotControllers();
+            for (var i = 0; i < controllerScratch.Count; i++)
+            {
+                controllerScratch[i].Dispose();
+            }
+            controllerScratch.Clear();
         }
         internal void Release(EffectController controller)
         {
@@ -159,6 +188,30 @@ namespace URUI.Effect
             }
             return new Binding(this, element);
         }
+        bool registrationsDisposed;
+
+        void DisposeRegistrations()
+        {
+            if (registrationsDisposed)
+            {
+                return;
+            }
+            registrationsDisposed = true;
+            surfaceEffectRegistration?.Dispose();
+            waveEffectRegistration?.Dispose();
+            uiEffectRegistration?.Dispose();
+            particlesTypeRegistration?.Dispose();
+        }
+
+        void DisposeRegistrationsOnUnload(Document owner)
+        {
+            if (owner)
+            {
+                owner.Unloaded -= DisposeRegistrationsOnUnload;
+            }
+            DisposeRegistrations();
+        }
+
         public void Dispose()
         {
             if (disposed)
@@ -168,16 +221,30 @@ namespace URUI.Effect
             disposed = true;
             sequenceRegistration?.Dispose();
             installed.Remove(Document);
-            Document.Effects.Updating -= UpdateControllers;
-            Document.Effects.ParametersPreparing -= FreezeControllers;
-            Document.Unloaded -= Unloaded;
-            Unloaded(Document);
+            var keepUntilUnload = false;
+            if (Document)
+            {
+                Document.Effects.Updating -= UpdateControllers;
+                Document.Effects.ParametersPreparing -= FreezeControllers;
+                Document.Unloaded -= Unloaded;
+                Unloaded(Document);
+                keepUntilUnload = Document.IsLoaded;
+            }
             foreach (var element in particles)
             {
                 element.Release();
             }
             particles.Clear();
             surfaces.Clear();
+            if (keepUntilUnload && !registrationsDisposed)
+            {
+                // Live document may still finish rendering frames after module disposal (e.g. callback-driven dispose).
+                Document.Unloaded += DisposeRegistrationsOnUnload;
+            }
+            else
+            {
+                DisposeRegistrations();
+            }
         }
     }
 }

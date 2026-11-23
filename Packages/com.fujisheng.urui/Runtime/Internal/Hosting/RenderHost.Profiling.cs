@@ -20,7 +20,6 @@ namespace URUI.Internal.Hosting
         static readonly ProfilerMarker externalRecordingPhase = new("URUI.Render.Record.External");
         static readonly ProfilerMarker finalTargetPhase = new("URUI.Render.Record.Targets");
         static readonly ProfilerMarker finishRecordingPhase = new("URUI.Render.Record.Finish");
-        static readonly ProfilerMarker batchPhase = new("URUI.Render.Batch");
         internal static readonly ProfilerMarker ElementRefreshPhase = new("URUI.Elements.Refresh");
     }
 }

@@ -3,7 +3,9 @@
 #include "StyleSheetFactory.h"
 #include "../../Include/URUI/Core/Log.h"
 #include "../../Include/URUI/Core/StyleSheetContainer.h"
+#include "CompiledDocument.h"
 #include "StreamFile.h"
+#include "../../Include/URUI/Core/StreamMemory.h"
 #include "StyleSheetNode.h"
 #include "StyleSheetParser.h"
 #include "StyleSheetSelector.h"
@@ -45,6 +47,7 @@ namespace URUI
 
     void StyleSheetFactory::Shutdown()
     {
+        ClearCompiledDocumentCache();
         instance.reset();
     }
 
@@ -75,6 +78,31 @@ namespace URUI
     void StyleSheetFactory::ClearStyleSheetCache()
     {
         instance->stylesheets.clear();
+        instance->ua_stylesheets.clear();
+        ClearCompiledDocumentCache();
+    }
+
+    SharedPtr<StyleSheetContainer> StyleSheetFactory::GetUserAgentStyleSheet(const String& css)
+    {
+        if (!instance)
+        {
+            return {};
+        }
+        auto it = instance->ua_stylesheets.find(css);
+        if (it != instance->ua_stylesheets.end())
+        {
+            return it->second->CloneMediaShell();
+        }
+        auto sheet = MakeShared<StyleSheetContainer>();
+        StreamMemory stream(reinterpret_cast<const byte*>(css.data()), css.size());
+        stream.SetSourceURL("urui://user-agent");
+        if (!sheet->LoadStyleSheetContainer(&stream, 1, nullptr))
+        {
+            return {};
+        }
+        sheet->SetOrigin(CssOrigin::UserAgent);
+        instance->ua_stylesheets.emplace(css, sheet);
+        return sheet->CloneMediaShell();
     }
 
     StructuralSelector StyleSheetFactory::GetSelector(const String& name)

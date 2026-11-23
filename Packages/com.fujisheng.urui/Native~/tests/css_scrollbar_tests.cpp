@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <cassert>
 #include <cmath>
@@ -10,8 +12,8 @@ static void Near(float actual, float expected)
 }
 int main()
 {
-    assert(urui_create(300, 200) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(300, 200, &g_test_surface) == 1);
+    auto* context = URUI::GetContext(0);
     auto* document = context->LoadDocumentFromMemory(
         "<!doctype html><html><head><style>body{margin:0;}"
         "#viewport{width:100px;height:80px;overflow:auto;scrollbar-width:none;}"
@@ -52,6 +54,6 @@ int main()
     // Both axes need a visible track and thumb in the native fallback.
     assert(paintedParts >= 4);
     assert(!viewport->SetProperty("scrollbar-width", "12px"));
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Scrollbar visibility preserves scrollability and layout\n";
 }

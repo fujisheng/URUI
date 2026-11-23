@@ -6,15 +6,22 @@ namespace URUI.Internal.Rendering
 {
     /// <summary>
     /// Unity 对象与用户回调适配；顺序、捕获范围和依赖由原生请求决定。
+    /// 支持 C ABI v13 批量请求队列，同一阶段内所有独立请求在单次原生往返内全部回传。
     /// </summary>
     internal interface IRenderPlanPreparationBindings
     {
-        // Transforms 若非空，必须保持有效直到下一次原生 resolve 已消费反馈。
+        // 每批独立请求开始前调用，允许适配层按本批 ElementLayout 数量预留非重叠变换缓冲。
+        void BeginFeedbackBatch(int elementLayoutCount);
+        // Transforms 若非空，必须保持有效直到下一次原生 resolve 已消费整批反馈。
         RenderPlanFeedback Prepare(in RenderPlanPrepareRequest request);
         RenderTexture ResolveCapture(ulong resource);
     }
+
     internal static unsafe class RenderPlanPreparation
     {
+        [ThreadStatic]
+        static RenderPlanFeedback[] feedbackScratch;
+
         internal static int Resolve(NativeRenderPlanLease lease, in RenderPlanInputPacket input, IRenderPlanPreparationBindings bindings)
             => Resolve(lease, input, bindings, out _);
 
@@ -26,13 +33,17 @@ namespace URUI.Internal.Rendering
                 throw new InvalidOperationException("准备输入的租约世代无效。");
             }
             var maximum = checked(((long)input.CommandCount + input.LayerCount) * 4 + 1);
-            RenderPlanFeedback feedback = default;
-            var haveFeedback = false;
-            ulong previous = 0;
+            var feedbacks = feedbackScratch ??= new RenderPlanFeedback[16];
+            uint feedbackCount = 0;
             for (var step = 0; step <= maximum; step++)
             {
-                var pointer = haveFeedback ? (IntPtr)(&feedback) : IntPtr.Zero;
-                NativeRenderPlanLease.Require(NativeMethods.urui_plan_resolve(input.Lease, pointer, (IntPtr)(&resources), out var packet));
+                RenderPlanPreparePacket packet;
+                fixed (RenderPlanFeedback* fbPtr = feedbacks)
+                {
+                    var pointer = feedbackCount > 0 ? (IntPtr)fbPtr : IntPtr.Zero;
+                    NativeRenderPlanLease.Require(NativeMethods.urui_plan_resolve(
+                        lease.Surface, input.Lease, pointer, feedbackCount, (IntPtr)(&resources), out packet));
+                }
                 if (packet.Lease != input.Lease)
                 {
                     throw new InvalidOperationException("准备队列的租约世代变化。");
@@ -46,28 +57,51 @@ namespace URUI.Internal.Rendering
                     ready = packet;
                     return step;
                 }
-                if (packet.Count != 1 || packet.Requests == IntPtr.Zero || bindings == null)
+                if (packet.Count == 0 || packet.Requests == IntPtr.Zero || bindings == null)
                 {
                     throw new InvalidOperationException("准备队列未前进或缺少资源适配。");
                 }
-                var request = *(RenderPlanPrepareRequest*)packet.Requests;
-                if (request.Request == 0 || request.Request == previous || request.Kind < 1 || request.Kind > 4)
+                int batchCount = checked((int)packet.Count);
+                if (feedbacks.Length < batchCount)
                 {
-                    throw new InvalidOperationException("准备队列重复或包含未知请求。");
-                }
-                previous = request.Request;
-                feedback = bindings.Prepare(request);
-                feedback.Request = request.Request;
-                feedback.Kind = request.Kind;
-                if (request.Kind == 3)
-                {
-                    var source = bindings.ResolveCapture(feedback.Resource);
-                    if (!source || !source.IsCreated() || source.width != feedback.PixelWidth || source.height != feedback.PixelHeight)
+                    int next = feedbacks.Length;
+                    while (next < batchCount)
                     {
-                        throw new InvalidOperationException("效果捕获必须绑定已创建的真实 RenderTexture 与实际像素尺寸。");
+                        next *= 2;
+                    }
+                    feedbacks = feedbackScratch = new RenderPlanFeedback[next];
+                }
+                var requests = (RenderPlanPrepareRequest*)packet.Requests;
+                var elementLayoutCount = 0;
+                for (int i = 0; i < batchCount; i++)
+                {
+                    if (requests[i].Kind == PlanPrepareKind.ElementLayout)
+                    {
+                        elementLayoutCount++;
                     }
                 }
-                haveFeedback = true;
+                bindings.BeginFeedbackBatch(elementLayoutCount);
+                for (int i = 0; i < batchCount; i++)
+                {
+                    var request = requests[i];
+                    if (request.Request == 0 || request.Kind < PlanPrepareKind.PrepareImage || request.Kind > PlanPrepareKind.PrepareElement)
+                    {
+                        throw new InvalidOperationException("准备队列包含无效或未知请求。");
+                    }
+                    var fb = bindings.Prepare(request);
+                    fb.Request = request.Request;
+                    fb.Kind = request.Kind;
+                    if (request.Kind == PlanPrepareKind.AcquireCapture)
+                    {
+                        var source = bindings.ResolveCapture(fb.Resource);
+                        if (!source || !source.IsCreated() || source.width != fb.PixelWidth || source.height != fb.PixelHeight)
+                        {
+                            throw new InvalidOperationException("效果捕获必须绑定已创建的真实 RenderTexture 与实际像素尺寸。");
+                        }
+                    }
+                    feedbacks[i] = fb;
+                }
+                feedbackCount = packet.Count;
             }
             throw new InvalidOperationException("准备队列超出每个效果槽的有界请求数量。");
         }

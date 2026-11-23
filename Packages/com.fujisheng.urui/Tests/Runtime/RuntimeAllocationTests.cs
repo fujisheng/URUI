@@ -310,21 +310,23 @@ namespace URUI.Tests
         {
             var system = GUIUtility.systemCopyBuffer;
             string native = null;
+            ulong surface = 0;
             try
             {
                 document.LoadHtml("<!doctype html><html><head></head><body><input type='text' id='value' value='abc'></body></html>", "/clipboard-boundaries.html");
                 document.SynchronizeLayout();
-                native = NativeMethods.ReadClipboard();
+                surface = document.Surface.SurfaceHandle;
+                native = NativeMethods.ReadClipboard(surface);
                 var input = document.Surface.Input;
                 var field = document.Q<TextField>("value");
                 GUIUtility.systemCopyBuffer = "external α";
-                NativeMethods.urui_clipboard_write("old");
+                NativeMethods.urui_clipboard_write(surface, "old");
                 field.Focus();
                 input.SyncUnityClipboardFocus();
-                Assert.That(NativeMethods.ReadClipboard(), Is.EqualTo("external α"));
+                Assert.That(NativeMethods.ReadClipboard(surface), Is.EqualTo("external α"));
                 GUIUtility.systemCopyBuffer = "later";
                 input.SyncUnityClipboardFocus();
-                Assert.That(NativeMethods.ReadClipboard(), Is.EqualTo("external α"));
+                Assert.That(NativeMethods.ReadClipboard(surface), Is.EqualTo("external α"));
                 field.SelectRange(0, 3);
                 input.SendUnityKey(KeyCode.V, true, InputModifiers.Control);
                 Assert.That(field.Value, Is.EqualTo("later"));
@@ -353,7 +355,10 @@ namespace URUI.Tests
             finally
             {
                 GUIUtility.systemCopyBuffer = system;
-                NativeMethods.urui_clipboard_write(native ?? "");
+                if (surface != 0)
+                {
+                    NativeMethods.urui_clipboard_write(surface, native ?? "");
+                }
             }
         }
         [Test]
@@ -689,11 +694,12 @@ namespace URUI.Tests
 
         ulong AddNativeRefreshHook()
         {
-            var token = NativeMethods.urui_element_create(document.NativeHandle, "urui-initialize-refresh");
+            var surface = document.Surface.SurfaceHandle;
+            var token = NativeMethods.urui_element_create(surface, document.NativeHandle, "urui-initialize-refresh");
             Assert.That(token, Is.Not.Zero);
-            Assert.That(NativeMethods.urui_element_write(document.NativeHandle, token, 2, "id", "late-hook"), Is.EqualTo(1));
-            Assert.That(NativeMethods.urui_element_insert(document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
-            NativeMethods.urui_update();
+            Assert.That(NativeMethods.urui_element_write(surface, document.NativeHandle, token, ElementWriteField.Attribute, "id", "late-hook"), Is.EqualTo(1));
+            Assert.That(NativeMethods.urui_element_insert(surface, document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
+            NativeMethods.urui_surface_update(surface);
             for (var i = 0; i < 4; i++)
             {
                 document.RefreshElements(true);
@@ -727,7 +733,7 @@ namespace URUI.Tests
             InitializingRefreshHook hook = null;
             target.RegisterCallback<GeometryChangedEvent>(e => hook = document.Q<InitializingRefreshHook>("late-hook"));
             target.Style.Set("width", "30px");
-            NativeMethods.urui_update();
+            NativeMethods.urui_surface_update(document.Surface.SurfaceHandle);
             document.RefreshElements(true);
             Assert.That(hook, Is.Not.Null);
             var before = hook.Updates;
@@ -766,13 +772,14 @@ namespace URUI.Tests
             document.LoadHtml("<!doctype html><html><head></head><body><urui-refresh-probe id='first'></urui-refresh-probe><urui-refresh-probe id='second'></urui-refresh-probe></body></html>", "/refresh-tail.html");
             var first = document.Q<RefreshHookElement>("first");
             var second = document.Q<RefreshHookElement>("second");
+            var surface = document.Surface.SurfaceHandle;
             for (var i = 0; i < 2; i++)
             {
-                var token = NativeMethods.urui_element_create(document.NativeHandle, "urui-refresh-probe");
-                Assert.That(NativeMethods.urui_element_write(document.NativeHandle, token, 2, "id", "late" + i), Is.EqualTo(1));
-                Assert.That(NativeMethods.urui_element_insert(document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
+                var token = NativeMethods.urui_element_create(surface, document.NativeHandle, "urui-refresh-probe");
+                Assert.That(NativeMethods.urui_element_write(surface, document.NativeHandle, token, ElementWriteField.Attribute, "id", "late" + i), Is.EqualTo(1));
+                Assert.That(NativeMethods.urui_element_insert(surface, document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
             }
-            NativeMethods.urui_update();
+            NativeMethods.urui_surface_update(surface);
             for (var i = 0; i < 4; i++)
             {
                 document.RefreshElements(true);
@@ -892,7 +899,7 @@ namespace URUI.Tests
             c.Tick = () => calls.Add("c");
             // 原生变化让外层先走完整遍历，再在钩子内发生重入。
             document.Body.Style.Set("width", "120px");
-            NativeMethods.urui_update();
+            NativeMethods.urui_surface_update(document.Surface.SurfaceHandle);
             document.RefreshElements(true);
             calls.Clear();
             document.RefreshElements(true);
@@ -904,10 +911,11 @@ namespace URUI.Tests
         {
             Load();
             var sentinel = document.CreateElement();
-            var token = NativeMethods.urui_element_create(document.NativeHandle, "div");
-            Assert.That(NativeMethods.urui_element_write(document.NativeHandle, token, 2, "id", "late-passive"), Is.EqualTo(1));
-            Assert.That(NativeMethods.urui_element_insert(document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
-            NativeMethods.urui_update();
+            var surface = document.Surface.SurfaceHandle;
+            var token = NativeMethods.urui_element_create(surface, document.NativeHandle, "div");
+            Assert.That(NativeMethods.urui_element_write(surface, document.NativeHandle, token, ElementWriteField.Attribute, "id", "late-passive"), Is.EqualTo(1));
+            Assert.That(NativeMethods.urui_element_insert(surface, document.NativeHandle, document.Body.Token, token, -1), Is.EqualTo(1));
+            NativeMethods.urui_surface_update(surface);
             for (var i = 0; i < 4; i++)
             {
                 document.RefreshElements(true);
@@ -921,7 +929,7 @@ namespace URUI.Tests
                 late.RegisterCallback<GeometryChangedEvent>(geometry => notifications++);
             });
             target.Style.Set("width", "30px");
-            NativeMethods.urui_update();
+            NativeMethods.urui_surface_update(document.Surface.SurfaceHandle);
             document.RefreshElements(true);
             Assert.That(late, Is.Not.Null);
             Assert.That(notifications, Is.Zero);
@@ -977,14 +985,15 @@ namespace URUI.Tests
             document.LoadHtml(html.Append("<urui-sweep-probe id='trigger'></urui-sweep-probe><div id='later'></div></body></html>").ToString(), "/sweep-plain.html");
             var trigger = document.Q<SweepHookElement>("trigger");
             var later = document.Q("later");
+            var surface = document.Surface.SurfaceHandle;
             for (var i = 0; i < 128; i++)
             {
-                Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, document.Q("plain" + i).Token), Is.EqualTo(1));
+                Assert.That(NativeMethods.urui_element_destroy(surface, document.NativeHandle, document.Q("plain" + i).Token), Is.EqualTo(1));
             }
             trigger.Invalidating = () => Assert.That(releaseOnly
-                ? NativeMethods.urui_element_ref_release(document.NativeHandle, later.Token)
-                : NativeMethods.urui_element_destroy(document.NativeHandle, later.Token), Is.EqualTo(1));
-            Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, trigger.Token), Is.EqualTo(1));
+                ? NativeMethods.urui_element_ref_release(surface, document.NativeHandle, later.Token)
+                : NativeMethods.urui_element_destroy(surface, document.NativeHandle, later.Token), Is.EqualTo(1));
+            Assert.That(NativeMethods.urui_element_destroy(surface, document.NativeHandle, trigger.Token), Is.EqualTo(1));
             document.SweepInvalidElements();
             Assert.That(trigger.Invalidations, Is.EqualTo(1));
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
@@ -1012,6 +1021,7 @@ namespace URUI.Tests
             var later = document.Q<SweepHookElement>("n31");
             var nextWindow = document.Q<SweepHookElement>("n100");
             var earlier = document.Q<SweepHookElement>("n0");
+            var surface = document.Surface.SurfaceHandle;
             trigger.Invalidating = () =>
             {
                 if (mutation == 3)
@@ -1019,19 +1029,19 @@ namespace URUI.Tests
                     document.Unload();
                     return;
                 }
-                Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, nextWindow.Token), Is.EqualTo(1));
-                Assert.That(mutation == 1 ? NativeMethods.urui_element_ref_release(document.NativeHandle, later.Token)
-                    : NativeMethods.urui_element_destroy(document.NativeHandle, later.Token), Is.EqualTo(1));
+                Assert.That(NativeMethods.urui_element_destroy(surface, document.NativeHandle, nextWindow.Token), Is.EqualTo(1));
+                Assert.That(mutation == 1 ? NativeMethods.urui_element_ref_release(surface, document.NativeHandle, later.Token)
+                    : NativeMethods.urui_element_destroy(surface, document.NativeHandle, later.Token), Is.EqualTo(1));
                 if (mutation == 2)
                 {
-                    Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, earlier.Token), Is.EqualTo(1));
+                    Assert.That(NativeMethods.urui_element_destroy(surface, document.NativeHandle, earlier.Token), Is.EqualTo(1));
                     document.SweepInvalidElements();
                     var created = document.CreateElement();
                     created.Name = "created-during-sweep";
                     document.Body.Hierarchy.Add(created);
                 }
             };
-            Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, trigger.Token), Is.EqualTo(1));
+            Assert.That(NativeMethods.urui_element_destroy(surface, document.NativeHandle, trigger.Token), Is.EqualTo(1));
             document.SweepInvalidElements();
             Assert.That(trigger.Invalidations, Is.EqualTo(1));
             Assert.That(later.Invalidations, Is.EqualTo(1), "不能采用失效回调之前预读的有效标记。");
@@ -1124,7 +1134,7 @@ namespace URUI.Tests
             {
                 hook.Tick = null;
                 target.Style.Set("width", "30px");
-                NativeMethods.urui_update();
+                NativeMethods.urui_surface_update(document.Surface.SurfaceHandle);
             };
             document.RefreshElements(true);
             document.RefreshElements(true);
@@ -1142,7 +1152,7 @@ namespace URUI.Tests
             var widths = new System.Collections.Generic.List<float>();
             target.RegisterCallback<GeometryChangedEvent>(e => widths.Add(e.NewRect.width));
             target.Style.Set("width", "30px");
-            NativeMethods.urui_update();
+            NativeMethods.urui_surface_update(document.Surface.SurfaceHandle);
             document.RefreshElements(false);
             Assert.That(widths, Is.Empty);
             document.RefreshElements(true);
@@ -1175,7 +1185,7 @@ namespace URUI.Tests
                 {
                     Assert.That(visited, Is.EqualTo(1));
                 }
-                Assert.That(NativeMethods.urui_element_destroy(document.NativeHandle, token), Is.EqualTo(1));
+                Assert.That(NativeMethods.urui_element_destroy(document.Surface.SurfaceHandle, document.NativeHandle, token), Is.EqualTo(1));
                 killer.Tick = null;
             };
             document.RefreshElements(true);
@@ -1195,8 +1205,9 @@ namespace URUI.Tests
             var state = typeof(Document).GetField("content", flags).GetValue(document);
             var elements = (System.Collections.IDictionary)state.GetType().GetField("Elements", flags).GetValue(state);
             document.RefreshElements(true);
-            var result = releaseOnly ? NativeMethods.urui_element_ref_release(document.NativeHandle, token)
-                : NativeMethods.urui_element_destroy(document.NativeHandle, token);
+            var surface = document.Surface.SurfaceHandle;
+            var result = releaseOnly ? NativeMethods.urui_element_ref_release(surface, document.NativeHandle, token)
+                : NativeMethods.urui_element_destroy(surface, document.NativeHandle, token);
             Assert.That(result, Is.EqualTo(1));
             document.RefreshElements(true);
             Assert.That(elements.Contains(token), Is.False, "刷新开始前已经失效的节点也必须从缓存中移除。");
@@ -1346,33 +1357,34 @@ namespace URUI.Tests
         public void UnchangedClipboardReadReusesItsUtf8Snapshot()
         {
             Load();
-            var previous = NativeMethods.ReadClipboard();
+            var surface = document.Surface.SurfaceHandle;
+            var previous = NativeMethods.ReadClipboard(surface);
             try
             {
-                NativeMethods.urui_clipboard_write("中文剪贴板😀");
-                var first = NativeMethods.ReadClipboard();
+                NativeMethods.urui_clipboard_write(surface, "中文剪贴板😀");
+                var first = NativeMethods.ReadClipboard(surface);
                 Assert.That(first, Is.EqualTo("中文剪贴板😀"));
                 for (var i = 0; i < 5; ++i)
                 {
-                    _ = NativeMethods.ReadClipboard();
+                    _ = NativeMethods.ReadClipboard(surface);
                 }
                 ValidateRecorder();
                 Assert.That(Allocations(() =>
                 {
                     for (var i = 0; i < 10; ++i)
                     {
-                        _ = NativeMethods.ReadClipboard();
+                        _ = NativeMethods.ReadClipboard(surface);
                     }
                 }), Is.Zero);
-                Assert.That(NativeMethods.ReadClipboard(), Is.SameAs(first));
-                NativeMethods.urui_clipboard_write("变化🧪");
-                Assert.That(NativeMethods.ReadClipboard(), Is.EqualTo("变化🧪"));
-                NativeMethods.urui_clipboard_write("");
-                Assert.That(NativeMethods.ReadClipboard(), Is.Empty);
+                Assert.That(NativeMethods.ReadClipboard(surface), Is.SameAs(first));
+                NativeMethods.urui_clipboard_write(surface, "变化🧪");
+                Assert.That(NativeMethods.ReadClipboard(surface), Is.EqualTo("变化🧪"));
+                NativeMethods.urui_clipboard_write(surface, "");
+                Assert.That(NativeMethods.ReadClipboard(surface), Is.Empty);
             }
             finally
             {
-                NativeMethods.urui_clipboard_write(previous ?? "");
+                NativeMethods.urui_clipboard_write(surface, previous ?? "");
             }
         }
 
@@ -1450,6 +1462,11 @@ namespace URUI.Tests
             Assert.That(node.Text, Is.Not.SameAs(old));
             node.RemoveAttribute("title");
             Assert.That(node.GetAttribute("title"), Is.Null);
+            node.SetAttribute("title", "");
+            Assert.That(node.GetAttribute("title"), Is.Empty);
+            var largeText = new string('界', 90_000) + "🧪";
+            node.Text = largeText;
+            Assert.That(node.Text, Is.EqualTo(largeText));
         }
 
         [Test]

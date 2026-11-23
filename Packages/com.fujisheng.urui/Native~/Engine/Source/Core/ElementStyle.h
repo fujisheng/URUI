@@ -324,13 +324,17 @@ namespace URUI
             Property expression;
             std::optional<Property> property;
         };
-        mutable Vector<VariableScope> variable_scopes;
-        // map 保证后续读取其他属性时不会因扩容而移动已经返回的 Property。
-        mutable std::map<PropertyId, VariableValue> variable_values;
-        mutable uint64_t variable_generation = 0;
-        mutable int variable_viewport_width = 0;
-        mutable int variable_viewport_height = 0;
-        mutable float variable_dp_ratio = 0;
+        struct VariableReadCache
+        {
+            Vector<VariableScope> scopes;
+            // map 保证后续读取其他属性时不会因扩容而移动已经返回的 Property。
+            std::map<PropertyId, VariableValue> values;
+            uint64_t generation = 0;
+            int viewport_width = 0;
+            int viewport_height = 0;
+            float dp_ratio = 0;
+        };
+        mutable UniquePtr<VariableReadCache> variable_cache;
         uint64_t value_snapshot_revision = UINT64_MAX;
         Vector<SnapshotValue> value_snapshot_values;
         uint64_t registered_property_revision = 0;
@@ -346,14 +350,25 @@ namespace URUI
             PropertyDictionary baseline;
             PropertyDictionary values;
         };
-        UnorderedMap<uint64_t, SequenceLayer> sequence_layers;
-        PropertyDictionary composed_animations;
+        struct SequenceState
+        {
+            UnorderedMap<uint64_t, SequenceLayer> layers;
+            PropertyDictionary composed_animations;
+        };
+        UniquePtr<SequenceState> sequence_state;
+        const PropertyDictionary* ActiveAnimations() const
+        {
+            return sequence_state && !sequence_state->layers.empty() ? &sequence_state->composed_animations
+                                                                     : &animation_properties;
+        }
         // Properties computed from shorthands with variables, here resolved.
         ExpandedShorthands expanded_shorthands;
 
         PropertyIdSet dirty_properties;
         UnorderedSet<String> dirty_variables;
         UnorderedSet<ShorthandId> dirty_var_shorthands;
+        bool has_local_var_or_inherit = false;
+        bool MayHaveLocalVarOrInherit() const;
     };
 
 }

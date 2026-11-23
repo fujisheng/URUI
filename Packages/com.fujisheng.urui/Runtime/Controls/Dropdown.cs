@@ -61,16 +61,17 @@ namespace URUI.Controls
         {
             get
             {
-                int count = NativeMethods.urui_select_option_count(NativeHandle, CheckedToken());
+                var surfaceHandle = SurfaceHandle;
+                int count = NativeMethods.urui_select_option_count(surfaceHandle, NativeHandle, CheckedToken());
                 if (count < 0)
                 {
                     throw new InvalidOperationException("无法读取原生选项。");
                 }
 
-                var result = new List<string>();
+                var result = new List<string>(count);
                 for (int i = 0; i < count; i++)
                 {
-                    result.Add(NativeMethods.ReadOption(NativeHandle, Token, i));
+                    result.Add(NativeMethods.ReadOption(surfaceHandle, NativeHandle, Token, i));
                 }
 
                 return result;
@@ -90,8 +91,9 @@ namespace URUI.Controls
 
                 ChangeStructure(() =>
                                 {
+                                    var surfaceHandle = SurfaceHandle;
                                     string previous = Value;
-                                    if (NativeMethods.urui_select_options_clear(NativeHandle, Token) != 1)
+                                    if (NativeMethods.urui_select_options_clear(surfaceHandle, NativeHandle, Token) != NativeStatus.Ok)
                                     {
                                         throw new InvalidOperationException("无法清空选项。");
                                     }
@@ -99,7 +101,7 @@ namespace URUI.Controls
                                     Document.SweepInvalidElements();
                                     foreach (string item in copy)
                                     {
-                                        if (NativeMethods.urui_select_option_add(NativeHandle, Token, item) != 1)
+                                        if (NativeMethods.urui_select_option_add(surfaceHandle, NativeHandle, Token, item) != NativeStatus.Ok)
                                         {
                                             throw new InvalidOperationException("无法添加选项。");
                                         }
@@ -117,19 +119,24 @@ namespace URUI.Controls
             get
             {
                 RequireValid();
-                return NativeMethods.urui_select_selection(NativeHandle, Token, -1);
+                return NativeMethods.urui_select_selection(SurfaceHandle, NativeHandle, Token, -1);
             }
             set
             {
-                var choices = Choices;
-                if (value < 0 || value >= choices.Count)
+                var surfaceHandle = SurfaceHandle;
+                int count = NativeMethods.urui_select_option_count(surfaceHandle, NativeHandle, CheckedToken());
+                if (count < 0)
+                {
+                    throw new InvalidOperationException("无法读取原生选项。");
+                }
+                if (value < 0 || value >= count)
                 {
                     throw new ArgumentOutOfRangeException(nameof(value));
                 }
 
                 ChangeStructure(() =>
                                 {
-                                    if (NativeMethods.urui_select_selection(NativeHandle, Token, value) < 0)
+                                    if (NativeMethods.urui_select_selection(SurfaceHandle, NativeHandle, Token, value) < 0)
                                     {
                                         throw new InvalidOperationException("无法选择选项。");
                                     }

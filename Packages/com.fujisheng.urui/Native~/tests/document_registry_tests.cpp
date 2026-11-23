@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include "element_references.h"
 #include <URUI/Core.h>
 #include <cassert>
@@ -75,15 +77,15 @@ static void RegistryContracts(URUI::Context& context)
 
 int main()
 {
-    assert(urui_create(1280, 720) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(1280, 720, &g_test_surface) == 1);
+    auto* context = URUI::GetContext(0);
     assert(context);
-    std::thread foreign_destroy([] { urui_destroy(); });
+    std::thread foreign_destroy([] { urui_surface_destroy(g_test_surface); });
     foreign_destroy.join();
     URUIDocumentHandle after_foreign_destroy = 0;
-    assert(urui_document_create(&after_foreign_destroy) == 1);
-    assert(urui_document_close(after_foreign_destroy) == 1);
-    assert(URUI::GetContext("urui") == context);
+    assert(urui_document_create(g_test_surface, &after_foreign_destroy) == 1);
+    assert(urui_document_close(g_test_surface, after_foreign_destroy) == 1);
+    assert(URUI::GetContext(0) == context);
     {
         auto* a = context->CreateDocument();
         auto* b = context->CreateDocument();
@@ -104,10 +106,10 @@ int main()
 #if defined(URUI_HAS_DOCUMENT_REGISTRY)
     RegistryContracts(*context);
 #else
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cerr << "FAIL: per-document registry is not implemented\n";
     return 1;
 #endif
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "PASS: detached nodes remain document scoped\n";
 }

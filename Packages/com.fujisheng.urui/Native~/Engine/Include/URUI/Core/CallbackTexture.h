@@ -96,6 +96,7 @@ namespace URUI
         CallbackTextureSource& operator=(CallbackTextureSource&& other) noexcept;
 
         Texture GetTexture(RenderManager& render_manager) const;
+        void ReleaseTextures(RenderManager& render_manager) const;
 
     private:
         CallbackTextureFunction callback;

@@ -17,7 +17,7 @@ namespace URUI.Tests
             var second = new BorrowedTextureRegistry.SubmissionPins();
             try
             {
-                var id = registry.RegisterResolved(new ImageLease(texture, () => releases++));
+                var id = registry.RegisterResolved(new ImageLease(texture, () => releases++), out _);
                 first.Acquire(registry);
                 registry.ReleaseResolved(id);
                 Assert.That(releases, Is.Zero, "已有 GPU 消费者仍持有图片。");

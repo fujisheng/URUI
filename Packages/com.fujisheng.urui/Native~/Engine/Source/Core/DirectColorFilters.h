@@ -9,7 +9,7 @@
 
 namespace URUI
 {
-    inline bool DirectColorFilterRenderingEnabled = false;
+    inline thread_local bool DirectColorFilterRenderingEnabled = false;
     // 只放行已能证明等价的独立图片；复杂绘制继续使用原来的完整子树滤镜路径。
     inline FiltersPtr DirectColorFilters(Element* element)
     {
@@ -26,9 +26,9 @@ namespace URUI
         {
             return {};
         }
-        for (const auto* name : {"--urui-image-effect", "--urui-effect"})
+        for (const auto id : {PropertyId::ImageEffect, PropertyId::ElementEffect})
         {
-            const auto* property = element->GetProperty(name);
+            const auto* property = element->GetProperty(id);
             if (property && property->unit == Unit::STRING)
             {
                 const auto value = property->Get<String>();

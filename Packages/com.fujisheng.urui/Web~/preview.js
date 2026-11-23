@@ -403,9 +403,9 @@
         root.setAttribute('aria-valuemin', String(low)); root.setAttribute('aria-valuemax', String(high)); root.setAttribute('aria-valuenow', String(value));
     }
     function refresh(root = document) {
-        const slider = root.closest?.('urui-slider');
+        const slider = root.closest?.('urui-slider, .urui-slider');
         if (slider) refreshSlider(slider);
-        for (const element of root.querySelectorAll('urui-slider')) refreshSlider(element);
+        for (const element of root.querySelectorAll('urui-slider, .urui-slider')) refreshSlider(element);
         const select = root.closest?.('urui-select');
         if (select) refreshSelect(select);
         for (const element of root.querySelectorAll('urui-select')) refreshSelect(element);

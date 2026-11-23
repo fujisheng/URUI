@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using URUI.Authoring.Sessions;
 using URUI.Editor.Inspection;
 
 namespace URUI.Authoring.Preview
@@ -11,7 +12,6 @@ namespace URUI.Authoring.Preview
     {
         const string ResourcesRoot = "Assets/Resources/URUI/";
         const string CoreRoot = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/";
-        const string EffectRoot = "Packages/com.fujisheng.urui.effect/Runtime/Resources/URUI.Effect/";
 
         internal static string DocumentUri(string root, string path) => AssetUri(Relative(root, path));
 
@@ -25,9 +25,26 @@ namespace URUI.Authoring.Preview
             {
                 return "/urui/" + path.Substring(CoreRoot.Length);
             }
-            if (path.StartsWith(EffectRoot, StringComparison.Ordinal))
+            var extensions = AuthoringEnvironment.Extensions;
+            for (int i = 0; i < extensions.Count; i++)
             {
-                return "/urui-effect/" + path.Substring(EffectRoot.Length);
+                if (extensions[i] is IAuthoringResourceMounts provider)
+                {
+                    var mounts = provider.ResourceMounts;
+                    if (mounts == null)
+                    {
+                        continue;
+                    }
+                    for (int m = 0; m < mounts.Count; m++)
+                    {
+                        var mount = mounts[m];
+                        if (!string.IsNullOrEmpty(mount.AssetPrefix) && !string.IsNullOrEmpty(mount.UriPrefix) &&
+                            path.StartsWith(mount.AssetPrefix, StringComparison.Ordinal))
+                        {
+                            return mount.UriPrefix + path.Substring(mount.AssetPrefix.Length);
+                        }
+                    }
+                }
             }
             return "/" + path;
         }
@@ -68,9 +85,26 @@ namespace URUI.Authoring.Preview
             {
                 return CoreRoot + path.Substring(6);
             }
-            if (path.StartsWith("/urui-effect/", StringComparison.Ordinal))
+            var extensions = AuthoringEnvironment.Extensions;
+            for (int i = 0; i < extensions.Count; i++)
             {
-                return EffectRoot + path.Substring(13);
+                if (extensions[i] is IAuthoringResourceMounts provider)
+                {
+                    var mounts = provider.ResourceMounts;
+                    if (mounts == null)
+                    {
+                        continue;
+                    }
+                    for (int m = 0; m < mounts.Count; m++)
+                    {
+                        var mount = mounts[m];
+                        if (!string.IsNullOrEmpty(mount.UriPrefix) && !string.IsNullOrEmpty(mount.AssetPrefix) &&
+                            path.StartsWith(mount.UriPrefix, StringComparison.Ordinal))
+                        {
+                            return mount.AssetPrefix + path.Substring(mount.UriPrefix.Length);
+                        }
+                    }
+                }
             }
             return path.StartsWith("/Assets/", StringComparison.Ordinal) || path.StartsWith("/Packages/", StringComparison.Ordinal) ? path.Substring(1) : null;
         }

@@ -105,7 +105,7 @@ namespace URUI.Controls
         /// </summary>
         public override string Text
         {
-            get => NativeMethods.ReadControl(NativeHandle, CheckedToken());
+            get => NativeMethods.ReadControl(SurfaceHandle, NativeHandle, CheckedToken());
             set
             {
                 RequireText(value, nameof(value));
@@ -196,7 +196,7 @@ namespace URUI.Controls
             }
 
             RequireValid();
-            if (NativeMethods.urui_text_selection(ref start, ref end, 1) != 1)
+            if (NativeMethods.urui_text_selection(SurfaceHandle, ref start, ref end, 1) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("无法设置选区。");
             }
@@ -216,7 +216,7 @@ namespace URUI.Controls
 
                 int start = 0;
                 int end = 0;
-                if (NativeMethods.urui_text_selection(ref start, ref end, 0) != 1)
+                if (NativeMethods.urui_text_selection(SurfaceHandle, ref start, ref end, 0) != NativeStatus.Ok)
                 {
                     throw new InvalidOperationException("无法读取选区。");
                 }
@@ -244,7 +244,7 @@ namespace URUI.Controls
         protected void ReplaceEditingText(string text)
         {
             RequireValid();
-            if (NativeMethods.urui_control_value_write(NativeHandle, Token, text) != 1)
+            if (NativeMethods.urui_control_value_write(SurfaceHandle, NativeHandle, Token, text) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("无法更新编辑文本。");
             }

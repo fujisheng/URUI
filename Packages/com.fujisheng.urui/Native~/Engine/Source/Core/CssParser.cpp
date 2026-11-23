@@ -246,9 +246,7 @@ namespace URUI
                     }
                 }
                 const size_t close = begin;
-                const size_t blockOffset = tokens[open].span.byteOffset + tokens[open].span.length;
                 const size_t blockEnd = close < end ? tokens[close].span.byteOffset : source.size();
-                rule.block = source.substr(blockOffset, blockEnd - blockOffset);
                 if (rule.atRule == "media" || rule.atRule == "keyframes" || rule.atRule == "supports")
                 {
                     rule.children = Rules(source, tokens, blockStart, close, url, diagnostics, depth + 1);

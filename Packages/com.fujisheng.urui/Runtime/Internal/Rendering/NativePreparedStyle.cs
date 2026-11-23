@@ -9,9 +9,11 @@ namespace URUI.Internal.Rendering
     internal unsafe struct NativePreparedStyle : IDisposable
     {
         Element element;
+        ulong surface;
         ulong owner;
         NativeMethods.FrozenStyleHandle handle;
         ComputedStyleSnapshot materialized;
+
         internal void Replace(Element value)
         {
             if (value == null)
@@ -30,15 +32,17 @@ namespace URUI.Internal.Rendering
             }
             var previous = handle;
             handle = default;
+            surface = value.Document.SurfaceHandle;
             owner = value.NativeHandle;
             element = value;
             var pointer = previous.Slot == 0 ? IntPtr.Zero : (IntPtr)(&previous);
-            var result = NativeMethods.urui_style_snapshot_freeze(owner, value.CheckedToken(), pointer, out handle);
-            if (result != 1)
+            var result = NativeMethods.urui_style_snapshot_freeze(surface, owner, value.CheckedToken(), pointer, out handle);
+            if (result != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("准备样式冻结失败：" + result);
             }
         }
+
         internal ComputedStyleSnapshot Materialize(Element value)
         {
             if (handle.Slot == 0 || element == null || value == null || !ReferenceEquals(element.Document, value.Document) || element.Token != value.Token)
@@ -47,12 +51,15 @@ namespace URUI.Internal.Rendering
             }
             return materialized = value.Document.Styles.GetFrozen(value, owner, handle, materialized);
         }
+
         public void Dispose()
         {
             element?.Document.CheckThread();
             var previous = handle;
+            var surfaceHandle = surface;
             var document = owner;
             handle = default;
+            surface = 0;
             owner = 0;
             element = null;
             materialized = null;
@@ -60,8 +67,8 @@ namespace URUI.Internal.Rendering
             {
                 return;
             }
-            var result = NativeMethods.urui_style_snapshot_release(document, previous);
-            if (result != 1 && result != -2)
+            var result = NativeMethods.urui_style_snapshot_release(surfaceHandle, document, previous);
+            if (result != NativeStatus.Ok && result != NativeStatus.NotReady)
             {
                 throw new InvalidOperationException("准备样式释放失败：" + result);
             }

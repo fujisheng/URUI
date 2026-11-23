@@ -65,6 +65,7 @@ namespace URUI
 
         /// Version is changed whenever the layers are dirtied, requiring regeneration of string geometry.
         int GetVersion() const;
+        void ReleaseTextures(RenderManager& render_manager);
 
     private:
         // Build and append glyph to 'glyphs'
@@ -113,10 +114,10 @@ namespace URUI
         // Each font layer that generated geometry or textures, indexed by the --urui-font-effect's fingerprint key.
         FontLayerCache layer_cache;
 
-        // Pre-cache kerning pairs for some ascii subset of all characters.
-        using AsciiPair = uint16_t;
-        using KerningPairs = UnorderedMap<AsciiPair, float>;
-        KerningPairs kerning_pair_cache;
+        // Lazily cache kerning pairs on demand (including zero results) to avoid upfront FT_Get_Kerning scans.
+        using KerningPairKey = uint64_t;
+        using KerningPairs = UnorderedMap<KerningPairKey, float>;
+        mutable KerningPairs kerning_pair_cache;
 
         bool has_kerning = false;
         bool is_layers_dirty = false;

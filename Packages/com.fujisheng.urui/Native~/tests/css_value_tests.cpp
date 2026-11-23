@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <URUI/Core/Animation.h>
 #include <cassert>
@@ -7,8 +9,8 @@
 
 int main()
 {
-    assert(urui_create(400, 200) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
+    auto* context = URUI::GetContext(0);
     auto* document = context->LoadDocumentFromMemory(
         "<!doctype html><html><head><style>body{width:100px;}"
         "#escaped{width:20px;width:\\31 2px;} #quoted{width:21px;width:'12px';}"
@@ -107,6 +109,6 @@ int main()
     assert(document->GetElementById("custom")->GetProperty("--x"));
     assert(document->GetElementById("comment")->GetComputedValues().border_top_width() == 2);
     assert(document->GetElementById("color")->GetComputedValues().color() == URUI::Colourb(255, 0, 0));
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "CSS token identity contracts passed\n";
 }

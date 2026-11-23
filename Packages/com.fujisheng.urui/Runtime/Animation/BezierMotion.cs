@@ -24,14 +24,12 @@ namespace URUI.Animation
             this.rotation = rotation ?? throw new ArgumentNullException(nameof(rotation));
             this.source = source ?? throw new ArgumentNullException(nameof(source));
             this.target = target ?? throw new ArgumentNullException(nameof(target));
-            foreach (var node in new[] { rotation, source, target })
+            if (!ReferenceEquals(path.Document, rotation.Document)
+                || !ReferenceEquals(path.Document, source.Document)
+                || !ReferenceEquals(path.Document, target.Document))
             {
-                if (!ReferenceEquals(path.Document, node.Document))
-                {
-                    throw new ArgumentException("路径节点必须属于同一文档。");
-                }
+                throw new ArgumentException("路径节点必须属于同一文档。");
             }
-            path.Document.LayoutUpdated += Layout;
         }
         float Number(Element element, string property)
         {
@@ -57,7 +55,11 @@ namespace URUI.Animation
             var perpendicular = direction.sqrMagnitude > 0 ? new Vector2(direction.y, -direction.x).normalized : Vector2.down;
             control = start * Random("--urui-motion-midpoint-from", "--urui-motion-midpoint-to") + perpendicular * Random("--urui-motion-bend-from", "--urui-motion-bend-to");
             angle = Random("--urui-motion-rotation-from", "--urui-motion-rotation-to");
-            active = true;
+            if (!active)
+            {
+                active = true;
+                path.Document.LayoutUpdated += Layout;
+            }
             Apply();
         }
         void Apply()
@@ -79,7 +81,11 @@ namespace URUI.Animation
         /// </summary>
         public void Stop()
         {
-            active = false;
+            if (active)
+            {
+                active = false;
+                path.Document.LayoutUpdated -= Layout;
+            }
             if (path.IsValid)
             {
                 path.SetTransform(Vector3.zero, Quaternion.identity, Vector3.one);
@@ -91,7 +97,6 @@ namespace URUI.Animation
         }
         public void Dispose()
         {
-            path.Document.LayoutUpdated -= Layout;
             Stop();
         }
     }

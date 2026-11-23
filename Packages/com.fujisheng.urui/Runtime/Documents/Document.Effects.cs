@@ -20,7 +20,7 @@ namespace URUI.Documents
         void QueueEffectSubmission(Action callback) => host.QueueEffectSubmission(this, callback);
         EffectLayout FreezeEffectLayout(Element element, URUI.Styles.ComputedStyleSnapshot style)
         {
-            if (URUI.Internal.Interop.NativeMethods.urui_effect_layout(NativeHandle, element.Token, effectLayoutScratch, effectLayoutScratch.Length, out var root) != 1)
+            if (URUI.Internal.Interop.NativeMethods.urui_effect_layout(SurfaceHandle, NativeHandle, element.Token, effectLayoutScratch, effectLayoutScratch.Length, out var root) != URUI.Internal.Interop.NativeStatus.Ok)
             {
                 throw new InvalidOperationException("效果坐标快照已失效。");
             }
@@ -71,7 +71,7 @@ namespace URUI.Documents
         }
         PreparedLayout PrepareLayout(Element element)
         {
-            if (URUI.Internal.Interop.NativeMethods.urui_effect_layout(NativeHandle, element.Token, effectLayoutScratch, effectLayoutScratch.Length, out var root) != 1)
+            if (URUI.Internal.Interop.NativeMethods.urui_effect_layout(SurfaceHandle, NativeHandle, element.Token, effectLayoutScratch, effectLayoutScratch.Length, out var root) != URUI.Internal.Interop.NativeStatus.Ok)
             {
                 throw new InvalidOperationException("程序准备坐标已失效。");
             }
@@ -721,12 +721,13 @@ namespace URUI.Documents
             surface.EndEffect();
         }
         internal bool HasEffectParameterBinding(ulong token) => effects?.HasParameterBinding(token) == true;
-        internal bool TryGetImageProgram(ulong token, ulong input, out Material material, out URUI.Internal.Rendering.NativeProgramLayout parameters, out ImageProgramInput frame, out IParameterImageEffect renderProgram, EffectKind kind = EffectKind.Image)
+        internal bool TryGetImageProgram(ulong token, ulong input, out Material material, out URUI.Internal.Rendering.NativeProgramLayout parameters, out ImageProgramInput frame, out IParameterImageEffect renderProgram, out RenderGeometry geometry, EffectKind kind = EffectKind.Image)
         {
             material = null;
             parameters = null;
             frame = default;
             renderProgram = null;
+            geometry = RenderGeometry.Unknown;
             if (!effectInstances.TryGetValue((token, kind, input), out var entry) || entry.instance is not IParameterImageEffect program)
             {
                 return false;
@@ -734,13 +735,17 @@ namespace URUI.Documents
             renderProgram = program;
             frame = entry.prepared?.ShaderInput(program.TimeInput) ?? throw new InvalidOperationException("程序尚未准备输入。");
             material = program.Program;
-            if (!material || !material.HasProperty("_UruiParameters") || !material.HasProperty("_UruiParameterSize"))
+            if (!material || !material.HasProperty("_UruiParameters"))
             {
                 throw new InvalidOperationException("固定参数图片材质缺少参数表契约。");
             }
             if (!content.ImageLayouts.TryGetValue(entry.name, out parameters))
             {
                 throw new InvalidOperationException("固定参数图片缺少布局。");
+            }
+            if (effects.TryGet(entry.name, out var definition))
+            {
+                geometry = definition.RenderProgram.Geometry;
             }
             return true;
         }
@@ -838,26 +843,37 @@ namespace URUI.Documents
                 context.Close();
             }
         }
-        void ReleaseEffects()
+        void ReleaseEffects(ContentState state)
         {
-            foreach (var layout in content.ImageLayouts.Values)
+            foreach (var layout in state.ImageLayouts.Values)
             {
                 layout.Dispose();
             }
-            content.ImageLayouts.Clear();
-            foreach (var entry in effectInstances.Values)
+            state.ImageLayouts.Clear();
+            foreach (var entry in state.EffectInstances.Values)
             {
                 entry.prepared?.Dispose();
             }
-            var resources = new List<IDisposable>(effectInstances.Values);
-            resources.AddRange(filterPrograms.Values);
+            var resources = new List<IDisposable>(state.EffectInstances.Count + state.FilterPrograms.Count);
+            resources.AddRange(state.EffectInstances.Values);
+            resources.AddRange(state.FilterPrograms.Values);
             if (resources.Count == 0)
             {
                 return;
             }
-            host.RetirePaintResources(resources);
-            effectInstances.Clear();
-            filterPrograms.Clear();
+            if (host)
+            {
+                host.RetirePaintResources(resources);
+            }
+            else
+            {
+                foreach (var resource in resources)
+                {
+                    resource.Dispose();
+                }
+            }
+            state.EffectInstances.Clear();
+            state.FilterPrograms.Clear();
         }
     }
 }

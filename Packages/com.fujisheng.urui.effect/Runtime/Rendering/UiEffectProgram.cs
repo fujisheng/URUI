@@ -9,24 +9,35 @@ namespace URUI.Effect.Rendering
     /// </summary>
     internal sealed class UIEffectProgram : IDisposable
     {
+        static readonly int transitionTexId = Shader.PropertyToID("_TransitionTex");
+        static readonly int detailTexId = Shader.PropertyToID("_DetailTex");
+        static readonly int gradationTexId = Shader.PropertyToID("_GradationTex");
+        static readonly int triangleFactsId = Shader.PropertyToID("_UruiTriangleFacts");
+        static readonly int srcBlendId = Shader.PropertyToID("_SrcBlend");
+        static readonly int dstBlendId = Shader.PropertyToID("_DstBlend");
+        static Shader cachedShader;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => cachedShader = null;
+
         internal Material Material
         {
             get;
         }
         internal UIEffectProgram(BlendMode source, BlendMode destination, int samplingQuality, Texture transition, Texture detail, Texture gradient, Texture triangles, bool complexPixel)
         {
-            var shader = UnityEngine.Resources.Load<Shader>("URUI.Effect/UiEffect");
+            var shader = cachedShader ? cachedShader : (cachedShader = UnityEngine.Resources.Load<Shader>("URUI.Effect/UiEffect"));
             if (!shader || !shader.isSupported)
             {
                 throw new NotSupportedException("当前平台缺少 URUI.Effect/UiEffect 程序。");
             }
             Material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-            Material.SetTexture("_TransitionTex", transition ? transition : Texture2D.whiteTexture);
-            Material.SetTexture("_DetailTex", detail ? detail : Texture2D.whiteTexture);
-            Material.SetTexture("_GradationTex", gradient ? gradient : Texture2D.whiteTexture);
-            Material.SetTexture("_UruiTriangleFacts", triangles);
-            Material.SetInt("_SrcBlend", (int)source);
-            Material.SetInt("_DstBlend", (int)destination);
+            Material.SetTexture(transitionTexId, transition ? transition : Texture2D.whiteTexture);
+            Material.SetTexture(detailTexId, detail ? detail : Texture2D.whiteTexture);
+            Material.SetTexture(gradationTexId, gradient ? gradient : Texture2D.whiteTexture);
+            Material.SetTexture(triangleFactsId, triangles);
+            Material.SetInt(srcBlendId, (int)source);
+            Material.SetInt(dstBlendId, (int)destination);
             if (samplingQuality < 0 || samplingQuality > 3)
             {
                 throw new ArgumentOutOfRangeException(nameof(samplingQuality));

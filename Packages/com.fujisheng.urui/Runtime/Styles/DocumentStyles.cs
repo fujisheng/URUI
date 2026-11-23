@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using URUI.Documents;
 using URUI.Elements;
 using URUI.Internal.Interop;
+
 namespace URUI.Styles
 {
     /// <summary>
@@ -19,19 +20,24 @@ namespace URUI.Styles
         ComputedStyleSnapshot sharedValues;
         bool checkedProtocol;
         bool checkedFrozenProtocol;
+        ulong lastInvalidationSerial;
+
         public uint Generation
         {
             get;
             private set;
         } = 1;
+
         internal DocumentStyles(Document document)
         {
             this.document = document;
             document.LayoutUpdated += OnLayoutUpdated;
             document.Unloaded += OnUnloaded;
         }
+
         public ComputedStyleSnapshot GetComputed(Element element)
         {
+            document.CheckThread();
             if (element == null)
             {
                 throw new ArgumentNullException(nameof(element));
@@ -48,26 +54,58 @@ namespace URUI.Styles
             {
                 try
                 {
-                    if (NativeMethods.urui_style_api_version() != 4)
+                    if (NativeMethods.urui_style_api_version() != NativeMethods.ExpectedStyleApiVersion)
                     {
-                        throw new NotSupportedException("需要计算样式协议 v4。");
+                        throw new NotSupportedException($"需要计算样式协议 v{NativeMethods.ExpectedStyleApiVersion}。");
                     }
                 }
                 catch (EntryPointNotFoundException exception)
                 {
-                    throw new NotSupportedException("已安装插件缺少计算样式协议 v4。", exception);
+                    throw new NotSupportedException($"已安装插件缺少计算样式协议 v{NativeMethods.ExpectedStyleApiVersion}。", exception);
                 }
                 checkedProtocol = true;
             }
+            var surface = document.SurfaceHandle;
             var token = element.CheckedToken();
-            var result = NativeMethods.urui_element_style_snapshot(element.NativeHandle, token, 0, null, 0, null, 0, out var revision, out var count, out var bytes);
-            if (result != -3 || count < 0 || bytes < 0)
+            var hasCached = cache.TryGetValue(token, out var current);
+            int result;
+            ulong revision;
+            int count;
+            int bytes;
+            if (hasCached)
             {
-                throw new InvalidOperationException("无法取得计算样式快照：" + result);
+                result = NativeMethods.urui_element_style_snapshot(surface, element.NativeHandle, token, 0, null, 0, null, 0, out revision, out count, out bytes);
+                if ((result != NativeStatus.BufferTooSmall && result != NativeStatus.Ok) || count < 0 || bytes < 0)
+                {
+                    throw new InvalidOperationException("无法取得计算样式快照：" + result);
+                }
+                if (current.Revision == revision)
+                {
+                    return current;
+                }
             }
-            if (cache.TryGetValue(token, out var current) && current.Revision == revision)
+            else
             {
-                return current;
+                if (entryScratch.Length < 64)
+                {
+                    entryScratch = new NativeMethods.StyleValue[64];
+                }
+                if (textScratch.Length < 512)
+                {
+                    textScratch = new byte[512];
+                }
+                result = NativeMethods.urui_element_style_snapshot(surface, element.NativeHandle, token, 0, entryScratch, entryScratch.Length, textScratch, textScratch.Length, out revision, out count, out bytes);
+                if (result == NativeStatus.Ok && count >= 0 && bytes >= 0 && count <= entryScratch.Length && bytes <= textScratch.Length)
+                {
+                    var fastSnapshot = new ComputedStyleSnapshot(this, element, Generation, revision, entryScratch, count, textScratch, bytes, ReuseValues(null));
+                    sharedValues = fastSnapshot;
+                    cache[token] = fastSnapshot;
+                    return fastSnapshot;
+                }
+                if ((result != NativeStatus.BufferTooSmall && result != NativeStatus.Ok) || count < 0 || bytes < 0)
+                {
+                    throw new InvalidOperationException("无法取得计算样式快照：" + result);
+                }
             }
             if (entryScratch.Length < count)
             {
@@ -79,28 +117,33 @@ namespace URUI.Styles
             }
             var entries = entryScratch;
             var names = textScratch;
-            result = NativeMethods.urui_element_style_snapshot(element.NativeHandle, token, revision, entries, entries.Length, names, names.Length, out revision, out count, out bytes);
-            if (result != 1 || count > entries.Length || bytes > names.Length)
+            if (count > 0 || bytes > 0)
             {
-                throw new InvalidOperationException("计算样式快照在复制时变化：" + result);
+                result = NativeMethods.urui_element_style_snapshot(surface, element.NativeHandle, token, revision, entries, entries.Length, names, names.Length, out revision, out count, out bytes);
+                if (result != NativeStatus.Ok || count > entries.Length || bytes > names.Length)
+                {
+                    throw new InvalidOperationException("计算样式快照在复制时变化：" + result);
+                }
             }
             var snapshot = new ComputedStyleSnapshot(this, element, Generation, revision, entries, count, names, bytes, ReuseValues(current));
             sharedValues = snapshot;
             cache[token] = snapshot;
             return snapshot;
         }
+
         internal void RequireFrozenProtocol()
         {
             if (checkedFrozenProtocol)
             {
                 return;
             }
-            if (NativeMethods.urui_style_frozen_api_version() != 1)
+            if (NativeMethods.urui_style_frozen_api_version() != NativeMethods.ExpectedStyleFrozenApiVersion)
             {
-                throw new NotSupportedException("需要准备样式快照协议 v1。");
+                throw new NotSupportedException($"需要准备样式快照协议 v{NativeMethods.ExpectedStyleFrozenApiVersion}。");
             }
             checkedFrozenProtocol = true;
         }
+
         internal ComputedStyleSnapshot GetFrozen(Element element, ulong owner, in NativeMethods.FrozenStyleHandle handle, ComputedStyleSnapshot previous)
         {
             document.CheckThread();
@@ -110,8 +153,9 @@ namespace URUI.Styles
             {
                 throw new InvalidOperationException("准备样式所属元素已失效。");
             }
-            var result = NativeMethods.urui_style_snapshot_copy(owner, handle, 0, null, 0, null, 0, out var revision, out var count, out var bytes);
-            if (result != -3 || count < 0 || bytes < 0)
+            var surface = document.SurfaceHandle;
+            var result = NativeMethods.urui_style_snapshot_copy(surface, owner, handle, 0, null, 0, null, 0, out var revision, out var count, out var bytes);
+            if ((result != NativeStatus.BufferTooSmall && result != NativeStatus.Ok) || count < 0 || bytes < 0)
             {
                 throw new InvalidOperationException("准备样式快照已失效：" + result);
             }
@@ -132,14 +176,18 @@ namespace URUI.Styles
             {
                 textScratch = new byte[bytes];
             }
-            result = NativeMethods.urui_style_snapshot_copy(owner, handle, revision, entryScratch, entryScratch.Length, textScratch, textScratch.Length, out revision, out count, out bytes);
-            if (result != 1 || count > entryScratch.Length || bytes > textScratch.Length)
+            if (count > 0 || bytes > 0)
             {
-                throw new InvalidOperationException("准备样式快照复制失败：" + result);
+                result = NativeMethods.urui_style_snapshot_copy(surface, owner, handle, revision, entryScratch, entryScratch.Length, textScratch, textScratch.Length, out revision, out count, out bytes);
+                if (result != NativeStatus.Ok || count > entryScratch.Length || bytes > textScratch.Length)
+                {
+                    throw new InvalidOperationException("准备样式快照复制失败：" + result);
+                }
             }
             // 公开快照始终复制值；只有调用者实际观察它时才创建托管对象。
             return sharedValues = new ComputedStyleSnapshot(this, element, Generation, revision, entryScratch, count, textScratch, bytes, ReuseValues(previous));
         }
+
         ComputedStyleSnapshot ReuseValues(ComputedStyleSnapshot previous)
         {
             if (previous != null)
@@ -153,11 +201,13 @@ namespace URUI.Styles
             }
             return sharedValues;
         }
+
         /// <summary>
         /// 从下一次稳定帧通知起通知；等值写入不重复通知，取消后不再回调。
         /// </summary>
         public IDisposable Subscribe(Element element, Action<ComputedStyleSnapshot> changed)
         {
+            document.CheckThread();
             if (element == null || !ReferenceEquals(element.Document, document))
             {
                 throw new ArgumentException("元素必须属于当前文档。", nameof(element));
@@ -170,21 +220,30 @@ namespace URUI.Styles
             subscriptions.Add(subscription);
             return subscription;
         }
+
         void OnLayoutUpdated(Document source)
         {
             var generation = Generation;
             var count = subscriptions.Count;
+            var invalidationSerial = document.InvalidationSerial;
+            if (count == 0 && (cache.Count == 0 || invalidationSerial == lastInvalidationSerial))
+            {
+                return;
+            }
             List<Exception> failures = null;
+            bool hadDisposed = false;
             for (var i = 0; i < count && Generation == generation; i++)
             {
                 var subscription = subscriptions[i];
                 if (subscription.Disposed)
                 {
+                    hadDisposed = true;
                     continue;
                 }
                 if (!subscription.Element.IsValid)
                 {
                     subscription.Dispose();
+                    hadDisposed = true;
                     continue;
                 }
                 if (!subscription.Element.HasLayout)
@@ -206,45 +265,65 @@ namespace URUI.Styles
                     (failures ??= new List<Exception>()).Add(exception);
                 }
             }
-            subscriptions.RemoveAll(subscription => subscription.Disposed);
-            invalid.Clear();
-            foreach (var entry in cache)
+            if (hadDisposed)
             {
-                if (!entry.Value.IsValid)
+                for (var i = subscriptions.Count - 1; i >= 0; i--)
                 {
-                    invalid.Add(entry.Key);
+                    if (subscriptions[i].Disposed)
+                    {
+                        subscriptions.RemoveAt(i);
+                    }
                 }
             }
-            foreach (var key in invalid)
+            if (invalidationSerial != lastInvalidationSerial && cache.Count > 0)
             {
-                cache.Remove(key);
+                lastInvalidationSerial = invalidationSerial;
+                invalid.Clear();
+                foreach (var entry in cache)
+                {
+                    if (!entry.Value.IsValid)
+                    {
+                        invalid.Add(entry.Key);
+                    }
+                }
+                for (var i = 0; i < invalid.Count; i++)
+                {
+                    cache.Remove(invalid[i]);
+                }
             }
             if (failures != null)
             {
                 throw new AggregateException("计算样式订阅失败。", failures);
             }
         }
+
         void OnUnloaded(Document source)
         {
             Generation++;
+            lastInvalidationSerial = 0;
             sharedValues = null;
             cache.Clear();
             DiscardInvalid();
         }
+
         internal void DiscardInvalid()
         {
             if (sharedValues != null && !sharedValues.IsValid)
             {
                 sharedValues = null;
             }
-            foreach (var subscription in subscriptions)
+            for (var i = subscriptions.Count - 1; i >= 0; i--)
             {
+                var subscription = subscriptions[i];
                 if (!subscription.Disposed && !subscription.Element.IsValid)
                 {
                     subscription.Dispose();
                 }
+                if (subscription.Disposed)
+                {
+                    subscriptions.RemoveAt(i);
+                }
             }
-            subscriptions.RemoveAll(subscription => subscription.Disposed);
             invalid.Clear();
             foreach (var entry in cache)
             {
@@ -253,22 +332,25 @@ namespace URUI.Styles
                     invalid.Add(entry.Key);
                 }
             }
-            foreach (var key in invalid)
+            for (var i = 0; i < invalid.Count; i++)
             {
-                cache.Remove(key);
+                cache.Remove(invalid[i]);
             }
         }
+
         sealed class Subscription : IDisposable
         {
             internal Element Element;
             internal Action<ComputedStyleSnapshot> Changed;
             internal ulong Revision;
             internal bool Disposed;
+
             internal Subscription(Element element, Action<ComputedStyleSnapshot> changed)
             {
                 Element = element;
                 Changed = changed;
             }
+
             public void Dispose()
             {
                 Disposed = true;

@@ -8,6 +8,7 @@ namespace URUI.Documents
     {
         static readonly Unity.Profiling.ProfilerMarker loadContentMarker = new("URUI.Document.Load");
         static readonly Unity.Profiling.ProfilerMarker loadNativeMarker = new("URUI.Document.LoadNative");
+
         /// <summary>
         /// 加载 Editor 编译资产，跳过 HTML/CSS 文本解析；失败保持原页面。
         /// </summary>
@@ -69,43 +70,48 @@ namespace URUI.Documents
             ValidateImages();
             ValidateTextResources(files);
             host = surface.EnsureStarted(this);
+            var surfaceHandle = host.SurfaceHandle;
             var previous = activeContent;
             ContentState staged = null;
+            var committed = false;
             changingContent = true;
             surface.BeginTransaction();
             try
             {
-                if (NativeMethods.urui_document_create(out var handle) != 1)
+                if (NativeMethods.urui_document_create(surfaceHandle, out var handle) != NativeStatus.Ok)
                 {
-                    throw new InvalidOperationException("URUI 文档身份创建失败：" + NativeMethods.LastError());
+                    throw new InvalidOperationException("URUI 文档身份创建失败：" + NativeMethods.LastError(surfaceHandle));
                 }
                 staged = new ContentState
                 {
+                    SurfaceHandle = surfaceHandle,
                     Handle = handle,
                     Generation = ++nextGeneration,
                     SourceUrl = requestedUrl,
                     SourceMarkup = html,
                     CompiledAsset = compiled,
                     CompiledFingerprint = compiled ? compiled.Fingerprint : null,
-                    TextResources = (URUI.Resources.TextResource[])files.Clone(),
-                    Images = CopyImages(images),
+                    TextResources = files.Length == 0 ? Array.Empty<URUI.Resources.TextResource>() : (URUI.Resources.TextResource[])files.Clone(),
+                    Images = images,
                     ImageResolver = imageResolver
                 };
-                if (previous != null && NativeMethods.urui_document_set_replacement(handle, previous.Handle) != 1)
+                if (previous != null && NativeMethods.urui_document_set_replacement(surfaceHandle, handle, previous.Handle) != NativeStatus.Ok)
                 {
-                    throw new InvalidOperationException("URUI 候选文档资源身份配置失败：" + NativeMethods.LastError());
+                    throw new InvalidOperationException("URUI 候选文档资源身份配置失败：" + NativeMethods.LastError(surfaceHandle));
                 }
                 candidateContent = content = staged;
-                surface.Bind(handle, this);
-                effects?.ConfigureDocument(handle);
+                surface.Bind(surfaceHandle, handle, this);
+                effects?.ConfigureDocument(surfaceHandle, handle);
                 host.RegisterDocumentResources(handle, requestedUrl, staged.TextResources, staged.Images);
                 StartEvents();
                 using (loadNativeMarker.Auto())
                 {
-                    var loaded = isCompiled ? compiled.Load(handle) : NativeMethods.urui_document_load_html(handle, html, requestedUrl);
-                    if (loaded != 1)
+                    var loaded = isCompiled
+                        ? compiled.Load(surfaceHandle, handle)
+                        : NativeMethods.urui_document_load_html(surfaceHandle, handle, html, requestedUrl);
+                    if (loaded != NativeStatus.Ok)
                     {
-                        throw new InvalidOperationException("URUI HTML 加载失败：" + NativeMethods.LastError());
+                        throw new InvalidOperationException("URUI HTML 加载失败：" + NativeMethods.LastError(surfaceHandle));
                     }
                 }
                 if (!this || !isActiveAndEnabled || !surface || !surface.isActiveAndEnabled)
@@ -113,10 +119,10 @@ namespace URUI.Documents
                     throw new InvalidOperationException("URUI 候选页面加载期间宿主已关闭。");
                 }
                 InitializeElements();
-                content = previous;
                 if (previous != null)
                 {
-                    RetireContent(previous, true);
+                    content = previous;
+                    RetireContent(previous, notify: true);
                 }
                 content = activeContent = staged;
                 candidateContent = null;
@@ -125,23 +131,30 @@ namespace URUI.Documents
                 compiledSource = compiled;
                 sourceUrl = requestedUrl;
                 requestedMarkup = html;
-                if (NativeMethods.urui_document_set_presentation(handle, Layer, Order, Presented ? 1 : 0, modal ? 1 : 0) != 1)
+                if (NativeMethods.urui_document_set_presentation(surfaceHandle, handle, Layer, Order, Presented ? 1 : 0, modal ? 1 : 0) != NativeStatus.Ok)
                 {
-                    throw new InvalidOperationException("URUI 页面发布失败：" + NativeMethods.LastError());
+                    throw new InvalidOperationException("URUI 页面发布失败：" + NativeMethods.LastError(surfaceHandle));
                 }
+                surface.MarkDocumentLoaded(this);
+                committed = true;
 #if UNITY_EDITOR
                 CaptureAuthoringProvenance();
 #endif
-                NotifyLifecycle(Loaded);
             }
             catch
             {
-                if (staged != null && !ReferenceEquals(activeContent, staged))
+                if (staged != null && !committed)
                 {
-                    content = staged;
-                    RetireContent(staged, false);
-                    content = activeContent = previous;
                     candidateContent = null;
+                    content = activeContent = previous;
+                    try
+                    {
+                        RetireContent(staged, notify: false);
+                    }
+                    catch (Exception rollbackError)
+                    {
+                        Debug.LogException(rollbackError);
+                    }
                     styles?.DiscardInvalid();
                     animations?.DiscardInvalid();
                 }
@@ -151,8 +164,26 @@ namespace URUI.Documents
             {
                 changingContent = false;
                 surface.EndTransaction();
-                FinishNativeCall();
+                if (!committed)
+                {
+                    try
+                    {
+                        FinishNativeCall();
+                    }
+                    catch (Exception drainError)
+                    {
+                        Debug.LogException(drainError);
+                    }
+                }
             }
+
+            // Fire Loaded outside the document transaction lock; NotifyLifecycle still holds
+            // a dispatch scope so Load/Unload calls inside Loaded defer in order until unwind.
+            if (committed)
+            {
+                NotifyLifecycle(Loaded);
+            }
+            FinishNativeCall();
         }
 
         URUI.Resources.TextResource[] CompiledResources(URUI.Resources.CompiledDocumentAsset asset)
@@ -205,7 +236,7 @@ namespace URUI.Documents
             }
             loadRequested = false;
             requestedMarkup = null;
-            ReleaseContent();
+            ReleaseContent(clearDelegatesAfterRelease: false);
         }
     }
 }

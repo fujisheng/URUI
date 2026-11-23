@@ -25,8 +25,9 @@ namespace URUI.Controls
         {
             get
             {
-                var low = LowValue;
-                var high = HighValue;
+                var info = ReadRange();
+                var low = info.Min;
+                var high = info.Max;
                 var percent = high > low ? (float)(((double)ToNumber(Value) - low) / ((double)high - low) * 100) : 0;
                 return Inverted ? 100 - percent : percent;
             }
@@ -184,7 +185,7 @@ namespace URUI.Controls
         NativeMethods.RangeInfo ReadRange()
         {
             RequireValid();
-            if (NativeMethods.urui_control_range_info(NativeHandle, CheckedToken(), out var info) != 1)
+            if (NativeMethods.urui_control_range_info(SurfaceHandle, NativeHandle, CheckedToken(), out var info) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("无法读取滑块的有效范围。");
             }
@@ -223,19 +224,21 @@ namespace URUI.Controls
 
             var local = WorldToLocal(evt.Position);
             bool vertical = Direction == SliderDirection.Vertical;
-            float length = vertical ? ContentRect.height : ContentRect.width;
+            var contentRect = ContentRect;
+            float length = vertical ? contentRect.height : contentRect.width;
             if (length <= 0)
             {
                 return;
             }
 
-            float ratio = Mathf.Clamp01(vertical ? (local.y - ContentRect.y) / length : (local.x - ContentRect.x) / length);
+            float ratio = Mathf.Clamp01(vertical ? (local.y - contentRect.y) / length : (local.x - contentRect.x) / length);
             if (inverted)
             {
                 ratio = 1 - ratio;
             }
 
-            float number = Mathf.Lerp(LowValue, HighValue, ratio);
+            var info = ReadRange();
+            float number = Mathf.Lerp(info.Min, info.Max, ratio);
             Value = FromNumber(number);
         }
         /// <summary>
@@ -278,10 +281,6 @@ namespace URUI.Controls
                 ReleasePointer(dragging);
                 dragging = -1;
                 up.PreventDefault();
-            }
-            else if (evt is PointerCancelEvent || evt is PointerCaptureOutEvent)
-            {
-                dragging = -1;
             }
             else if (evt is KeyDownEvent key && ReferenceEquals(key.Target, this))
             {

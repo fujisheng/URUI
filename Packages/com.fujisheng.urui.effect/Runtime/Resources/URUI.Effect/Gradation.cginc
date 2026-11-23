@@ -4,17 +4,26 @@
 sampler2D _GradationTex;
 half4 UruiGradation(half4 color,float2 coordinate)
 {
-    if(_GradationMode==0)return color;
-    float2 uv=coordinate*_GradationTex_ST.x+_GradationTex_ST.z;
+    int mode=_GradationMode;
+    if(mode==0)return color;
+    float4 row29=UruiParameterTexel(_UiFieldBase+29);
+    int colorFilter=(int)floor(row29.x+.5);
+    float intensity=saturate(row29.y);
+    float inverse=1/clamp(row29.w,.01,10);
+    float gradOffset=clamp(row29.z,-1,1);
+    bool gradient=mode==2||mode==4||mode==10;
+    bool radial=mode==5||mode==6;
+    float offset=gradient?-.5*(inverse+1)-gradOffset:radial?gradOffset:gradOffset*(inverse+1)/2-inverse*.5+.5;
+    float2 uv=coordinate*inverse+offset;
     half4 factor;
-    if(_GradationMode==2 || _GradationMode==4 || _GradationMode==10) factor=tex2D(_GradationTex,uv);
-    else if(_GradationMode==5 || _GradationMode==6)
+    if(gradient) factor=tex2D(_GradationTex,uv);
+    else if(radial)
     {
-        float t=saturate(length((coordinate-float2(.5,.5))*2*_GradationTex_ST.x)+_GradationTex_ST.z);
+        float t=saturate(length((coordinate-float2(.5,.5))*2*inverse)+offset);
         factor=lerp(_GradationColor1,_GradationColor2,t);
     }
-    else if(_GradationMode==11) factor=lerp(lerp(_GradationColor3,_GradationColor4,saturate(uv.x)),lerp(_GradationColor1,_GradationColor2,saturate(uv.x)),saturate(uv.y));
+    else if(mode==11) factor=lerp(lerp(_GradationColor3,_GradationColor4,saturate(uv.x)),lerp(_GradationColor1,_GradationColor2,saturate(uv.x)),saturate(uv.y));
     else factor=lerp(_GradationColor1,_GradationColor2,saturate(uv.x));
-    return UruiColor(color,factor,_GradationIntensity,_GradationColorFilter,0,true);
+    return UruiColor(color,factor,intensity,colorFilter,0,true);
 }
 #endif

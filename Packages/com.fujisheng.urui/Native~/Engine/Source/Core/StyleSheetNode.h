@@ -42,6 +42,14 @@ namespace URUI
         void ImportProperties(const PropertyDictionary& properties, uint64_t rule_source_order);
         /// Returns the node's default properties.
         const PropertyDictionary& GetProperties() const;
+        const CompoundSelector& GetSelector() const
+        {
+            return selector;
+        }
+        const StyleSheetNodeList& GetChildren() const
+        {
+            return children;
+        }
 
         /// Returns true if this node is applicable to the given element, given its IDs, classes and heritage.
         /// @note For performance reasons this call does not check whether 'element' is a text element. The caller must manually check this condition and

@@ -1,6 +1,9 @@
 #include "HtmlBuilder.h"
-#include "../../../graphic_tint.h"
+#include "GraphicTint.h"
 #include "HtmlParser.h"
+#if defined(URUI_DEBUG)
+#include "Debug/style_probe.h"
+#endif
 #include "CssParser.h"
 #include <URUI/Core/ElementText.h>
 #include <URUI/Core/Elements/ElementFormControlSelect.h>
@@ -123,7 +126,7 @@ namespace URUI
           computed_values_are_default_initialized(true), visible(true), offset_fixed(false),
           absolute_offset_dirty(true), rounded_main_padding_size_dirty(true), dirty_definition(false),
           dirty_child_definitions(false), dirty_animation(false), dirty_transition(false), dirty_transform(false),
-          dirty_perspective(false), tag(tag), relative_offset_base(0, 0), relative_offset_position(0, 0),
+          dirty_perspective(false), counted_backdrop_filter(false), tag(tag), relative_offset_base(0, 0), relative_offset_position(0, 0),
           absolute_offset(0, 0), scroll_offset(0, 0)
     {
         URUI_ASSERT(tag == StringUtilities::ToLower(tag));
@@ -147,6 +150,15 @@ namespace URUI
     Element::~Element()
     {
         URUI_ASSERT(parent == nullptr);
+
+        if (counted_backdrop_filter)
+        {
+            if (auto* doc = GetOwnerDocument())
+            {
+                doc->AdjustBackdropFilterElementCount(-1);
+            }
+            counted_backdrop_filter = false;
+        }
 
         PluginRegistry::NotifyElementDestroy(this);
 
@@ -276,6 +288,16 @@ namespace URUI
 
             computed_values_are_default_initialized = false;
 
+            const bool has_backdrop = meta->computed_values.has_backdrop_filter();
+            if (has_backdrop != bool(counted_backdrop_filter))
+            {
+                if (auto* doc = GetOwnerDocument())
+                {
+                    doc->AdjustBackdropFilterElementCount(has_backdrop ? 1 : -1);
+                    counted_backdrop_filter = has_backdrop;
+                }
+            }
+
             // Computed values are just calculated and can safely be used in OnPropertyChange.
             // However, new properties set during this call will not be available until the next update loop.
             if (!dirty_properties.Empty())
@@ -323,7 +345,8 @@ namespace URUI
         const RenderState document_state = top_document ? render_manager->GetState() : RenderState{};
         if (top_document)
         {
-            render_manager->BeginDocument(NeedsDocumentBackdropLayer(this));
+            auto* doc = static_cast<ElementDocument*>(this);
+            render_manager->BeginDocument(doc->GetBackdropFilterElementCount() > 0 && NeedsDocumentBackdropLayer(this));
         }
         UpdateAbsoluteOffsetAndRenderBoxData();
 
@@ -517,7 +540,26 @@ namespace URUI
     {
         if (meta->style.SetClass(class_name, activate))
         {
-            DirtyDefinition(DirtyNodes::SelfAndSiblings);
+            const StyleSheet* sheet = GetStyleSheet();
+            DirtyDefinition((sheet && !sheet->HasSiblingCombinator()) ? DirtyNodes::Self : DirtyNodes::SelfAndSiblings);
+        }
+    }
+
+    void Element::SetClassSyncAttribute(const String& class_name, bool activate)
+    {
+        if (meta->style.SetClass(class_name, activate))
+        {
+            const String names = meta->style.GetClassNames();
+            if (names.empty())
+            {
+                attributes.erase("class");
+            }
+            else
+            {
+                attributes["class"] = Variant(names);
+            }
+            const StyleSheet* sheet = GetStyleSheet();
+            DirtyDefinition((sheet && !sheet->HasSiblingCombinator()) ? DirtyNodes::Self : DirtyNodes::SelfAndSiblings);
         }
     }
 
@@ -924,6 +966,9 @@ namespace URUI
 
     bool Element::SetProperty(const String& name, const String& value)
     {
+#if defined(URUI_DEBUG)
+        URUI::StyleProbe::ParseScope parseProbe;
+#endif
         Vector<Diagnostic> diagnostics;
         const auto declarations = ParseCssDeclarations(name + ":" + value, "urui:inline-style", diagnostics);
         if (declarations.size() != 1 || !diagnostics.empty())
@@ -937,32 +982,78 @@ namespace URUI
             return false;
         }
         PropertyDictionary parsed;
-        PropertyDictionary properties;
         if (!GetPropertySpecification().ParsePropertyDeclaration(parsed, canonical, declaration.tokenValue))
         {
             return false;
         }
-        auto prioritize = [&](Property property)
+        PropertyDictionary important_properties;
+        const PropertyDictionary* target_properties = &parsed;
+        if (declaration.important)
         {
-            if (declaration.important)
+            auto prioritize = [](Property property)
             {
                 property.priority.originImportance = CssOriginImportance::AuthorImportant;
+                return property;
+            };
+            for (const auto& [id, property] : parsed.GetProperties())
+            {
+                important_properties.SetProperty(id, prioritize(property));
             }
-            return property;
-        };
-        for (const auto& [id, property] : parsed.GetProperties())
-        {
-            properties.SetProperty(id, prioritize(property));
+            for (const auto& [key, property] : parsed.GetCustomProperties())
+            {
+                important_properties.SetCustomProperty(key, prioritize(property));
+            }
+            for (const auto& [id, property] : parsed.GetVarShorthands())
+            {
+                important_properties.SetVarShorthand(id, prioritize(property));
+            }
+            target_properties = &important_properties;
         }
-        for (const auto& [key, property] : parsed.GetCustomProperties())
+        const PropertyDictionary& properties = *target_properties;
+#if defined(URUI_DEBUG)
+        parseProbe.Complete();
+        if (URUI::StyleProbe::active && URUI::StyleProbe::mode == 2)
         {
-            properties.SetCustomProperty(key, prioritize(property));
+            auto& probe = *URUI::StyleProbe::active;
+            URUI::StyleProbe::Scope compare(&probe.compare_ns);
+            bool allEqual = true;
+            bool allSupported = true;
+            for (auto& entry : properties.GetProperties())
+            {
+                ++probe.properties;
+                const Property* old = meta->style.GetLocalStyleProperties().GetProperty(entry.first);
+                bool supported = false;
+                bool equal = old && URUI::StyleProbe::Equal(*old, entry.second, supported);
+                if (old && supported)
+                {
+                    ++probe.comparable;
+                }
+                if (equal)
+                {
+                    ++probe.equal_properties;
+                }
+                if (old)
+                {
+                    allSupported &= supported;
+                }
+                allEqual &= supported && equal;
+            }
+            if (!properties.GetCustomProperties().empty() || !properties.GetVarShorthands().empty())
+            {
+                allSupported = false;
+                allEqual = false;
+            }
+            if (!allSupported)
+            {
+                ++probe.unsupported_calls;
+            }
+            if (allEqual && !properties.GetProperties().empty())
+            {
+                ++probe.equal_calls;
+            }
         }
-        for (const auto& [id, property] : parsed.GetVarShorthands())
-        {
-            properties.SetVarShorthand(id, prioritize(property));
-        }
-
+        URUI::StyleProbe::Scope applyTimer(URUI::StyleProbe::active ? &URUI::StyleProbe::active->apply_ns : nullptr);
+#endif
         for (auto& property : properties.GetProperties())
         {
             if (!meta->style.SetProperty(property.first, property.second))
@@ -1197,8 +1288,25 @@ namespace URUI
     {
         if (meta->style.SetPseudoClass(pseudo_class, activate, false))
         {
-            // Include siblings in case of CSS presence of sibling combinators '+', '~'.
-            DirtyDefinition(DirtyNodes::SelfAndSiblings);
+            if (const StyleSheet* sheet = GetStyleSheet())
+            {
+                if (sheet->HasPseudoClass(pseudo_class))
+                {
+                    if (sheet->HasNonSubjectPseudoClass(pseudo_class))
+                    {
+                        DirtyDefinition(sheet->HasSiblingCombinator() ? DirtyNodes::SelfAndSiblings : DirtyNodes::Self);
+                    }
+                    else
+                    {
+                        DirtyDefinition(DirtyNodes::SelfOnly);
+                    }
+                }
+            }
+            else
+            {
+                // Include siblings in case of CSS presence of sibling combinators '+', '~'.
+                DirtyDefinition(DirtyNodes::SelfAndSiblings);
+            }
             OnPseudoClassChange(pseudo_class, activate);
         }
     }
@@ -2350,7 +2458,8 @@ namespace URUI
 
         // Any change to the attributes may affect which styles apply to the current element, in particular due to attribute selectors, ID selectors, and
         // class selectors. This can further affect all siblings or descendants due to sibling or descendant combinators.
-        DirtyDefinition(DirtyNodes::SelfAndSiblings);
+        const StyleSheet* sheet = GetStyleSheet();
+        DirtyDefinition((sheet && !sheet->HasSiblingCombinator()) ? DirtyNodes::Self : DirtyNodes::SelfAndSiblings);
     }
 
     void Element::OnPropertyChange(const PropertyIdSet& changed_properties)
@@ -2814,9 +2923,22 @@ namespace URUI
         // If this element is a document, then never change owner_document, except if forced.
         if (!(owner_document == this) || force_set)
         {
+            if (counted_backdrop_filter)
+            {
+                if (auto* old_doc = GetOwnerDocument())
+                {
+                    old_doc->AdjustBackdropFilterElementCount(-1);
+                }
+                counted_backdrop_filter = false;
+            }
             owner_document = document ? document->GetObserverPtr() : ObserverPtr<Element>();
             if (document)
             {
+                if (meta && meta->computed_values.has_backdrop_filter())
+                {
+                    document->AdjustBackdropFilterElementCount(1);
+                    counted_backdrop_filter = true;
+                }
                 // 文档构造时尚未分配instancer；根节点由Context在完整实例化后单独核验。
                 if (this != document && !Factory::IsNativeRecordingElementInstancer(instancer))
                 {
@@ -2837,6 +2959,18 @@ namespace URUI
         {
             // 独立文档保留自己的 ownerDocument，外层证明无法覆盖其控件和定时状态。
             document->opaque_native_rendering = true;
+        }
+    }
+
+    void Element::UpdateDocumentSpecification(const SharedPtr<PropertySpecification>& specification)
+    {
+        document_specification = specification;
+        for (ElementPtr& child : children)
+        {
+            if (child->owner_document.get() == owner_document.get())
+            {
+                child->UpdateDocumentSpecification(specification);
+            }
         }
     }
 
@@ -2937,6 +3071,10 @@ namespace URUI
         if (auto* context = GetContext())
         {
             context->DirtyHitTest();
+        }
+        if (auto* doc = GetOwnerDocument())
+        {
+            doc->BumpLayoutVersion();
         }
         if (!absolute_offset_dirty)
         {
@@ -3106,9 +3244,13 @@ namespace URUI
     static void StackingContext_MakeAtomicRange(Vector<StackingContextChild>& stacking_children, size_t index_begin,
                                                 RenderOrder parent_render_order)
     {
-        std::stable_sort(stacking_children.begin() + index_begin, stacking_children.end());
+        auto range_begin = stacking_children.begin() + index_begin;
+        if (!std::is_sorted(range_begin, stacking_children.end()))
+        {
+            std::stable_sort(range_begin, stacking_children.end());
+        }
 
-        for (auto it = stacking_children.begin() + index_begin; it != stacking_children.end(); ++it)
+        for (auto it = range_begin; it != stacking_children.end(); ++it)
         {
             auto order = it->order;
             if (order != RenderOrder::StackNegative && order != RenderOrder::Positioned &&
@@ -3126,7 +3268,10 @@ namespace URUI
 
         Vector<StackingContextChild> stacking_children;
         AddChildrenToStackingContext(stacking_children);
-        std::stable_sort(stacking_children.begin(), stacking_children.end());
+        if (!std::is_sorted(stacking_children.begin(), stacking_children.end()))
+        {
+            std::stable_sort(stacking_children.begin(), stacking_children.end());
+        }
 
         stacking_context.resize(stacking_children.size());
         for (size_t i = 0; i < stacking_children.size(); i++)
@@ -3315,11 +3460,16 @@ namespace URUI
         DirtyNativeRendering();
         switch (dirty_nodes)
         {
+        case DirtyNodes::SelfOnly:
+            dirty_definition = true;
+            break;
         case DirtyNodes::Self:
             dirty_definition = true;
+            dirty_child_definitions = true;
             break;
         case DirtyNodes::SelfAndSiblings:
             dirty_definition = true;
+            dirty_child_definitions = true;
             if (parent)
             {
                 parent->dirty_child_definitions = true;
@@ -3334,11 +3484,6 @@ namespace URUI
         {
             dirty_definition = false;
 
-            // Dirty definition implies all our descendent elements. Anything that can change the definition of this element can also change the
-            // definition of any descendants due to the presence of CSS descendant or child combinators. In principle this also applies to sibling
-            // combinators, but those are handled during the DirtyDefinition call.
-            dirty_child_definitions = true;
-
             GetStyle()->UpdateDefinition();
         }
 
@@ -3348,6 +3493,7 @@ namespace URUI
             for (const ElementPtr& child : children)
             {
                 child->dirty_definition = true;
+                child->dirty_child_definitions = true;
             }
         }
     }
@@ -3921,6 +4067,10 @@ namespace URUI
         {
             context->DirtyHitTest();
         }
+        if (auto* doc = GetOwnerDocument())
+        {
+            doc->BumpLayoutVersion();
+        }
         dirty_perspective |= perspective_dirty;
         dirty_transform |= transform_dirty;
     }
@@ -4110,6 +4260,8 @@ namespace URUI
             }
 
             perspective_or_transform_changed |= (had_transform != have_transform);
+
+            dirty_transform = false;
         }
 
         // A change in perspective or transform will require an update to children transforms as well.

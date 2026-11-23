@@ -53,6 +53,7 @@ namespace URUI.Resources
         /// 不可通过此视图修改的区域声明；区域数据随文档候选资源一起发布。
         /// </summary>
         public IReadOnlyList<SpriteRegion> Sprites => Array.AsReadOnly(sprites ?? Array.Empty<SpriteRegion>());
+        internal ReadOnlySpan<SpriteRegion> SpriteSpan => sprites;
         internal ImageAsset Snapshot() => new ImageAsset(source, texture, sprites);
     }
 }

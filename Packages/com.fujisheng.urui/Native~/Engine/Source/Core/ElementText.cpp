@@ -305,9 +305,10 @@ namespace URUI
         // endline is found (and we're processing them), then the line is ended. kthxbai!
         const char* token_begin = text.c_str() + line_begin;
         const char* string_end = text.c_str() + text.size();
+        String token;
         while (token_begin != string_end)
         {
-            String token;
+            token.clear();
             const char* next_token_begin = token_begin;
             Character previous_codepoint = Character::Null;
             if (!line.empty())
@@ -335,44 +336,60 @@ namespace URUI
                 {
                     if (word_break == WordBreak::BreakAll || (word_break == WordBreak::BreakWord && line.empty()))
                     {
-                        // Try to break up the word
+                        // Try to break up the word via binary search over UTF-8 codepoint boundaries.
                         max_token_width = maximum_line_width - line_width;
-                        const int token_max_size = int(next_token_begin - token_begin);
-                        const char* partial_string_end = token_begin + token_max_size;
-
-                        // @performance: Can be made much faster. Use string width heuristics and logarithmic search.
-                        while (true)
+                        const char* token_limit = next_token_begin;
+                        Vector<const char*> boundaries;
+                        for (const char* p = token_begin; p < token_limit;)
                         {
-                            partial_string_end = StringUtilities::SeekBackwardUTF8(partial_string_end - 1, token_begin);
+                            p = StringUtilities::SeekForwardUTF8(p + 1, token_limit);
+                            boundaries.push_back(p);
+                        }
 
-                            bool force_loop_break_at_end = false;
-                            if (partial_string_end == token_begin)
-                            {
-                                // Not even the first character of the token fits. Let it overflow onto the next line if we can.
-                                if (allow_empty || !line.empty())
-                                {
-                                    return false;
-                                }
-
-                                // Continue by forcing the first character to be consumed, even though it will overflow.
-                                partial_string_end =
-                                    StringUtilities::SeekForwardUTF8(token_begin + 1, token_begin + token_max_size);
-                                force_loop_break_at_end = true;
-                            }
-
+                        // boundaries[0] = end of 1st codepoint, ..., boundaries.back() = token_limit.
+                        // Full token (boundaries.size()) already failed > max_token_width, search [0, size - 1).
+                        size_t lo = 0;
+                        size_t hi = boundaries.size() > 1 ? boundaries.size() - 1 : 0;
+                        size_t best = 0;
+                        while (lo < hi)
+                        {
+                            const size_t mid = lo + (hi - lo) / 2;
                             token.clear();
                             next_token_begin = token_begin;
-                            BuildToken(token, next_token_begin, partial_string_end,
+                            BuildToken(token, next_token_begin, boundaries[mid],
                                        line.empty() && trim_whitespace_prefix, collapse_white_space, break_at_endline,
                                        text_transform_property, decode_escape_characters);
-                            token_width = font_engine_interface->GetStringWidth(
+                            const float w = font_engine_interface->GetStringWidth(
                                 font_face_handle, token, text_shaping_context, previous_codepoint);
-
-                            if (force_loop_break_at_end || token_width <= max_token_width)
+                            if (w <= max_token_width)
                             {
-                                break;
+                                best = mid + 1;
+                                lo = mid + 1;
+                            }
+                            else
+                            {
+                                hi = mid;
                             }
                         }
+
+                        if (best == 0)
+                        {
+                            if (allow_empty || !line.empty())
+                            {
+                                return false;
+                            }
+                            // Force the first character to be consumed even though it overflows.
+                            best = 1;
+                        }
+
+                        const char* partial_string_end = boundaries[best - 1];
+                        token.clear();
+                        next_token_begin = token_begin;
+                        BuildToken(token, next_token_begin, partial_string_end,
+                                   line.empty() && trim_whitespace_prefix, collapse_white_space, break_at_endline,
+                                   text_transform_property, decode_escape_characters);
+                        token_width = font_engine_interface->GetStringWidth(
+                            font_face_handle, token, text_shaping_context, previous_codepoint);
 
                         break_line = true;
                     }
@@ -607,20 +624,59 @@ namespace URUI
 
                 String abbreviated_text;
                 StringView text_submit_view = line.text;
-                StringIteratorU8 view(line.text, line.text.size());
-                --view;
 
-                // If we have text overflow, reduce the string one character at a time, append the ellipsis or custom
-                // string, and try again until it fits. @performance Can be improved by e.g. logarithmic search. Consider
-                // combining it with the word-breaking algorithm of 'GenerateLine'.
-                for (; text_overflows_on_line(line) && view && view.get() != line.text.c_str(); --view)
+                if (text_overflows_on_line(line))
                 {
-                    abbreviated_text.reserve(line.text.size() + text_overflow.overflow_text.size());
-                    abbreviated_text.assign(line.text.c_str(), view.get());
-                    abbreviated_text.append(text_overflow.overflow_text);
-                    line.width = GetFontEngineInterface()->GetStringWidth(font_face_handle, abbreviated_text,
-                                                                          text_shaping_context);
-                    text_submit_view = abbreviated_text;
+                    const char* begin_ptr = line.text.c_str();
+                    const char* end_ptr = begin_ptr + line.text.size();
+                    Vector<const char*> prefixes;
+                    for (const char* p = begin_ptr; p < end_ptr;)
+                    {
+                        const char* next = StringUtilities::SeekForwardUTF8(p + 1, end_ptr);
+                        if (next < end_ptr)
+                        {
+                            prefixes.push_back(next);
+                        }
+                        p = next;
+                    }
+
+                    // Binary search for the longest prefix + overflow_text that does not overflow.
+                    // Note: original loop stops at the first character boundary (prefixes[0]), never empty prefix.
+                    if (!prefixes.empty())
+                    {
+                        abbreviated_text.reserve(line.text.size() + text_overflow.overflow_text.size());
+                        size_t lo = 0;
+                        size_t hi = prefixes.size();
+                        size_t best = 0;
+                        float best_width = line.width;
+                        while (lo < hi)
+                        {
+                            const size_t mid = lo + (hi - lo) / 2;
+                            abbreviated_text.assign(begin_ptr, prefixes[mid]);
+                            abbreviated_text.append(text_overflow.overflow_text);
+                            line.width = GetFontEngineInterface()->GetStringWidth(font_face_handle, abbreviated_text,
+                                                                                  text_shaping_context);
+                            if (!text_overflows_on_line(line))
+                            {
+                                best = mid;
+                                best_width = line.width;
+                                lo = mid + 1;
+                            }
+                            else
+                            {
+                                hi = mid;
+                            }
+                        }
+                        abbreviated_text.assign(begin_ptr, prefixes[best]);
+                        abbreviated_text.append(text_overflow.overflow_text);
+                        if (lo == 0)
+                        {
+                            best_width = GetFontEngineInterface()->GetStringWidth(font_face_handle, abbreviated_text,
+                                                                                  text_shaping_context);
+                        }
+                        line.width = best_width;
+                        text_submit_view = abbreviated_text;
+                    }
                 }
 
                 line.width = GetFontEngineInterface()->GenerateString(
@@ -683,7 +739,12 @@ namespace URUI
     {
         URUI_ASSERT(token_begin != string_end);
 
-        token.reserve(string_end - token_begin + token.size());
+        const size_t remaining = size_t(string_end - token_begin);
+        const size_t desired = token.size() + (remaining < 64u ? remaining : 64u);
+        if (token.capacity() < desired)
+        {
+            token.reserve(desired);
+        }
 
         // Check what the first character of the token is; all we need to know is if it is white-space or not.
         bool parsing_white_space = StringUtilities::IsWhitespace(*token_begin);

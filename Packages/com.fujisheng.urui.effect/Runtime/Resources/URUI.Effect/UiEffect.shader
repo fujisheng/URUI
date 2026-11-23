@@ -8,7 +8,6 @@ Shader "URUI.Effect/UiEffect"
         _GradationTex("Gradient",2D)="white" {}
         [HideInInspector] _UruiTriangleFacts("Triangle Facts",2D)="black" {}
         [HideInInspector] _UruiParameters("Parameters",2D)="black" {}
-        [HideInInspector] _UruiParameterSize("Parameter Size",Vector)=(1,1,1,1)
         _SrcBlend("Source Blend",Float)=1
         _DstBlend("Destination Blend",Float)=10
     }
@@ -49,16 +48,16 @@ Shader "URUI.Effect/UiEffect"
             #include "Edge.cginc"
             #include "Gradation.cginc"
             #include "Shadow.cginc"
-            float4 UruiEffectInternal(float2 uv, float2 local, float2 gradation, float shadow)
+            float4 UruiEffectInternal(float2 uv, float2 local, float2 gradation, float shadow, bool hasOriginal, float4 original)
             {
                 #if defined(URUI_COMPLEX_PIXEL)
                 // 必须在调用前判断模式；函数参数会先读取整组颜色/范围字段。
                 int transitionMode=_TransitionFilter,edgeMode=_EdgeMode;
                 half alpha=1;if(transitionMode!=0)alpha=UruiTransitionAlpha(local);
                 float edgeFactor=0;if(edgeMode!=0)edgeFactor=UruiEdgeFactor(uv);
-                if(transitionMode==6||transitionMode==7)uv+=UruiTransitionMove(alpha);
+                if(transitionMode==6||transitionMode==7){uv+=UruiTransitionMove(alpha);hasOriginal=false;}
                 #endif
-                float4 color=UruiSamplingBase(uv,shadow>.5?_ShadowBlurIntensity:_SamplingIntensity);
+                float4 color=UruiSamplingBase(uv,shadow>.5?_ShadowBlurIntensity:_SamplingIntensity,hasOriginal,original);
                 #if defined(URUI_COMPLEX_PIXEL)
                 if(_GradationMode!=0)color=UruiGradation(color,gradation);
                 #endif
@@ -77,6 +76,7 @@ Shader "URUI.Effect/UiEffect"
             float4 Fragment(UiOutput input):SV_Target
             {
                 _UiRuntimeBase=input.state.z;_UiFieldBase=_UiRuntimeBase+16;_UiTime=input.runtime.z;_UiTextureSlot=input.state.y;_UiInputFlags=(int)input.runtime.w;
+                UruiUiLoadFragmentRows(input.state.w > 0.5);
                 _UiUvBounds=UruiUiRuntime(3);_UiTexel=UruiUiRuntime(4);
                 UruiParameterClip(input.pixel,input.clipRect,input.state.x);
                 float2 uv=input.uv;float2 local=0,gradation=0;
@@ -91,20 +91,29 @@ Shader "URUI.Effect/UiEffect"
                     if(usesLocal)local=saturate(UruiUiCoordinate(root,_TransitionRotation));
                     if(_GradationMode!=0)
                     {
-                        float rotation=_GradationMode==8?135:_GradationMode==7?45:_GradationMode==3?90:_GradationMode==4?-90:_GradationMode==9||_GradationMode==10?_GradationRotation:0;
+                        int gmode=_GradationMode;
+                        float rotation=gmode==8?135:gmode==7?45:gmode==3?90:gmode==4?-90:gmode==9||gmode==10?_GradationRotation:0;
                         gradation=UruiUiCoordinate(root,rotation);if(mirror)gradation=saturate(gradation);
                     }
                 }
                 #endif
                 float shadow=input.state.w>.5&&input.state.w<1.5?1:0;
-                float4 original = UruiSampleClamped(uv);
+                bool hasOriginal=false;
+                float4 original=0;
                 float rate=1;
-                if(_TargetMode!=0&&_TargetRange<1)rate=UruiTargetRate(original.rgb,_TargetMode,_TargetColor.rgb,_TargetRange,_TargetSoftness);
+                if(_TargetMode!=0&&_TargetRange<1)
+                {
+                    original=UruiSampleClamped(uv);
+                    hasOriginal=true;
+                    rate=UruiTargetRate(original.rgb,_TargetMode,_TargetColor.rgb,_TargetRange,_TargetSoftness);
+                }
                 #if defined(URUI_BLUR_FAST) || defined(URUI_BLUR_MEDIUM) || defined(URUI_BLUR_DETAIL)
                 // 程序 key 保证 blur 变体只用于三档 blur；排除不可达的 RGBShift 三次展开核。
-                float4 color=lerp(original,UruiEffectInternal(uv,local,gradation,shadow),rate);
+                float4 color=rate<=0?original:hasOriginal?lerp(original,UruiEffectInternal(uv,local,gradation,shadow,true,original),rate):UruiEffectInternal(uv,local,gradation,shadow,false,0);
                 #else
-                if (_SamplingFilter == 4)
+                int samplingFilter=_SamplingFilter;
+                bool reuseOriginal=hasOriginal;
+                if (samplingFilter == 4)
                 {
                     // 捕获的 padding 只属于存储，不得平移或缩放像素化网格。
                     float2 domain = _InputCaptured > .5 ? max(_SourceUvBounds.zw-_SourceUvBounds.xy,float2(1e-6,1e-6)) : float2(1,1);
@@ -116,16 +125,29 @@ Shader "URUI.Effect/UiEffect"
                     uv=round(uv*pixels)/pixels;
                     if (_InputBottomLeft > .5) { uv.y=1-uv.y; }
                     uv = origin+uv*domain;
+                    reuseOriginal=false;
                 }
                 float4 color;
-                if (_SamplingFilter == 5)
+                if (samplingFilter == 5)
                 {
                     half2 offset=half2(_SamplingIntensity*UruiSamplingTexel().x*20,0);
-                    half2 r=UruiEffectInternal(uv+offset,local,gradation,shadow).ra,g=UruiEffectInternal(uv,local,gradation,shadow).ga,b=UruiEffectInternal(uv-offset,local,gradation,shadow).ba;
-                    color=float4(r.x*r.y,g.x*g.y,b.x*b.y,(r.y+g.y+b.y)/3);
+                    #if !defined(URUI_COMPLEX_PIXEL)
+                    if (_ToneFilter == 0 && _ColorFilter == 0 && shadow < .5)
+                    {
+                        half2 r=UruiSampleClamped(uv+offset).ra;
+                        half2 g=(reuseOriginal?original:UruiSampleClamped(uv)).ga;
+                        half2 b=UruiSampleClamped(uv-offset).ba;
+                        color=float4(r.x*r.y,g.x*g.y,b.x*b.y,(r.y+g.y+b.y)/3);
+                    }
+                    else
+                    #endif
+                    {
+                        half2 r=UruiEffectInternal(uv+offset,local,gradation,shadow,false,0).ra,g=UruiEffectInternal(uv,local,gradation,shadow,reuseOriginal,original).ga,b=UruiEffectInternal(uv-offset,local,gradation,shadow,false,0).ba;
+                        color=float4(r.x*r.y,g.x*g.y,b.x*b.y,(r.y+g.y+b.y)/3);
+                    }
                 }
-                else if (_SamplingFilter == 6 || _SamplingFilter == 7) { color=UruiEffectInternal(uv,local,gradation,shadow)*UruiSamplingEdge(uv); }
-                else { color=lerp(original,UruiEffectInternal(uv,local,gradation,shadow),rate); }
+                else if (samplingFilter == 6 || samplingFilter == 7) { color=UruiEffectInternal(uv,local,gradation,shadow,reuseOriginal,original)*UruiSamplingEdge(uv); }
+                else { color=rate<=0?original:hasOriginal?lerp(original,UruiEffectInternal(uv,local,gradation,shadow,reuseOriginal,original),rate):UruiEffectInternal(uv,local,gradation,shadow,false,0); }
                 #endif
                 return color * input.color;
             }

@@ -39,6 +39,9 @@ namespace URUI
         /// Combines this style sheet container with another one, producing a new sheet container.
         SharedPtr<StyleSheetContainer> CombineStyleSheetContainer(const StyleSheetContainer& container) const;
 
+        /// Creates a shallow per-document shell sharing the immutable media block stylesheets.
+        SharedPtr<StyleSheetContainer> CloneMediaShell() const;
+
         /// Merge another style sheet container into this.
         void MergeStyleSheetContainer(const StyleSheetContainer& container);
 

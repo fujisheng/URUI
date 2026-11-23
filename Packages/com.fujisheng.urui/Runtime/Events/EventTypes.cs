@@ -1,12 +1,34 @@
 using System;
+using System.Collections.Generic;
 
 namespace URUI.Events
 {
     internal static class EventTypes
     {
-        static readonly Type[] nativeTypes = { null, typeof(ClickEvent), typeof(PointerDownEvent), typeof(PointerMoveEvent), typeof(PointerUpEvent), typeof(PointerCancelEvent), typeof(PointerEnterEvent), typeof(PointerLeaveEvent), typeof(WheelEvent), typeof(KeyDownEvent), typeof(KeyUpEvent), typeof(FocusEvent), typeof(BlurEvent), typeof(NativeValueChangedEvent), typeof(TextInputEvent), typeof(ScrollEvent), typeof(PointerCaptureOutEvent), typeof(AnimationEndEvent), typeof(TransitionEndEvent), typeof(AnimationCreatedEvent) };
+        static readonly Dictionary<Type, int> nativeIds = new()
+        {
+            [typeof(ClickEvent)] = 1,
+            [typeof(PointerDownEvent)] = 2,
+            [typeof(PointerMoveEvent)] = 3,
+            [typeof(PointerUpEvent)] = 4,
+            [typeof(PointerCancelEvent)] = 5,
+            [typeof(PointerEnterEvent)] = 6,
+            [typeof(PointerLeaveEvent)] = 7,
+            [typeof(WheelEvent)] = 8,
+            [typeof(KeyDownEvent)] = 9,
+            [typeof(KeyUpEvent)] = 10,
+            [typeof(FocusEvent)] = 11,
+            [typeof(BlurEvent)] = 12,
+            [typeof(NativeValueChangedEvent)] = 13,
+            [typeof(TextInputEvent)] = 14,
+            [typeof(ScrollEvent)] = 15,
+            [typeof(PointerCaptureOutEvent)] = 16,
+            [typeof(AnimationEndEvent)] = 17,
+            [typeof(TransitionEndEvent)] = 18,
+            [typeof(AnimationCreatedEvent)] = 19,
+        };
 
-        internal static int NativeId(Type type) => Math.Max(0, Array.IndexOf(nativeTypes, type));
+        internal static int NativeId(Type type) => nativeIds.TryGetValue(type, out var id) ? id : 0;
 
         internal static EventBase Create(int type)
         {

@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include "resource_store.h"
 #include "Engine/Source/Core/HtmlParser.h"
 #include <URUI/Core.h>
@@ -12,7 +14,7 @@ static void Register(URUI::Bridge::DocumentResources& resources, const char* css
 }
 int main()
 {
-    assert(urui_create(400, 200) == 1);
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
     URUI::Bridge::FileResourceCache cache;
     const uint8_t bytes[] = {1, 0, 2, 3};
     auto first = cache.Acquire(1, "ui/shared.bin", bytes, sizeof(bytes));
@@ -56,7 +58,7 @@ int main()
     assert(rejected);
     auto candidate = a->Clone(3, 1);
     Register(*candidate, "#box{width:51px;}");
-    auto* context = URUI::GetContext("urui");
+    auto* context = URUI::GetContext(0);
     const auto parsed = URUI::ParseHtmlDocument(
         "<!doctype html><html><head><link rel='stylesheet' href='theme.css'></head><body><div id='box'></div></body></html>",
         "ui/a.html");
@@ -81,6 +83,6 @@ int main()
     candidate.reset();
     a.reset();
     b.reset();
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Explicit file domains, immutable sharing, URI conflict and pending isolation passed\n";
 }

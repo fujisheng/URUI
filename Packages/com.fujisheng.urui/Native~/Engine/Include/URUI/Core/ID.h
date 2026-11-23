@@ -187,6 +187,23 @@ namespace URUI
         MaskOrigin,
         MaskClip,
 
+        // Built-in URUI image and graphic tint properties (preserve exact numeric IDs for compiled assets).
+        ImageEffect,
+        ImageDensity,
+        ObjectFit,
+        ImageSliceTop,
+        ImageSliceRight,
+        ImageSliceBottom,
+        ImageSliceLeft,
+        ImageFillMode,
+        ImageFillOrigin,
+        ImageFillClockwise,
+        ImageFillAmount,
+        ImageFillCenter,
+        GraphicTint,
+        CaretWidth,
+        CaretBlinkRate,
+
         NumDefinedIds,
         FirstCustomId = NumDefinedIds,
 

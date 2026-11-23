@@ -1,7 +1,6 @@
 Shader "URUI.Effect/TextureImage" {
  Properties {
   [HideInInspector] _UruiParameters("Parameters",2D)="black" {}
-  [HideInInspector] _UruiParameterSize("Parameter Size",Vector)=(1,1,1,1)
   [HideInInspector] _CssFields("CSS Fields",Vector)=(0,0,0,0)
   _MainTex("Source",2D)="white" {}
   _PatternTex("Pattern",2D)="white" {}
@@ -35,17 +34,50 @@ Shader "URUI.Effect/TextureImage" {
  #include "Packages/com.fujisheng.urui/Runtime/Resources/URUI/ImageParameters.cginc"
  #include "Packages/com.fujisheng.urui/Runtime/Resources/URUI/PremultipliedColor.cginc"
  float4 _CssFields;
- UruiImageOutput Vertex(UruiImageInput input){return UruiImageVertex(input);}
- float4 Fragment(UruiImageOutput input):SV_Target {
+ struct TextureImageOutput
+ {
+  float4 vertex:SV_POSITION;
+  float2 uv:TEXCOORD0;
+  float4 pixel:TEXCOORD1;
+  float2 local:TEXCOORD2;
+  float4 color:COLOR;
+  nointerpolation float4 clipRect:TEXCOORD3;
+  nointerpolation float4 state:TEXCOORD4;
+  nointerpolation float4 filterParams:TEXCOORD5;
+ };
+ TextureImageOutput Vertex(UruiImageInput input)
+ {
+  UruiImageOutput base = UruiImageVertex(input);
+  TextureImageOutput o;
+  o.vertex = base.vertex;
+  int flags = (int)base.runtime.w;
+  float2 uv = base.uv;
+  float2 effectUv = base.effectUv;
+  if ((flags & 1) != 0)
+  {
+   uv.y = 1 - uv.y;
+   effectUv.y = 1 - effectUv.y;
+  }
+  o.uv = uv;
+  o.pixel = base.pixel;
+  o.local = ComputeTextureFilterLocal(effectUv, base.runtime.xy);
+  o.color = base.color;
+  o.clipRect = base.clipRect;
+  o.state = float4(base.state.x, base.state.y, base.runtime.z, base.runtime.w);
+  float4 fields = UruiParameterTexel(base.state.z + 2);
+  float inputRate = _CssFields.x > .5 && (_CssFields.w < .5 || fields.w > 1) ? fields.x : _Rate;
+  float rate = frac(_Speed * base.runtime.z + inputRate * 0.9999);
+  float saturation = _Saturation * (_CssFields.y > .5 ? fields.y : 1);
+  float brightness = _Brightness * (_CssFields.z > .5 ? fields.z : 1);
+  o.filterParams = float4(rate, saturation, brightness, 0);
+  return o;
+ }
+ float4 Fragment(TextureImageOutput input):SV_Target {
   UruiParameterClip(input.pixel,input.clipRect,input.state.x);
-  int flags=(int)input.runtime.w;float2 uv=input.uv;if((flags&1)!=0)uv.y=1-uv.y;
-  float4 source=UruiImageSample(uv,input.state.y);if((flags&2)!=0)source.rgb=source.a>1e-6?source.rgb/source.a:0;
-  float2 effectUv=input.effectUv;if((flags&1)!=0)effectUv.y=1-effectUv.y;
-  float4 fields=UruiParameterTexel(input.state.z+2);
-  float rate=_CssFields.x>.5&&(_CssFields.w<.5||fields.w>1)?fields.x:_Rate;
-  float saturation=_Saturation*(_CssFields.y>.5?fields.y:1);
-  float brightness=_Brightness*(_CssFields.z>.5?fields.z:1);
-  float4 color=ApplyTextureFilter(source,effectUv,input.runtime.z,input.runtime.xy,rate,saturation,brightness);color.rgb*=color.a;
+  int flags=(int)input.state.w;
+  float4 source=UruiImageSample(input.uv,input.state.y);
+  if((flags&2)!=0)source.rgb=source.a>1e-6?source.rgb/source.a:0;
+  float4 color=ApplyTextureFilterCore(source,input.local,input.state.z,input.filterParams.x,input.filterParams.y,input.filterParams.z,true);
   return color*UruiLinearizePremultipliedColor(input.color);
  }
  ENDCG }

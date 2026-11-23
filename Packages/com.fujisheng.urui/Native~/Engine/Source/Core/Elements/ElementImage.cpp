@@ -11,8 +11,8 @@
 #include "../../../Include/URUI/Core/Texture.h"
 #include "../../../Include/URUI/Core/URL.h"
 #include "../TextureDatabase.h"
-#include "../../../../image_geometry.h"
-#include "../../../../graphic_tint.h"
+#include "../ImageGeometry.h"
+#include "../GraphicTint.h"
 
 namespace URUI
 {
@@ -152,8 +152,7 @@ namespace URUI
     void ElementImage::OnPropertyChange(const PropertyIdSet& changed_properties)
     {
         Element::OnPropertyChange(changed_properties);
-        const auto* density = StyleSheetSpecification::GetProperty("--urui-image-density");
-        if (density && changed_properties.Contains(density->GetId()))
+        if (changed_properties.Contains(PropertyId::ImageDensity))
         {
             texture_dirty = true;
             DirtyLayout();
@@ -288,7 +287,7 @@ namespace URUI
                 render_manager->LoadTexture(source_name, source_url.GetURL(),
                                             GetOwnerDocument() ? GetOwnerDocument()->GetResourceContext() : nullptr);
 
-            dimensions_scale = URUI::Images::Number(*this, "--urui-image-density", 0) == 1 ? dp_ratio : 1.f;
+            dimensions_scale = URUI::Images::Number(*this, PropertyId::ImageDensity, 0) == 1 ? dp_ratio : 1.f;
         }
 
         return true;

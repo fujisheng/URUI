@@ -21,8 +21,9 @@ namespace URUI
         /// @param[in] layout The layout to position rectangles from.
         /// @param[in] width The maximum width of this row.
         /// @param[in] y The y-coordinate of this row.
+        /// @param[in,out] first_unplaced_index Optional running scan start index across rows.
         /// @return The number of placed rectangles.
-        int Generate(TextureLayout& layout, int width, int y);
+        int Generate(TextureLayout& layout, int width, int y, int* first_unplaced_index = nullptr);
 
         /// Assigns allocated texture data to all rectangles in this row.
         /// @param[in] texture_data The pointer to the beginning of the texture's data.

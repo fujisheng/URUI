@@ -358,30 +358,10 @@ if(URUI_FONT_ENGINE STREQUAL "freetype")
 	# Include the source files for the default font engine.
 	add_subdirectory("FontEngineDefault")
 
-	# URUI_CMAKE_MINIMUM_VERSION_RAISE_NOTICE:
-	# From CMake 3.13 the next line can be moved into `FontEngineDefault/CMakeLists.txt`, see CMP0079.
 	target_link_libraries(urui_core PRIVATE Freetype::Freetype)
 endif()
 
-
-
-if(URUI_TRACY_PROFILING)
-	if(CMAKE_CONFIGURATION_TYPES AND URUI_TRACY_CONFIGURATION)
-		target_link_libraries(urui_core PUBLIC "$<$<CONFIG:Tracy>:Tracy::TracyClient>")
-		target_compile_definitions(urui_core PUBLIC "$<$<CONFIG:Tracy>:URUI_TRACY_PROFILING>")
-		if(URUI_TRACY_MEMORY_PROFILING)
-			target_compile_definitions(urui_core PRIVATE "$<$<CONFIG:Tracy>:URUI_TRACY_MEMORY_PROFILING>")
-		endif()
-		message(STATUS "Tracy profiling enabled in configuration `Tracy`.")
-	else()
-		target_link_libraries(urui_core PUBLIC Tracy::TracyClient)
-		target_compile_definitions(urui_core PUBLIC "URUI_TRACY_PROFILING")
-		if(URUI_TRACY_MEMORY_PROFILING)
-			target_compile_definitions(urui_core PRIVATE "URUI_TRACY_MEMORY_PROFILING")
-		endif()
-		message(STATUS "Tracy profiling enabled.")
-	endif()
-endif()
+target_link_libraries(urui_core PRIVATE gumbo)
 
 if(NOT URUI_THIRDPARTY_CONTAINERS)
 	target_compile_definitions(urui_core PUBLIC "URUI_NO_THIRDPARTY_CONTAINERS")
@@ -393,34 +373,8 @@ if(URUI_MATRIX_ROW_MAJOR)
 	message(STATUS "Configuring URUI to use row-major matrix types.")
 endif()
 
-# URUI_CMAKE_MINIMUM_VERSION_RAISE_NOTICE:
-# From CMake 3.16 we can skip the version check.
 if(URUI_PRECOMPILED_HEADERS AND CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
 	target_precompile_headers(urui_core PRIVATE "${PROJECT_SOURCE_DIR}/Source/Core/precompiled.h")
 elseif(URUI_PRECOMPILED_HEADERS)
 	message(STATUS "Could not enable precompiled headers, requires CMake version 3.16 or greater.")
 endif()
-
-if(URUI_CUSTOM_CONFIGURATION AND URUI_CUSTOM_CONFIGURATION_FILE)
-	target_compile_definitions(urui_core PUBLIC "URUI_CUSTOM_CONFIGURATION_FILE=\"${URUI_CUSTOM_CONFIGURATION_FILE}\"")
-	message(STATUS "Including ${URUI_CUSTOM_CONFIGURATION_FILE} instead of <URUI/Config/Config.h>")
-endif()
-if(URUI_CUSTOM_CONFIGURATION AND URUI_CUSTOM_INCLUDE_DIRS)
-	target_include_directories(urui_core PUBLIC ${URUI_CUSTOM_INCLUDE_DIRS})
-endif()
-if(URUI_CUSTOM_CONFIGURATION AND URUI_CUSTOM_LINK_LIBRARIES)
-	target_link_libraries(urui_core PUBLIC ${URUI_CUSTOM_LINK_LIBRARIES})
-endif()
-
-# URUI_CMAKE_MINIMUM_VERSION_RAISE_NOTICE:
-# We use default paths provided from GNUInstallDirs. From CMake 3.14 these paths (CMAKE_INSTALL_...) will be used
-# automatically and can be removed from the following call. The same applies to many other calls to install(TARGETS...).
-# Note that GNUInstallDirs should still be included in the project root.
-install(TARGETS urui_core
-	EXPORT URUITargets
-	${URUI_RUNTIME_DEPENDENCY_SET_ARG}
-	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-install_target_pdb(urui_core)

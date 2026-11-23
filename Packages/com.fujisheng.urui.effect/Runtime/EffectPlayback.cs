@@ -250,15 +250,22 @@ namespace URUI.Effect
         public void Cancel()
         {
             CheckThread();
+            cancellation.Dispose();
             if (cancelled || completed)
             {
                 return;
             }
             cancelled = true;
-            cancellation.Dispose();
             finished.TrySetCanceled();
+            ProgressChanged = null;
+            Completed = null;
             changed?.Invoke();
         }
-        public void Dispose() => Cancel();
+        public void Dispose()
+        {
+            CheckThread();
+            cancellation.Dispose();
+            Cancel();
+        }
     }
 }

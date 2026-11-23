@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
 using URUI.Documents;
+using URUI.Internal.Interop;
+
 namespace URUI.Rendering.Effects
 {
     /// <summary>
-    /// 显式文档级注册；加载期间不可更改类型或默默覆盖定义。
+    /// 显式文档级注册；加载期间不可更改类型或默默覆盖定义。支持通过返回句柄注销。
     /// </summary>
     public sealed class EffectRegistry
     {
         readonly Document document;
         bool checkedProtocol;
+        ulong lastPrunedInvalidationSerial;
+
         void CheckProtocol()
         {
             if (checkedProtocol)
@@ -18,38 +22,45 @@ namespace URUI.Rendering.Effects
             }
             try
             {
-                if (URUI.Internal.Interop.NativeMethods.urui_effect_api_version() != 7)
+                if (NativeMethods.urui_effect_api_version() != NativeMethods.ExpectedEffectApiVersion)
                 {
-                    throw new NotSupportedException("需要 URUI 效果协议 v7。");
+                    throw new NotSupportedException($"需要 URUI 效果协议 v{NativeMethods.ExpectedEffectApiVersion}。");
                 }
             }
             catch (EntryPointNotFoundException error)
             {
-                throw new NotSupportedException("已安装的 native 插件缺少 URUI 效果协议 v7，请重建当前目标插件。", error);
+                throw new NotSupportedException($"已安装的 native 插件缺少 URUI 效果协议 v{NativeMethods.ExpectedEffectApiVersion}，请重建当前目标插件。", error);
             }
             checkedProtocol = true;
         }
+
         readonly Dictionary<string, EffectDefinition> definitions = new(StringComparer.Ordinal);
         readonly Dictionary<string, Func<ILayerFilterProgram>> filters = new(StringComparer.Ordinal);
         readonly HashSet<string> cacheableFilters = new(StringComparer.Ordinal);
         readonly Dictionary<ulong, ClockBinding> clocks = new();
-        readonly List<ulong> invalidClocks = new();
+        readonly List<ulong> invalidTokens = new();
         readonly Dictionary<ulong, ParameterBinding> parameters = new();
+
         /// <summary>
         /// 布局更新后、原生绘制前更新播放时间；禁止在此回调重新同步布局。
         /// </summary>
         public event Action Updating;
+
         /// <summary>
         /// 原生绘制已冻结变换、任何效果 Prepare 之前，收集控制器参数。所有文档先收集再 Prepare。
         /// </summary>
         public event Action ParametersPreparing;
+
         internal void UpdateParameters() => Updating?.Invoke();
         internal void FreezeParameters() => ParametersPreparing?.Invoke();
         internal bool HasParameterBinding(ulong token) => parameters.ContainsKey(token);
+
         internal EffectLayout ApplyParameters(URUI.Elements.Element element, EffectLayout layout)
             => parameters.TryGetValue(element.Token, out var value) ? value.Resolve(layout) : layout;
+
         internal IEffectParameterBinding ProgramBinding(ulong token) => parameters.TryGetValue(token, out var value) ? value.Program : null;
         public EffectLayout GetLayout(URUI.Elements.Element element) => document.RawEffectLayout(element);
+
         public IDisposable BindParameters(URUI.Elements.Element element, Func<EffectLayout, EffectLayout> resolve)
         {
             document.CheckThread();
@@ -65,6 +76,7 @@ namespace URUI.Rendering.Effects
             }
             return binding;
         }
+
         /// <summary>
         /// 绑定固定参数与惰性公开布局；绑定租约释放后恢复作者样式。
         /// </summary>
@@ -78,6 +90,7 @@ namespace URUI.Rendering.Effects
             parameters[element.Token].Program = resolve;
             return lease;
         }
+
         /// <summary>
         /// 声明运行时参数需要捕获及显式命中策略；不修改作者 CSS，默认两个标志均为 false。
         /// </summary>
@@ -89,23 +102,26 @@ namespace URUI.Rendering.Effects
             {
                 throw new ArgumentException("状态需要当前文档的有效节点。");
             }
-            if (URUI.Internal.Interop.NativeMethods.urui_element_effect_state(element.NativeHandle, element.Token, captureRequired ? 1 : 0, inputDisabled ? 1 : 0) != 1)
+            if (NativeMethods.urui_element_effect_state(document.SurfaceHandle, element.NativeHandle, element.Token, captureRequired ? 1 : 0, inputDisabled ? 1 : 0) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("效果运行时状态更新失败。");
             }
         }
+
         sealed class ParameterBinding : IDisposable
         {
             EffectRegistry owner;
-            readonly URUI.Elements.Element element;
+            internal readonly URUI.Elements.Element Element;
             internal readonly Func<EffectLayout, EffectLayout> Resolve;
             internal IEffectParameterBinding Program;
+
             internal ParameterBinding(EffectRegistry owner, URUI.Elements.Element element, Func<EffectLayout, EffectLayout> resolve)
             {
                 this.owner = owner;
-                this.element = element;
+                Element = element;
                 Resolve = resolve;
             }
+
             public void Dispose()
             {
                 if (owner == null)
@@ -113,14 +129,33 @@ namespace URUI.Rendering.Effects
                     return;
                 }
                 owner.document.CheckThread();
-                if (element.IsValid)
+                if (Element.IsValid)
                 {
-                    owner.SetRuntimeState(element, false, false);
+                    owner.SetRuntimeState(Element, false, false);
                 }
-                owner.parameters.Remove(element.Token);
+                if (owner.parameters.TryGetValue(Element.Token, out var current) && ReferenceEquals(current, this))
+                {
+                    owner.parameters.Remove(Element.Token);
+                }
                 owner = null;
             }
         }
+
+        sealed class RegistrationHandle : IDisposable
+        {
+            Action unregister;
+            internal RegistrationHandle(Action unregister)
+            {
+                this.unregister = unregister;
+            }
+            public void Dispose()
+            {
+                var action = unregister;
+                unregister = null;
+                action?.Invoke();
+            }
+        }
+
         internal EffectRegistry(Document document)
         {
             this.document = document;
@@ -128,34 +163,66 @@ namespace URUI.Rendering.Effects
             {
                 clocks.Clear();
                 parameters.Clear();
+                lastPrunedInvalidationSerial = 0;
             };
             document.LayoutUpdated += _ =>
             {
-                invalidClocks.Clear();
-                foreach (var pair in clocks)
+                if (clocks.Count == 0 && parameters.Count == 0)
                 {
-                    if (!pair.Value.Element.IsValid)
+                    return;
+                }
+                var serial = document.InvalidationSerial;
+                if (serial == lastPrunedInvalidationSerial)
+                {
+                    return;
+                }
+                lastPrunedInvalidationSerial = serial;
+                if (clocks.Count > 0)
+                {
+                    invalidTokens.Clear();
+                    foreach (var pair in clocks)
                     {
-                        invalidClocks.Add(pair.Key);
+                        if (!pair.Value.Element.IsValid)
+                        {
+                            invalidTokens.Add(pair.Key);
+                        }
+                    }
+                    for (var i = 0; i < invalidTokens.Count; i++)
+                    {
+                        clocks.Remove(invalidTokens[i]);
                     }
                 }
-                foreach (var key in invalidClocks)
+                if (parameters.Count > 0)
                 {
-                    clocks.Remove(key);
+                    invalidTokens.Clear();
+                    foreach (var pair in parameters)
+                    {
+                        if (!pair.Value.Element.IsValid)
+                        {
+                            invalidTokens.Add(pair.Key);
+                        }
+                    }
+                    for (var i = 0; i < invalidTokens.Count; i++)
+                    {
+                        parameters.Remove(invalidTokens[i]);
+                    }
                 }
             };
         }
+
         sealed class ClockBinding : IDisposable
         {
             internal readonly URUI.Elements.Element Element;
             internal readonly URUI.Animation.IUIClock Clock;
             EffectRegistry owner;
+
             internal ClockBinding(EffectRegistry owner, URUI.Elements.Element element, URUI.Animation.IUIClock clock)
             {
                 this.owner = owner;
                 Element = element;
                 Clock = clock;
             }
+
             public void Dispose()
             {
                 if (owner == null)
@@ -170,6 +237,7 @@ namespace URUI.Rendering.Effects
                 owner = null;
             }
         }
+
         /// <summary>
         /// 覆盖一个效果实例的时间源；调用方持有租约，解除后恢复Document时钟，不更换CSS的文档时基。
         /// </summary>
@@ -188,6 +256,7 @@ namespace URUI.Rendering.Effects
             }
             return binding;
         }
+
         internal void CollectClocks(Action<URUI.Animation.IUIClock> collect)
         {
             foreach (var binding in clocks.Values)
@@ -198,9 +267,11 @@ namespace URUI.Rendering.Effects
                 }
             }
         }
+
         internal URUI.Animation.IUIClock ClockFor(URUI.Elements.Element element) => clocks.TryGetValue(element.Token, out var binding) ? binding.Clock : document.Surface.UIClock;
         public int Count => definitions.Count + filters.Count;
-        public void RegisterFilter(string name, Func<ILayerFilterProgram> factory, bool cacheable = false)
+
+        public IDisposable RegisterFilter(string name, Func<ILayerFilterProgram> factory, bool cacheable = false)
         {
             document.CheckThread();
             CheckProtocol();
@@ -220,20 +291,33 @@ namespace URUI.Rendering.Effects
             {
                 cacheableFilters.Add(name);
             }
+            return new RegistrationHandle(() =>
+            {
+                if (filters.TryGetValue(name, out var current) && ReferenceEquals(current, factory))
+                {
+                    filters.Remove(name);
+                    cacheableFilters.Remove(name);
+                }
+            });
         }
+
         internal bool IsFilterCacheable(string name) => cacheableFilters.Contains(name);
-        internal void ConfigureDocument(ulong handle)
+
+        internal void ConfigureDocument(ulong surfaceHandle, ulong handle)
         {
             foreach (var definition in definitions.Values)
             {
-                if (definition.ImageCondition is { } condition && URUI.Internal.Interop.NativeMethods.urui_document_effect_image_condition(handle, definition.Name, condition.Property, condition.DirectValue) != 1)
+                if (definition.ImageCondition is { } condition &&
+                    NativeMethods.urui_document_effect_image_condition(surfaceHandle, handle, definition.Name, condition.Property, condition.DirectValue) != NativeStatus.Ok)
                 {
                     throw new InvalidOperationException("效果的原图条件注册失败：" + definition.Name);
                 }
             }
         }
+
         internal bool TryGetFilter(string name, out Func<ILayerFilterProgram> factory) => filters.TryGetValue(name, out factory);
-        public void Register(EffectDefinition definition)
+
+        public IDisposable Register(EffectDefinition definition)
         {
             document.CheckThread();
             CheckProtocol();
@@ -249,7 +333,15 @@ namespace URUI.Rendering.Effects
             {
                 throw new InvalidOperationException("重复效果定义：" + definition.Name);
             }
+            return new RegistrationHandle(() =>
+            {
+                if (definitions.TryGetValue(definition.Name, out var current) && ReferenceEquals(current, definition))
+                {
+                    definitions.Remove(definition.Name);
+                }
+            });
         }
+
         public bool TryGetFrame(URUI.Elements.Element element, out EffectFrame frame) => document.TryGetEffectFrame(element, out frame);
         public bool TryGet(string name, out EffectDefinition definition) => definitions.TryGetValue(name, out definition);
     }

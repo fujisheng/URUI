@@ -9,15 +9,21 @@ namespace URUI.Internal.Hosting
 {
     internal sealed partial class RenderHost
     {
+        static readonly int paintOpacityId = Shader.PropertyToID("_UruiPaintOpacity");
+        static readonly int paintClipEnabledId = Shader.PropertyToID("_UruiClipEnabled");
+        static readonly int paintClipRectId = Shader.PropertyToID("_UruiClipRect");
+
         ExternalGeometryInputs externalGeometryInputs;
         bool[] geometryCommands = Array.Empty<bool>();
         readonly Dictionary<ulong, (Document Owner, ulong Element, string Shader)> geometryProviders = new();
         readonly HashSet<ulong> geometryGroupProviders = new();
+
         internal int RecordedExternalGeometryDraws
         {
             get;
             private set;
         }
+
         int PrepareGeometryProviders(in RenderPlanInputPacket input)
         {
             using var profile = geometryProvidersMarker.Auto();
@@ -35,7 +41,7 @@ namespace URUI.Internal.Hosting
             maskSourceLayers.Clear();
             for (var index = 0; index < layerCount; index++)
             {
-                if (layerCommands[index].kind == 3)
+                if (layerCommands[index].kind == LayerCommandKind.SaveMask)
                 {
                     maskSourceLayers.Add(layerCommands[index].source);
                 }
@@ -43,6 +49,7 @@ namespace URUI.Internal.Hosting
             var count = 0;
             unsafe
             {
+                var nativeCommands = (CommandNative*)input.Commands;
                 var layers = (ulong*)input.CommandLayers;
                 for (var ordinal = 0; ordinal < input.PaintCount; ordinal++)
                 {
@@ -62,7 +69,7 @@ namespace URUI.Internal.Hosting
                         continue;
                     }
                     var index = paint.command_index;
-                    var command = commands[index];
+                    var command = nativeCommands[index];
                     var clipped = command.ClipEnabled && (command.clip_w <= 0 || command.clip_h <= 0);
                     var provider = owner.PrepareGeometry(paint.element, shader, externalGeometryInputs, (uint)index, clipped, maskSourceLayers.Contains(layers[index]));
                     geometryCommands[index] = true;
@@ -76,41 +83,44 @@ namespace URUI.Internal.Hosting
             }
             return count;
         }
+
         void DrawNativeExternalGeometry(in RenderPlanOperation operation)
         {
-            if (!EndEncodedRaster())
+            SelectLayer(activeLayer);
+            if (activeLayer == 0)
             {
-                SelectLayer(activeLayer);
+                screenCaptureValid = false;
             }
             var program = externalGeometryInputs.Program(operation.Program);
             var page = parameterPages.Current.Texture;
             var properties = reusableProperties;
             properties.Clear();
-            var width = page.width;
-            var height = page.height;
             properties.SetTexture(parametersId, page);
-            properties.SetVector(parameterSizeId, new Vector4(1f / width, 1f / height, width, height));
+            properties.SetFloat(baseParameterId, operation.BaseParameter);
             buffer.DrawMesh(planResources.Mesh(operation.Geometry), Matrix4x4.identity, program.Material, 0, program.Pass, properties);
             RecordedExternalGeometryDraws++;
             NotifyGeometryGroup(operation);
         }
+
         void DrawNativeRawGeometry(in RenderPlanOperation operation, in RenderPlanParameter parameter)
         {
-            if (!EndEncodedRaster())
+            SelectLayer(activeLayer);
+            if (activeLayer == 0)
             {
-                SelectLayer(activeLayer);
+                screenCaptureValid = false;
             }
             var program = externalGeometryInputs.Program(operation.Program);
             var source = externalGeometryInputs.RawGeometry(operation.LayerIndex);
             var properties = reusableProperties;
             properties.Clear();
-            properties.SetFloat("_UruiPaintOpacity", 1);
-            properties.SetFloat("_UruiClipEnabled", ((int)parameter.Metadata.x & 1) != 0 ? 1 : 0);
-            properties.SetVector("_UruiClipRect", parameter.Clip);
+            properties.SetFloat(paintOpacityId, 1);
+            properties.SetFloat(paintClipEnabledId, ((int)parameter.Metadata.x & 1) != 0 ? 1 : 0);
+            properties.SetVector(paintClipRectId, parameter.Clip);
             buffer.DrawMesh(planResources.Mesh(source.Identity), parameter.Matrix, program.Material, source.Submesh, program.Pass, properties);
             RecordedExternalGeometryDraws++;
             NotifyGeometryGroup(operation);
         }
+
         void NotifyGeometryGroup(in RenderPlanOperation operation)
         {
             geometryGroupProviders.Clear();

@@ -14,6 +14,7 @@ namespace URUI.Elements
             RequireValid();
             return document.CloneElement(this);
         }
+
         /// <summary>
         /// 真实 DOM 父级；文档根和脱离层级的根节点返回 null。
         /// </summary>
@@ -22,7 +23,7 @@ namespace URUI.Elements
             get
             {
                 RequireValid();
-                return document.WrapElement(NativeMethods.urui_element_parent(NativeHandle, token));
+                return document.WrapElement(NativeMethods.urui_element_parent(SurfaceHandle, NativeHandle, token));
             }
         }
 
@@ -38,7 +39,7 @@ namespace URUI.Elements
                 {
                     return ContentContainer.ChildCount;
                 }
-                int count = NativeMethods.urui_element_child_count(NativeHandle, token);
+                int count = NativeMethods.urui_element_child_count(SurfaceHandle, NativeHandle, token);
                 if (count < 0)
                 {
                     throw new InvalidOperationException("URUI 无法读取子节点。");
@@ -64,7 +65,7 @@ namespace URUI.Elements
                     throw new ArgumentOutOfRangeException(nameof(index));
                 }
 
-                var child = document.WrapElement(NativeMethods.urui_element_child_at(NativeHandle, token, index));
+                var child = document.WrapElement(NativeMethods.urui_element_child_at(SurfaceHandle, NativeHandle, token, index));
                 return child ?? throw new InvalidOperationException("URUI 子节点身份不可用。");
             }
         }
@@ -99,7 +100,7 @@ namespace URUI.Elements
                 RequireClassName(className);
             }
 
-            return document.WrapElement(NativeMethods.urui_element_find(NativeHandle, token, name, className));
+            return document.WrapElement(NativeMethods.urui_element_find(SurfaceHandle, NativeHandle, token, name, className));
         }
 
         /// <summary>
@@ -118,7 +119,8 @@ namespace URUI.Elements
                 RequireClassName(className);
             }
 
-            int count = NativeMethods.urui_element_query(NativeHandle, token, name, className, null, 0);
+            var surface = SurfaceHandle;
+            int count = NativeMethods.urui_element_query(surface, NativeHandle, token, name, className, null, 0);
             if (count < 0)
             {
                 throw new InvalidOperationException("URUI 查询失败或超出元素引用预算。");
@@ -130,7 +132,7 @@ namespace URUI.Elements
             }
 
             var values = new ulong[count];
-            if (NativeMethods.urui_element_query(NativeHandle, token, name, className, values, count) != count)
+            if (NativeMethods.urui_element_query(surface, NativeHandle, token, name, className, values, count) != count)
             {
                 throw new InvalidOperationException("URUI 查询快照无效。");
             }
@@ -162,7 +164,13 @@ namespace URUI.Elements
             ContentContainer.MoveChild(child, index);
         }
 
-        internal void MoveChild(Element child, int index)
+        /// <summary>
+        /// O(1) 将节点移动到参照子节点之前；referenceChild 为 null 时追加到末尾。
+        /// </summary>
+        public void InsertBefore(Element child, Element referenceChild)
+            => ContentContainer.MoveChildBefore(child, referenceChild);
+
+        void ValidateMoveTarget(Element child)
         {
             RequireValid();
             if (child == null)
@@ -188,8 +196,33 @@ namespace URUI.Elements
                     throw new ArgumentException("不能形成循环层级。", nameof(child));
                 }
             }
+        }
 
-            RequireSuccess(NativeMethods.urui_element_insert(NativeHandle, token, child.token, index), "移动子节点");
+        internal void MoveChild(Element child, int index)
+        {
+            ValidateMoveTarget(child);
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_insert(surface, NativeHandle, token, child.token, index), "移动子节点");
+            document.MarkGeometryChanged();
+            document.RefreshElements(false);
+        }
+
+        internal void MoveChildBefore(Element child, Element referenceChild)
+        {
+            ValidateMoveTarget(child);
+            ulong refToken = 0;
+            if (referenceChild != null)
+            {
+                if (!ReferenceEquals(document, referenceChild.document))
+                {
+                    throw new ArgumentException("参照节点必须属于同一文档。", nameof(referenceChild));
+                }
+                referenceChild.RequireValid();
+                refToken = referenceChild.token;
+            }
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_insert_before(surface, NativeHandle, token, child.token, refToken), "插入子节点");
+            document.MarkGeometryChanged();
             document.RefreshElements(false);
         }
 
@@ -218,7 +251,9 @@ namespace URUI.Elements
         public void RemoveFromHierarchy()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_detach(NativeHandle, token), "移出层级");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_detach(surface, NativeHandle, token), "移出层级");
+            document.MarkGeometryChanged();
             document.RefreshElements(false);
         }
 
@@ -228,7 +263,9 @@ namespace URUI.Elements
         public void Clear()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_clear(NativeHandle, ContentContainer.token), "清空层级");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_clear(surface, NativeHandle, ContentContainer.token), "清空层级");
+            document.MarkGeometryChanged();
             document.RefreshElements(false);
         }
 
@@ -238,7 +275,9 @@ namespace URUI.Elements
         public void Destroy()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_destroy(NativeHandle, token), "销毁节点");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_destroy(surface, NativeHandle, token), "销毁节点");
+            document.MarkGeometryChanged();
             document.SweepInvalidElements();
         }
     }

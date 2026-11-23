@@ -61,6 +61,9 @@ namespace URUI
         ///	@see GeometryBoxShadow::Resolve()
         static void GenerateTexture(CallbackTexture& out_shadow_texture, Geometry& out_background_border_geometry,
                                     RenderManager& render_manager, const BoxShadowGeometryInfo& shadow_geometry_info);
+        static void GenerateShadow(CallbackTexture& out_shadow_texture, Geometry& out_shadow_geometry,
+                                   Geometry& out_background_border_geometry, RenderManager& render_manager,
+                                   const BoxShadowGeometryInfo& shadow_geometry_info);
     };
 
 }

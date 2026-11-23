@@ -130,7 +130,7 @@ namespace URUI.Controls
                 double current;
                 try
                 {
-                    current = ToNumber(ParseValue(NativeMethods.ReadControl(NativeHandle, Token)));
+                    current = ToNumber(ParseValue(NativeMethods.ReadControl(SurfaceHandle, NativeHandle, Token)));
                 }
                 catch (FormatException)
                 {

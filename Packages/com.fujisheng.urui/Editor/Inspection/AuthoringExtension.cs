@@ -45,6 +45,25 @@ namespace URUI.Editor.Inspection
         void Refresh();
         void Report(string message);
     }
+    public readonly struct AuthoringResourceMount
+    {
+        public readonly string UriPrefix;
+        public readonly string AssetPrefix;
+        public AuthoringResourceMount(string uriPrefix, string assetPrefix)
+        {
+            UriPrefix = uriPrefix;
+            AssetPrefix = assetPrefix;
+        }
+    }
+
+    public interface IAuthoringResourceMounts
+    {
+        IReadOnlyList<AuthoringResourceMount> ResourceMounts
+        {
+            get;
+        }
+    }
+
     /// <summary>
     /// Core Editor 的可选扩展契约，不引用 Authoring 包。
     /// </summary>

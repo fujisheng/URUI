@@ -1,5 +1,5 @@
 #include "CssImageGeometry.h"
-#include "../../../graphic_tint.h"
+#include "GraphicTint.h"
 #include "CssTokenizer.h"
 #include "../../Include/URUI/Core/Element.h"
 #include "../../Include/URUI/Core/MeshUtilities.h"

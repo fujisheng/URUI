@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: BuiltinShaderPropertyContract
   m_EditorClassIdentifier:
   verifiedShader: {fileID: 4800000, guid: 363bad2991f66464e82161c025e0ff14, type: 3}
-  verifiedSourceHash: 457a41bfd9530616ab58124aab9e39c07b880030eb472ff8261cfc30b6d1b1b3
+  verifiedSourceHash: e72e926aec9fe2b8c663adbec0d346abe375ee2936acf7ea920438370af34c36
   revision: 7

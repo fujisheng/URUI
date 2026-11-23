@@ -35,7 +35,6 @@ namespace URUI.Internal.Rendering
             private set;
         }
         RenderTargetIdentifier target;
-        Func<RenderTargetIdentifier> resolveTarget;
         Rect viewport;
         Matrix4x4 projection;
         internal bool HasCommands => count != 0;
@@ -43,7 +42,7 @@ namespace URUI.Internal.Rendering
         internal Segment this[int index] => index >= 0 && index < count ? segments[index] : throw new ArgumentOutOfRangeException(nameof(index));
         internal CommandBuffer Buffer => count > 0 ? segments[count - 1].Buffer : throw new InvalidOperationException("尚未开始录制绘制命令。");
 
-        internal void Begin(RenderTargetIdentifier target, Rect viewport, Matrix4x4 projection, Func<RenderTargetIdentifier> resolveTarget = null)
+        internal void Begin(RenderTargetIdentifier target, Rect viewport, Matrix4x4 projection)
         {
             for (var i = 0; i < count; i++)
             {
@@ -54,7 +53,6 @@ namespace URUI.Internal.Rendering
             needsParent = false;
             WritesParent = WritesSurface = false;
             this.target = target;
-            this.resolveTarget = resolveTarget;
             this.viewport = viewport;
             this.projection = projection;
         }
@@ -68,10 +66,9 @@ namespace URUI.Internal.Rendering
             }
             segments[count] = new Segment(buffers[count], restoreParent);
             count++;
-            Buffer.SetGlobalFloat("_UruiEncodedTarget", 0);
             if (restoreParent)
             {
-                Buffer.SetRenderTarget(resolveTarget != null ? resolveTarget() : target);
+                Buffer.SetRenderTarget(target);
                 Buffer.SetViewport(viewport);
                 Buffer.SetViewProjectionMatrices(Matrix4x4.identity, projection);
             }
@@ -109,7 +106,6 @@ namespace URUI.Internal.Rendering
             buffers.Clear();
             segments.Clear();
             count = 0;
-            resolveTarget = null;
         }
     }
 }

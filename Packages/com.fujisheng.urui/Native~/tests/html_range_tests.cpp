@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <URUI/Core/Elements/ElementFormControlInput.h>
 #include <cassert>
@@ -8,11 +10,11 @@
 #include <iterator>
 int main(int argc, char** argv)
 {
-    assert(argc == 2 && urui_create(400, 400) == 1);
+    assert(argc == 2 && urui_surface_create(400, 400, &g_test_surface) == 1);
     std::ifstream input(argv[1]);
     const URUI::String html((std::istreambuf_iterator<char>(input)), {});
     assert(!html.empty());
-    auto* document = URUI::GetContext("urui")->LoadDocumentFromMemory(html, "ui/range.html");
+    auto* document = URUI::GetContext(0)->LoadDocumentFromMemory(html, "ui/range.html");
     assert(document);
     const float expected[] = {50, 20, 6, 10, 2.25f, 50, 4, 1.5f};
     for (int i = 0; i < 8; ++i)
@@ -35,7 +37,7 @@ int main(int argc, char** argv)
     range->SetAttribute("max", "5");
     assert(std::stof(range->GetValue()) == 4);
     clone.reset();
-    auto* context = URUI::GetContext("urui");
+    auto* context = URUI::GetContext(0);
     auto* axis = context->LoadDocumentFromMemory(
         "<!doctype html><html><head></head><body><input id='vertical' type='range' data-urui-orientation='vertical'><input id='unsupported' type='range' orientation='vertical'></body></html>",
         "ui/direction.html");
@@ -65,6 +67,6 @@ int main(int argc, char** argv)
     assert(cloned_number && cloned_number->GetValue() == "4" &&
            cloned_number->GetAttribute<URUI::String>("value", "") == "100");
     number_clone.reset();
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Standard range defaults, bounds, step/any, authored step base and cloning passed\n";
 }

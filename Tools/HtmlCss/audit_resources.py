@@ -16,8 +16,8 @@ LEGACY_SUFFIXES = (".css.txt", ".rml", ".rml.txt", ".rcss", ".rcss.txt")
 class NativeAuthoring:
     def __init__(self, library):
         self.library = ctypes.CDLL(str(Path(library).resolve()))
-        if self.library.urui_bridge_abi_version() != 11 or self.library.urui_authoring_protocol_version() != 1:
-            raise ValueError("作者审计需要 ABI11 / authoring1 插件")
+        if self.library.urui_bridge_abi_version() != 13 or self.library.urui_authoring_protocol_version() != 1:
+            raise ValueError("作者审计需要 ABI13 / authoring1 插件")
         self.html = self.library.urui_validate_html
         self.html.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
         self.css = self.library.urui_validate_stylesheet

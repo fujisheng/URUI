@@ -24,6 +24,8 @@ namespace URUI.Controls
         readonly List<IDisposable> subscriptions = new List<IDisposable>();
         readonly List<IDisposable> rowSubscriptions = new List<IDisposable>();
         readonly List<Option> options = new List<Option>();
+        readonly List<Option> nextOptions = new List<Option>();
+        readonly StringBuilder textScratch = new StringBuilder();
         readonly Action deferredRefresh;
         readonly URUI.Hosting.SurfaceInput input;
         bool queued;
@@ -36,6 +38,8 @@ namespace URUI.Controls
         const string OpeningClass = "urui-select-opening";
         const string ClosingClass = "urui-select-closing";
         string renderedLabel;
+        int renderedSelected = int.MinValue;
+        bool? renderedEnabled;
 
         readonly struct Option
         {
@@ -43,12 +47,20 @@ namespace URUI.Controls
             internal readonly string Label;
             internal readonly bool Disabled;
             internal readonly bool Hidden;
-            internal Option(Element element)
+            internal Option(Element element, StringBuilder scratch)
             {
                 Value = element.GetAttribute("value") ?? "";
-                var text = new StringBuilder();
-                AppendText(element, text);
-                Label = element.GetAttribute("label") ?? NormalizeLabel(text.ToString());
+                var explicitLabel = element.GetAttribute("label");
+                if (explicitLabel != null)
+                {
+                    Label = explicitLabel;
+                }
+                else
+                {
+                    scratch.Clear();
+                    AppendText(element, scratch);
+                    Label = NormalizeLabel(scratch);
+                }
                 Disabled = element.HasAttribute("disabled");
                 Hidden = element.HasAttribute("hidden");
             }
@@ -85,12 +97,12 @@ namespace URUI.Controls
             {
                 owner.RequireManualCreationAllowed();
             }
-            foreach (var element in new Element[] { trigger, label, popup, prototype })
+            if (!ReferenceEquals(trigger.Document, control.Document) || !IsWithin(trigger, host)
+                || !ReferenceEquals(label.Document, control.Document) || !IsWithin(label, host)
+                || !ReferenceEquals(popup.Document, control.Document) || !IsWithin(popup, host)
+                || !ReferenceEquals(prototype.Document, control.Document) || !IsWithin(prototype, host))
             {
-                if (!ReferenceEquals(element.Document, control.Document) || !IsWithin(element, host))
-                {
-                    throw new ArgumentException("皮肤节点必须位于同一个 urui-select 作者容器内。");
-                }
+                throw new ArgumentException("皮肤节点必须位于同一个 urui-select 作者容器内。");
             }
             if (IsWithin(prototype, popup))
             {
@@ -169,26 +181,39 @@ namespace URUI.Controls
         }
         static void AppendText(Element element, StringBuilder text)
         {
-            if (element.TagName == "#text")
+            var tag = element.TagName;
+            if (tag == "#text")
             {
                 text.Append(element.Text);
                 return;
             }
-            if (element.TagName == "#comment")
+            if (tag == "#comment")
             {
                 return;
             }
-            foreach (var child in element.Children())
+            var hierarchy = element.Hierarchy;
+            int count = hierarchy.ChildCount;
+            for (int i = 0; i < count; i++)
             {
-                AppendText(child, text);
+                var child = hierarchy.ChildAt(i);
+                if (child != null)
+                {
+                    AppendText(child, text);
+                }
             }
         }
-        static string NormalizeLabel(string text)
+        static string NormalizeLabel(StringBuilder text)
         {
-            var result = new StringBuilder();
-            bool space = false;
-            foreach (char character in text)
+            int length = text.Length;
+            if (length == 0)
             {
+                return "";
+            }
+            var result = new StringBuilder(length);
+            bool space = false;
+            for (int i = 0; i < length; i++)
+            {
+                char character = text[i];
                 if (character == ' ' || character == '\t' || character == '\n' || character == '\r' || character == '\f')
                 {
                     space = result.Length > 0;
@@ -253,24 +278,28 @@ namespace URUI.Controls
             {
                 return;
             }
-            var next = new List<Option>();
-            foreach (var child in Control.Children())
+            nextOptions.Clear();
+            var hierarchy = Control.Hierarchy;
+            int childCount = hierarchy.ChildCount;
+            for (int i = 0; i < childCount; i++)
             {
-                if (child.TagName == "option")
+                var child = hierarchy.ChildAt(i);
+                if (child != null && child.TagName == "option")
                 {
-                    next.Add(new Option(child));
+                    nextOptions.Add(new Option(child, textScratch));
                 }
             }
-            bool changed = next.Count != options.Count;
-            for (int i = 0; !changed && i < next.Count; i++)
+            bool changed = nextOptions.Count != options.Count;
+            for (int i = 0; !changed && i < nextOptions.Count; i++)
             {
-                changed = !next[i].Matches(options[i]);
+                changed = !nextOptions[i].Matches(options[i]);
             }
             if (changed)
             {
                 ClearRows();
                 options.Clear();
-                options.AddRange(next);
+                options.AddRange(nextOptions);
+                renderedSelected = int.MinValue;
                 for (int i = 0; i < options.Count; i++)
                 {
                     int index = i;
@@ -289,6 +318,7 @@ namespace URUI.Controls
                     rowSubscriptions.Add(row.RegisterCallback<ClickEvent>(_ => Schedule(() => Select(index, true))));
                 }
             }
+            nextOptions.Clear();
             int selected = Control.SelectedIndex;
             string nextLabel = selected >= 0 && selected < options.Count ? options[selected].Label : "";
             if (renderedLabel != nextLabel)
@@ -296,13 +326,39 @@ namespace URUI.Controls
                 label.Text = nextLabel;
                 renderedLabel = nextLabel;
             }
-            trigger.SetEnabled(Control.EnabledInHierarchy);
-            for (int i = 0; i < rows.Count; i++)
+            bool enabled = Control.EnabledInHierarchy;
+            if (renderedEnabled != enabled)
             {
-                rows[i].EnableInClassList("urui-selected", i == selected);
-                rows[i].SetAttribute("aria-selected", i == selected ? "true" : "false");
+                trigger.SetEnabled(enabled);
+                renderedEnabled = enabled;
             }
-            if (!Control.EnabledInHierarchy)
+            if (changed || renderedSelected != selected)
+            {
+                if (changed || renderedSelected == int.MinValue)
+                {
+                    for (int i = 0; i < rows.Count; i++)
+                    {
+                        bool isSelected = i == selected;
+                        rows[i].EnableInClassList("urui-selected", isSelected);
+                        rows[i].SetAttribute("aria-selected", isSelected ? "true" : "false");
+                    }
+                }
+                else
+                {
+                    if (renderedSelected >= 0 && renderedSelected < rows.Count)
+                    {
+                        rows[renderedSelected].EnableInClassList("urui-selected", false);
+                        rows[renderedSelected].SetAttribute("aria-selected", "false");
+                    }
+                    if (selected >= 0 && selected < rows.Count)
+                    {
+                        rows[selected].EnableInClassList("urui-selected", true);
+                        rows[selected].SetAttribute("aria-selected", "true");
+                    }
+                }
+                renderedSelected = selected;
+            }
+            if (!enabled)
             {
                 SetOpen(false);
             }

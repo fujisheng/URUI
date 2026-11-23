@@ -64,10 +64,13 @@ namespace URUI.Rendering.Effects
     /// </summary>
     public sealed class FilterRenderContext
     {
-        readonly CommandBuffer commands;
-        readonly Mesh quad;
-        readonly RenderTexture[] targets;
-        bool active = true;
+        static readonly int inputTexId = Shader.PropertyToID("_InputTex");
+        CommandBuffer commands;
+        Mesh quad;
+        RenderTexture sourceTarget;
+        RenderTexture scratchTarget;
+        RenderTexture destinationTarget;
+        bool active;
         internal int ProcessingPasses
         {
             get;
@@ -76,18 +79,37 @@ namespace URUI.Rendering.Effects
         public Vector2Int Size
         {
             get;
+            private set;
+        }
+        internal FilterRenderContext()
+        {
         }
         internal FilterRenderContext(CommandBuffer commands, Mesh quad, RenderTexture source, RenderTexture scratch, RenderTexture destination)
         {
+            Open(commands, quad, source, scratch, destination);
+        }
+        internal void Open(CommandBuffer commands, Mesh quad, RenderTexture source, RenderTexture scratch, RenderTexture destination)
+        {
             this.commands = commands;
             this.quad = quad;
-            targets = new[] { source, scratch, destination };
+            sourceTarget = source;
+            scratchTarget = scratch;
+            destinationTarget = destination;
             Size = new Vector2Int(source.width, source.height);
+            ProcessingPasses = 0;
+            active = true;
         }
+        RenderTexture TargetOf(FilterBuffer buffer) => buffer switch
+        {
+            FilterBuffer.Source => sourceTarget,
+            FilterBuffer.Scratch => scratchTarget,
+            FilterBuffer.Destination => destinationTarget,
+            _ => throw new ArgumentOutOfRangeException(nameof(buffer))
+        };
         public Texture Texture(FilterBuffer buffer)
         {
             Require();
-            return targets[(int)buffer];
+            return TargetOf(buffer);
         }
         void Require()
         {
@@ -111,8 +133,8 @@ namespace URUI.Rendering.Effects
             {
                 throw new ArgumentOutOfRangeException(nameof(pass));
             }
-            properties.SetTexture("_InputTex", targets[(int)source]);
-            commands.SetRenderTarget(targets[(int)destination]);
+            properties.SetTexture(inputTexId, TargetOf(source));
+            commands.SetRenderTarget(TargetOf(destination));
             commands.SetViewport(new Rect(0, 0, Size.x, Size.y));
             commands.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(0, Size.x, Size.y, 0, -1, 1));
             ProcessingPasses++;
@@ -125,11 +147,27 @@ namespace URUI.Rendering.Effects
             {
                 throw new ArgumentException("复制目标不能相同。");
             }
-            commands.CopyTexture(targets[(int)source], targets[(int)destination]);
+            var src = TargetOf(source);
+            var dst = TargetOf(destination);
+            if ((SystemInfo.copyTextureSupport & CopyTextureSupport.Basic) != 0 &&
+                src.width == dst.width && src.height == dst.height &&
+                src.graphicsFormat == dst.graphicsFormat && src.antiAliasing == 1 && dst.antiAliasing == 1)
+            {
+                commands.CopyTexture(src, dst);
+            }
+            else
+            {
+                commands.Blit(src, dst);
+            }
         }
         internal void Close()
         {
             active = false;
+            commands = null;
+            quad = null;
+            sourceTarget = null;
+            scratchTarget = null;
+            destinationTarget = null;
         }
     }
 }

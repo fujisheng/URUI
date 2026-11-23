@@ -59,14 +59,8 @@ namespace URUI
         WeakPtr<BoxShadowRenderable>& inserted_weak_data_pointer = iterator_inserted.first->second;
 
         auto shadow_handle = MakeShared<BoxShadowRenderable>(inserted_key);
-        GeometryBoxShadow::GenerateTexture(shadow_handle->texture, shadow_handle->background_border_geometry,
-                                           render_manager, inserted_key);
-
-        Mesh mesh;
-        const byte alpha = byte(info.opacity * 255.f);
-        MeshUtilities::GenerateQuad(mesh, -info.element_offset_in_texture, Vector2f(info.texture_dimensions),
-                                    ColourbPremultiplied(alpha, alpha));
-        shadow_handle->geometry = render_manager.MakeGeometry(std::move(mesh));
+        GeometryBoxShadow::GenerateShadow(shadow_handle->texture, shadow_handle->geometry,
+                                          shadow_handle->background_border_geometry, render_manager, inserted_key);
 
         inserted_weak_data_pointer = shadow_handle;
         return shadow_handle;

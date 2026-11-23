@@ -282,6 +282,14 @@ namespace URUI
         return (int)textures_ptr->size();
     }
 
+    void FontFaceLayer::ReleaseTextures(RenderManager& render_manager)
+    {
+        for (const auto& source : textures_owned)
+        {
+            source.ReleaseTextures(render_manager);
+        }
+    }
+
     ColourbPremultiplied FontFaceLayer::GetColour(float opacity) const
     {
         return colour.ToPremultiplied(opacity);

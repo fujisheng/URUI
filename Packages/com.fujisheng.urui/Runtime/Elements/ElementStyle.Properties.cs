@@ -100,15 +100,21 @@ namespace URUI.Elements
                 return Auto;
             }
 
-            foreach (string suffix in new[] { "rem", "px", "%", "em" })
+            if (value.EndsWith("rem", StringComparison.Ordinal))
             {
-                if (!value.EndsWith(suffix, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                float amount = float.Parse(value.Substring(0, value.Length - suffix.Length), CultureInfo.InvariantCulture);
-                return suffix == "rem" ? Rem(amount) : suffix == "em" ? Em(amount) : suffix == "%" ? Percent(amount) : Pixels(amount);
+                return Rem(float.Parse(value.AsSpan(0, value.Length - 3), NumberStyles.Float, CultureInfo.InvariantCulture));
+            }
+            if (value.EndsWith("px", StringComparison.Ordinal))
+            {
+                return Pixels(float.Parse(value.AsSpan(0, value.Length - 2), NumberStyles.Float, CultureInfo.InvariantCulture));
+            }
+            if (value.EndsWith("%", StringComparison.Ordinal))
+            {
+                return Percent(float.Parse(value.AsSpan(0, value.Length - 1), NumberStyles.Float, CultureInfo.InvariantCulture));
+            }
+            if (value.EndsWith("em", StringComparison.Ordinal))
+            {
+                return Em(float.Parse(value.AsSpan(0, value.Length - 2), NumberStyles.Float, CultureInfo.InvariantCulture));
             }
             return Pixels(float.Parse(value, CultureInfo.InvariantCulture));
         }
@@ -214,26 +220,47 @@ namespace URUI.Elements
         }
         void SetLength(string name, Length value)
         {
-            if (value.Unit == LengthUnit.Unset)
+            switch (value.Unit)
             {
-                Remove(name);
-            }
-            else
-            {
-                Set(name, value.ToString());
+                case LengthUnit.Unset:
+                    Remove(name);
+                    break;
+                case LengthUnit.Pixel:
+                    SetPixels(name, value.Value);
+                    break;
+                case LengthUnit.Percent:
+                    SetPercent(name, value.Value);
+                    break;
+                case LengthUnit.Auto:
+                    Set(name, "auto");
+                    break;
+                default:
+                    Set(name, value.ToString());
+                    break;
             }
         }
         T GetEnum<T>(string name) where T : struct
         {
             string value = Get(name);
-            return value == null ? default : (T)Enum.Parse(typeof(T), value.Replace("-", ""), true);
+            if (value == null)
+            {
+                return default;
+            }
+            if (EnumStyleText<T>.ByName.TryGetValue(value, out var parsed))
+            {
+                return parsed;
+            }
+            return (T)Enum.Parse(typeof(T), value.Replace("-", ""), true);
         }
         static class EnumStyleText<T> where T : struct
         {
-            internal static readonly System.Collections.Generic.Dictionary<T, string> Values = Build();
-            static System.Collections.Generic.Dictionary<T, string> Build()
+            internal static readonly System.Collections.Generic.Dictionary<T, string> Values;
+            internal static readonly System.Collections.Generic.Dictionary<string, T> ByName;
+
+            static EnumStyleText()
             {
                 var values = new System.Collections.Generic.Dictionary<T, string>();
+                var byName = new System.Collections.Generic.Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
                 foreach (T value in Enum.GetValues(typeof(T)))
                 {
                     if (Convert.ToInt32(value) == 0)
@@ -251,9 +278,12 @@ namespace URUI.Elements
                         }
                         result.Append(char.ToLowerInvariant(text[i]));
                     }
-                    values.Add(value, result.ToString());
+                    var css = result.ToString();
+                    values.Add(value, css);
+                    byName[css] = value;
                 }
-                return values;
+                Values = values;
+                ByName = byName;
             }
         }
         void SetEnum<T>(string name, T value) where T : struct
@@ -572,8 +602,7 @@ namespace URUI.Elements
                     Remove("flex-grow");
                     return;
                 }
-                RequireFinite(value.Value);
-                Set("flex-grow", value.Value.ToString("R", CultureInfo.InvariantCulture));
+                SetNumber("flex-grow", value.Value);
             }
         }
         /// <summary>
@@ -589,8 +618,7 @@ namespace URUI.Elements
                     Remove("flex-shrink");
                     return;
                 }
-                RequireFinite(value.Value);
-                Set("flex-shrink", value.Value.ToString("R", CultureInfo.InvariantCulture));
+                SetNumber("flex-shrink", value.Value);
             }
         }
         /// <summary>
@@ -606,7 +634,7 @@ namespace URUI.Elements
                     return null;
                 }
 
-                if (ColorUtility.TryParseHtmlString(text, out var value))
+                if (ColorUtility.TryParseHtmlString(text, out var value) || TryParseCssRgb(text, out value))
                 {
                     return value;
                 }
@@ -624,6 +652,51 @@ namespace URUI.Elements
                     Remove("background-color");
                 }
             }
+        }
+
+        static bool TryParseCssRgb(string text, out Color color)
+        {
+            color = default;
+            var span = text.AsSpan().Trim();
+            bool hasAlpha;
+            if (span.StartsWith("rgba(".AsSpan(), StringComparison.OrdinalIgnoreCase) && span.EndsWith(")".AsSpan()))
+            {
+                hasAlpha = true;
+                span = span.Slice(5, span.Length - 6);
+            }
+            else if (span.StartsWith("rgb(".AsSpan(), StringComparison.OrdinalIgnoreCase) && span.EndsWith(")".AsSpan()))
+            {
+                hasAlpha = false;
+                span = span.Slice(4, span.Length - 5);
+            }
+            else
+            {
+                return false;
+            }
+            Span<float> parts = stackalloc float[4];
+            int count = 0;
+            while (!span.IsEmpty)
+            {
+                if (count >= 4)
+                {
+                    return false;
+                }
+                int comma = span.IndexOf(',');
+                var token = (comma < 0 ? span : span.Slice(0, comma)).Trim();
+                if (!float.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out parts[count]))
+                {
+                    return false;
+                }
+                count++;
+                span = comma < 0 ? ReadOnlySpan<char>.Empty : span.Slice(comma + 1);
+            }
+            if ((hasAlpha && count != 4) || (!hasAlpha && count != 3))
+            {
+                return false;
+            }
+            float a = hasAlpha ? (parts[3] > 1f ? parts[3] / 255f : parts[3]) : 1f;
+            color = new Color(parts[0] / 255f, parts[1] / 255f, parts[2] / 255f, Mathf.Clamp01(a));
+            return true;
         }
     }
 }

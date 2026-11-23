@@ -40,6 +40,6 @@ Native~/build-platform.sh 接受 macos-arm64、macos-x86_64、android-arm64、an
 
 URUI_DEBUG 默认关闭，包括 Editor 和 Development Build。诊断时必须同时设置原生 URUI_DEBUG=ON 与托管 URUI_DEBUG 定义；结束后恢复正式配套插件。必要的线程、身份、资源及 GPU 安全检查始终保留。
 
-当前 ABI11 / render-plan8 / style4 / effect7 / filter3 / animation1。随包七平台插件的哈希和验证范围见[清单](../Packages/com.fujisheng.urui/Documentation~/PLUGINS.json)，编译完成不代表 Player 或真实设备运行通过。根目录中更早的 Tools/verify-*、平台汇总脚本保留历史验收工作流，使用前应核对其 ABI/场景前提；当前原生全套检查以上述 CMake/CTest 命令为准。
+当前 ABI13 / render-plan9 / style4 / effect7 / filter3 / animation1。随包七平台插件的哈希和验证范围见[清单](../Packages/com.fujisheng.urui/Documentation~/PLUGINS.json)，编译完成不代表 Player 或真实设备运行通过。根目录中更早的 Tools/verify-*、平台汇总脚本保留历史验收工作流，使用前应核对其 ABI/场景前提；当前原生全套检查以上述 CMake/CTest 命令为准。
 
 代码风格见[代码约定](../Packages/com.fujisheng.urui/Documentation~/CODE_STYLE_ZH.md)，分发时保留 Core/Effect 的版权与第三方许可文件。

@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include "CompiledDocument.h"
 #include "HtmlBuilder.h"
 #include <URUI/Core.h>
@@ -52,7 +54,7 @@ void PoisonSource(URUI::Vector<URUI::HtmlNode>& nodes)
 
 int main()
 {
-    assert(urui_create(400, 200) == 1);
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
     URUI::ElementInstancerGeneric<ReentrantStyleElement> reentrant;
     URUI::Factory::RegisterElementInstancer("urui-reentrant", &reentrant);
     URUI::Vector<URUI::byte> bytes;
@@ -78,7 +80,7 @@ int main()
     assert(URUI::ReadCompiledDocument(bytes.data(), bytes.size(), compiled, error));
     assert(compiled.title == "compiled");
     PoisonSource(compiled.html.nodes);
-    auto* context = URUI::GetContext("urui");
+    auto* context = URUI::GetContext(0);
     auto* first = context->CreateDocument();
     assert(URUI::BuildCompiledDocument(*first, std::move(compiled), diagnostics));
     first->Show();
@@ -127,23 +129,23 @@ int main()
     damaged.back() ^= 1;
     assert(!URUI::ReadCompiledDocument(damaged.data(), damaged.size(), compiled, error));
     int required = 0;
-    assert(urui_compile_document(html, "ui/compiled.html", 0, nullptr, 0, nullptr, 0, &required) == -3);
+    assert(urui_compile_document(html, "ui/compiled.html", 0, nullptr, 0, nullptr, 0, &required) == URUI_ERR_BUFFER_TOO_SMALL);
     bytes.resize(required);
     assert(urui_compile_document(html, "ui/compiled.html", 0, nullptr, 0, bytes.data(), int(bytes.size()), &required) ==
            1);
     URUIDocumentHandle owner = 0;
-    assert(urui_document_create(&owner) == 1);
-    assert(urui_document_load_html(owner, "<!doctype html><html><head></head><body><div id='old'></div></body></html>",
+    assert(urui_document_create(g_test_surface, &owner) == 1);
+    assert(urui_document_load_html(g_test_surface, owner, "<!doctype html><html><head></head><body><div id='old'></div></body></html>",
                                    "ui/old.html") == 1);
-    const auto oldRoot = urui_document_root(owner);
-    assert(urui_document_load_compiled(owner, damaged.data(), int(damaged.size())) < 0);
-    assert(urui_document_root(owner) == oldRoot && urui_element_exists(owner, "old") == 1);
-    assert(urui_document_load_compiled(owner, bytes.data(), int(bytes.size())) == 1);
-    assert(urui_document_root(owner) != oldRoot && urui_element_exists(owner, "box") == 1);
+    const auto oldRoot = urui_document_root(g_test_surface, owner);
+    assert(urui_document_load_compiled(g_test_surface, owner, damaged.data(), int(damaged.size())) < 0);
+    assert(urui_document_root(g_test_surface, owner) == oldRoot && TestElementExists(g_test_surface, owner, "old") == 1);
+    assert(urui_document_load_compiled(g_test_surface, owner, bytes.data(), int(bytes.size())) == 1);
+    assert(urui_document_root(g_test_surface, owner) != oldRoot && TestElementExists(g_test_surface, owner, "box") == 1);
     const char* fragment = "<div id='template-child' style='display:block;width:var(--length);height:10px;'></div>";
     int templateSize = 0;
     assert(urui_compile_template(bytes.data(), int(bytes.size()), fragment, "ui/row.html", nullptr, 0, &templateSize) ==
-           -3);
+           URUI_ERR_BUFFER_TOO_SMALL);
     std::vector<uint8_t> templateBytes(templateSize);
     assert(urui_compile_template(bytes.data(), int(bytes.size()), fragment, "ui/row.html", templateBytes.data(),
                                  templateSize, &templateSize) == 1);
@@ -174,55 +176,55 @@ int main()
         }
         assert(cache.Read(templateBytes.data(), templateBytes.size(), *parent.specification, error) != oldest);
     }
-    const auto body = urui_document_body(owner);
+    const auto body = urui_document_body(g_test_surface, owner);
     URUICompiledNodeInfo nodeInfo{};
-    assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 7) == 7);
+    assert(urui_element_compiled_info(g_test_surface, owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 7) == 7);
     std::vector<uint64_t> mapped(nodeInfo.end - nodeInfo.local_id);
-    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
+    assert(urui_element_compiled_tokens(g_test_surface, owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
                                         int(mapped.size())) == 1);
     assert(std::find(mapped.begin(), mapped.end(), body) != mapped.end());
-    assert(urui_set_attribute(owner, "box", "class", "a off") == 1);
-    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
+    assert(TestSetAttribute(g_test_surface, owner, "box", "class", "a off") == 1);
+    assert(urui_element_compiled_tokens(g_test_surface, owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
                                         int(mapped.size())) == 0);
-    assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 3) == 3 &&
+    assert(urui_element_compiled_info(g_test_surface, owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 3) == 3 &&
            !(nodeInfo.flags & 4));
-    assert(urui_element_begin_compiled_template(owner, body, templateBytes.data(), templateSize) == 1);
-    urui_update();
+    assert(urui_element_begin_compiled_template(g_test_surface, owner, body, templateBytes.data(), templateSize) == 1);
+    urui_surface_update(g_test_surface);
     float rectangle[6];
-    assert(urui_get_element_box(owner, "template-child", rectangle) == 1 && rectangle[2] == 12);
-    assert(urui_element_end_inner_html(owner, body, 0) == 1);
-    assert(urui_element_exists(owner, "box") == 1 && urui_element_exists(owner, "template-child") == 0);
-    assert(urui_element_begin_compiled_template(owner, body, templateBytes.data(), templateSize) == 1);
-    assert(urui_element_end_inner_html(owner, body, 1) == 1);
-    assert(urui_element_compiled_info(owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 15) == 15 &&
+    assert(TestGetElementBox(g_test_surface, owner, "template-child", rectangle) == 1 && rectangle[2] == 12);
+    assert(urui_element_end_inner_html(g_test_surface, owner, body, 0) == 1);
+    assert(TestElementExists(g_test_surface, owner, "box") == 1 && TestElementExists(g_test_surface, owner, "template-child") == 0);
+    assert(urui_element_begin_compiled_template(g_test_surface, owner, body, templateBytes.data(), templateSize) == 1);
+    assert(urui_element_end_inner_html(g_test_surface, owner, body, 1) == 1);
+    assert(urui_element_compiled_info(g_test_surface, owner, body, 0, nullptr, &nodeInfo) == 1 && (nodeInfo.flags & 15) == 15 &&
            nodeInfo.local_id == UINT32_MAX);
-    const auto clonedHost = urui_element_clone(owner, body);
+    const auto clonedHost = urui_element_clone(g_test_surface, owner, body);
     assert(clonedHost);
     URUICompiledNodeInfo clonedInfo{};
-    assert(urui_element_compiled_info(owner, clonedHost, 0, nullptr, &clonedInfo) == 1 &&
+    assert(urui_element_compiled_info(g_test_surface, owner, clonedHost, 0, nullptr, &clonedInfo) == 1 &&
            (clonedInfo.flags & 15) == 15);
     std::vector<uint64_t> clonedTokens(clonedInfo.end, 0);
-    assert(urui_element_compiled_tokens(owner, clonedHost, clonedInfo.identity, clonedInfo.revision,
+    assert(urui_element_compiled_tokens(g_test_surface, owner, clonedHost, clonedInfo.identity, clonedInfo.revision,
                                         clonedTokens.data(), int(clonedTokens.size())) == 1);
     mapped.assign(nodeInfo.end, 0);
-    assert(urui_element_compiled_tokens(owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
+    assert(urui_element_compiled_tokens(g_test_surface, owner, body, nodeInfo.identity, nodeInfo.revision, mapped.data(),
                                         int(mapped.size())) == 1);
-    assert(urui_set_style(owner, "template-child", "--length", "37px") == 1);
-    urui_update();
-    assert(urui_get_element_box(owner, "template-child", rectangle) == 1 && rectangle[2] == 37);
-    assert(urui_element_begin_compiled_template(owner, body, templateBytes.data(), templateSize) == 1);
-    assert(urui_element_end_inner_html(owner, body, 1) == 1);
-    urui_update();
-    assert(urui_get_element_box(owner, "template-child", rectangle) == 1 && rectangle[2] == 12);
+    assert(TestSetStyle(g_test_surface, owner, "template-child", "--length", "37px") == 1);
+    urui_surface_update(g_test_surface);
+    assert(TestGetElementBox(g_test_surface, owner, "template-child", rectangle) == 1 && rectangle[2] == 37);
+    assert(urui_element_begin_compiled_template(g_test_surface, owner, body, templateBytes.data(), templateSize) == 1);
+    assert(urui_element_end_inner_html(g_test_surface, owner, body, 1) == 1);
+    urui_surface_update(g_test_surface);
+    assert(TestGetElementBox(g_test_surface, owner, "template-child", rectangle) == 1 && rectangle[2] == 12);
     int metadataSize = 0;
-    assert(urui_compiled_document_metadata(templateBytes.data(), templateSize, nullptr, 0, &metadataSize) == -3);
+    assert(urui_compiled_document_metadata(templateBytes.data(), templateSize, nullptr, 0, &metadataSize) == URUI_ERR_BUFFER_TOO_SMALL);
     std::vector<char> metadata(metadataSize);
     assert(urui_compiled_document_metadata(templateBytes.data(), templateSize, metadata.data(), metadataSize,
                                            &metadataSize) == 1);
     assert(std::string(metadata.data()).find("\"name\":\"template-child\"") != std::string::npos);
-    assert(urui_document_close(owner) == 1);
+    assert(urui_document_close(g_test_surface, owner) == 1);
     assert(!URUI::CompileDocument("<!doctype html><html><head></head><body><div></body></html>", "bad.html", nullptr,
                                   bytes, diagnostics));
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Compiled HTML/CSS dynamic and corruption contracts passed\n";
 }

@@ -65,9 +65,9 @@ static void Requests(uint32_t flags, int blend, bool expects_scratch)
 int main()
 {
     Requests(0, 1, true);
-    Requests(2 | 4 | 8, 1, true);
-    Requests(2 | 4 | 8 | 64, 1, false);
-    Requests(2 | 8 | 64, 1, false);
-    Requests(2 | 4 | 8 | 64, 0, true);
+    Requests(URUI_PLAN_RESOURCE_HDR_CAMERA, 1, true);
+    Requests(URUI_PLAN_RESOURCE_HDR_CAMERA | URUI_PLAN_RESOURCE_FRAMEBUFFER_FETCH, 1, false);
+    Requests(URUI_PLAN_RESOURCE_FRAMEBUFFER_FETCH, 1, false);
+    Requests(URUI_PLAN_RESOURCE_HDR_CAMERA | URUI_PLAN_RESOURCE_FRAMEBUFFER_FETCH, 0, true);
     std::cout << "in-place mask removes only its own scratch target; fallback and custom filters retained\n";
 }

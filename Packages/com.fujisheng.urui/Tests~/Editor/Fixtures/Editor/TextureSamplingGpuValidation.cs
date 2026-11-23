@@ -117,7 +117,6 @@ public static class TextureSamplingGpuValidation
         var b = new Material(shader);
         a.SetTexture("_MainTex", source);
         a.SetFloat("_UruiBorrowedTexture", 1);
-        a.SetFloat("_UruiSourceSrgb", source.isDataSRGB ? 1 : 0);
         a.SetVector("_UruiSourceSize", new Vector4(4, 4, .25f, .25f));
         b.SetTexture("_MainTex", reference);
         b.SetFloat("_UruiBorrowedTexture", 0);

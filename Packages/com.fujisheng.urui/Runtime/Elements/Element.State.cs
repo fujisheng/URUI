@@ -16,15 +16,36 @@ namespace URUI.Elements
         Ignore
     }
 
+    /// <summary>
+    /// 元素实时状态位快照，单次原生查询返回全部层级可见性与启用状态。
+    /// </summary>
+    [Flags]
+    public enum ElementState
+    {
+        None = 0,
+        Valid = 1,
+        Attached = 2,
+        VisibleInHierarchy = 4,
+        DisabledInHierarchy = 8
+    }
+
     public partial class Element
     {
         uint createdLayoutVersion;
         bool observedAttached;
         bool initialized;
         bool customUpdateHook = true;
-        internal bool HasUpdateHook => customUpdateHook;
+        internal virtual bool HasUpdateHook => customUpdateHook;
+        internal bool HasCustomUpdateHook => customUpdateHook;
         static readonly Dictionary<Type, bool> updateHookTypes = new();
         Rect? observedLayout;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetElementTypeCaches()
+        {
+            updateHookTypes.Clear();
+            eventHookTypes.Clear();
+        }
 
         /// <summary>
         /// 供派生控件使用的构造入口；上下文只能由 Document 工厂提供。
@@ -35,18 +56,22 @@ namespace URUI.Elements
         }
 
         internal ulong Token => token;
+
         /// <summary>
         /// 拥有本节点的文档。
         /// </summary>
         public Document Document => document;
+
         /// <summary>
         /// 业务子节点的容器；组合控件可覆写。
         /// </summary>
         public virtual Element ContentContainer => this;
+
         /// <summary>
         /// 访问真实 DOM 子节点，绕过内容容器重定向。
         /// </summary>
         public ElementHierarchy Hierarchy => new ElementHierarchy(this);
+
         /// <summary>
         /// 调用者关联数据；不向原生层序列化。
         /// </summary>
@@ -55,10 +80,34 @@ namespace URUI.Elements
             get;
             set;
         }
+
+        /// <summary>
+        /// 单次原生调用读取有效/挂载/可见/禁用状态位；失效节点返回 ElementState.None。
+        /// </summary>
+        public ElementState StateFlags
+        {
+            get
+            {
+                document.CheckThread();
+                if (invalid || !document.IsCurrent(generation))
+                {
+                    return ElementState.None;
+                }
+                var surface = SurfaceHandle;
+                if (surface == 0)
+                {
+                    return ElementState.None;
+                }
+                var flags = NativeMethods.urui_element_state_flags(surface, NativeHandle, token);
+                return flags > 0 ? (ElementState)flags : ElementState.None;
+            }
+        }
+
         /// <summary>
         /// 本节点自己的启用状态。
         /// </summary>
         public bool EnabledSelf => !HasAttribute("disabled");
+
         /// <summary>
         /// 本节点及所有祖先均启用。
         /// </summary>
@@ -66,16 +115,12 @@ namespace URUI.Elements
         {
             get
             {
-                for (var value = this; value != null; value = value.Parent)
-                {
-                    if (!value.EnabledSelf)
-                    {
-                        return false;
-                    }
-                }
-                return true;
+                RequireValid();
+                var flags = NativeMethods.urui_element_state_flags(SurfaceHandle, NativeHandle, token);
+                return flags >= 0 && (flags & (int)ElementStateFlags.DisabledInHierarchy) == 0;
             }
         }
+
         /// <summary>
         /// 设置本节点启用状态；禁用后不接受交互默认行为。
         /// </summary>
@@ -106,15 +151,26 @@ namespace URUI.Elements
                 focused.Blur();
             }
         }
+
         /// <summary>
         /// 是否绘制；隐藏时保留布局。
         /// </summary>
-        public bool IsVisibleInHierarchy => NativeMethods.urui_element_visible_in_hierarchy(NativeHandle, CheckedToken()) == 1;
+        public bool IsVisibleInHierarchy
+        {
+            get
+            {
+                RequireValid();
+                var flags = NativeMethods.urui_element_state_flags(SurfaceHandle, NativeHandle, token);
+                return flags >= 0 && (flags & (int)ElementStateFlags.VisibleInHierarchy) != 0;
+            }
+        }
+
         public bool Visible
         {
             get => ReadStyle("visibility", false) != "hidden";
             set => Style.Set("visibility", value ? "visible" : "hidden");
         }
+
         /// <summary>
         /// 是否可获得键盘焦点。
         /// </summary>
@@ -130,6 +186,7 @@ namespace URUI.Elements
                 Style.Set("--urui-tab-index", value ? "auto" : "none");
             }
         }
+
         /// <summary>
         /// HTML tabindex；负数保留程序焦点并退出顺序导航，正数优先于零。
         /// </summary>
@@ -139,29 +196,35 @@ namespace URUI.Elements
                 System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : Focusable ? 0 : -1;
             set => SetAttribute("tabindex", value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
+
         /// <summary>
         /// 是否为当前文档焦点节点。
         /// </summary>
-        public bool Focused => NativeMethods.urui_focused_element(NativeHandle) == CheckedToken();
+        public bool Focused => NativeMethods.urui_focused_element(SurfaceHandle, NativeHandle) == CheckedToken();
+
         /// <summary>
         /// 请求焦点，禁用或未挂载时返回 false。
         /// </summary>
         public bool Focus()
         {
             RequireValid();
-            bool focused = Focusable && EnabledInHierarchy && IsAttached && NativeMethods.urui_element_focus(NativeHandle, token, 1) == 1;
+            bool focused = Focusable && EnabledInHierarchy && IsAttached &&
+                NativeMethods.urui_element_focus(SurfaceHandle, NativeHandle, token, 1) == NativeStatus.Ok;
             document.FinishNativeCall();
             return focused;
         }
+
         /// <summary>
         /// 释放本节点焦点。
         /// </summary>
         public void Blur()
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_focus(NativeHandle, token, 0), "释放焦点");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_focus(surface, NativeHandle, token, 0), "释放焦点");
             document.FinishNativeCall();
         }
+
         /// <summary>
         /// 节点自身的指针命中策略。
         /// </summary>
@@ -170,25 +233,29 @@ namespace URUI.Elements
             get => ReadStyle("pointer-events", false) == "none" ? PickingMode.Ignore : PickingMode.Position;
             set => Style.Set("pointer-events", value == PickingMode.Ignore ? "none" : "auto");
         }
+
         /// <summary>
         /// 包装完成后的初始化钩子，此时可创建子节点和注册回调。
         /// </summary>
         protected virtual void OnInitialize()
         {
         }
+
         /// <summary>
         /// 每次完成原生布局后的控件更新钩子。
         /// </summary>
         protected virtual void OnUpdate()
         {
         }
+
         /// <summary>
         /// 节点失效后的资源清理钩子；此时不得再访问原生节点。
         /// </summary>
         protected virtual void OnInvalidated()
         {
         }
-        internal void Initialize()
+
+        internal void Initialize(uint initialLayoutVersion)
         {
             if (initialized)
             {
@@ -203,11 +270,12 @@ namespace URUI.Elements
                 customUpdateHook = method == null || method.DeclaringType != typeof(Element);
                 updateHookTypes.Add(type, customUpdateHook);
             }
-            createdLayoutVersion = document.LayoutVersion;
+            createdLayoutVersion = initialLayoutVersion;
             observedAttached = IsAttached;
             OnInitialize();
             RefreshEventInterest();
         }
+
         internal bool TryObservedRefreshState(out NativeMethods.ElementRefreshState state)
         {
             state = default;
@@ -219,7 +287,8 @@ namespace URUI.Elements
             state.Layout = observedLayout.Value;
             return true;
         }
-        internal bool Refresh(bool layout, int state, Rect current)
+
+        internal bool Refresh(bool layout, int state, Rect current, ulong refRevision)
         {
             if (invalid)
             {
@@ -232,6 +301,7 @@ namespace URUI.Elements
                 Invalidate();
                 return true;
             }
+            validatedRefRevision = refRevision;
             bool attached = (state & 2) != 0;
             var delivered = false;
             if (attached != observedAttached)
@@ -264,20 +334,22 @@ namespace URUI.Elements
                         delivered = true;
                     }
                 }
-                if (!delivered || IsValid)
+                if ((!delivered || IsValid) && HasUpdateHook)
                 {
                     OnUpdate();
                     // Any custom update may mutate an earlier element. The base hook is empty.
-                    delivered |= customUpdateHook;
+                    delivered = true;
                 }
             }
             return delivered;
         }
+
         internal ulong CheckedToken()
         {
             RequireValid();
             return token;
         }
+
         // 只由原生绘制记录确认：新包装句柄对应的节点已经参与本次布局，不发布额外布局事件。
         internal void AcceptRenderedLayout()
         {
@@ -290,6 +362,7 @@ namespace URUI.Elements
                 createdLayoutVersion = document.LayoutVersion - 1;
             }
         }
+
         /// <summary>
         /// 节点已经参与至少一次完成的文档布局。
         /// </summary>
@@ -301,10 +374,19 @@ namespace URUI.Elements
                 return IsValid && IsAttached && document.LayoutVersion > createdLayoutVersion;
             }
         }
+
         /// <summary>
         /// 查询当前节点及后代中的首个有类型元素。
         /// </summary>
-        public T Q<T>(string name = null, string className = null) where T : Element => Query<T>(name, className).First();
+        public T Q<T>(string name = null, string className = null) where T : Element
+        {
+            if (typeof(T) == typeof(Element))
+            {
+                return (T)Q(name, className);
+            }
+            return Query<T>(name, className).First();
+        }
+
         /// <summary>
         /// 构造当前节点及后代的有类型查询。
         /// </summary>
@@ -323,6 +405,7 @@ namespace URUI.Elements
 
             return new ElementQuery<T>(this, name, className);
         }
+
         /// <summary>
         /// 检查是否为自身或后代节点。
         /// </summary>
@@ -339,6 +422,7 @@ namespace URUI.Elements
 
             return false;
         }
+
         /// <summary>
         /// 返回最近的指定类型祖先，不包含自身。
         /// </summary>
@@ -354,13 +438,15 @@ namespace URUI.Elements
 
             return null;
         }
+
         /// <summary>
-        /// 移动到兄弟节点末尾。
+        /// 移动到真实 DOM 兄弟节点末尾。
         /// </summary>
-        public void BringToFront() => Parent?.Add(this);
+        public void BringToFront() => Parent?.Hierarchy.Add(this);
+
         /// <summary>
-        /// 移动到兄弟节点开头。
+        /// 移动到真实 DOM 兄弟节点开头。
         /// </summary>
-        public void SendToBack() => Parent?.Insert(0, this);
+        public void SendToBack() => Parent?.Hierarchy.Insert(0, this);
     }
 }

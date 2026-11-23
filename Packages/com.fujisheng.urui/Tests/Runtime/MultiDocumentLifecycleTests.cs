@@ -44,6 +44,31 @@ namespace URUI.Tests
         }
 
         [Test]
+        public void ScreenPointerOwnershipFollowsAuthorHitsAndVisibleModalDocuments()
+        {
+            surface.Viewport = new Vector2Int(128, 64);
+            var control = new Vector2(Screen.width / 8f, Screen.height * 47f / 64f);
+            var blank = new Vector2(Screen.width * .75f, Screen.height * 31f / 64f);
+            Assert.IsFalse(surface.Input.BlocksPointer(blank));
+
+            a.LoadHtml("<!doctype html><html><head><style>html,body{margin:0;width:128px;height:64px;}button{position:absolute;left:8px;top:8px;width:32px;height:24px;}</style></head><body><button id='action'>Action</button></body></html>", "ui/scene-hud.html");
+            a.SynchronizeLayout();
+            Assert.AreSame(a.Body, a.Pick(new Vector2(96, 32)));
+            Assert.IsTrue(surface.Input.BlocksPointer(control));
+            Assert.IsFalse(surface.Input.BlocksPointer(blank));
+
+            b.SetPresentation(1, 0, true, true);
+            b.LoadHtml("<!doctype html><html><head><style>html,body{pointer-events:none;}</style></head><body></body></html>", "ui/modal.html");
+            b.SynchronizeLayout();
+            b.SetInputEnabled(false);
+            Assert.IsTrue(surface.Input.BlocksPointer(blank));
+            Assert.IsFalse(surface.Input.BlocksPointer(new Vector2(-1, 1)));
+            b.SetPresentation(1, 0, false, true);
+            Assert.IsFalse(surface.Input.BlocksPointer(blank));
+            Assert.IsTrue(surface.Input.BlocksPointer(control));
+        }
+
+        [Test]
         public void IndependentDocumentsKeepSameIdsAndCloseOnlyTheirOwner()
         {
             a.LoadHtml(Html, "ui/a.html");

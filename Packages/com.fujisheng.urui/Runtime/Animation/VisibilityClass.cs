@@ -26,11 +26,17 @@ namespace URUI.Animation
         }
         void Update(Document document)
         {
-            if (disposed || !target.IsValid || !activation.IsValid)
+            if (disposed || !target.IsValid)
             {
                 return;
             }
-            var visible = activation.IsAttached && activation.HasLayout && activation.IsVisibleInHierarchy;
+            const ElementState RequiredVisible = ElementState.Valid | ElementState.Attached | ElementState.VisibleInHierarchy;
+            var flags = activation.StateFlags;
+            if ((flags & ElementState.Valid) == 0)
+            {
+                return;
+            }
+            var visible = (flags & RequiredVisible) == RequiredVisible && activation.HasLayout;
             if (active == visible)
             {
                 return;

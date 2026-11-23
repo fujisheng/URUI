@@ -11,6 +11,7 @@ namespace URUI.Internal.Hosting
         readonly Dictionary<ulong, EffectGeometry> effectGeometryCache = new();
         readonly HashSet<ulong> usedEffectGeometries = new();
         readonly List<ulong> removedEffectGeometries = new();
+
         EffectGeometry FreezeEffectGeometry(ulong id)
         {
             usedEffectGeometries.Add(id);
@@ -38,7 +39,9 @@ namespace URUI.Internal.Hosting
             effectGeometryCache.Add(id, cached);
             return cached;
         }
+
         VertexNative[] originalSourceScratch = Array.Empty<VertexNative>();
+
         EffectGeometry FreezeOriginalEffectGeometry(ulong id)
         {
             usedEffectGeometries.Add(id);
@@ -46,7 +49,7 @@ namespace URUI.Internal.Hosting
             {
                 return previous;
             }
-            if (NativeMethods.urui_get_geometry_info(id, out var vertices, out var indices) != 1 || vertices <= 0 || indices <= 0)
+            if (NativeMethods.urui_get_geometry_info(SurfaceHandle, id, out var vertices, out var indices) != NativeStatus.Ok || vertices <= 0 || indices <= 0)
             {
                 throw new InvalidOperationException("程序原始几何已失效。");
             }
@@ -58,7 +61,7 @@ namespace URUI.Internal.Hosting
             var uv = new Vector2[vertices];
             var colors = new Color32[vertices];
             var triangles = new int[indices];
-            if (NativeMethods.urui_copy_geometry(id, originalSourceScratch, originalSourceScratch.Length, triangles, triangles.Length) != 1)
+            if (NativeMethods.urui_copy_geometry(SurfaceHandle, id, originalSourceScratch, originalSourceScratch.Length, triangles, triangles.Length) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("程序原始几何复制失败。");
             }
@@ -73,6 +76,7 @@ namespace URUI.Internal.Hosting
             effectGeometryCache.Add(id, result);
             return result;
         }
+
         void PruneEffectGeometries()
         {
             removedEffectGeometries.Clear();

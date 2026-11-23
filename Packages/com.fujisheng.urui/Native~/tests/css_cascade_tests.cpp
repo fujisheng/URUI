@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include "ComputeProperty.h"
 #include "ElementStyle.h"
 #include <URUI/Core.h>
@@ -13,12 +15,12 @@
 
 static URUI::ElementDocument* Load(const URUI::String& css, const URUI::String& body)
 {
-    auto* document = URUI::GetContext("urui")->LoadDocumentFromMemory(
+    auto* document = URUI::GetContext(0)->LoadDocumentFromMemory(
         "<!doctype html><html><head><style>" + css + "</style></head><body>" + body + "</body></html>",
         "ui/cascade.html");
     assert(document);
     document->Show();
-    URUI::GetContext("urui")->Update();
+    URUI::GetContext(0)->Update();
     return document;
 }
 static void Width(URUI::Element* element, float expected)
@@ -32,9 +34,9 @@ static void Width(URUI::Element* element, float expected)
 }
 int main()
 {
-    assert(urui_create(400, 200) == 1);
-    assert(urui_set_ui_time(0) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
+    assert(urui_surface_set_ui_time(g_test_surface, 0) == 1);
+    auto* context = URUI::GetContext(0);
     URUI::String classes;
     for (unsigned i = 0; i < 20; ++i)
     {
@@ -219,16 +221,16 @@ int main()
             "div{animation:1s linear fade;opacity:.7;} #important{opacity:.7!important;}",
             "<div id='normal'></div><div id='important'></div><div id='inline' style='opacity:.8!important'></div>");
         auto* normal = animated->GetElementById("normal");
-        assert(urui_set_ui_time(.1) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, .1) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(animated->GetElementById("important")->GetComputedValues().opacity() - .7f) < .001f);
         assert(std::abs(animated->GetElementById("inline")->GetComputedValues().opacity() - .8f) < .001f);
         assert(normal->GetComputedValues().opacity() > 0 && normal->GetComputedValues().opacity() < .7f);
         normal->SetProperty("opacity", ".9");
         context->Update();
         assert(normal->GetComputedValues().opacity() < .7f);
-        assert(urui_set_ui_time(1.1) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 1.1) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(normal->GetComputedValues().opacity() - .9f) < .001f);
         animated->Close();
         auto* transitioned =
@@ -237,42 +239,42 @@ int main()
         auto* box = transitioned->GetElementById("target");
         box->SetClassNames("b");
         context->Update();
-        assert(urui_set_ui_time(1.6) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 1.6) == 1);
+        urui_surface_update(g_test_surface);
         assert(box->GetComputedValues().opacity() > .2f && box->GetComputedValues().opacity() < .8f);
-        assert(urui_set_ui_time(2.2) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 2.2) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(box->GetComputedValues().opacity() - .8f) < .001f);
         transitioned->Close();
         auto* repeated = Load(
             "@keyframes pulse{from{opacity:0;}to{opacity:1;}} #target{animation:.4s linear infinite alternate pulse;}",
             "<div id='target'></div>");
-        assert(urui_set_ui_time(3.45) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 3.45) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(repeated->GetElementById("target")->GetComputedValues().opacity() - .875f) < .002f);
-        assert(urui_set_ui_time(3.85) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 3.85) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(repeated->GetElementById("target")->GetComputedValues().opacity() - .125f) < .002f);
         repeated->Close();
         auto* inlineTransition = Load("#target{opacity:.2;transition:opacity 1s linear;}", "<div id='target'></div>");
         auto* inlineBox = inlineTransition->GetElementById("target");
         inlineBox->SetProperty("opacity", ".8!important");
-        assert(urui_set_ui_time(4.35) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 4.35) == 1);
+        urui_surface_update(g_test_surface);
         assert(inlineBox->GetComputedValues().opacity() > .2f && inlineBox->GetComputedValues().opacity() < .8f);
-        assert(urui_set_ui_time(4.95) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 4.95) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(inlineBox->GetComputedValues().opacity() - .8f) < .001f);
         inlineTransition->Close();
         auto* instant = Load("#target{opacity:.2;transition:opacity 0s linear 1s;}", "<div id='target'></div>");
         auto* instantBox = instant->GetElementById("target");
         instantBox->SetProperty("opacity", ".8");
         context->Update();
-        assert(urui_set_ui_time(5.45) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 5.45) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(instantBox->GetComputedValues().opacity() - .2f) < .001f);
-        assert(urui_set_ui_time(5.95) == 1);
-        urui_update();
+        assert(urui_surface_set_ui_time(g_test_surface, 5.95) == 1);
+        urui_surface_update(g_test_surface);
         assert(std::abs(instantBox->GetComputedValues().opacity() - .8f) < .001f);
         instant->Close();
     }
@@ -280,6 +282,6 @@ int main()
     std::cerr << "CSS tokenizer/declarations are not implemented\n";
     return 1;
 #endif
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "CSS cascade contracts passed\n";
 }

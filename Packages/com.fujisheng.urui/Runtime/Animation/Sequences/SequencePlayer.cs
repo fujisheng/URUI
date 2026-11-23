@@ -53,20 +53,20 @@ namespace URUI.Animation
             }
             document.CheckThread();
             RequireRoot();
-            this.definition = SequenceDefinition.Parse((definition ?? throw new ArgumentNullException(nameof(definition))).ToJson());
+            this.definition = (definition ?? throw new ArgumentNullException(nameof(definition))).Clone();
             this.factory = factory;
             this.slots = slots == null ? null : new Dictionary<string, Element>(slots, StringComparer.Ordinal);
             owner = unchecked((ulong)Interlocked.Increment(ref nextOwner));
             try
             {
-                if (NativeMethods.urui_sequence_api_version() != 1)
+                if (NativeMethods.urui_sequence_api_version() != 2)
                 {
-                    throw new NotSupportedException("需要序列采样协议v1插件。");
+                    throw new NotSupportedException("需要序列采样协议v2插件。");
                 }
             }
             catch (EntryPointNotFoundException error)
             {
-                throw new NotSupportedException("已安装插件缺少序列采样协议v1。", error);
+                throw new NotSupportedException("已安装插件缺少序列采样协议v2。", error);
             }
             bindings = new SequenceBindings(root, this.definition, owner, factory, this.slots);
             document.RegisterSequence(this);

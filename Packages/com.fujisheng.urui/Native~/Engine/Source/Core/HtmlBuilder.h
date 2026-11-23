@@ -9,7 +9,7 @@ namespace URUI
     struct CompiledDocument;
     bool CollectHtmlHeader(const HtmlDocument& parsed, DocumentHeader& header, Vector<Diagnostic>& diagnostics);
     bool BuildHtmlDocument(ElementDocument& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics,
-                           CompiledDocument* compiled = nullptr);
+                           const CompiledDocument* compiled = nullptr);
     bool ReplaceInnerHtml(Element& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics);
     bool IsHtmlVoidElement(const String& tag);
 

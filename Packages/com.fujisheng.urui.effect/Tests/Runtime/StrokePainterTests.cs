@@ -54,9 +54,9 @@ namespace URUI.Effect.Tests
                     }
                 }
                 var inside = Sample(50, 60);
-                if (QualitySettings.activeColorSpace == ColorSpace.Linear && !output.sRGB)
+                if (output.sRGB)
                 {
-                    inside = inside.gamma;
+                    inside = inside.linear;
                 }
                 Assert.That(inside.g, Is.EqualTo(.5f).Within(.025f));
                 Assert.That(inside.b, Is.EqualTo(.5f).Within(.025f));

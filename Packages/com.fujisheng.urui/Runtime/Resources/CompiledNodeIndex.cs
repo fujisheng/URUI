@@ -78,6 +78,46 @@ namespace URUI.Resources
             var finish = LowerBound(nodes, end);
             return new ArraySegment<int>(nodes, start, finish - start);
         }
+        static int ComparePrefixed(string candidate, char prefix, string body)
+        {
+            if (candidate.Length == 0)
+            {
+                return -1;
+            }
+            var diff = candidate[0] - prefix;
+            if (diff != 0)
+            {
+                return diff;
+            }
+            return string.CompareOrdinal(candidate, 1, body, 0, Math.Max(candidate.Length - 1, body.Length));
+        }
+
+        internal ArraySegment<int> QueryPrefixed(char prefix, string body, int first, int end)
+        {
+            var low = 0;
+            var high = selectors.Length;
+            while (low < high)
+            {
+                var middle = low + (high - low) / 2;
+                if (ComparePrefixed(selectors[middle].key, prefix, body) < 0)
+                {
+                    low = middle + 1;
+                }
+                else
+                {
+                    high = middle;
+                }
+            }
+            if (low == selectors.Length || ComparePrefixed(selectors[low].key, prefix, body) != 0)
+            {
+                return default;
+            }
+            var nodes = selectors[low].nodes;
+            var start = LowerBound(nodes, first);
+            var finish = LowerBound(nodes, end);
+            return new ArraySegment<int>(nodes, start, finish - start);
+        }
+
         static int LowerBound(int[] values, int value)
         {
             var low = 0;

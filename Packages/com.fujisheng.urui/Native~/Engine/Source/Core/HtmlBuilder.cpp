@@ -11,6 +11,7 @@
 #include <URUI/Core/Factory.h>
 #include <URUI/Core/StringUtilities.h>
 #include <URUI/Core/SystemInterface.h>
+#include <algorithm>
 
 namespace URUI
 {
@@ -235,11 +236,12 @@ namespace URUI
             }
             select.SetSelection(selected);
         }
-        Vector<ElementPtr> BuildNodes(const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics, Element& owner)
+        Vector<ElementPtr> BuildNodeList(const Vector<HtmlNode>& list, const HtmlDocument& parsed,
+                                         Vector<Diagnostic>& diagnostics, Element& owner)
         {
             Vector<ElementPtr> nodes;
-            nodes.reserve(parsed.nodes.size());
-            for (const auto& node : parsed.nodes)
+            nodes.reserve(list.size());
+            for (const auto& node : list)
             {
                 auto element = BuildNode(node, parsed, diagnostics, owner);
                 if (!element)
@@ -249,6 +251,10 @@ namespace URUI
                 nodes.push_back(std::move(element));
             }
             return nodes;
+        }
+        Vector<ElementPtr> BuildNodes(const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics, Element& owner)
+        {
+            return BuildNodeList(parsed.nodes, parsed, diagnostics, owner);
         }
         void Serialize(const HtmlNode& node, String& output, bool rawText = false)
         {
@@ -366,7 +372,7 @@ namespace URUI
         return true;
     }
     bool BuildHtmlDocument(ElementDocument& target, const HtmlDocument& parsed, Vector<Diagnostic>& diagnostics,
-                           CompiledDocument* compiled)
+                           const CompiledDocument* compiled)
     {
         if (parsed.kind != HtmlDocumentKind::Document || target.GetTagName() != "html" || target.GetNumChildren() != 0)
         {
@@ -386,25 +392,20 @@ namespace URUI
             Failure(diagnostics, parsed, nullptr, "Missing document element.");
             return false;
         }
-        HtmlDocument fragment;
-        fragment.kind = HtmlDocumentKind::Fragment;
-        fragment.sourceUrl = parsed.sourceUrl;
-        fragment.blueprintIdentity = parsed.blueprintIdentity;
-        fragment.nodes = html->children;
         DocumentHeader header;
         if (!compiled && !CollectHtmlHeader(parsed, header, diagnostics))
         {
             return false;
         }
         // Registrations and font-face matching must exist before node attributes are parsed.
-        if (!(compiled ? target.ProcessCompiledHeader(parsed.sourceUrl, compiled->title,
-                                                      std::move(compiled->specification), std::move(compiled->styles))
+        if (!(compiled ? target.ProcessCompiledHeader(parsed.sourceUrl, compiled->title, compiled->specification,
+                                                      compiled->styles ? compiled->styles->CloneMediaShell() : nullptr)
                        : target.ProcessHeader(&header)))
         {
             Failure(diagnostics, parsed, html, target.GetResourceError());
             return false;
         }
-        auto children = BuildNodes(fragment, diagnostics, target);
+        auto children = BuildNodeList(html->children, parsed, diagnostics, target);
         if (children.size() != html->children.size())
         {
             return false;
@@ -458,7 +459,7 @@ namespace URUI
         {
             return false;
         }
-        while (auto* child = target.GetFirstChild())
+        while (auto* child = target.GetLastChild())
         {
             target.RemoveChild(child);
         }
@@ -547,10 +548,11 @@ namespace URUI
         }
         else
         {
-            while (auto* child = target.GetFirstChild())
+            while (auto* child = target.GetLastChild())
             {
                 change->previous.push_back(target.RemoveChild(child));
             }
+            std::reverse(change->previous.begin(), change->previous.end());
             for (auto& child : children)
             {
                 target.AppendChild(std::move(child));
@@ -611,7 +613,7 @@ namespace URUI
         }
         else
         {
-            while (auto* child = element->GetFirstChild())
+            while (auto* child = element->GetLastChild())
             {
                 element->RemoveChild(child);
             }

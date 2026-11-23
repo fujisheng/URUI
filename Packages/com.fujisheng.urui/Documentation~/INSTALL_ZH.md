@@ -34,7 +34,7 @@ URP 的项目适配已有运行记录；HDRP、其他图形后端及非 macOS �
 
 ## 原生插件与版本
 
-完整包包含 Runtime/Plugins 与相应源码。当前协议为 ABI11 / render-plan8 / style4 / effect7 / filter3 / animation1，正式 C 导出集合由头文件与二进制核对生成；URUI_DEBUG 默认关闭。构建和实际运行证据见 [PLUGINS.json](PLUGINS.json)。
+完整包包含 Runtime/Plugins 与相应源码。当前协议为 ABI12 / render-plan8 / style4 / effect7 / filter3 / animation1，正式 C 导出集合由头文件与二进制核对生成；URUI_DEBUG 默认关闭。构建和实际运行证据见 [PLUGINS.json](PLUGINS.json)。
 
 更新已被 Editor/Player 加载的动态库时，先关闭相应进程，替换完整配套包后重新启动。不要只更新 C# 或只替换某个平台插件；协议、导出与包版本必须匹配。macOS ARM64/x64 为分开提供的单架构插件。
 

@@ -81,7 +81,7 @@ namespace URUI.Tests
             yield return null;
             yield return null;
             var panel = a.Q("panel");
-            Rgb(Pixel(20, 20), Css(new Color(.5f, 0, 0)));
+            Rgb(Pixel(20, 20), new Color(.5f, 0, 0));
             Object.DestroyImmediate(cameraObject);
             camera = null;
             Assert.DoesNotThrow(() => a.SynchronizeLayout());
@@ -96,18 +96,18 @@ namespace URUI.Tests
             camera.backgroundColor = Color.black;
             camera.targetTexture = target;
             a.SynchronizeLayout();
-            Rgb(Pixel(20, 20), Css(new Color(.5f, 0, 0)));
+            Rgb(Pixel(20, 20), new Color(.5f, 0, 0));
             yield return null;
             yield return null;
             Assert.IsTrue(panel.IsValid);
-            Rgb(Pixel(20, 20), Css(new Color(.5f, 0, 0)));
+            Rgb(Pixel(20, 20), new Color(.5f, 0, 0));
             b.LoadHtml(Html("#top{width:40px;height:40px;background-color:blue;}", "<div id='top'></div>"),
                 "ui/camera-replacement-top.html");
             yield return null;
             Rgb(Pixel(20, 20), Color.blue);
             b.Unload();
             yield return null;
-            Rgb(Pixel(20, 20), Css(new Color(.5f, 0, 0)));
+            Rgb(Pixel(20, 20), new Color(.5f, 0, 0));
         }
         [TearDown]
         public void TearDown()
@@ -127,12 +127,12 @@ namespace URUI.Tests
             }
         }
         [UnityTest]
-        public IEnumerator GroupOpacityUsesBrowserSrgbSourceOverForNonPrimaryColors()
+        public IEnumerator GroupOpacityBlendsNonPrimaryColorsInProjectColorSpace()
         {
             a.LoadHtml(Html("#base{width:128px;height:128px;background-color:#335577;}" +
                 "#group{position:absolute;left:20px;top:20px;width:100px;height:100px;opacity:.5;background-color:#aa6622;}" +
                 "#child{position:absolute;left:20px;top:20px;width:60px;height:60px;background-color:#779933;}",
-                "<div id='base'><div id='group'><div id='child'></div></div></div>"), "ui/srgb-opacity.html");
+                "<div id='base'><div id='group'><div id='child'></div></div></div>"), "ui/project-color-opacity.html");
             yield return null;
             yield return null;
             Color SceneColor(byte r, byte g, byte b)
@@ -140,10 +140,10 @@ namespace URUI.Tests
                 var encoded = new Color(r / 255f, g / 255f, b / 255f);
                 return QualitySettings.activeColorSpace == ColorSpace.Linear ? encoded.linear : encoded;
             }
-            // Edge157 同源 compositing.html：组背景和子元素各只参与一次 source-over。
-            Rgb(Pixel(5, 5), SceneColor(51, 85, 119));
-            Rgb(Pixel(25, 25), SceneColor(110, 93, 76));
-            Rgb(Pixel(45, 45), SceneColor(85, 119, 84));
+            var background = SceneColor(51, 85, 119);
+            Rgb(Pixel(5, 5), background);
+            Rgb(Pixel(25, 25), Color.Lerp(background, SceneColor(170, 102, 34), .5f));
+            Rgb(Pixel(45, 45), Color.Lerp(background, SceneColor(119, 153, 51), .5f));
         }
 
         [UnityTest]
@@ -164,7 +164,7 @@ namespace URUI.Tests
             Assert.IsTrue(a.Q("shown").IsVisibleInHierarchy);
             Rgb(Pixel(5, 5), Color.black);
             Rgb(Pixel(30, 30), Color.green);
-            Rgb(Pixel(90, 15), Css(new Color(0, 0, .5f)));
+            Rgb(Pixel(90, 15), new Color(0, 0, .5f));
             var clicks = 0;
             using var subscription = a.Q("shown").RegisterCallback<ClickEvent>(_ => clicks++);
             surface.Input.SendPointer(PointerPhase.Down, new Vector2(30, 30), pressedButtons: 1);
@@ -342,9 +342,9 @@ namespace URUI.Tests
                 var originalPixel = Pixel(20, 20);
                 var previewPixel = Pixel(70, 70);
                 var imagePixel = Pixel(55, 55);
-                Rgb(originalPixel, Css(new Color(.5f, 0, 0)));
-                Rgb(previewPixel, Css(new Color(.5f, 0, 0)));
-                Rgb(imagePixel, Css(new Color(0, .5f, 0)));
+                Rgb(originalPixel, new Color(.5f, 0, 0));
+                Rgb(previewPixel, new Color(.5f, 0, 0));
+                Rgb(imagePixel, new Color(0, .5f, 0));
                 surface.Input.SendPointer(PointerPhase.Up, new Vector2(70, 70));
                 yield return null;
                 Rgb(Pixel(70, 70), Color.black);
@@ -363,8 +363,8 @@ namespace URUI.Tests
             a.LoadHtml(Html("#parent{width:100px;height:100px;background-color:red;opacity:.5;}#child{width:40px;height:40px;background-color:blue;opacity:.5;}", "<div id='parent'><div id='child'></div></div>"), "ui/opacity.html");
             yield return null;
             yield return null;
-            Rgb(Pixel(80, 20), Css(new Color(.5f, 0, 0)));
-            Rgb(Pixel(20, 20), Css(new Color(.25f, 0, .25f)));
+            Rgb(Pixel(80, 20), new Color(.5f, 0, 0));
+            Rgb(Pixel(20, 20), new Color(.25f, 0, .25f));
         }
         [UnityTest]
         public IEnumerator DefaultBackdropCannotSampleAnotherDocument()
@@ -533,7 +533,7 @@ namespace URUI.Tests
                     a.Q("box").Style.Set("box-shadow", shadow);
                     yield return null;
                     yield return null;
-                    Rgb(Pixel(20, 20), Css(new Color(.5f, .5f, 0)));
+                    Rgb(Pixel(20, 20), new Color(.5f, .5f, 0));
                 }
 
                 // 内阴影覆盖图像，不能预先烘焙在底色中。
@@ -684,7 +684,7 @@ namespace URUI.Tests
             style.Set("background-image", "linear-gradient(rgba(255,0,0,.5), rgba(255,0,0,.5))");
             yield return null;
             yield return null;
-            Rgb(Pixel(20, 20), Css(new Color(.5f, 0, .5f)));
+            Rgb(Pixel(20, 20), new Color(.5f, 0, .5f));
         }
 
         [UnityTest]
@@ -720,8 +720,8 @@ namespace URUI.Tests
                 a.Q("box").Style.SetOpacity(.5f);
                 yield return null;
                 yield return null;
-                Rgb(Pixel(11, 11), Css(new Color(.5f, 0, 0)));
-                Rgb(Pixel(30, 30), Css(new Color(0, 0, .5f)));
+                Rgb(Pixel(11, 11), new Color(.5f, 0, 0));
+                Rgb(Pixel(30, 30), new Color(0, 0, .5f));
                 a.Q("box").Style.SetOpacity(1f);
                 a.Q("box").Style.Set("border-image-slice", "20%");
                 yield return null;
@@ -826,12 +826,12 @@ namespace URUI.Tests
                 var host = root.GetComponentInChildren<URUI.Internal.Hosting.RenderHost>(true);
                 yield return null;
                 yield return null;
-                Rgb(Pixel(20, 20), Css(new Color(.5f, 0, 0)));
-                Rgb(Pixel(22, 20), Css(new Color(0, .5f, 0)));
-                Rgb(Pixel(20, 100), Css(new Color(.5f, 0, 0)));
-                Rgb(Pixel(60, 100), Css(new Color(0, .5f, 0)));
-                Rgb(Pixel(20, 116), Css(new Color(.5f, 0, 0)));
-                Rgb(Pixel(60, 116), Css(new Color(0, .5f, 0)));
+                Rgb(Pixel(20, 20), new Color(.5f, 0, 0));
+                Rgb(Pixel(22, 20), new Color(0, .5f, 0));
+                Rgb(Pixel(20, 100), new Color(.5f, 0, 0));
+                Rgb(Pixel(60, 100), new Color(0, .5f, 0));
+                Rgb(Pixel(20, 116), new Color(.5f, 0, 0));
+                Rgb(Pixel(60, 116), new Color(0, .5f, 0));
                 Assert.IsTrue(host.ShaderContractActive);
                 Assert.AreEqual(TextureWrapMode.Clamp, texture.wrapMode);
                 Assert.AreEqual(FilterMode.Point, texture.filterMode);

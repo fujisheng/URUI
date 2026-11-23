@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include "Engine/Source/Core/HtmlBuilder.h"
 #include <cassert>
@@ -8,7 +10,7 @@
 static URUI::ElementDocument* Load(const URUI::String& css, const URUI::String& body,
                                    const URUI::String& attributes = "")
 {
-    auto* context = URUI::GetContext("urui");
+    auto* context = URUI::GetContext(0);
     auto* doc = context->LoadDocumentFromMemory("<!doctype html><html " + attributes + "><head><style>" + css +
                                                     "</style></head><body>" + body + "</body></html>",
                                                 "ui/standard.html");
@@ -28,9 +30,9 @@ static void Opacity(URUI::Element* element, float expected)
 }
 int main(int argc, char** argv)
 {
-    assert(argc == 2 && urui_create(400, 200) == 1);
-    assert(urui_set_ui_time(0) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(argc == 2 && urui_surface_create(400, 200, &g_test_surface) == 1);
+    assert(urui_surface_set_ui_time(g_test_surface, 0) == 1);
+    auto* context = URUI::GetContext(0);
     const URUI::String mode = argv[1];
     if (mode == "registrations")
     {
@@ -106,7 +108,7 @@ int main(int argc, char** argv)
         auto* element = doc->GetElementById("same");
         doc->SetClass("go", true);
         context->Update();
-        assert(urui_set_ui_time(.7) == 1);
+        assert(urui_surface_set_ui_time(g_test_surface, .7) == 1);
         context->Update();
         Opacity(element, .5f);
         element->SetProperty("opacity", ".9!important");
@@ -147,10 +149,10 @@ int main(int argc, char** argv)
         auto* element = doc->GetElementById("same");
         doc->SetClass("go", true);
         context->Update();
-        assert(urui_set_ui_time(.5) == 1);
+        assert(urui_surface_set_ui_time(g_test_surface, .5) == 1);
         context->Update();
         Opacity(element, .5f);
-        assert(urui_set_ui_time(1.1) == 1);
+        assert(urui_surface_set_ui_time(g_test_surface, 1.1) == 1);
         context->Update();
         Opacity(element, 1);
     }
@@ -158,6 +160,6 @@ int main(int argc, char** argv)
     {
         assert(false);
     }
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Standard CSS " << mode << " contracts passed\n";
 }

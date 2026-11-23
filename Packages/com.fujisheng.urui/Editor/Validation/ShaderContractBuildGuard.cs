@@ -47,6 +47,10 @@ namespace URUI.Editor.Validation
         /// </summary>
         public void OnProcessScene(Scene scene, BuildReport report)
         {
+            if (report == null)
+            {
+                return;
+            }
             var contract = UnityEngine.Resources.Load<ShaderPropertyContract>("URUI/BuiltinShaderPropertyContract");
             if (!contract)
             {

@@ -52,6 +52,8 @@ namespace URUI
         /// @param value[in] The raw value defined for this property.
         /// @return True if all values were parsed successfully, false otherwise.
         bool ParseValue(Property& property, const String& value) const;
+        /// Returns true if the given integer keyword is accepted by any keyword parser on this definition.
+        bool IsValidKeyword(int keyword, int* out_parser_index = nullptr) const;
         /// Called to convert a parsed property back into a value.
         /// @param value[out] The string to return the value in.
         /// @param property[in] The processed property to parse.

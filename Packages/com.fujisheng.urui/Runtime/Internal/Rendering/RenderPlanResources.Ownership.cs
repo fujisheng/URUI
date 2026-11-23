@@ -11,6 +11,13 @@ namespace URUI.Internal.Rendering
         internal sealed class Entry : IDisposable
         {
             static readonly Stack<Entry> idle = new();
+
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            static void ResetStatics()
+            {
+                idle.Clear();
+            }
+
             internal Mesh Mesh;
             internal long Bytes;
             internal long Used;
@@ -25,12 +32,14 @@ namespace URUI.Internal.Rendering
                 private set;
             }
             bool retired;
+
             internal static Entry Rent()
             {
                 var entry = idle.Count > 0 ? idle.Pop() : new Entry();
                 entry.retired = false;
                 return entry;
             }
+
             internal void RetainReference()
             {
                 if (retired)
@@ -42,6 +51,7 @@ namespace URUI.Internal.Rendering
                     References++;
                 }
             }
+
             internal void ReleaseReference()
             {
                 if (References == 0)
@@ -51,6 +61,7 @@ namespace URUI.Internal.Rendering
                 References--;
                 Collect();
             }
+
             public void Dispose()
             {
                 if (retired)
@@ -60,20 +71,22 @@ namespace URUI.Internal.Rendering
                 retired = true;
                 Collect();
             }
+
             void Collect()
             {
                 if (!retired || References != 0)
                 {
                     return;
                 }
-                // 退役所有者仍可能被另一 SRP 提交读取；最后一个真实引用
-                // 结束后才释放物理缓冲并从常驻预算扣除。
                 if (Mesh)
                 {
                     URUI.Resources.GpuRetirement.DestroyOwnedObject(Mesh);
                 }
                 Mesh = null;
-                Owner.allocatedBytes -= Bytes;
+                if (Owner != null)
+                {
+                    Owner.allocatedBytes -= Bytes;
+                }
                 Bytes = 0;
                 Owner = null;
                 Layout = null;
@@ -84,9 +97,11 @@ namespace URUI.Internal.Rendering
                 }
             }
         }
+
         List<Entry> recording = new();
         List<Entry> nextRecording = new();
         internal bool HasRecordingGeometry => recording.Count != 0;
+
         static bool SameLayout(VertexAttributeDescriptor[] a, VertexAttributeDescriptor[] b)
         {
             if (ReferenceEquals(a, b))
@@ -106,15 +121,24 @@ namespace URUI.Internal.Rendering
             }
             return true;
         }
+
         Entry Acquire(ulong identity, int vertices, int indices, IndexFormat format, VertexAttributeDescriptor[] attributes, int vertexStride, bool external, out bool configure)
         {
+            var vertexCapacity = external ? Mathf.NextPowerOfTwo(vertices) : vertices;
+            var indexCapacity = external ? Mathf.NextPowerOfTwo(indices) : indices;
+            var bucketBytes = (long)vertexCapacity * vertexStride + (long)indexCapacity * (format == IndexFormat.UInt16 ? 2 : 4);
+
             ulong oldIdentity = 0;
             Entry candidate = null;
+            int maxReuseVerts = external && vertexCapacity <= int.MaxValue / 4 ? Math.Max(64, vertexCapacity * 4) : int.MaxValue;
+            int maxReuseIndices = external && indexCapacity <= int.MaxValue / 4 ? Math.Max(96, indexCapacity * 4) : int.MaxValue;
             foreach (var pair in meshes)
             {
                 var entry = pair.Value;
                 if (used.Contains(pair.Key) || entry.References != 0 || entry.IndexFormat != format ||
-                    entry.VertexCapacity < vertices || entry.IndexCapacity < indices || !SameLayout(entry.Layout, attributes))
+                    entry.VertexCapacity < vertices || entry.IndexCapacity < indices ||
+                    entry.VertexCapacity > maxReuseVerts || entry.IndexCapacity > maxReuseIndices ||
+                    !SameLayout(entry.Layout, attributes))
                 {
                     continue;
                 }
@@ -131,24 +155,27 @@ namespace URUI.Internal.Rendering
                 configure = false;
                 return candidate;
             }
-            var vertexCapacity = external ? Mathf.NextPowerOfTwo(vertices) : vertices;
-            var indexCapacity = external ? Mathf.NextPowerOfTwo(indices) : indices;
-            var bytes = (long)vertexCapacity * vertexStride + (long)indexCapacity * (format == IndexFormat.UInt16 ? 2 : 4);
-            Reserve(bytes);
-            var mesh = new Mesh { name = "URUI native geometry" };
+
+            Reserve(bucketBytes);
+            var mesh = new Mesh
+            {
+                name = "URUI native geometry",
+                hideFlags = HideFlags.HideAndDontSave
+            };
             var value = Entry.Rent();
             value.Mesh = mesh;
-            value.Bytes = bytes;
+            value.Bytes = bucketBytes;
             value.Owner = this;
             value.Used = ++use;
             value.Layout = attributes;
             value.VertexCapacity = vertexCapacity;
             value.IndexCapacity = indexCapacity;
             value.IndexFormat = format;
-            allocatedBytes += bytes;
+            allocatedBytes += bucketBytes;
             configure = true;
             return value;
         }
+
         void CommitRecording()
         {
             nextRecording.Clear();
@@ -163,6 +190,7 @@ namespace URUI.Internal.Rendering
             recording = nextRecording;
             nextRecording = previous;
         }
+
         internal void EndRecording()
         {
             for (var i = 0; i < recording.Count; i++)
@@ -173,20 +201,30 @@ namespace URUI.Internal.Rendering
             }
             recording.Clear();
         }
-        internal void PinSubmission(List<Entry> destination)
+
+        internal void PinSubmission(List<Entry> destination, HashSet<Entry> dedup)
         {
             if (disposed)
             {
                 throw new ObjectDisposedException(nameof(RenderPlanResources));
             }
-            foreach (var entry in recording)
+            for (var i = 0; i < recording.Count; i++)
             {
-                if (destination.Contains(entry))
+                var entry = recording[i];
+                if (!dedup.Add(entry))
                 {
                     continue;
                 }
-                entry.RetainReference();
-                destination.Add(entry);
+                try
+                {
+                    entry.RetainReference();
+                    destination.Add(entry);
+                }
+                catch
+                {
+                    dedup.Remove(entry);
+                    throw;
+                }
             }
         }
     }

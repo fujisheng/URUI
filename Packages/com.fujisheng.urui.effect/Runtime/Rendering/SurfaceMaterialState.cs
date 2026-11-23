@@ -26,14 +26,42 @@ namespace URUI.Effect.Rendering
             public bool Equals(Value value) => vector.Equals(value.vector) && ReferenceEquals(texture, value.texture) && update == value.update && width == value.width && height == value.height && format == value.format && filter == value.filter && wrapU == value.wrapU && wrapV == value.wrapV && wrapW == value.wrapW && aniso == value.aniso && bias.Equals(value.bias);
             internal bool SameMaterial(Value value) => vector.Equals(value.vector) && ReferenceEquals(texture, value.texture);
         }
+        sealed class ShaderSchema
+        {
+            internal readonly (int id, ShaderPropertyType type)[] Descriptors;
+            internal readonly LocalKeyword[] KeywordHandles;
+            internal ShaderSchema(Shader shader)
+            {
+                Descriptors = new (int, ShaderPropertyType)[shader.GetPropertyCount()];
+                for (int i = 0; i < Descriptors.Length; i++)
+                {
+                    Descriptors[i] = (shader.GetPropertyNameId(i), shader.GetPropertyType(i));
+                }
+                KeywordHandles = shader.keywordSpace.keywords ?? Array.Empty<LocalKeyword>();
+            }
+        }
+        static readonly Dictionary<Shader, ShaderSchema> shaderSchemas = new();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => shaderSchemas.Clear();
+
+        static ShaderSchema SchemaFor(Shader shader)
+        {
+            if (!shaderSchemas.TryGetValue(shader, out var schema))
+            {
+                schema = new ShaderSchema(shader);
+                shaderSchemas.Add(shader, schema);
+            }
+            return schema;
+        }
+
         Shader shader;
         (int id, ShaderPropertyType type)[] descriptors = Array.Empty<(int, ShaderPropertyType)>();
         Value[] saved = Array.Empty<Value>();
         Value[] scratch = Array.Empty<Value>();
-        string[] keywords = Array.Empty<string>();
         LocalKeyword[] keywordHandles = Array.Empty<LocalKeyword>();
-        string[] keywordNames = Array.Empty<string>();
-        readonly List<string> currentKeywords = new();
+        bool[] savedKeywords = Array.Empty<bool>();
+        bool[] scratchKeywords = Array.Empty<bool>();
         int queue;
         bool instancing;
         bool valid;
@@ -43,7 +71,8 @@ namespace URUI.Effect.Rendering
             get;
             private set;
         }
-        internal string[] Keywords => keywords;
+        internal LocalKeyword[] KeywordHandles => keywordHandles;
+        internal bool[] KeywordStates => savedKeywords;
         internal bool Capture(Material material, bool usesTime, double now)
         {
             var changed = !valid || shader != material.shader;
@@ -51,32 +80,20 @@ namespace URUI.Effect.Rendering
             if (shader != material.shader)
             {
                 shader = material.shader;
-                descriptors = new (int, ShaderPropertyType)[shader.GetPropertyCount()];
-                for (int i = 0; i < descriptors.Length; i++)
-                {
-                    descriptors[i] = (shader.GetPropertyNameId(i), shader.GetPropertyType(i));
-                }
+                var schema = SchemaFor(shader);
+                descriptors = schema.Descriptors;
                 saved = new Value[descriptors.Length];
                 scratch = new Value[descriptors.Length];
-                keywordHandles = shader.keywordSpace.keywords;
-                keywordNames = new string[keywordHandles.Length];
-                for (var i = 0; i < keywordHandles.Length; i++)
-                {
-                    keywordNames[i] = keywordHandles[i].name;
-                }
+                keywordHandles = schema.KeywordHandles;
+                savedKeywords = keywordHandles.Length > 0 ? new bool[keywordHandles.Length] : Array.Empty<bool>();
+                scratchKeywords = keywordHandles.Length > 0 ? new bool[keywordHandles.Length] : Array.Empty<bool>();
             }
-            currentKeywords.Clear();
+            var keywordsChanged = false;
             for (var i = 0; i < keywordHandles.Length; i++)
             {
-                if (material.IsKeywordEnabled(keywordHandles[i]))
-                {
-                    currentKeywords.Add(keywordNames[i]);
-                }
-            }
-            var keywordsChanged = currentKeywords.Count != keywords.Length;
-            for (var i = 0; !keywordsChanged && i < keywords.Length; i++)
-            {
-                if (currentKeywords[i] != keywords[i])
+                var enabled = material.IsKeywordEnabled(keywordHandles[i]);
+                scratchKeywords[i] = enabled;
+                if (enabled != savedKeywords[i])
                 {
                     keywordsChanged = true;
                 }
@@ -158,7 +175,7 @@ namespace URUI.Effect.Rendering
             (saved, scratch) = (scratch, saved);
             if (keywordsChanged)
             {
-                keywords = currentKeywords.ToArray();
+                (savedKeywords, scratchKeywords) = (scratchKeywords, savedKeywords);
             }
             queue = material.renderQueue;
             instancing = material.enableInstancing;
@@ -200,7 +217,7 @@ namespace URUI.Effect.Rendering
                 previous.Return(this);
             }
         }
-        internal Lease Rent(Material source, string[] keywords)
+        internal Lease Rent(Material source, LocalKeyword[] keywordHandles, bool[] keywordStates)
         {
             if (disposed)
             {
@@ -213,7 +230,10 @@ namespace URUI.Effect.Rendering
                 material.shader = source.shader;
             }
             material.CopyPropertiesFromMaterial(source);
-            material.shaderKeywords = keywords;
+            for (var i = 0; i < keywordHandles.Length; i++)
+            {
+                material.SetKeyword(keywordHandles[i], keywordStates[i]);
+            }
             material.renderQueue = source.renderQueue;
             material.enableInstancing = source.enableInstancing;
             lease.Open(this);

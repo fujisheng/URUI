@@ -228,6 +228,8 @@ namespace URUI.Events
     /// </summary>
     public sealed class GeometryChangedEvent : EventBase
     {
+        public override bool Bubbles => false;
+
         /// <summary>
         /// 上一次完成的布局。
         /// </summary>
@@ -400,6 +402,7 @@ namespace URUI.Events
     /// </summary>
     public sealed class AttachToDocumentEvent : EventBase
     {
+        public override bool Bubbles => false;
     }
 
     /// <summary>
@@ -407,5 +410,6 @@ namespace URUI.Events
     /// </summary>
     public sealed class DetachFromDocumentEvent : EventBase
     {
+        public override bool Bubbles => false;
     }
 }

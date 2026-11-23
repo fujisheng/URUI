@@ -134,7 +134,7 @@ namespace URUI.Tests
             var victim = a.Q<InvalidationOnlyElement>("victim");
             mutator.RegisterCallback<GeometryChangedEvent>(_ =>
             {
-                Assert.That(URUI.Internal.Interop.NativeMethods.urui_remove_element(a.NativeHandle, "victim"), Is.EqualTo(1));
+                Assert.That(URUI.Internal.Interop.NativeMethods.urui_element_destroy(a.Surface.SurfaceHandle, a.NativeHandle, victim.Token), Is.EqualTo(1));
             });
             mutator.Style.SetWidth(20);
             a.SynchronizeLayout();
@@ -152,7 +152,7 @@ namespace URUI.Tests
             mutator.UpdateAction = () =>
             {
                 mutator.UpdateAction = null;
-                Assert.That(URUI.Internal.Interop.NativeMethods.urui_remove_element(a.NativeHandle, "victim"), Is.EqualTo(1));
+                Assert.That(URUI.Internal.Interop.NativeMethods.urui_element_destroy(a.Surface.SurfaceHandle, a.NativeHandle, victim.Token), Is.EqualTo(1));
             };
             a.SynchronizeLayout();
             Assert.That(victim.Invalidations, Is.EqualTo(1), "Read no public validity getter: refresh itself must publish the invalidation.");

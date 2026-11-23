@@ -109,16 +109,16 @@ namespace URUI.Animation
         }
         void Prepare()
         {
-            var span = Number("--urui-stagger-span");
-            var maximumGap = Number("--urui-stagger-gap");
-            delay = document.Styles.GetComputed(container).Contains(delayProperty) ? Number("--urui-stagger-delay") : 0;
-            var edge = document.Styles.GetComputed(container).GetKeyword("--urui-stagger-edge");
+            var snapshot = document.Styles.GetComputed(container);
+            var span = Number(snapshot, "--urui-stagger-span");
+            var maximumGap = Number(snapshot, "--urui-stagger-gap");
+            delay = snapshot.Contains(delayProperty) ? Number(snapshot, "--urui-stagger-delay") : 0;
+            var edge = snapshot.GetKeyword("--urui-stagger-edge");
             if (edge is not ("left" or "right" or "top" or "bottom"))
             {
                 throw new InvalidOperationException("进场边缘必须为 left/right/top/bottom。");
             }
             var bounds = new Rect(Vector2.zero, container.Layout.size);
-            var snapshot = document.Styles.GetComputed(container);
             var boundary = snapshot.Contains(boundaryProperty) ? snapshot.GetKeyword("--urui-stagger-boundary") : null;
             if (boundary == "parent")
             {
@@ -166,9 +166,9 @@ namespace URUI.Animation
             }
             gap = entries.Count > 1 ? Math.Min(maximumGap, span / (entries.Count - 1)) : 0;
         }
-        double Number(string property)
+        static double Number(URUI.Styles.ComputedStyleSnapshot snapshot, string property)
         {
-            var value = document.Styles.GetComputed(container).GetNumber(property);
+            var value = snapshot.GetNumber(property);
             if (value < 0)
             {
                 throw new InvalidOperationException("作者进场参数必须为有限非负数：" + property);

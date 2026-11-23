@@ -698,6 +698,11 @@ namespace URUI
         }
     }
 
+    bool ElementStyle::MayHaveLocalVarOrInherit() const
+    {
+        return has_local_var_or_inherit || (definition && definition->HasVarOrInherit());
+    }
+
     void ElementStyle::UpdateDefinition()
     {
         URUI_ZoneScoped;
@@ -941,6 +946,10 @@ namespace URUI
         }
 
         const auto before = CaptureInlineTransition(id);
+        if (new_property.unit == Unit::VAR_EXPRESSION || new_property.unit == Unit::CSS_WIDE)
+        {
+            has_local_var_or_inherit = true;
+        }
         inline_properties.SetProperty(id, new_property);
         DirtyProperty(id);
         if (before)
@@ -957,6 +966,10 @@ namespace URUI
         hint.definition = element->GetPropertySpecification().GetProperty(id);
         hint.priority = {};
         hint.priority.presentationalHint = true;
+        if (hint.unit == Unit::VAR_EXPRESSION || hint.unit == Unit::CSS_WIDE)
+        {
+            has_local_var_or_inherit = true;
+        }
         presentational_properties.SetProperty(id, hint);
         DirtyProperty(id);
     }
@@ -1003,8 +1016,12 @@ namespace URUI
         {
             return true;
         }
+        if (effect.unit == Unit::VAR_EXPRESSION || effect.unit == Unit::CSS_WIDE)
+        {
+            has_local_var_or_inherit = true;
+        }
         destination.SetProperty(id, effect);
-        if (!transition && !sequence_layers.empty())
+        if (!transition && sequence_state && !sequence_state->layers.empty())
         {
             RecomposeSequenceAnimations();
         }
@@ -1019,7 +1036,7 @@ namespace URUI
             return;
         }
         properties.RemoveProperty(id);
-        if (!transition && !sequence_layers.empty())
+        if (!transition && sequence_state && !sequence_state->layers.empty())
         {
             RecomposeSequenceAnimations();
         }
@@ -1088,8 +1105,8 @@ namespace URUI
         }
         const auto viewport = context->GetDimensions();
         const auto dp = context->GetDensityIndependentPixelRatio();
-        bool same =
-            viewport.x == variable_viewport_width && viewport.y == variable_viewport_height && dp == variable_dp_ratio;
+        bool same = variable_cache && viewport.x == variable_cache->viewport_width &&
+                    viewport.y == variable_cache->viewport_height && dp == variable_cache->dp_ratio;
         bool reaches_document = false;
         size_t count = 0;
         for (auto* current = element; current && current->GetOwnerDocument() == document;
@@ -1102,8 +1119,9 @@ namespace URUI
             {
                 return false;
             }
-            if (count >= variable_scopes.size() || variable_scopes[count].style != style ||
-                variable_scopes[count].revision != style->GetComputedRevision())
+            if (!variable_cache || count >= variable_cache->scopes.size() ||
+                variable_cache->scopes[count].style != style ||
+                variable_cache->scopes[count].revision != style->GetComputedRevision())
             {
                 same = false;
             }
@@ -1113,29 +1131,33 @@ namespace URUI
         {
             return false;
         }
-        if (count != variable_scopes.size())
+        if (!variable_cache || count != variable_cache->scopes.size())
         {
             same = false;
         }
         if (!same)
         {
-            variable_scopes.clear();
+            if (!variable_cache)
+            {
+                variable_cache = MakeUnique<VariableReadCache>();
+            }
+            variable_cache->scopes.clear();
             for (auto* current = element; current && current->GetOwnerDocument() == document;
                  current = current->GetParentNode())
             {
-                variable_scopes.push_back({current->GetStyle(), current->GetStyle()->GetComputedRevision()});
+                variable_cache->scopes.push_back({current->GetStyle(), current->GetStyle()->GetComputedRevision()});
             }
-            if (++variable_generation == 0)
+            if (++variable_cache->generation == 0)
             {
-                for (auto& value : variable_values)
+                for (auto& value : variable_cache->values)
                 {
                     value.second.generation = 0;
                 }
-                variable_generation = 1;
+                variable_cache->generation = 1;
             }
-            variable_viewport_width = viewport.x;
-            variable_viewport_height = viewport.y;
-            variable_dp_ratio = dp;
+            variable_cache->viewport_width = viewport.x;
+            variable_cache->viewport_height = viewport.y;
+            variable_cache->dp_ratio = dp;
         }
         return true;
     }
@@ -1143,10 +1165,10 @@ namespace URUI
     const Property* ElementStyle::ResolveVariableRead(PropertyId id, const Property* property) const
     {
         const bool stable = ValidateVariableReadCache();
-        if (stable)
+        if (stable && variable_cache)
         {
-            const auto found = variable_values.find(id);
-            if (found != variable_values.end() && found->second.generation == variable_generation)
+            const auto found = variable_cache->values.find(id);
+            if (found != variable_cache->values.end() && found->second.generation == variable_cache->generation)
             {
                 const auto& value = found->second;
                 if (value.expression == *property && value.expression.priority == property->priority &&
@@ -1162,14 +1184,14 @@ namespace URUI
         SmallUnorderedSet<String> dependencies;
         const auto* resolved =
             ResolveVariables(id, property, dependencies, element_style_data->returned_property_storage);
-        if (!stable)
+        if (!stable || !variable_cache)
         {
             return resolved;
         }
-        auto& value = variable_values[id];
+        auto& value = variable_cache->values[id];
         value.property = resolved ? std::optional<Property>(*resolved) : std::nullopt;
         value.expression = *property;
-        value.generation = variable_generation;
+        value.generation = variable_cache->generation;
         return value.property ? &*value.property : nullptr;
     }
 
@@ -1253,9 +1275,8 @@ namespace URUI
 
     const Property* ElementStyle::GetLocalProperty(PropertyId id) const
     {
-        return GetLocalProperty(id, inline_properties, definition.get(),
-                                sequence_layers.empty() ? &animation_properties : &composed_animations,
-                                &transition_properties, &presentational_properties);
+        return GetLocalProperty(id, inline_properties, definition.get(), ActiveAnimations(), &transition_properties,
+                                &presentational_properties);
     }
 
     const Property* ElementStyle::GetLocalPropertyWithResolvedVariables(PropertyId id) const
@@ -1479,8 +1500,8 @@ namespace URUI
     {
         return PlainPropertiesIterator{
             inline_properties.GetProperties(), definition ? &definition->GetProperties().GetProperties() : nullptr,
-            sequence_layers.empty() ? &animation_properties.GetProperties() : &composed_animations.GetProperties(),
-            &transition_properties.GetProperties(), &presentational_properties.GetProperties()};
+            &ActiveAnimations()->GetProperties(), &transition_properties.GetProperties(),
+            &presentational_properties.GetProperties()};
     }
 
     UniquePtr<AllPropertiesIterator> ElementStyle::IterateAll(Element* filter_inherited_by) const
@@ -2003,12 +2024,30 @@ namespace URUI
             }
 
             bool dirty_font_face_handle = font_context_changed || values.font_face_handle() == 0;
+            uint8_t border_style_mask = 0;
 
             for (auto it = Iterate(); !it.AtEnd(); ++it)
             {
                 variable_dependencies.clear();
                 auto id_property_pair = *it;
                 const PropertyId id = id_property_pair.first;
+                switch (id)
+                {
+                case PropertyId::BorderTopStyle:
+                    border_style_mask |= 1u;
+                    break;
+                case PropertyId::BorderRightStyle:
+                    border_style_mask |= 2u;
+                    break;
+                case PropertyId::BorderBottomStyle:
+                    border_style_mask |= 4u;
+                    break;
+                case PropertyId::BorderLeftStyle:
+                    border_style_mask |= 8u;
+                    break;
+                default:
+                    break;
+                }
                 const Property* property =
                     ResolveVariables(id, &id_property_pair.second, variable_dependencies, property_storage);
                 if (!property)
@@ -2034,7 +2073,7 @@ namespace URUI
                     CopyComputedProperty(
                         values, WideSource(*property, id, parent_values, element->GetPropertySpecification()), id);
                     if (id == PropertyId::FontFamily || id == PropertyId::FontStyle || id == PropertyId::FontWeight ||
-                        id == PropertyId::FontKerning || id == PropertyId::FontSize || id == PropertyId::LetterSpacing)
+                        id == PropertyId::FontSize)
                     {
                         dirty_font_face_handle = true;
                     }
@@ -2127,24 +2166,30 @@ namespace URUI
                 return float(ComputeBorderWidth(ComputeLength(property->GetNumericValue(), font_size,
                                                               document_font_size, dp_ratio, vp_dimensions)));
             };
-            values.border_top_width(int16_t(border_width(PropertyId::BorderTopWidth, PropertyId::BorderTopStyle)));
+            values.border_top_width(
+                int16_t((border_style_mask & 1u) ? border_width(PropertyId::BorderTopWidth, PropertyId::BorderTopStyle)
+                                                 : 0.f));
             if (values.border_top_width() != border_before[0])
             {
                 dirty_properties.Insert(PropertyId::BorderTopWidth);
             }
-            values.border_right_width(
-                int16_t(border_width(PropertyId::BorderRightWidth, PropertyId::BorderRightStyle)));
+            values.border_right_width(int16_t(
+                (border_style_mask & 2u) ? border_width(PropertyId::BorderRightWidth, PropertyId::BorderRightStyle)
+                                         : 0.f));
             if (values.border_right_width() != border_before[1])
             {
                 dirty_properties.Insert(PropertyId::BorderRightWidth);
             }
-            values.border_bottom_width(
-                int16_t(border_width(PropertyId::BorderBottomWidth, PropertyId::BorderBottomStyle)));
+            values.border_bottom_width(int16_t(
+                (border_style_mask & 4u) ? border_width(PropertyId::BorderBottomWidth, PropertyId::BorderBottomStyle)
+                                         : 0.f));
             if (values.border_bottom_width() != border_before[2])
             {
                 dirty_properties.Insert(PropertyId::BorderBottomWidth);
             }
-            values.border_left_width(int16_t(border_width(PropertyId::BorderLeftWidth, PropertyId::BorderLeftStyle)));
+            values.border_left_width(int16_t(
+                (border_style_mask & 8u) ? border_width(PropertyId::BorderLeftWidth, PropertyId::BorderLeftStyle)
+                                         : 0.f));
             if (values.border_left_width() != border_before[3])
             {
                 dirty_properties.Insert(PropertyId::BorderLeftWidth);
@@ -2153,13 +2198,24 @@ namespace URUI
             // The font-face handle is nulled when local font properties are set. In that case we need to retrieve a new handle.
             if (dirty_font_face_handle)
             {
-                URUI_ZoneScopedN("FontFaceHandle");
-                auto* document = element->GetOwnerDocument();
-                values.font_face_handle(
-                    document ? document->GetFontContext().ResolveFace(values.font_family(), values.font_style(),
-                                                                      values.font_weight(), values.font_size())
-                             : GetFontEngineInterface()->GetFontFaceHandle(values.font_family(), values.font_style(),
-                                                                           values.font_weight(), values.font_size()));
+                if (!font_context_changed && parent_values && parent_values->font_face_handle() != 0 &&
+                    values.font_style() == parent_values->font_style() &&
+                    values.font_weight() == parent_values->font_weight() &&
+                    values.font_size() == parent_values->font_size() && !GetLocalProperty(PropertyId::FontFamily))
+                {
+                    values.font_face_handle(parent_values->font_face_handle());
+                }
+                else
+                {
+                    URUI_ZoneScopedN("FontFaceHandle");
+                    auto* document = element->GetOwnerDocument();
+                    values.font_face_handle(
+                        document ? document->GetFontContext().ResolveFace(values.font_family(), values.font_style(),
+                                                                          values.font_weight(), values.font_size())
+                                 : GetFontEngineInterface()->GetFontFaceHandle(
+                                       values.font_family(), values.font_style(), values.font_weight(),
+                                       values.font_size()));
+                }
             }
         }
 
@@ -2182,19 +2238,28 @@ namespace URUI
         // Propagate dirty inherited properties to children. Var shorthands are local to the element and never inherited.
         if (!dirty_properties.Empty() || !dirty_variables.empty())
         {
-            for (int i = 0; i < element->GetNumChildren(true); i++)
+            const bool has_dirty_variables = !dirty_variables.empty();
+            const int num_children = element->GetNumChildren(true);
+            for (int i = 0; i < num_children; i++)
             {
                 auto child = element->GetChild(i);
-                child->GetStyle()->dirty_properties |= dirty_inherited_properties;
-                child->GetStyle()->dirty_variables.insert(dirty_variables.begin(), dirty_variables.end());
-                for (auto id : dirty_properties)
+                ElementStyle* child_style = child->GetStyle();
+                child_style->dirty_properties |= dirty_inherited_properties;
+                if (has_dirty_variables)
                 {
-                    const auto* local = child->GetStyle()->GetLocalProperty(id);
-                    if (local &&
-                        (local->unit == Unit::VAR_EXPRESSION ||
-                         (local->unit == Unit::CSS_WIDE && local->Get<CssWideKeyword>() == CssWideKeyword::Inherit)))
+                    child_style->dirty_variables.insert(dirty_variables.begin(), dirty_variables.end());
+                }
+                if (child_style->MayHaveLocalVarOrInherit())
+                {
+                    for (auto id : dirty_properties)
                     {
-                        child->GetStyle()->dirty_properties.Insert(id);
+                        const auto* local = child_style->GetLocalProperty(id);
+                        if (local &&
+                            (local->unit == Unit::VAR_EXPRESSION ||
+                             (local->unit == Unit::CSS_WIDE && local->Get<CssWideKeyword>() == CssWideKeyword::Inherit)))
+                        {
+                            child_style->dirty_properties.Insert(id);
+                        }
                     }
                 }
             }
@@ -2215,10 +2280,14 @@ namespace URUI
                     value_snapshot_values.push_back({id, 1u, {values.opacity(), 0, 0, 0}});
                     continue;
                 }
+                if (id < PropertyId::ImageEffect)
+                {
+                    value_only = false;
+                    break;
+                }
                 const auto* definition = snapshot_specification.GetProperty(id);
                 const auto* value = element->GetProperty(id);
-                if (id < PropertyId::FirstCustomId || !definition || !value ||
-                    (value->unit != Unit::NUMBER && value->unit != Unit::COLOUR))
+                if (!definition || !value || (value->unit != Unit::NUMBER && value->unit != Unit::COLOUR))
                 {
                     value_only = false;
                     break;
@@ -2266,17 +2335,20 @@ namespace URUI
     bool ElementStyle::PrepareSequenceBaseline(uint64_t owner, const PropertyIdSet& properties,
                                                PropertyDictionary& baseline) const
     {
-        if (!owner || sequence_layers.find(owner) != sequence_layers.end())
+        if (!owner || (sequence_state && sequence_state->layers.find(owner) != sequence_state->layers.end()))
         {
             return false;
         }
         for (PropertyId id : properties)
         {
-            for (const auto& entry : sequence_layers)
+            if (sequence_state)
             {
-                if (entry.second.baseline.GetProperty(id))
+                for (const auto& entry : sequence_state->layers)
                 {
-                    return false;
+                    if (entry.second.baseline.GetProperty(id))
+                    {
+                        return false;
+                    }
                 }
             }
             const auto* property = GetProperty(id);
@@ -2290,23 +2362,35 @@ namespace URUI
     }
     const PropertyDictionary* ElementStyle::GetSequenceBaseline(uint64_t owner) const
     {
-        const auto found = sequence_layers.find(owner);
-        return found == sequence_layers.end() ? nullptr : &found->second.baseline;
+        if (!sequence_state)
+        {
+            return nullptr;
+        }
+        const auto found = sequence_state->layers.find(owner);
+        return found == sequence_state->layers.end() ? nullptr : &found->second.baseline;
     }
     bool ElementStyle::CaptureSequence(uint64_t owner, const PropertyDictionary& baseline)
     {
-        if (!owner || sequence_layers.find(owner) != sequence_layers.end())
+        if (!owner || (sequence_state && sequence_state->layers.find(owner) != sequence_state->layers.end()))
         {
             return false;
         }
-        sequence_layers.emplace(owner, SequenceLayer{baseline, {}});
+        if (!sequence_state)
+        {
+            sequence_state = MakeUnique<SequenceState>();
+        }
+        sequence_state->layers.emplace(owner, SequenceLayer{baseline, {}});
         RecomposeSequenceAnimations();
         return true;
     }
     bool ElementStyle::SetSequenceValues(uint64_t owner, const PropertyDictionary& values)
     {
-        auto found = sequence_layers.find(owner);
-        if (found == sequence_layers.end())
+        if (!sequence_state)
+        {
+            return false;
+        }
+        auto found = sequence_state->layers.find(owner);
+        if (found == sequence_state->layers.end())
         {
             return false;
         }
@@ -2325,6 +2409,10 @@ namespace URUI
             }
             property.priority = {};
             property.priority.originImportance = CssOriginImportance::Animation;
+            if (property.unit == Unit::VAR_EXPRESSION || property.unit == Unit::CSS_WIDE)
+            {
+                has_local_var_or_inherit = true;
+            }
             candidate.SetProperty(entry.first, property);
         }
         PropertyIdSet changed;
@@ -2343,8 +2431,12 @@ namespace URUI
     }
     void ElementStyle::RemoveSequence(uint64_t owner)
     {
-        auto found = sequence_layers.find(owner);
-        if (found == sequence_layers.end())
+        if (!sequence_state)
+        {
+            return;
+        }
+        auto found = sequence_state->layers.find(owner);
+        if (found == sequence_state->layers.end())
         {
             return;
         }
@@ -2353,30 +2445,36 @@ namespace URUI
         {
             changed.Insert(entry.first);
         }
-        sequence_layers.erase(found);
-        RecomposeSequenceAnimations();
+        sequence_state->layers.erase(found);
+        if (sequence_state->layers.empty())
+        {
+            sequence_state.reset();
+        }
+        else
+        {
+            RecomposeSequenceAnimations();
+        }
         DirtyProperties(changed);
     }
     void ElementStyle::RecomposeSequenceAnimations()
     {
-        composed_animations = animation_properties;
-        for (const auto& layer : sequence_layers)
+        if (!sequence_state)
+        {
+            return;
+        }
+        sequence_state->composed_animations = animation_properties;
+        for (const auto& layer : sequence_state->layers)
         {
             for (const auto& property : layer.second.values.GetProperties())
             {
-                composed_animations.SetProperty(property.first, property.second);
+                sequence_state->composed_animations.SetProperty(property.first, property.second);
             }
         }
     }
 
     ElementStyle::PropertySources ElementStyle::GetPropertySources() const
     {
-        return {element,
-                definition.get(),
-                inline_properties,
-                nullptr,
-                sequence_layers.empty() ? &animation_properties : &composed_animations,
-                &transition_properties};
+        return {element, definition.get(), inline_properties, nullptr, ActiveAnimations(), &transition_properties};
     }
 
     ElementStyle::DirtyPropertiesRef ElementStyle::GetDirtyPropertiesRef()
@@ -2582,11 +2680,9 @@ namespace URUI
 		break;
 	case PropertyId::FontKerning:
 		values.font_kerning((FontKerning)p->Get<int>());
-		dirty_font_face_handle = true;
 		break;
 	case PropertyId::LetterSpacing:
 		values.letter_spacing(p->unit == Unit::KEYWORD ? 0.f : ComputeLength(p->GetNumericValue(), font_size, document_font_size, dp_ratio, vp_dimensions));
-		dirty_font_face_handle = true;
 		break;
 
 	case PropertyId::TextAlign:
@@ -2732,6 +2828,23 @@ namespace URUI
 	case PropertyId::MaskRepeat:
 	case PropertyId::MaskOrigin:
 	case PropertyId::MaskClip:
+	case PropertyId::ElementEffect:
+	case PropertyId::BackdropScope:
+	case PropertyId::ImageEffect:
+	case PropertyId::ImageDensity:
+	case PropertyId::ObjectFit:
+	case PropertyId::ImageSliceTop:
+	case PropertyId::ImageSliceRight:
+	case PropertyId::ImageSliceBottom:
+	case PropertyId::ImageSliceLeft:
+	case PropertyId::ImageFillMode:
+	case PropertyId::ImageFillOrigin:
+	case PropertyId::ImageFillClockwise:
+	case PropertyId::ImageFillAmount:
+	case PropertyId::ImageFillCenter:
+	case PropertyId::GraphicTint:
+	case PropertyId::CaretWidth:
+	case PropertyId::CaretBlinkRate:
 		break;
 	// Invalid properties
 	case PropertyId::Invalid:

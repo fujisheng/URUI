@@ -83,16 +83,26 @@ namespace URUI.Authoring.Agent
                 return jobs.TryGetValue(id, out var job) ? Snapshot(job) : null;
             }
         }
-        public bool Cancel(string id)
+        public bool Cancel(string id) => TryCancel(id, out _);
+
+        public bool TryCancel(string id, out AgentJobSnapshot snapshot)
         {
             lock (gate)
             {
-                if (!jobs.TryGetValue(id, out var job) || job.Status != "queued")
+                if (!jobs.TryGetValue(id, out var job))
                 {
+                    snapshot = null;
+                    return false;
+                }
+                if (job.Status != "queued")
+                {
+                    snapshot = Snapshot(job);
                     return false;
                 }
                 job.Status = "cancelled";
+                job.Request = null;
                 pending.Remove(job);
+                snapshot = Snapshot(job);
                 return true;
             }
         }

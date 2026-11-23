@@ -18,17 +18,30 @@ namespace URUI.Controls
             internal int Index = -1;
             internal int BindingVersion;
             internal Action<Element, int> Unbind;
+            internal float WrittenTop = float.NaN;
+            internal float WrittenHeight = float.NaN;
+            internal bool Selected;
             internal readonly Dictionary<int, int> PressedVersions = new Dictionary<int, int>();
         }
         readonly List<Row> rows = new List<Row>();
+        readonly Dictionary<int, Row> activeByIndex = new Dictionary<int, Row>();
+        readonly List<Row> recyclable = new List<Row>();
         IList items;
         float itemHeight = 24;
         int selectedIndex = -1;
         bool refreshing;
+        bool hasRenderedRange;
+        int lastCount = -1;
+        int lastFirst = -1;
+        int lastVisible = -1;
+        float lastTotalHeight = float.NaN;
+        float lastItemHeight = float.NaN;
         /// <summary>
         /// 文档工厂构造入口。
         /// </summary>
         protected internal ListView(ElementContext context) : base(context) { }
+
+        internal override bool HasUpdateHook => true;
         /// <summary>
         /// 数据源；设置会重建行。原地修改后调用 RefreshItems。
         /// </summary>
@@ -158,6 +171,10 @@ namespace URUI.Controls
             Document.BeginControlUpdate();
             try
             {
+                hasRenderedRange = false;
+                lastTotalHeight = float.NaN;
+                activeByIndex.Clear();
+                recyclable.Clear();
                 foreach (var row in rows)
                 {
                     Retire(row);
@@ -223,93 +240,150 @@ namespace URUI.Controls
                 throw new InvalidOperationException("列表总高度超出可表示范围。");
             }
 
-            ContentContainer.Style.Height = totalHeight;
             int visible = Mathf.Min(count, Mathf.Max(0, Mathf.CeilToInt(ViewportRect.height / itemHeight)) + 2);
             int first = Mathf.Clamp(Mathf.FloorToInt(ScrollOffset.y / itemHeight) - 1, 0, Mathf.Max(0, count - visible));
+            if (!rebind && hasRenderedRange && count == lastCount && first == lastFirst && visible == lastVisible
+                && totalHeight == lastTotalHeight && itemHeight == lastItemHeight && rows.Count == visible)
+            {
+                return;
+            }
+
+            if (lastTotalHeight != totalHeight)
+            {
+                ContentContainer.Style.Height = totalHeight;
+                lastTotalHeight = totalHeight;
+            }
+
+            hasRenderedRange = false;
             refreshing = true;
             Document.BeginControlUpdate();
             try
             {
-                while (rows.Count > visible)
+                activeByIndex.Clear();
+                recyclable.Clear();
+                int end = first + visible;
+                for (int i = 0; i < rows.Count; i++)
                 {
-                    var row = rows[rows.Count - 1];
-                    rows.RemoveAt(rows.Count - 1);
+                    var row = rows[i];
+                    if (!rebind && row.Index >= first && row.Index < end && !activeByIndex.ContainsKey(row.Index))
+                    {
+                        activeByIndex.Add(row.Index, row);
+                    }
+                    else
+                    {
+                        recyclable.Add(row);
+                    }
+                }
+
+                while (rows.Count > visible && recyclable.Count > 0)
+                {
+                    var row = recyclable[recyclable.Count - 1];
+                    recyclable.RemoveAt(recyclable.Count - 1);
+                    rows.Remove(row);
                     Retire(row);
                     if (Document.HasPendingInvalidation)
                     {
                         return;
                     }
                 }
-                while (rows.Count < visible)
+
+                for (int index = first; index < end; index++)
                 {
-                    var element = MakeItem != null ? MakeItem() : Document.Create<Label>();
-                    if (Document.HasPendingInvalidation)
+                    float top = index * itemHeight;
+                    if (activeByIndex.TryGetValue(index, out var kept))
                     {
-                        return;
+                        if (kept.WrittenTop != top)
+                        {
+                            kept.Element.Style.Top = top;
+                            kept.WrittenTop = top;
+                        }
+                        if (kept.WrittenHeight != itemHeight)
+                        {
+                            kept.Element.Style.Height = itemHeight;
+                            kept.WrittenHeight = itemHeight;
+                        }
+                        continue;
                     }
 
-                    if (element == null || !element.IsValid || element.IsAttached || !ReferenceEquals(element.Document, Document)
-                                            || rows.Exists(row => ReferenceEquals(row.Element, element)))
+                    Row row;
+                    if (recyclable.Count > 0)
                     {
-                        throw new InvalidOperationException("行工厂必须返回唯一、同文档、脱离层级的有效元素。");
+                        row = recyclable[recyclable.Count - 1];
+                        recyclable.RemoveAt(recyclable.Count - 1);
                     }
-
-                    var row = new Row { Element = element };
-                    element.Style.Position = Position.Absolute;
-                    element.Style.Width = Length.Percent(100);
-                    element.RegisterCallback<PointerDownEvent>(evt => row.PressedVersions[evt.PointerId] = row.BindingVersion);
-                    element.RegisterCallback<PointerCancelEvent>(evt => row.PressedVersions.Remove(evt.PointerId));
-                    element.RegisterCallback<ClickEvent>(evt =>
+                    else
                     {
-                        bool current = !row.PressedVersions.TryGetValue(evt.PointerId, out var version) || version == row.BindingVersion;
-                        row.PressedVersions.Remove(evt.PointerId);
-                        if (current && row.Index >= 0 && row.Index < (items?.Count ?? 0))
+                        var element = MakeItem != null ? MakeItem() : Document.Create<Label>();
+                        if (Document.HasPendingInvalidation)
                         {
-                            SelectedIndex = row.Index;
-                            if (IsValid && !Document.HasPendingInvalidation && !evt.Target.Focusable)
-                            {
-                                Focus();
-                            }
-                        }
-                    });
-                    ContentContainer.Add(element);
-                    rows.Add(row);
-                }
-                for (int i = 0; i < rows.Count; i++)
-                {
-                    var row = rows[i];
-                    int index = first + i;
-                    if (row.Index != index || rebind)
-                    {
-                        if (row.Index >= 0)
-                        {
-                            row.Unbind?.Invoke(row.Element, row.Index);
-                            row.Unbind = null;
-                            if (Document.HasPendingInvalidation)
-                            {
-                                row.Index = -1;
-                                return;
-                            }
+                            return;
                         }
 
-                        row.BindingVersion++;
-                        row.Index = index;
-                        row.Unbind = UnbindItem;
-                        if (BindItem != null)
+                        if (element == null || !element.IsValid || element.IsAttached || !ReferenceEquals(element.Document, Document)
+                                                || rows.Exists(existing => ReferenceEquals(existing.Element, element)))
                         {
-                            BindItem(row.Element, index);
-                            if (Document.HasPendingInvalidation)
-                            {
-                                return;
-                            }
+                            throw new InvalidOperationException("行工厂必须返回唯一、同文档、脱离层级的有效元素。");
                         }
-                        else
+
+                        row = new Row { Element = element };
+                        element.Style.Position = Position.Absolute;
+                        element.Style.Width = Length.Percent(100);
+                        element.RegisterCallback<PointerDownEvent>(evt => row.PressedVersions[evt.PointerId] = row.BindingVersion);
+                        element.RegisterCallback<PointerCancelEvent>(evt => row.PressedVersions.Remove(evt.PointerId));
+                        element.RegisterCallback<ClickEvent>(evt =>
                         {
-                            row.Element.Text = items[index]?.ToString() ?? "";
+                            bool current = !row.PressedVersions.TryGetValue(evt.PointerId, out var version) || version == row.BindingVersion;
+                            row.PressedVersions.Remove(evt.PointerId);
+                            if (current && row.Index >= 0 && row.Index < (items?.Count ?? 0))
+                            {
+                                SelectedIndex = row.Index;
+                                if (IsValid && !Document.HasPendingInvalidation && !evt.Target.Focusable)
+                                {
+                                    Focus();
+                                }
+                            }
+                        });
+                        ContentContainer.Add(element);
+                        rows.Add(row);
+                    }
+
+                    if (row.Index >= 0)
+                    {
+                        row.Unbind?.Invoke(row.Element, row.Index);
+                        row.Unbind = null;
+                        if (Document.HasPendingInvalidation)
+                        {
+                            row.Index = -1;
+                            return;
                         }
                     }
-                    row.Element.Style.Top = index * itemHeight;
-                    row.Element.Style.Height = itemHeight;
+
+                    row.BindingVersion++;
+                    row.Index = index;
+                    row.Unbind = UnbindItem;
+                    if (BindItem != null)
+                    {
+                        BindItem(row.Element, index);
+                        if (Document.HasPendingInvalidation)
+                        {
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        row.Element.Text = items[index]?.ToString() ?? "";
+                    }
+
+                    if (row.WrittenTop != top)
+                    {
+                        row.Element.Style.Top = top;
+                        row.WrittenTop = top;
+                    }
+                    if (row.WrittenHeight != itemHeight)
+                    {
+                        row.Element.Style.Height = itemHeight;
+                        row.WrittenHeight = itemHeight;
+                    }
                 }
                 if (selectedIndex >= count)
                 {
@@ -322,20 +396,30 @@ namespace URUI.Controls
                 }
 
                 RefreshSelection();
+                lastCount = count;
+                lastFirst = first;
+                lastVisible = visible;
+                lastItemHeight = itemHeight;
+                hasRenderedRange = true;
             }
             finally
             {
+                activeByIndex.Clear();
+                recyclable.Clear();
                 refreshing = false;
                 Document.EndControlUpdate();
             }
         }
         void RefreshSelection()
         {
-            foreach (var row in rows)
+            for (int i = 0; i < rows.Count; i++)
             {
-                if (row.Element.IsValid)
+                var row = rows[i];
+                bool selected = row.Index == selectedIndex;
+                if (row.Selected != selected && row.Element.IsValid)
                 {
-                    row.Element.EnableInClassList("urui-selected", row.Index == selectedIndex);
+                    row.Element.EnableInClassList("urui-selected", selected);
+                    row.Selected = selected;
                 }
             }
         }
@@ -376,12 +460,16 @@ namespace URUI.Controls
                 row.Index = -1;
             }
             rows.Clear();
+            activeByIndex.Clear();
+            recyclable.Clear();
+            hasRenderedRange = false;
             items = null;
             MakeItem = null;
             BindItem = null;
             UnbindItem = null;
             SelectionChanged = null;
             ItemChosen = null;
+            base.OnInvalidated();
         }
         /// <summary>
         /// 只处理列表自身焦点的导航，不截获行内输入控件的编辑按键。

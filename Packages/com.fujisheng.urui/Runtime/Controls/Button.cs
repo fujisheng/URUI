@@ -15,6 +15,8 @@ namespace URUI.Controls
         bool keyboardPressed;
         double submitUntil;
         const string PressedClass = "urui-control-pressed";
+        internal override bool HasUpdateHook => keyboardPressed || (GetType() != typeof(Button) && HasCustomUpdateHook);
+
         void SetKeyboardPressed(bool value)
         {
             if (keyboardPressed == value)
@@ -22,6 +24,7 @@ namespace URUI.Controls
                 return;
             }
             keyboardPressed = value;
+            Document.InvalidateUpdateHooks();
             EnableInClassList(PressedClass, value);
         }
         void CancelKeyboardPress()
@@ -122,10 +125,6 @@ namespace URUI.Controls
                 SendEvent(new ClickEvent { PointerId = -1 });
                 up.PreventDefault();
             }
-            if (evt is BlurEvent || evt is PointerCancelEvent)
-            {
-                CancelKeyboardPress();
-            }
         }
         void InvokeClicked()
         {
@@ -156,7 +155,10 @@ namespace URUI.Controls
         /// </summary>
         protected override void OnInvalidated()
         {
+            keyboardPressed = false;
+            spacePressed = false;
             clicked = null;
+            base.OnInvalidated();
         }
     }
 }

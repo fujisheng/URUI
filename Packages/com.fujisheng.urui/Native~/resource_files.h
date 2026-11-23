@@ -97,7 +97,7 @@ public:
     {
         for (const auto& pair : openFiles)
         {
-            if (pair.second.original)
+            if (pair.second.original && fallback)
             {
                 fallback->Close(pair.second.original);
             }
@@ -138,6 +138,10 @@ public:
         }
         else
         {
+            if (!fallback)
+            {
+                return 0;
+            }
             file.original = fallback->Open(LocalFilePath(path));
             if (!file.original)
             {
@@ -151,7 +155,7 @@ public:
         }
         catch (...)
         {
-            if (file.original)
+            if (file.original && fallback)
             {
                 fallback->Close(file.original);
             }
@@ -166,7 +170,7 @@ public:
         {
             return;
         }
-        if (found->second.original)
+        if (found->second.original && fallback)
         {
             fallback->Close(found->second.original);
         }
@@ -182,7 +186,7 @@ public:
         auto& value = found->second;
         if (value.original)
         {
-            return fallback->Read(buffer, size, value.original);
+            return fallback ? fallback->Read(buffer, size, value.original) : 0;
         }
         const auto count = std::min(size, value.bytes->size() - value.position);
         if (count)
@@ -202,7 +206,7 @@ public:
         auto& value = found->second;
         if (value.original)
         {
-            return fallback->Seek(value.original, offset, origin);
+            return fallback ? fallback->Seek(value.original, offset, origin) : false;
         }
         if (origin != SEEK_SET && origin != SEEK_CUR && origin != SEEK_END)
         {
@@ -226,7 +230,7 @@ public:
         {
             return 0;
         }
-        return found->second.original ? fallback->Tell(found->second.original) : found->second.position;
+        return found->second.original ? (fallback ? fallback->Tell(found->second.original) : 0) : found->second.position;
     }
     size_t Length(URUI::FileHandle file) override
     {
@@ -235,7 +239,7 @@ public:
         {
             return 0;
         }
-        return found->second.original ? fallback->Length(found->second.original) : found->second.bytes->size();
+        return found->second.original ? (fallback ? fallback->Length(found->second.original) : 0) : found->second.bytes->size();
     }
     Data GetImmutableData(URUI::FileHandle file) override
     {
@@ -244,6 +248,7 @@ public:
         {
             return {};
         }
-        return found->second.original ? fallback->GetImmutableData(found->second.original) : found->second.bytes;
+        return found->second.original ? (fallback ? fallback->GetImmutableData(found->second.original) : Data{})
+                                      : found->second.bytes;
     }
 };

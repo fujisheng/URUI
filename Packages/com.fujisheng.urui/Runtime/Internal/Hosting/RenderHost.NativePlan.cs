@@ -66,7 +66,9 @@ namespace URUI.Internal.Hosting
         readonly Dictionary<ulong, Material> imagePrograms = new();
         readonly HashSet<int> parameterImageCommands = new();
         readonly Dictionary<int, ExternalCommandRecording> externalRecordings = new();
+        readonly Dictionary<int, int> externalPaintIndices = new();
         readonly List<ExternalCommandRecording> externalRecordingPool = new();
+        CommandBuffer directSubmissionBuffer;
         readonly Dictionary<ulong, CaptureResource> captures = new();
         readonly HashSet<ulong> usedCaptures = new();
         readonly List<ulong> removedCaptures = new();
@@ -77,13 +79,23 @@ namespace URUI.Internal.Hosting
         readonly HashSet<ulong> planTextures = new();
         RenderPlanExternalBinding[] externalBindings = Array.Empty<RenderPlanExternalBinding>();
         NativeArray<float> feedbackTransforms;
+        int feedbackTransformCursor;
         int mainBufferCursor;
         ulong recordingSerial;
         ulong resourceSerial;
+        IntPtr nativeInputCommands;
+        IntPtr nativeInputMatrices;
         IntPtr nativeInputUniforms;
-        bool preRecordingPainter;
+#if UNITY_EDITOR
+        CommandNative[] commands = Array.Empty<CommandNative>();
+#endif
+        const uint CompleteGeometryReason = 0x40000000u;
+        const uint SharedMatrixReason = 0x08000000u;
+        const uint NoMaskOrColorFilterReason = 0x10000000u;
         static readonly int parametersId = Shader.PropertyToID("_UruiParameters");
-        static readonly int parameterSizeId = Shader.PropertyToID("_UruiParameterSize");
+        static readonly int baseParameterId = Shader.PropertyToID("_UruiBaseParameter");
+        static readonly int maskTextureId = Shader.PropertyToID("_UruiMaskTexture");
+        static readonly int maskSourceId = Shader.PropertyToID("_UruiMaskSource");
         internal long ParameterUploadBytes => parameterPages?.ParameterUploadBytes ?? 0;
         internal long ParameterCopyBytes => parameterPages?.ParameterCopyBytes ?? 0;
 
@@ -93,68 +105,62 @@ namespace URUI.Internal.Hosting
             internal Rect Bounds;
             internal uint Version;
         }
+
         static Rect Rectangle(Vector4 value) => new Rect(value.x, value.y, value.z, value.w);
 
         unsafe void ReadNativeFrame(in RenderPlanInputPacket input)
         {
             using var profile = readInputPhase.Auto();
+            nativeInputCommands = input.Commands;
+            nativeInputMatrices = input.Matrices;
             nativeInputUniforms = input.Uniforms;
 #if UNITY_EDITOR
             NativePlanCommandCount = input.CommandCount;
+            var commandCount = checked((int)input.CommandCount);
+            if (commands.Length < commandCount)
+            {
+                commands = new CommandNative[commandCount];
+            }
+            if (commandCount > 0)
+            {
+                new ReadOnlySpan<CommandNative>((void*)input.Commands, commandCount).CopyTo(commands);
+            }
 #endif
-            var count = checked((int)input.CommandCount);
-            if (commands.Length < count)
-            {
-                commands = new CommandNative[Math.Max(count, commands.Length * 2 + 16)];
-            }
-            if (commandTransforms.Length < count * 16)
-            {
-                commandTransforms = new float[Math.Max(count * 16, commandTransforms.Length * 2 + 256)];
-            }
-            new ReadOnlySpan<CommandNative>((void*)input.Commands, count).CopyTo(commands);
-            new ReadOnlySpan<float>((void*)input.Matrices, count * 16).CopyTo(commandTransforms);
-            ReadPaintCommands();
+            ReadPaintCommands(input);
             layerCount = checked((int)input.LayerCount);
             if (layerCommands.Length < layerCount)
             {
                 layerCommands = new LayerCommandNative[layerCount];
             }
-            new ReadOnlySpan<LayerCommandNative>((void*)input.Layers, layerCount).CopyTo(layerCommands);
+            if (layerCount > 0)
+            {
+                new ReadOnlySpan<LayerCommandNative>((void*)input.Layers, layerCount).CopyTo(layerCommands);
+            }
             liveFilterNames.Clear();
-            layerEntries.Clear();
             filterInvocations.Clear();
             elementFilterElements.Clear();
             elementComposites.Clear();
-            effectInputRegions.Clear();
             for (var index = 0; index < layerCount; index++)
             {
                 var command = layerCommands[index];
-                if (command.kind == 1)
-                {
-                    layerEntries.Add(command.target, command);
-                }
-                if (command.kind == 4)
-                {
-                    layerEntries[command.source] = command;
-                }
-                if (command.kind != 6 || command.blend != 0)
+                if (command.kind != LayerCommandKind.ApplyMask || command.blend != 0)
                 {
                     continue;
                 }
-                var read = NativeMethods.urui_filter_info(command.mask, out var filter, filterNameBuffer, filterNameBuffer.Length);
-                if (read < 0 && -read > filterNameBuffer.Length)
+                var status = NativeMethods.urui_filter_info(SurfaceHandle, command.mask, out var filter, filterNameBuffer, filterNameBuffer.Length, out var required);
+                if (status == NativeStatus.BufferTooSmall && required > filterNameBuffer.Length && required <= 64 * 1024)
                 {
-                    filterNameBuffer = new byte[-read];
-                    read = NativeMethods.urui_filter_info(command.mask, out filter, filterNameBuffer, filterNameBuffer.Length);
+                    filterNameBuffer = new byte[required];
+                    status = NativeMethods.urui_filter_info(SurfaceHandle, command.mask, out filter, filterNameBuffer, filterNameBuffer.Length, out required);
                 }
-                if (read <= 0)
+                if (status != NativeStatus.Ok || required <= 0 || required > filterNameBuffer.Length)
                 {
                     throw new InvalidOperationException("URUI 滤镜描述读取失败。");
                 }
                 liveFilterNames.Add(command.mask);
                 if (!filterNames.TryGetValue(command.mask, out var name))
                 {
-                    name = Encoding.UTF8.GetString(filterNameBuffer, 0, read - 1);
+                    name = Encoding.UTF8.GetString(filterNameBuffer, 0, required - 1);
                     filterNames.Add(command.mask, name);
                 }
                 var offset = new Vector2(filter.x, filter.y);
@@ -186,11 +192,29 @@ namespace URUI.Internal.Hosting
             }
         }
 
+        void IRenderPlanPreparationBindings.BeginFeedbackBatch(int elementLayoutCount)
+        {
+            feedbackTransformCursor = 0;
+            if (elementLayoutCount <= 0)
+            {
+                return;
+            }
+            var needed = checked(elementLayoutCount * 64 * 16);
+            if (!feedbackTransforms.IsCreated || feedbackTransforms.Length < needed)
+            {
+                if (feedbackTransforms.IsCreated)
+                {
+                    feedbackTransforms.Dispose();
+                }
+                feedbackTransforms = new NativeArray<float>(needed, Allocator.Persistent);
+            }
+        }
+
         unsafe RenderPlanFeedback IRenderPlanPreparationBindings.Prepare(in RenderPlanPrepareRequest request)
         {
             var feedback = new RenderPlanFeedback();
             var slot = checked((int)request.Slot);
-            if (request.Kind == 1)
+            if (request.Kind == PlanPrepareKind.PrepareImage)
             {
                 preparedSourceGeometry.Add(slot, request.Geometry);
                 var owner = OwnerSurface.ElementOwner(request.Element) ?? throw new InvalidOperationException("图片效果所属文档已失效。");
@@ -198,13 +222,14 @@ namespace URUI.Internal.Hosting
                 imageEffectSlots[request.Element] = ++input;
                 imageEffectInputKeys.Add(slot, input);
                 singleEffectInput.Clear();
-                var texture = LoadTexture(commands[slot].texture);
+                var nativeCommand = ((CommandNative*)nativeInputCommands)[slot];
+                var texture = LoadTexture(nativeCommand.texture);
                 var programName = PaintName(request.Program);
-                var borrowed = URUI.Internal.Resources.BorrowedTextureRegistry.IsBorrowed(commands[slot].texture);
+                var borrowed = URUI.Internal.Resources.BorrowedTextureRegistry.IsBorrowed(nativeCommand.texture);
                 if (owner.IsParameterImage(programName))
                 {
                     var uniforms = (Vector4*)nativeInputUniforms;
-                    var frozenSource = new PreparedSourceGeometry(FreezeOriginalEffectGeometry(commands[slot].geometry), request.Geometry, uniforms[slot * 2], uniforms[slot * 2 + 1]);
+                    var frozenSource = new PreparedSourceGeometry(FreezeOriginalEffectGeometry(nativeCommand.geometry), request.Geometry, uniforms[slot * 2], uniforms[slot * 2 + 1]);
                     singleEffectInput.Add(new EffectInput(request.Element, programName, texture, borrowed, null, input: input, preparedSource: frozenSource));
                 }
                 else
@@ -213,14 +238,19 @@ namespace URUI.Internal.Hosting
                     singleEffectInput.Add(new EffectInput(request.Element, programName, texture, borrowed, FreezeEffectGeometry(request.Geometry), input: input));
                 }
                 owner.PrepareEffects(singleEffectInput);
-                BindParameterProgram(owner, request, input, owner.EffectKindForName(programName));
-                var ink = owner.EffectInkBounds(request.Element, owner.EffectKindForName(PaintName(request.Program)), input);
+                var effectKind = owner.EffectKindForName(programName);
+                var bounded = BindParameterProgram(owner, request, input, effectKind);
+                if (bounded && recordingForContext && framebufferFetchActive && targetCamera.allowHDR && ShaderContractActive)
+                {
+                    feedback.Capabilities = LocalImageCoverage;
+                }
+                var ink = owner.EffectInkBounds(request.Element, effectKind, input);
                 feedback.Ink = new Vector4(ink.x, ink.y, ink.width, ink.height);
                 return feedback;
             }
             var filterOwner = OwnerSurface.FilterOwner(request.Program);
             var invocation = filterInvocations[slot];
-            if (request.Kind == 2)
+            if (request.Kind == PlanPrepareKind.ElementLayout)
             {
                 Span<Matrix4x4> fixedTransforms = stackalloc Matrix4x4[64];
                 var typed = filterOwner.ResolveProgramCoverage(request.Element, invocation.Name, fixedTransforms, out var fixedCount, out var fixedExpansion, out var composite);
@@ -235,23 +265,27 @@ namespace URUI.Internal.Hosting
                 }
                 if (transformCount != 0)
                 {
-                    if (!feedbackTransforms.IsCreated)
+                    var offset = feedbackTransformCursor;
+                    var floatsNeeded = transformCount * 16;
+                    if (!feedbackTransforms.IsCreated || offset + floatsNeeded > feedbackTransforms.Length)
                     {
-                        feedbackTransforms = new NativeArray<float>(64 * 16, Allocator.Persistent);
+                        throw new InvalidOperationException("效果反馈变换缓冲容量不足。");
                     }
                     for (var matrix = 0; matrix < transformCount; matrix++)
                     {
+                        var dst = offset + matrix * 16;
                         for (var entry = 0; entry < 16; entry++)
                         {
-                            feedbackTransforms[matrix * 16 + entry] = typed ? fixedTransforms[matrix][entry] : transforms[matrix][entry];
+                            feedbackTransforms[dst + entry] = typed ? fixedTransforms[matrix][entry] : transforms[matrix][entry];
                         }
                     }
-                    feedback.Transforms = (IntPtr)NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(feedbackTransforms);
+                    feedback.Transforms = (IntPtr)((float*)NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(feedbackTransforms) + offset);
                     feedback.TransformCount = (uint)transformCount;
+                    feedbackTransformCursor = offset + floatsNeeded;
                 }
                 return feedback;
             }
-            if (request.Kind == 3)
+            if (request.Kind == PlanPrepareKind.AcquireCapture)
             {
                 var bounds = Rectangle(request.Capture);
                 var format = targetCamera.allowHDR ? RenderTextureFormat.ARGBHalf : RenderTextureFormat.ARGB32;
@@ -289,7 +323,7 @@ namespace URUI.Internal.Hosting
                 feedback.Ink = request.Capture;
                 return feedback;
             }
-            if (request.Kind != 4)
+            if (request.Kind != PlanPrepareKind.PrepareElement)
             {
                 throw new InvalidOperationException("未知效果准备请求。");
             }
@@ -303,18 +337,19 @@ namespace URUI.Internal.Hosting
             feedback.Ink = new Vector4(output.x, output.y, output.width, output.height);
             return feedback;
         }
-        unsafe void BindParameterProgram(URUI.Documents.Document owner, in RenderPlanPrepareRequest request, ulong input, EffectKind kind)
+
+        unsafe bool BindParameterProgram(URUI.Documents.Document owner, in RenderPlanPrepareRequest request, ulong input, EffectKind kind)
         {
             owner.BeginEffectProgramRead();
             try
             {
-                if (owner.TryGetImageProgram(request.Element, input, out var program, out var layout, out var frame, out var renderProgram, kind))
+                if (owner.TryGetImageProgram(request.Element, input, out var program, out var layout, out var frame, out var renderProgram, out var coverage, kind))
                 {
                     if (renderProgram is IParameterImageGeometry template)
                     {
                         var geometry = externalGeometryInputs.CaptureImageGeometry(template.Geometry);
                         var local = template.GeometryTransform;
-                        NativeRenderPlanLease.Require(NativeMethods.urui_plan_image_geometry(planInputLease.Token, request.Request, geometry, local));
+                        NativeRenderPlanLease.Require(NativeMethods.urui_plan_image_geometry(SurfaceHandle, planInputLease.Token, request.Request, geometry, local));
                     }
                     // Unity IDs cannot be reused while the owned material is in flight.
                     var identity = (ulong)(uint)program.GetInstanceID();
@@ -345,40 +380,39 @@ namespace URUI.Internal.Hosting
                     {
                         fixed (Vector4* overrides = bound)
                         {
-                            NativeRenderPlanLease.Require(NativeMethods.urui_plan_image_program(planInputLease.Token, request.Request, identity, owner.NativeHandle, layout.Identity, (IntPtr)pointer, (uint)runtimeCount, (uint)layout.RowCount, (IntPtr)overrides, frame.Clock));
+                            NativeRenderPlanLease.Require(NativeMethods.urui_plan_image_program(
+                                SurfaceHandle, planInputLease.Token, request.Request, identity, owner.NativeHandle,
+                                layout.Identity, (IntPtr)pointer, (uint)runtimeCount, (uint)layout.RowCount, (IntPtr)overrides, frame.Clock));
                         }
                     }
-                    if (request.Kind == 1)
+                    if (request.Kind == PlanPrepareKind.PrepareImage)
                     {
                         parameterImageCommands.Add(checked((int)request.Slot));
                     }
+                    return coverage == URUI.Rendering.RenderGeometry.Local && renderProgram is not IParameterImageGeometry;
                 }
+                return false;
             }
             finally
             {
                 owner.EndEffectProgramRead();
             }
         }
+
         RenderTexture IRenderPlanPreparationBindings.ResolveCapture(ulong resource) => captures[resource].Lease.Texture;
 
         unsafe void ApplyNativeRegions(in RenderPlanPreparePacket ready)
         {
             using var profile = regionPhase.Auto();
-            if ((ready.TargetFlags & ~1u) != 0)
+            if (ready.TargetFlags != 0)
             {
-                throw new InvalidOperationException("原生目标准备标记无效。");
-            }
-            rootTextureRequired = (ready.TargetFlags & 1) != 0;
-            rootDirectScreenSource = false;
-            if (rootTextureRequired && !IsScreenOutput)
-            {
-                throw new InvalidOperationException("原生工作目标仅适用于屏幕输出。");
+                throw new InvalidOperationException("原生计划请求了未声明的屏幕工作目标。");
             }
             layerRegions.Clear();
             layerVersions.Clear();
             layerAliases.Clear();
             maskSourceLayers.Clear();
-            haloLayers.Clear();
+            scalarMaskLayers.Clear();
             layerOrderCount = checked((int)ready.LayerIndexCount);
             if (layerOrder.Length < layerOrderCount)
             {
@@ -396,27 +430,32 @@ namespace URUI.Internal.Hosting
             var regions = new ReadOnlySpan<RenderPlanLayerRegion>((void*)ready.Regions, checked((int)ready.RegionCount));
             foreach (var region in regions)
             {
-                layerVersions.Add(region.Layer, (region.Version, (region.Flags & 16) != 0));
+                layerVersions.Add(region.Layer, (region.Version, (region.Flags & RenderPlanLayerRegion.CacheableFlag) != 0));
                 var bounds = region.Bounds;
-                layerRegions.Add(region.Layer, new RectInt((int)bounds.x, (int)bounds.y, (int)bounds.z, (int)bounds.w));
-                if ((region.Flags & 8) != 0)
+                var logical = new RectInt((int)bounds.x, (int)bounds.y, (int)bounds.z, (int)bounds.w);
+                layerRegions.Add(region.Layer, logical);
+                if ((region.Flags & RenderPlanLayerRegion.AliasFlag) != 0)
                 {
-                    if (region.Reserved == 0 || region.Reserved == region.Layer)
+                    if (region.AliasLayer == 0 || region.AliasLayer == region.Layer)
                     {
                         throw new InvalidOperationException("原生遮罩别名无效。");
                     }
-                    layerAliases.Add(region.Layer, region.Reserved);
+                    layerAliases.Add(region.Layer, region.AliasLayer);
                 }
-                if ((region.Flags & 1) != 0)
+                if ((region.Flags & RenderPlanLayerRegion.MaskSourceFlag) != 0)
                 {
                     maskSourceLayers.Add(region.Layer);
                 }
-                if ((region.Flags & 2) != 0)
+                if ((region.Flags & RenderPlanLayerRegion.ScalarMaskFlag) != 0)
                 {
-                    haloLayers.Add(region.Layer);
+                    if (!SupportsScalarMask)
+                    {
+                        throw new InvalidOperationException("原生计划请求了不支持的单通道遮罩。");
+                    }
+                    scalarMaskLayers.Add(region.Layer);
                 }
             }
-            if (layerCount != 0 || UsesEncodedRaster)
+            if (layerCount != 0)
             {
                 EnsureLayerProgram();
             }
@@ -447,12 +486,14 @@ namespace URUI.Internal.Hosting
             var count = 0;
             var recordingCount = 0;
             externalRecordings.Clear();
+            externalPaintIndices.Clear();
             if (externalBindings.Length < input.PaintCount)
             {
                 externalBindings = new RenderPlanExternalBinding[input.PaintCount];
             }
+            var nativeCommands = (CommandNative*)input.Commands;
+            var nativeMatrices = (float*)input.Matrices;
             var layers = (ulong*)input.CommandLayers;
-            preRecordingPainter = true;
             try
             {
                 for (var paintIndex = 0; paintIndex < input.PaintCount; paintIndex++)
@@ -472,7 +513,7 @@ namespace URUI.Internal.Hosting
                         continue;
                     }
                     var index = paint.command_index;
-                    var command = commands[index];
+                    var command = nativeCommands[index];
                     var layer = layers[index];
                     // 绝对命令位置每帧变化；物理缓冲按同时活动的回调序号复用。
                     if (recordingCount == externalRecordingPool.Count)
@@ -481,14 +522,15 @@ namespace URUI.Internal.Hosting
                     }
                     var recording = externalRecordingPool[recordingCount++];
                     externalRecordings.Add(index, recording);
+                    externalPaintIndices[index] = paintIndex;
                     var region = Region(layer);
-                    var resolver = layer == 0 && rootTextureRequired ? (rootTargetResolver ??= PrepareRootTarget) : null;
                     var target = layer == 0 ? SubmissionOutput : new RenderTargetIdentifier(LayerTexture(layer));
-                    recording.Begin(target, LayerViewport(layer), Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1), resolver);
+                    recording.Begin(target, LayerViewport(layer), Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1));
                     var transform = new Matrix4x4();
+                    var matrixBase = index * 16;
                     for (var component = 0; component < 16; component++)
                     {
-                        transform[component] = commandTransforms[index * 16 + component];
+                        transform[component] = nativeMatrices[matrixBase + component];
                     }
                     var owner = OwnerSurface.ElementOwner(paint.element) ?? throw new InvalidOperationException("绘制器所属文档已失效。");
                     var context = paintContexts.Open(owner.WrapElement(paint.element), null,
@@ -521,7 +563,6 @@ namespace URUI.Internal.Hosting
             }
             finally
             {
-                preRecordingPainter = false;
                 for (var i = recordingCount; i < externalRecordingPool.Count; i++)
                 {
                     externalRecordingPool[i].Begin(default, default, Matrix4x4.identity);
@@ -541,6 +582,7 @@ namespace URUI.Internal.Hosting
             }
             attachedBuffers.Clear();
         }
+
         void ClearNativeRecording()
         {
             DetachRecordedBuffers();
@@ -550,14 +592,24 @@ namespace URUI.Internal.Hosting
                 commands.Clear();
             }
             recordedBuffers.Clear();
+            hasExternalSurfaceWrites = false;
             parameterPages?.EndRecording();
             planResources?.EndRecording();
             externalGeometryInputs?.Programs.EndRecording();
         }
+
         void BeginNativeRecording()
         {
             DetachRecordedBuffers();
             ClearLayerRecording();
+            if (directSubmissionBuffer != null)
+            {
+                recordedBuffers.Clear();
+                hasExternalSurfaceWrites = false;
+                buffer = directSubmissionBuffer;
+                renderState.Reset(buffer);
+                return;
+            }
             if (mainBuffers.Count == 0)
             {
                 mainBuffers.Add(buffer);
@@ -567,47 +619,101 @@ namespace URUI.Internal.Hosting
                 commands.Clear();
             }
             recordedBuffers.Clear();
+            hasExternalSurfaceWrites = false;
             mainBufferCursor = 0;
             buffer = mainBuffers[0];
+            renderState.Reset(buffer);
             recordedBuffers.Add(buffer);
-            buffer.SetGlobalFloat(EncodedTarget, 0);
         }
-        void AppendExternal(ExternalCommandRecording recording)
+
+        void AppendExternal(ExternalCommandRecording recording, int commandIndex, in RenderPlanInputPacket input)
         {
-            if (recording.WritesParent)
+            if (recording.WritesSurface)
             {
-                EndEncodedRaster();
+                hasExternalSurfaceWrites = true;
+            }
+            if (activeLayer == 0)
+            {
+                screenCaptureValid = false;
+            }
+            if (directSubmissionBuffer != null)
+            {
+                RecordExternalDirect(commandIndex, input);
+                renderState.Reset(buffer);
+                layerBound = false;
+                SelectLayer(activeLayer);
+                return;
             }
             for (var i = 0; i < recording.Count; i++)
             {
                 recordedBuffers.Add(recording[i].Buffer);
             }
             ContinueNativeRecording();
-            // 外部缓冲不继承调用者状态，后续原生操作同样显式恢复自己的目标。
-            if (encodedRasterActive)
+            // 外部绘制可切换目标和坐标系，回到 URUI 时显式恢复当前图层。
+            SelectLayer(activeLayer);
+        }
+
+        unsafe void RecordExternalDirect(int commandIndex, in RenderPlanInputPacket input)
+        {
+            if (!externalPaintIndices.TryGetValue(commandIndex, out var paintIndex))
             {
-                var region = Region(activeLayer);
-                var target = LayerTexture(activeLayer, -1);
-                buffer.SetRenderTarget(target);
-                buffer.SetViewport(new Rect(0, 0, target.width, target.height));
-                buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1));
-                buffer.SetGlobalFloat(EncodedTarget, 1);
+                return;
             }
-            else
+            var paint = paintScratch[paintIndex];
+            var command = ((CommandNative*)input.Commands)[commandIndex];
+            var nativeMatrices = (float*)input.Matrices;
+            var layer = activeLayer;
+            var region = Region(layer);
+            var target = layer == 0 ? SubmissionOutput : new RenderTargetIdentifier(LayerTexture(layer));
+            buffer.SetRenderTarget(target);
+            buffer.SetViewport(LayerViewport(layer));
+            buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1));
+            var transform = new Matrix4x4();
+            var matrixBase = commandIndex * 16;
+            for (var component = 0; component < 16; component++)
             {
-                SelectLayer(activeLayer);
-                buffer.SetGlobalFloat(EncodedTarget, 0);
+                transform[component] = nativeMatrices[matrixBase + component];
+            }
+            var owner = OwnerSurface.ElementOwner(paint.element) ?? throw new InvalidOperationException("绘制器所属文档已失效。");
+            var context = paintContexts.Open(owner.WrapElement(paint.element), directSubmissionBuffer,
+                transform * Matrix4x4.Translate(new Vector3(command.tx, command.ty, 0)),
+                new Vector4(command.clip_x, command.clip_y, command.clip_x + command.clip_w, command.clip_y + command.clip_h),
+                command.ClipEnabled, maskSourceLayers.Contains(layer), null);
+            try
+            {
+                if (paint.reserved == 0)
+                {
+                    owner.InvokePainter(paint.element, PaintName(paint.shader), context);
+                }
+                else
+                {
+                    owner.RecordEffect(paint.element, context, SourceMesh(ReadGeometry(preparedSourceGeometry[commandIndex])),
+                        owner.EffectSubmissionSink, owner.EffectKindForName(PaintName(paint.shader)), imageEffectInputKeys[commandIndex]);
+                }
+            }
+            finally
+            {
+                context.Close();
             }
         }
+
         void ContinueNativeRecording()
         {
+            layerBound = false;
+            if (directSubmissionBuffer != null)
+            {
+                renderState.Reset(buffer);
+                return;
+            }
             if (++mainBufferCursor == mainBuffers.Count)
             {
                 mainBuffers.Add(new CommandBuffer { name = "URUI UI continuation" });
             }
             buffer = mainBuffers[mainBufferCursor];
+            renderState.Reset(buffer);
             recordedBuffers.Add(buffer);
         }
+
         void AttachRecordedBuffers()
         {
             if (recordingSerial == ulong.MaxValue)
@@ -615,9 +721,12 @@ namespace URUI.Internal.Hosting
                 throw new InvalidOperationException("绘制记录代际已耗尽。");
             }
             recordingSerial++;
-            buffer = mainBuffers[0];
+            if (directSubmissionBuffer == null && mainBuffers.Count > 0)
+            {
+                buffer = mainBuffers[0];
+            }
             // SRP 由 RendererFeature 通过显式上下文提交；相机挂载接口只适用于 Built-in。
-            if (GraphicsSettings.currentRenderPipeline)
+            if (directSubmissionBuffer != null || GraphicsSettings.currentRenderPipeline)
             {
                 return;
             }
@@ -632,7 +741,6 @@ namespace URUI.Internal.Hosting
         {
             contextValidationBuffer?.Release();
             contextValidationBuffer = null;
-            rootTargetResolver = null;
 #if UNITY_EDITOR
             NativePlanFrame = 0;
             NativePlanCommandCount = 0;
@@ -654,6 +762,7 @@ namespace URUI.Internal.Hosting
                 recording.Dispose();
             }
             externalRecordings.Clear();
+            externalPaintIndices.Clear();
             externalRecordingPool.Clear();
             foreach (var commands in mainBuffers)
             {
@@ -665,67 +774,79 @@ namespace URUI.Internal.Hosting
             mainBuffers.Clear();
         }
 
-        unsafe void DrawNativeGeometry(in RenderPlanOperation operation)
+        unsafe void DrawNativeGeometry(in RenderPlanOperation operation, RenderPlanParameter* parameters)
         {
-            var texture = LoadTexture(operation.Texture(0));
-            if (colorPassActive && !encodedRasterActive && !(texture is RenderTexture))
+            SelectLayer(activeLayer);
+            if (activeLayer == 0)
             {
-                SetColorConversionRegion(operation);
+                screenCaptureValid = false;
             }
-            var fetch = !(texture is RenderTexture) && CanFetchOrdinary(activeLayer);
-            if (fetch)
-            {
-                if (!EndEncodedRaster())
-                {
-                    SelectLayer(activeLayer);
-                }
-            }
-            else
-            {
-                SelectEncodedRaster(texture);
-            }
+            var texture = LoadTextureInfo(operation.Texture(0), out var sourceInfo0, out _, out _);
             var properties = reusableProperties;
             properties.Clear();
-            if (fetch)
-            {
-                var css = !(texture is RenderTexture);
-                properties.SetFloat(EncodedTarget, css ? 1 : 0);
-                properties.SetFloat(LayerReadRootColor, activeLayer == 0 && IsScreenOutput ? 1 : 0);
-            }
             properties.SetTexture(mainTextureId, texture ? texture : white);
-            TextureShaderState.Apply(properties, texture ? texture : white, operation.Texture(0));
+            TextureShaderState.Apply(properties, in sourceInfo0);
+            var allHardwareFast = TextureShaderState.IsHardwareFastOnlyKind(sourceInfo0.z);
             for (var index = 1; index < operation.TextureCount; index++)
             {
                 var id = operation.Texture(index);
-                var source = LoadTexture(id);
+                var source = LoadTextureInfo(id, out var slotInfo, out _, out _);
                 if (!source)
                 {
                     source = white;
+                    slotInfo = TextureShaderState.SolidWhiteSourceInfo;
                 }
                 properties.SetTexture(paletteTextureIds[index - 1], source);
-                properties.SetVector(paletteSourceIds[index - 1], TextureShaderState.SourceInfo(source, id));
+                properties.SetVector(paletteSourceIds[index - 1], slotInfo);
+                allHardwareFast &= TextureShaderState.IsHardwareFastOnlyKind(slotInfo.z);
             }
-            var maskTexture = LoadTexture(operation.MaskTexture);
-            if (!maskTexture)
+            var complete = (operation.Reason & CompleteGeometryReason) != 0 && ShaderContractActive;
+            int pass;
+            if (complete)
             {
-                maskTexture = white;
+                pass = allHardwareFast ? 2 : 1;
             }
-            properties.SetTexture("_UruiMaskTexture", maskTexture);
-            properties.SetVector("_UruiMaskSource", TextureShaderState.SourceInfo(maskTexture, operation.MaskTexture));
-            var page = parameterPages.Current.Texture;
-            properties.SetTexture(parametersId, page);
-            var width = page.width;
-            var height = page.height;
-            properties.SetVector(parameterSizeId, new Vector4(1f / width, 1f / height, width, height));
-            buffer.DrawMesh(planResources.Mesh(operation.Geometry), Matrix4x4.identity, fetch ? framebufferRasterMaterial : material, 0, (operation.Reason & 0x40000000u) != 0 && ShaderContractActive ? 1 : 0, properties);
+            else
+            {
+                pass = (operation.Reason & NoMaskOrColorFilterReason) != 0 && ShaderContractActive ? 3 : 0;
+            }
+            if (pass == 0)
+            {
+                if (operation.MaskTexture != 0)
+                {
+                    var maskTexture = LoadTextureInfo(operation.MaskTexture, out var maskInfo, out _, out _);
+                    if (!maskTexture)
+                    {
+                        maskTexture = white;
+                        maskInfo = TextureShaderState.SolidWhiteSourceInfo;
+                    }
+                    properties.SetTexture(maskTextureId, maskTexture);
+                    properties.SetVector(maskSourceId, maskInfo);
+                }
+                else
+                {
+                    properties.SetTexture(maskTextureId, white);
+                    properties.SetVector(maskSourceId, TextureShaderState.SolidWhiteSourceInfo);
+                }
+            }
+            if (!complete)
+            {
+                properties.SetTexture(parametersId, parameterPages.Current.Texture);
+                properties.SetFloat(baseParameterId, operation.BaseParameter);
+            }
+            var modelMatrix = complete && (operation.Reason & SharedMatrixReason) != 0 && nativeInputMatrices != IntPtr.Zero
+                ? ((Matrix4x4*)nativeInputMatrices)[operation.BaseParameter]
+                : Matrix4x4.identity;
+            buffer.DrawMesh(planResources.Mesh(operation.Geometry), modelMatrix, material, 0, pass, properties);
             RecordedGeometryDraws++;
         }
 
         void DrawNativeImageProgram(in RenderPlanOperation operation)
         {
-            if (!EndEncodedRaster())
+            SelectLayer(activeLayer);
+            if (activeLayer == 0)
             {
-                SelectLayer(activeLayer);
+                screenCaptureValid = false;
             }
             var properties = reusableProperties;
             properties.Clear();
@@ -735,9 +856,7 @@ namespace URUI.Internal.Hosting
             }
             var page = parameterPages.Current.Texture;
             properties.SetTexture(parametersId, page);
-            var width = page.width;
-            var height = page.height;
-            properties.SetVector(parameterSizeId, new Vector4(1f / width, 1f / height, width, height));
+            properties.SetFloat(baseParameterId, operation.BaseParameter);
             buffer.DrawMesh(planResources.Mesh(operation.Geometry), Matrix4x4.identity, imagePrograms[operation.Program], 0, 0, properties);
             RecordedGeometryDraws++;
         }
@@ -763,7 +882,8 @@ namespace URUI.Internal.Hosting
             }
             return !targetCamera.allowMSAA || QualitySettings.antiAliasing <= 1 ? 1u : 0;
         }
-        int ReadNativeResources(in RenderPlanInputPacket input)
+
+        unsafe int ReadNativeResources(in RenderPlanInputPacket input)
         {
             using var profile = readResourcesPhase.Auto();
             if (resourceSerial == ulong.MaxValue)
@@ -777,17 +897,22 @@ namespace URUI.Internal.Hosting
             {
                 planTextureBindings = new RenderPlanTextureBinding[input.CommandCount];
             }
-            for (var index = 0; index < input.CommandCount; index++)
+            var nativeCommands = (CommandNative*)input.Commands;
+            var commandCount = (int)input.CommandCount;
+            ulong lastId = ulong.MaxValue;
+            for (var index = 0; index < commandCount; index++)
             {
-                var id = commands[index].texture;
+                var id = nativeCommands[index].texture;
+                if (id == lastId)
+                {
+                    continue;
+                }
+                lastId = id;
                 if (!planTextures.Add(id))
                 {
                     continue;
                 }
-                var texture = LoadTexture(id);
-                var isLive = texture is RenderTexture;
-                var format = texture ? UnityEngine.Experimental.Rendering.GraphicsFormatUtility.GetLinearFormat(texture.graphicsFormat) : default;
-                var normalized = texture && UnityEngine.Experimental.Rendering.GraphicsFormatUtility.IsUNormFormat(format);
+                var texture = LoadTextureInfo(id, out _, out var isLive, out var normalized);
                 var version = resourceSerial;
                 if (!isLive && texture)
                 {
@@ -808,17 +933,20 @@ namespace URUI.Internal.Hosting
                     Flags = normalized ? 1u : 0
                 };
             }
-            removedTextureVersions.Clear();
-            foreach (var id in textureVersions.Keys)
+            if (textureVersions.Count > 0)
             {
-                if (!planTextures.Contains(id))
+                removedTextureVersions.Clear();
+                foreach (var id in textureVersions.Keys)
                 {
-                    removedTextureVersions.Add(id);
+                    if (!planTextures.Contains(id))
+                    {
+                        removedTextureVersions.Add(id);
+                    }
                 }
-            }
-            foreach (var id in removedTextureVersions)
-            {
-                textureVersions.Remove(id);
+                for (var i = 0; i < removedTextureVersions.Count; i++)
+                {
+                    textureVersions.Remove(removedTextureVersions[i]);
+                }
             }
             return count;
         }
@@ -846,13 +974,14 @@ namespace URUI.Internal.Hosting
                 RequireRecordingReady();
                 CollectImageSubmissions();
                 ClearNativeRecording();
-                RecordedGeometryDraws = RecordedRasterResolves = RecordedExternalGeometryDraws = 0;
-                borrowedTextures.Validate();
-                shaderPropertyState.Reset();
+                if (hasReleasedResolvedImages && !imageSubmissionFaulted)
+                {
+                    RetireLegacyImages();
+                    hasReleasedResolvedImages = false;
+                }
+                RecordedGeometryDraws = RecordedExternalGeometryDraws = 0;
                 ShaderContractActive = propertyContract && propertyContract.Supports(material);
                 framebufferFetchActive = CanUseFramebufferFetch();
-                framebufferRootHighPrecision = framebufferFetchActive && CurrentTargetInfo.IsHighPrecision;
-                colorPassCapable = recordingForContext && CanUseColorPass();
             }
             using (effectParametersPhase.Auto())
             {
@@ -871,12 +1000,13 @@ namespace URUI.Internal.Hosting
             RenderPlanInputPacket input;
             using (nativeRenderPhase.Auto())
             {
-                acquired = NativeRenderPlanLease.Begin(out input);
+                acquired = NativeRenderPlanLease.Begin(SurfaceHandle, out input);
             }
             using var inputLease = acquired;
             planInputLease = inputLease;
             try
             {
+                borrowedTextures.Validate();
                 ReadNativeFrame(input);
                 foreach (var owner in OwnerSurface.DocumentsSnapshot())
                 {
@@ -895,7 +1025,15 @@ namespace URUI.Internal.Hosting
                 imageEffectSlots.Clear();
                 imageEffectInputKeys.Clear();
                 var textureCount = ReadNativeResources(input);
-                var resourceFlags = RootPixelGrid() | (QualitySettings.activeColorSpace == ColorSpace.Linear ? 2u : 0) | (targetCamera.allowHDR ? 4u : 0) | (UsesEncodedRaster ? 8u : 0) | (IsScreenOutput ? 16u : 0) | 32u | (framebufferFetchActive ? 64u : 0) | (framebufferRootHighPrecision ? 128u : 0) | (colorPassCapable ? 256u : 0) | (CanBoundColorConversions() ? 512u : 0) | (CanShareFinalRootColorPass() ? 1024u : 0);
+                var resourceFlags = RootPixelGrid() |
+                    (targetCamera.allowHDR ? RenderPlanBindings.HdrCamera : 0) |
+                    (IsScreenOutput ? RenderPlanBindings.ScreenOutput : 0) |
+                    RenderPlanBindings.ShaderImagePaint |
+                    (framebufferFetchActive ? RenderPlanBindings.FramebufferFetch : 0);
+                if (SupportsScalarMask)
+                {
+                    resourceFlags |= RenderPlanBindings.ScalarMaskSupported;
+                }
                 var providerCount = PrepareGeometryProviders(input);
                 RenderPlanPreparePacket ready;
                 fixed (RenderPlanExternalGeometry* geometry = externalGeometryInputs.Geometry)
@@ -935,16 +1073,25 @@ namespace URUI.Internal.Hosting
                     }
                 }
                 removedCaptures.Clear();
+                retiredLayerResources.Clear();
                 foreach (var pair in captures)
                 {
                     if (!usedCaptures.Contains(pair.Key))
                     {
                         removedCaptures.Add(pair.Key);
+                        if (pair.Value.Lease != null)
+                        {
+                            retiredLayerResources.Add(pair.Value.Lease);
+                        }
                     }
+                }
+                if (retiredLayerResources.Count != 0)
+                {
+                    RetirePaintResources(retiredLayerResources);
+                    retiredLayerResources.Clear();
                 }
                 foreach (var key in removedCaptures)
                 {
-                    RetirePaintResource(captures[key].Lease);
                     captures.Remove(key);
                 }
                 PruneEffectGeometries();
@@ -979,7 +1126,10 @@ namespace URUI.Internal.Hosting
                             var usesParameters = false;
                             foreach (var operation in operations)
                             {
-                                if (operation.Kind == 1 || operation.Kind == 6 || operation.Kind == 8 || operation.Program != 0)
+                                if (operation.Kind == PlanOperationKind.Geometry ||
+                                    operation.Kind == PlanOperationKind.ExternalGeometry ||
+                                    operation.Kind == PlanOperationKind.ParameterImage ||
+                                    operation.Program != 0)
                                 {
                                     usesParameters = true;
                                     break;
@@ -1000,58 +1150,49 @@ namespace URUI.Internal.Hosting
                             BeginNativeRecording();
                             BeginLayers();
                             RetireReleasedTextures(ref phase);
+                            var rootProjection = Matrix4x4.Ortho(0, UIWidth, UIHeight, 0, -1, 1);
                             if (submissionTarget.HasValue)
                             {
-                                buffer.SetRenderTarget(submissionTarget.Value);
-                                buffer.SetViewport(submissionViewport);
+                                renderState.Bind(submissionTarget.Value, submissionViewport, rootProjection, false, default);
                             }
-                            buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(0, UIWidth, UIHeight, 0, -1, 1));
+                            else
+                            {
+                                buffer.SetViewProjectionMatrices(Matrix4x4.identity, rootProjection);
+                                renderState.AssumeBound(SubmissionOutput, RootOutputViewport, rootProjection);
+                            }
+                            layerBound = true;
+                            var packetParameters = (RenderPlanParameter*)packet.Parameters;
                             using (commandPhase.Auto())
                             {
                                 foreach (var operation in operations)
                                 {
-                                    if ((operation.Reason & RasterBegin) != 0)
-                                    {
-                                        BeginColorPass(operation);
-                                    }
                                     switch (operation.Kind)
                                     {
-                                        case 9:
-                                            CopyScreenRoot();
+                                        case PlanOperationKind.Geometry:
+                                            DrawNativeGeometry(operation, packetParameters);
                                             break;
-                                        case 10:
-                                            PresentScreenRoot();
-                                            break;
-                                        case 1:
-                                            DrawNativeGeometry(operation);
-                                            break;
-                                        case 6:
+                                        case PlanOperationKind.ExternalGeometry:
                                             DrawNativeExternalGeometry(operation);
                                             break;
-                                        case 8:
+                                        case PlanOperationKind.ParameterImage:
                                             DrawNativeImageProgram(operation);
                                             break;
-                                        case 7:
-                                            DrawNativeRawGeometry(operation, ((RenderPlanParameter*)packet.Parameters)[checked((int)(input.CommandCount + operation.LayerIndex))]);
+                                        case PlanOperationKind.ExternalRawGeometry:
+                                            DrawNativeRawGeometry(operation, packetParameters[checked((int)(input.CommandCount + operation.LayerIndex))]);
                                             break;
-                                        case 2:
-                                        case 3:
-                                            AppendExternal(externalRecordings[checked((int)operation.CommandIndex)]);
+                                        case PlanOperationKind.External:
+                                        case PlanOperationKind.Image:
+                                            AppendExternal(externalRecordings[checked((int)operation.CommandIndex)], checked((int)operation.CommandIndex), in input);
                                             break;
-                                        case 5:
+                                        case PlanOperationKind.Layer:
                                             ApplyNativeLayer(checked((int)operation.LayerIndex), (operation.Reason & 1) != 0, operation);
                                             break;
                                         default:
                                             throw new InvalidOperationException("未知原生绘制操作。");
                                     }
-                                    if ((operation.Reason & RasterEnd) != 0)
-                                    {
-                                        EndColorPass();
-                                    }
                                 }
                             }
                             FinishLayers(checked((int)input.CommandCount), ref phase);
-                            EndEncodedRaster();
                             externalGeometryInputs.Programs.CommitRecording();
                             AttachRecordedBuffers();
                         }
@@ -1070,11 +1211,13 @@ namespace URUI.Internal.Hosting
                     RecycleGeometry(meshes[key]);
                     meshes.Remove(key);
                 }
-
             }
             finally
             {
+                borrowedTextures.EndFrameValidation();
                 planInputLease = default;
+                nativeInputCommands = IntPtr.Zero;
+                nativeInputMatrices = IntPtr.Zero;
                 nativeInputUniforms = IntPtr.Zero;
                 frozenEffectClocks.Clear();
             }

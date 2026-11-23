@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include "StyleSheetNode.h"
 #include <URUI/Core/Property.h>
 #include <algorithm>
@@ -72,7 +74,7 @@ static double ConstructAndFind(int count)
 
 int main()
 {
-    assert(urui_create(100, 100) == 1);
+    assert(urui_surface_create(100, 100, &g_test_surface) == 1);
     IdentityAndCopies();
     ConstructAndFind(200);
     double small[3];
@@ -87,5 +89,5 @@ int main()
     const auto ratio = large[1] / small[1];
     std::cout << "Stylesheet child lookup growth 1500 -> 6000: " << ratio << std::endl;
     assert(ratio < 9 && "Selector table construction and lookup must not grow quadratically");
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }

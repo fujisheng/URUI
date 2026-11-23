@@ -13,6 +13,10 @@ namespace URUI.Rendering
     /// </remarks>
     public readonly struct ElementPaintContext
     {
+        static readonly int paintOpacityId = Shader.PropertyToID("_UruiPaintOpacity");
+        static readonly int paintClipEnabledId = Shader.PropertyToID("_UruiClipEnabled");
+        static readonly int paintClipRectId = Shader.PropertyToID("_UruiClipRect");
+
         readonly PaintContextPool.Scope scope;
         readonly ulong generation;
         public Element Element
@@ -81,7 +85,7 @@ namespace URUI.Rendering
             {
                 throw new ArgumentNullException(!mesh ? nameof(mesh) : nameof(material));
             }
-            if (!material.HasProperty("_UruiPaintOpacity") || !material.HasProperty("_UruiClipEnabled") || !material.HasProperty("_UruiClipRect"))
+            if (!material.HasProperty(paintOpacityId) || !material.HasProperty(paintClipEnabledId) || !material.HasProperty(paintClipRectId))
             {
                 throw new ArgumentException("外部绘制材质必须声明 URUI 的透明度和裁剪属性：" + material.shader.name, nameof(material));
             }
@@ -96,14 +100,13 @@ namespace URUI.Rendering
                     throw new ArgumentOutOfRangeException(nameof(localTransform));
                 }
             }
-            Element?.Document.BeginPainterDraw();
             scope.WritesParent = true;
             scope.Recording?.BeginDraw();
             properties ??= scope.DefaultProperties();
             // 原生合成组已负责 CSS opacity；自定义绘制不能再次乘节点透明度。
-            properties.SetFloat("_UruiPaintOpacity", 1);
-            properties.SetFloat("_UruiClipEnabled", scope.Clipped ? 1 : 0);
-            properties.SetVector("_UruiClipRect", scope.Clip);
+            properties.SetFloat(paintOpacityId, 1);
+            properties.SetFloat(paintClipEnabledId, scope.Clipped ? 1 : 0);
+            properties.SetVector(paintClipRectId, scope.Clip);
             scope.Buffer.DrawMesh(mesh, scope.Transform * localTransform, material, submesh, pass, properties);
         }
         internal void RecordSurface(RenderTexture target, Mesh mesh, Material material, Matrix4x4 projection, MaterialPropertyBlock properties, int pass)
@@ -117,7 +120,6 @@ namespace URUI.Rendering
             {
                 throw new ArgumentOutOfRangeException(nameof(pass));
             }
-            Element?.Document.BeginPainterDraw();
             scope.Recording?.BeginSurface();
             scope.Buffer.SetRenderTarget(target);
             scope.Buffer.SetViewport(new Rect(0, 0, target.width, target.height));

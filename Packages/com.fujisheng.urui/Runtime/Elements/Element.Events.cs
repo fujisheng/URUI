@@ -8,7 +8,8 @@ namespace URUI.Elements
 {
     public partial class Element
     {
-        readonly List<EventSubscription> subscriptions = new List<EventSubscription>();
+        static readonly EventSubscription[] emptySubscriptions = Array.Empty<EventSubscription>();
+        List<EventSubscription> subscriptions;
         EventSubscription[] subscriptionSnapshot;
         Action deferredPointerCancellation;
         // 每个节点复用取消操作，延迟与立即执行共用原有的线程、回调和世代校验。
@@ -17,6 +18,7 @@ namespace URUI.Elements
         ulong nativeInterestVersion;
         bool hasEventHook = true;
         static readonly Dictionary<Type, bool> eventHookTypes = new();
+
         internal void RefreshEventInterest()
         {
             if (!IsValid)
@@ -34,16 +36,20 @@ namespace URUI.Elements
             }
             hasEventHook = hook;
             uint mask = hook ? 0x000ffffeu : 0;
-            foreach (var subscription in subscriptions)
+            if (subscriptions != null)
             {
-                var id = EventTypes.NativeId(subscription.EventType);
-                if (id != 0)
+                for (var i = 0; i < subscriptions.Count; i++)
                 {
-                    mask |= 1u << id;
+                    var id = EventTypes.NativeId(subscriptions[i].EventType);
+                    if (id != 0)
+                    {
+                        mask |= 1u << id;
+                    }
                 }
             }
             nativeInterestVersion = checked(nativeInterestVersion + 1);
-            RequireSuccess(NativeMethods.urui_element_event_interest(NativeHandle, token, mask, nativeInterestVersion), "更新事件兴趣");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_event_interest(surface, NativeHandle, token, mask, nativeInterestVersion), "更新事件兴趣");
         }
 
         // 布局和挂载通知由 Document.DispatchEvent 固定为目标独占；祖先不消费它们。
@@ -54,8 +60,13 @@ namespace URUI.Elements
             {
                 return true;
             }
-            foreach (var subscription in subscriptions)
+            if (subscriptions == null)
             {
+                return false;
+            }
+            for (var i = 0; i < subscriptions.Count; i++)
+            {
+                var subscription = subscriptions[i];
                 if (subscription.EventType == eventType && subscription.Owner != null)
                 {
                     return true;
@@ -64,24 +75,35 @@ namespace URUI.Elements
             return false;
         }
 
-
         /// <summary>
         /// 注册指定类型与阶段的同步回调；同一委托和阶段仅注册一次，Dispose 只解绑。
         /// </summary>
         public IDisposable RegisterCallback<TEvent>(Action<TEvent> callback, TrickleDown trickleDown = TrickleDown.NoTrickleDown) where TEvent : EventBase
         {
             RequireValid();
+            if (typeof(TEvent).IsAbstract)
+            {
+                throw new ArgumentException("不能注册抽象事件类型：" + typeof(TEvent).Name, nameof(TEvent));
+            }
             if (callback == null)
             {
                 throw new ArgumentNullException(nameof(callback));
             }
 
-            foreach (var value in subscriptions)
+            if (subscriptions != null)
             {
-                if (value.EventType == typeof(TEvent) && value.Callback.Equals(callback) && value.Capture == trickleDown)
+                for (var i = 0; i < subscriptions.Count; i++)
                 {
-                    return value;
+                    var value = subscriptions[i];
+                    if (value.EventType == typeof(TEvent) && value.Callback.Equals(callback) && value.Capture == trickleDown)
+                    {
+                        return value;
+                    }
                 }
+            }
+            else
+            {
+                subscriptions = new List<EventSubscription>(2);
             }
 
             var added = new EventSubscription(this, typeof(TEvent), callback, evt => callback((TEvent)evt), trickleDown);
@@ -97,6 +119,10 @@ namespace URUI.Elements
         public void UnregisterCallback<TEvent>(Action<TEvent> callback, TrickleDown trickleDown = TrickleDown.NoTrickleDown) where TEvent : EventBase
         {
             document.CheckThread();
+            if (subscriptions == null)
+            {
+                return;
+            }
             for (var index = subscriptions.Count - 1; index >= 0; index--)
             {
                 var value = subscriptions[index];
@@ -123,7 +149,8 @@ namespace URUI.Elements
         public void CapturePointer(int pointerId)
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_pointer_capture(NativeHandle, pointerId, token), "捕获指针");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_pointer_capture(surface, NativeHandle, pointerId, token), "捕获指针");
             document.FinishNativeCall();
         }
 
@@ -133,10 +160,14 @@ namespace URUI.Elements
         public void ReleasePointer(int pointerId)
         {
             document.CheckThread();
-            if (IsValid && NativeMethods.urui_pointer_captured(NativeHandle, pointerId) == token)
+            if (IsValid)
             {
-                RequireSuccess(NativeMethods.urui_pointer_capture(NativeHandle, pointerId, 0), "释放指针");
-                document.FinishNativeCall();
+                var surface = SurfaceHandle;
+                if (NativeMethods.urui_pointer_captured(surface, NativeHandle, pointerId) == token)
+                {
+                    RequireSuccess(surface, NativeMethods.urui_pointer_capture(surface, NativeHandle, pointerId, 0), "释放指针");
+                    document.FinishNativeCall();
+                }
             }
         }
 
@@ -146,7 +177,7 @@ namespace URUI.Elements
         public bool HasPointerCapture(int pointerId)
         {
             RequireValid();
-            return NativeMethods.urui_pointer_captured(NativeHandle, pointerId) == token;
+            return NativeMethods.urui_pointer_captured(SurfaceHandle, NativeHandle, pointerId) == token;
         }
 
         /// <summary>
@@ -156,12 +187,16 @@ namespace URUI.Elements
         {
         }
 
-        internal EventSubscription[] CaptureSubscriptions() => subscriptionSnapshot ??= subscriptions.ToArray();
+        internal EventSubscription[] CaptureSubscriptions()
+            => subscriptions == null || subscriptions.Count == 0
+                ? emptySubscriptions
+                : subscriptionSnapshot ??= subscriptions.ToArray();
 
         internal void Deliver(EventBase value, TrickleDown phase, EventSubscription[] snapshot)
         {
-            foreach (var subscription in snapshot)
+            for (var i = 0; i < snapshot.Length; i++)
             {
+                var subscription = snapshot[i];
                 if (!IsValid || value.IsImmediatePropagationStopped || document.HasPendingInvalidation)
                 {
                     break;
@@ -214,7 +249,7 @@ namespace URUI.Elements
 
                 Owner.document.CheckThread();
                 var owner = Owner;
-                owner.subscriptions.Remove(this);
+                owner.subscriptions?.Remove(this);
                 owner.subscriptionSnapshot = null;
                 owner.RefreshEventInterest();
                 Clear();

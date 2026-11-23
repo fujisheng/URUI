@@ -137,6 +137,34 @@ namespace URUI
         return false;
     }
 
+    bool PropertyDefinition::IsValidKeyword(int keyword, int* out_parser_index) const
+    {
+        const auto* keyword_parser = StyleSheetSpecification::GetParser("keyword");
+        if (!keyword_parser)
+        {
+            return false;
+        }
+        for (int i = 0; i < (int)parsers.size(); i++)
+        {
+            if (parsers[i].parser != keyword_parser)
+            {
+                continue;
+            }
+            for (const auto& entry : parsers[i].parameters)
+            {
+                if (entry.second == keyword)
+                {
+                    if (out_parser_index)
+                    {
+                        *out_parser_index = i;
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     bool PropertyDefinition::GetValue(String& value, const Property& property) const
     {
         value = property.value.Get<String>();

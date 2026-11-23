@@ -51,6 +51,9 @@ namespace URUI.Effect
             IDisposable playback;
             IDisposable source;
             string selected;
+            string lastTrackId;
+            uint lastSeed;
+            float lastSimTime = float.NaN;
             bool disposed;
             internal Driver(ParticlesElement node, Dictionary<string, GameObject> sources)
             {
@@ -70,6 +73,8 @@ namespace URUI.Effect
                     source?.Dispose();
                     source = null;
                     selected = null;
+                    lastTrackId = null;
+                    lastSimTime = float.NaN;
                     if (next != null && sources.TryGetValue(next, out var prefab))
                     {
                         source = node.OverrideSource(prefab);
@@ -78,11 +83,31 @@ namespace URUI.Effect
                 }
                 if (!active)
                 {
+                    lastTrackId = null;
+                    lastSimTime = float.NaN;
                     node.Seek(0);
                     node.Stop();
                     return;
                 }
-                node.Seek((float)(localTime * track.Speed), track.Seed);
+                float targetTime = (float)(localTime * track.Speed);
+                if (lastTrackId == track.Id && lastSeed == track.Seed && !float.IsNaN(lastSimTime) && node.SimulationTime == lastSimTime)
+                {
+                    float delta = targetTime - lastSimTime;
+                    if (delta == 0f)
+                    {
+                        return;
+                    }
+                    if (delta > 0f && delta <= 1f)
+                    {
+                        node.Step(delta);
+                        lastSimTime = node.SimulationTime;
+                        return;
+                    }
+                }
+                node.Seek(targetTime, track.Seed);
+                lastTrackId = track.Id;
+                lastSeed = track.Seed;
+                lastSimTime = node.SimulationTime;
             }
             public void Dispose()
             {

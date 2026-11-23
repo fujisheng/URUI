@@ -1,30 +1,33 @@
 using System;
 using URUI.Animation;
 using URUI.Internal.Interop;
+
 namespace URUI.Internal.Hosting
 {
     internal sealed partial class RenderHost
     {
         bool clockProtocolChecked;
         double lastUITime = double.NaN;
+
         internal void RebaseUIClock()
         {
             SynchronizeUIClock(true);
         }
-        void SynchronizeUIClock(bool reset = false)
+
+        bool SynchronizeUIClock(bool reset = false)
         {
             if (!clockProtocolChecked)
             {
                 try
                 {
-                    if (NativeMethods.urui_ui_clock_api_version() != 1)
+                    if (NativeMethods.urui_ui_clock_api_version() != NativeMethods.ExpectedUIClockApiVersion)
                     {
-                        throw new NotSupportedException("需要URUI时钟协议v1插件。");
+                        throw new NotSupportedException($"需要URUI时钟协议v{NativeMethods.ExpectedUIClockApiVersion}插件。");
                     }
                 }
                 catch (EntryPointNotFoundException error)
                 {
-                    throw new NotSupportedException("当前插件缺少UI时钟协议v1，请重建此目标插件。", error);
+                    throw new NotSupportedException($"当前插件缺少UI时钟协议v{NativeMethods.ExpectedUIClockApiVersion}，请重建此目标插件。", error);
                 }
                 clockProtocolChecked = true;
             }
@@ -40,11 +43,16 @@ namespace URUI.Internal.Hosting
             {
                 throw new InvalidOperationException($"UI时钟必须为非负、有限且单调递增的时间；更换时基前请卸载 Surface 的全部文档。当前={now:R}，上次={lastUITime:R}，帧={UnityEngine.Time.frameCount}，时钟={clock.GetType().FullName}");
             }
-            if (NativeMethods.urui_set_ui_time(now) != 1)
+            if (!reset && now == lastUITime)
+            {
+                return false;
+            }
+            if (NativeMethods.urui_surface_set_ui_time(SurfaceHandle, now) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("无法提交UI时钟。");
             }
             lastUITime = now;
+            return true;
         }
     }
 }

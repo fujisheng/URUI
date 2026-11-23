@@ -44,9 +44,14 @@ namespace URUI.Documents
             }
             return false;
         }
-        internal void BeginPainterDraw() => host.BeginPainterDraw();
         readonly ExternalGeometryContextPool geometryContexts = new();
         static ulong geometryProviderIdentity;
+
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetGeometryProviderIdentity()
+        {
+            geometryProviderIdentity = 0;
+        }
         /// <summary>
         /// 撤销可能引用旧资源的录制，再经宿主 GPU fence 退役。替换期间保留原 painter 注册。
         /// </summary>
@@ -166,7 +171,6 @@ namespace URUI.Documents
             }
             var registration = new PaintRegistration(this, element, shader, paint, release);
             painters.Add(key, registration);
-            host.NotifyExternalRenderResourcesChanged();
             return registration;
         }
         /// <summary>
@@ -207,7 +211,6 @@ namespace URUI.Documents
                     registration.parameterLayout = new URUI.Internal.Rendering.NativeProgramLayout(this, "geometry:" + registration.provider, parameters);
                 }
                 painters.Add(key, registration);
-                host.NotifyExternalRenderResourcesChanged();
                 return registration;
             }
             catch
@@ -271,7 +274,7 @@ namespace URUI.Documents
             {
                 return;
             }
-            if (Defer(() => RemovePainter(registration)))
+            if (Defer(() => RemovePainter(registration), DeferInvalidation.None))
             {
                 return;
             }
@@ -281,22 +284,32 @@ namespace URUI.Documents
                 return;
             }
             // 先撤销未来提交，再退役资源；提交状态不确定时保留注册和所有权。
-            host.RetirePaintResources(new List<IDisposable> { registration.RetiredRelease() });
+            host.RetirePaintResource(registration.RetiredRelease());
             painters.Remove(key);
         }
-        void ReleasePainters()
+        void ReleasePainters(ContentState state)
         {
-            if (painters.Count == 0)
+            if (state.Painters.Count == 0)
             {
                 return;
             }
-            var releases = new List<IDisposable>();
-            foreach (var registration in painters.Values)
+            var releases = new List<IDisposable>(state.Painters.Count);
+            foreach (var registration in state.Painters.Values)
             {
                 releases.Add(registration.RetiredRelease());
             }
-            host.RetirePaintResources(releases);
-            painters.Clear();
+            if (host)
+            {
+                host.RetirePaintResources(releases);
+            }
+            else
+            {
+                foreach (var release in releases)
+                {
+                    release.Dispose();
+                }
+            }
+            state.Painters.Clear();
         }
         internal void InvokePainter(ulong token, string shader, ElementPaintContext context)
         {
@@ -316,16 +329,6 @@ namespace URUI.Documents
             {
                 context.Close();
             }
-        }
-        internal void BeginPaintFrame()
-        {
-            CheckThread();
-            nativeDepth++;
-        }
-        internal void EndPaintFrame()
-        {
-            nativeDepth--;
-            FinishNativeCall();
         }
     }
 }

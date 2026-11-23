@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <cassert>
 #include <cmath>
@@ -21,13 +23,13 @@ int main()
     const auto package = native.parent_path();
     const auto fixtures = package / "Tests~/HtmlCss/fixtures";
     const auto resources = package / "Runtime/Resources/URUI";
-    assert(urui_create(1280, 720) == 1);
+    assert(urui_surface_create(1280, 720, &g_test_surface) == 1);
     URUIDocumentHandle owner = 0;
-    assert(urui_document_create(&owner) == 1);
+    assert(urui_document_create(g_test_surface, &owner) == 1);
     auto register_file = [&](const std::string& uri, const std::filesystem::path& path)
     {
         const auto bytes = Read(path);
-        assert(urui_document_register_resource(owner, uri.c_str(), reinterpret_cast<const uint8_t*>(bytes.data()),
+        assert(urui_document_register_resource(g_test_surface, owner, uri.c_str(), reinterpret_cast<const uint8_t*>(bytes.data()),
                                                int(bytes.size())) == 1);
     };
     register_file("/urui/base.css", resources / "base.css");
@@ -39,12 +41,12 @@ int main()
             register_file("/urui/Fonts/" + font.path().filename().string(), font.path());
         }
     }
-    assert(urui_document_set_presentation(owner, 0, 0, 1, 0) == 1);
-    assert(urui_document_load_html(owner, Read(fixtures / "typography.html").c_str(), "/fixtures/typography.html") ==
+    assert(urui_document_set_presentation(g_test_surface, owner, 0, 0, 1, 0) == 1);
+    assert(urui_document_load_html(g_test_surface, owner, Read(fixtures / "typography.html").c_str(), "/fixtures/typography.html") ==
            1);
-    urui_update();
-    urui_render();
-    auto* document = URUI::GetContext("urui")->GetDocument(0);
+    urui_surface_update(g_test_surface);
+    urui_surface_render(g_test_surface);
+    auto* document = URUI::GetContext(0)->GetDocument(0);
     // Edge157，完全相同 typography.html/base.css/原始字体；完整输入 SHA 在 T13 采集清单。
     std::istringstream golden(Read(native / "tests/fixtures/typography-browser.tsv"));
     std::string id;
@@ -113,21 +115,21 @@ int main()
     auto* fractional = document->GetElementById("fractional");
     const auto fractional_handle = fractional->GetComputedValues().font_face_handle();
     assert(fractional->SetProperty("font-size", "16.25px"));
-    urui_update();
-    urui_render();
+    urui_surface_update(g_test_surface);
+    urui_surface_render(g_test_surface);
     const auto quarter_handle = fractional->GetComputedValues().font_face_handle();
     assert(quarter_handle != fractional_handle);
     assert(std::abs(URUI::GetFontEngineInterface()->GetFontMetrics(quarter_handle).size - 16.25f) < .001f);
     assert(fractional->SetProperty("font-size", "16.5001px"));
-    urui_update();
-    urui_render();
+    urui_surface_update(g_test_surface);
+    urui_surface_render(g_test_surface);
     assert(fractional->GetComputedValues().font_face_handle() == fractional_handle);
     auto* regular = document->GetElementById("regular");
     const auto original_width = regular->GetBox().GetSize(URUI::BoxArea::Border).x;
     assert(regular->SetProperty("letter-spacing", ".25px"));
-    urui_update();
-    urui_render();
+    urui_surface_update(g_test_surface);
+    urui_surface_render(g_test_surface);
     assert(std::abs(regular->GetBox().GetSize(URUI::BoxArea::Border).x - original_width - 3.5f) < .05f);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     return failures ? 1 : 0;
 }

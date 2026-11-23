@@ -131,6 +131,28 @@ namespace URUI
         }
     }
 
+    void FontProvider::ReleaseTextures(RenderManager& render_manager)
+    {
+        if (!g_font_provider)
+        {
+            return;
+        }
+        for (auto& chain : g_font_provider->font_chains)
+        {
+            if (chain.second)
+            {
+                chain.second->ReleaseTextures(render_manager);
+            }
+        }
+        for (auto& name_family : g_font_provider->font_families)
+        {
+            if (name_family.second)
+            {
+                name_family.second->ReleaseTextures(render_manager);
+            }
+        }
+    }
+
     bool FontProvider::LoadFontFace(const String& file_name, int face_index, bool fallback_face,
                                     Style::FontWeight weight)
     {

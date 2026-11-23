@@ -73,6 +73,7 @@ namespace URUI
         Texture GetTexture(RenderManager& render_manager, int index);
         /// Returns the number of textures employed by this layer.
         int GetNumTextures() const;
+        void ReleaseTextures(RenderManager& render_manager);
 
         /// Returns the layer's colour after applying the given opacity.
         ColourbPremultiplied GetColour(float opacity) const;

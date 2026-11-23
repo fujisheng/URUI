@@ -1,5 +1,4 @@
 using UnityEngine;
-using URUI.Internal.Interop;
 
 namespace URUI.Internal.Hosting
 {
@@ -30,9 +29,7 @@ namespace URUI.Internal.Hosting
             public int[] indices;
             public int vertexCount;
             public int indexCount;
-            public Bounds bounds;
             public int CapacityBytes => positions.Length * 24 + indices.Length * 4;
         }
-
     }
 }

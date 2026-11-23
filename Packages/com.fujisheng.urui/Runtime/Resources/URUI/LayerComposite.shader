@@ -35,35 +35,8 @@ Shader "URUI/LayerComposite"
    Blend One Zero
    CGPROGRAM
    #pragma target 3.5
-   #pragma vertex Vertex
-   #pragma fragment CompositeSrgb
-   ENDCG
-  }
-  Pass
-  {
-   Blend One Zero
-   CGPROGRAM
-   #pragma target 3.5
-   #pragma vertex vert_img
+   #pragma vertex VertexBackdrop
    #pragma fragment CopyBackdrop
-   ENDCG
-  }
-  Pass
-  {
-   Blend One Zero
-   CGPROGRAM
-   #pragma target 3.5
-   #pragma vertex vert_img
-   #pragma fragment EncodeBackdrop
-   ENDCG
-  }
-  Pass
-  {
-   Blend One Zero
-   CGPROGRAM
-   #pragma target 3.5
-   #pragma vertex Vertex
-   #pragma fragment DecodeSource
    ENDCG
   }
   Pass
@@ -84,6 +57,25 @@ Shader "URUI/LayerComposite"
    #pragma fragment CopySource
    ENDCG
   }
-
+  Pass
+  {
+   Blend One Zero
+   CGPROGRAM
+   #pragma target 3.5
+   #pragma vertex Vertex
+   #pragma fragment ClearLayerRegion
+   float4 ClearLayerRegion():SV_Target { return 0; }
+   ENDCG
+  }
+  // Fast unclipped, unmasked alpha-over composite (zero dynamic branches / clip instructions).
+  Pass
+  {
+   Blend One OneMinusSrcAlpha
+   CGPROGRAM
+   #pragma target 3.5
+   #pragma vertex Vertex
+   #pragma fragment CopySource
+   ENDCG
+  }
  }
 }

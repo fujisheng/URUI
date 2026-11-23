@@ -65,6 +65,7 @@ namespace URUI
         {
             return style_specification;
         }
+        const SharedPtr<PropertySpecification>& EnsureMutableStyleSpecificationStorage();
         uint64_t GetCompiledIdentity() const
         {
             return compiled_identity;
@@ -90,6 +91,25 @@ namespace URUI
             {
                 ++effect_structure_revision;
             }
+        }
+        uint64_t GetLayoutVersion() const noexcept
+        {
+            return layout_version;
+        }
+        void BumpLayoutVersion() noexcept
+        {
+            if (!++layout_version)
+            {
+                ++layout_version;
+            }
+        }
+        int GetBackdropFilterElementCount() const noexcept
+        {
+            return backdrop_filter_element_count;
+        }
+        void AdjustBackdropFilterElementCount(int delta) noexcept
+        {
+            backdrop_filter_element_count += delta;
         }
 
         /// Process given document header
@@ -198,6 +218,7 @@ namespace URUI
     private:
         uint64_t compiled_identity = 0;
         uint64_t effect_structure_revision = 1;
+        uint64_t layout_version = 1;
         /// Searches forwards or backwards for a focusable element in the given subtree.
         Element* SearchFocusSubtree(Element* element, bool forward);
         /// Searches children of the given subtree for a focusable child.
@@ -232,6 +253,7 @@ namespace URUI
 
         SharedPtr<StyleSheetContainer> style_sheet_container;
         SharedPtr<PropertySpecification> style_specification;
+        bool owns_style_specification = false;
         UniquePtr<DocumentFontContext> font_context;
         SharedPtr<ResourceContext> resource_context;
         String resource_error;
@@ -250,6 +272,7 @@ namespace URUI
         bool layout_dirty;
         bool position_dirty;
         bool opaque_native_rendering = false;
+        int backdrop_filter_element_count = 0;
         // 0 表示尚未证明静态，最大值表示正在更新；只保存文档代际，不保存节点快照。
         uint64_t native_idle_update_revision = 0;
 

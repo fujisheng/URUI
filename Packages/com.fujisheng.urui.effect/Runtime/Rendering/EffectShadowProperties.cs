@@ -7,12 +7,6 @@ namespace URUI.Effect.Rendering
     internal static class EffectShadowProperties
     {
         static readonly EffectColorProperties color = new("--urui-fx-shadow-color");
-        internal static readonly StylePropertyDefinition[] Parameters = {
-            new("--urui-fx-shadow-mode",StyleValueType.Keyword),new("--urui-fx-shadow-color-filter",StyleValueType.Keyword),new("--urui-fx-shadow-color-glow",StyleValueType.Keyword),
-            new("--urui-fx-shadow-distance-x",StyleValueType.Number),new("--urui-fx-shadow-distance-y",StyleValueType.Number),new("--urui-fx-shadow-iteration",StyleValueType.Number),
-            new("--urui-fx-shadow-fade",StyleValueType.Number),new("--urui-fx-shadow-mirror-scale",StyleValueType.Number),new("--urui-fx-shadow-blur-intensity",StyleValueType.Number),
-            new("--urui-fx-shadow-color",StyleValueType.Color),new("--urui-fx-flip",StyleValueType.Number)
-        };
         internal static void Read(EffectStyleView style, EffectParameters p)
         {
             p.ShadowMode = ReadMode(style.GetKeyword("--urui-fx-shadow-mode"));

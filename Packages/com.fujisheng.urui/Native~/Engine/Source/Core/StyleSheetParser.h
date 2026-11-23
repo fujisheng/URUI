@@ -19,11 +19,13 @@ namespace URUI
     Helper class for parsing a style sheet into its memory representation.
  */
 
+    struct CssParseResult;
     struct PropertyRegistrationTransaction;
     class StyleSheetParser
     {
     public:
-        StyleSheetParser(PropertySpecification* specification = nullptr, Vector<Diagnostic>* diagnostics = nullptr);
+        StyleSheetParser(PropertySpecification* specification = nullptr, Vector<Diagnostic>* diagnostics = nullptr,
+                         std::function<PropertySpecification&()> ensure_mutable = {});
         ~StyleSheetParser();
 
         /// Parses the given stream into the style sheet
@@ -56,10 +58,11 @@ namespace URUI
         const CssRule* current_rule = nullptr;
         int line_offset = 0;
         void Report(DiagnosticSeverity severity, const String& code, const String& message, SourceSpan span);
-        PropertySpecification& property_specification;
+        PropertySpecification* property_specification;
+        std::function<PropertySpecification&()> ensure_mutable_specification;
         /// Parses properties from the parse buffer.
         /// @param[in-out] property_parser An abstract parser which specifies how the properties are parsed and stored.
-        bool RegisterPropertyRules(Stream* input, int begin_line_number, PropertyRegistrationTransaction& transaction);
+        bool RegisterPropertyRules(const CssParseResult& css, PropertyRegistrationTransaction& transaction);
         void ReadProperties(AbstractPropertyParser& property_parser);
 
         /// Import properties into the stylesheet node

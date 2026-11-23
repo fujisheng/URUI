@@ -33,34 +33,6 @@ namespace URUI.Tests
             }
         }
         [Test]
-        public void ParentTargetIsResolvedOnlyWhenRecordingActualParentCommands()
-        {
-            using var recording = new ExternalCommandRecording();
-            var calls = 0;
-            System.Func<RenderTargetIdentifier> resolve = () =>
-            {
-                calls++;
-                return BuiltinRenderTextureType.CameraTarget;
-            };
-            recording.Begin(BuiltinRenderTextureType.CameraTarget, new Rect(0, 0, 16, 16), Matrix4x4.identity, resolve);
-            Assert.That(calls, Is.Zero, "空回调不应租用父目标。");
-            recording.BeginSurface();
-            Assert.That(calls, Is.Zero, "仅离屏写入不需要父目标。");
-            recording.EndSurface();
-            recording.BeginDraw();
-            Assert.That(calls, Is.EqualTo(1));
-            recording.BeginDraw();
-            Assert.That(calls, Is.EqualTo(1));
-            recording.BeginSurface();
-            recording.EndSurface();
-            recording.BeginDraw();
-            Assert.That(calls, Is.EqualTo(2));
-            recording.Begin(BuiltinRenderTextureType.CameraTarget, new Rect(0, 0, 16, 16), Matrix4x4.identity);
-            recording.BeginDraw();
-            Assert.That(calls, Is.EqualTo(2), "新录制不能沿用旧解析器。");
-        }
-
-        [Test]
         public void PreparedCommandsFreezePropertiesAndRestoreAfterOffscreenWork()
         {
             using var recording = new ExternalCommandRecording();

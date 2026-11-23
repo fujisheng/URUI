@@ -13,12 +13,14 @@ namespace URUI.Elements
         readonly string className;
         readonly List<Func<T, bool>> predicates = new List<Func<T, bool>>();
         bool directChildren;
+
         internal ElementQuery(Element root, string name, string className)
         {
             this.root = root;
             this.name = name;
             this.className = className;
         }
+
         /// <summary>
         /// 追加谓词，执行时按加入顺序筛选。
         /// </summary>
@@ -33,6 +35,7 @@ namespace URUI.Elements
             next.predicates.Add(predicate);
             return next;
         }
+
         /// <summary>
         /// 将范围限制为直接内容子节点。
         /// </summary>
@@ -42,55 +45,74 @@ namespace URUI.Elements
             next.directChildren = true;
             return next;
         }
+
         ElementQuery<T> Copy()
         {
             var next = new ElementQuery<T>(root, name, className) { directChildren = directChildren };
             next.predicates.AddRange(predicates);
             return next;
         }
+
+        bool Matches(Element element, out T typed)
+        {
+            if (element is not T matched || (directChildren && !ReferenceEquals(element.Parent, root)))
+            {
+                typed = null;
+                return false;
+            }
+            for (var i = 0; i < predicates.Count; i++)
+            {
+                if (!predicates[i](matched))
+                {
+                    typed = null;
+                    return false;
+                }
+            }
+            typed = matched;
+            return true;
+        }
+
         /// <summary>
         /// 创建当前匹配节点的列表，不修改节点身份。
         /// </summary>
         public List<T> ToList()
         {
             var result = new List<T>();
-            foreach (var element in root.Query(name, className))
+            var candidates = root.Query(name, className);
+            for (var i = 0; i < candidates.Count; i++)
             {
-                if (!(element is T typed) || (directChildren && !ReferenceEquals(element.Parent, root)))
-                {
-                    continue;
-                }
-
-                bool matches = true;
-                foreach (var predicate in predicates)
-                {
-                    if (!predicate(typed))
-                    {
-                        matches = false;
-                        break;
-                    }
-                }
-                if (matches)
+                if (Matches(candidates[i], out var typed))
                 {
                     result.Add(typed);
                 }
             }
             return result;
         }
+
         /// <summary>
-        /// 返回首项，没有匹配时为 null。
+        /// 返回首项，没有匹配时为 null（短路求值，不分配结果列表）。
         /// </summary>
         public T First() => AtIndex(0);
+
         /// <summary>
         /// 返回末项，没有匹配时为 null。
         /// </summary>
         public T Last()
         {
-            var values = ToList();
-            return values.Count == 0 ? null : values[values.Count - 1];
+            T last = null;
+            var candidates = root.Query(name, className);
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (Matches(candidates[i], out var typed))
+                {
+                    last = typed;
+                }
+            }
+            return last;
         }
+
         /// <summary>
-        /// 返回指定匹配索引，不存在时为 null。
+        /// 返回指定匹配索引，不存在时为 null（短路求值，不分配结果列表）。
         /// </summary>
         public T AtIndex(int index)
         {
@@ -99,9 +121,27 @@ namespace URUI.Elements
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
 
-            var values = ToList();
-            return index < values.Count ? values[index] : null;
+            if (index == 0 && !directChildren && predicates.Count == 0 && typeof(T) == typeof(Element))
+            {
+                return (T)root.Q(name, className);
+            }
+
+            var seen = 0;
+            var candidates = root.Query(name, className);
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (Matches(candidates[i], out var typed))
+                {
+                    if (seen == index)
+                    {
+                        return typed;
+                    }
+                    seen++;
+                }
+            }
+            return null;
         }
+
         /// <summary>
         /// 对有序快照逐项执行操作。
         /// </summary>

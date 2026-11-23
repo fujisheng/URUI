@@ -36,13 +36,15 @@ struct UruiImageOutput
 UruiImageOutput UruiImageVertex(UruiImageInput input)
 {
     UruiImageOutput output;
-    output.pixel=UruiParameterPosition(input.vertex,input.source.y);
+    int2 baseCoord=UruiParameterBase(input.source.y);
+    float4 metadata=UruiParameterAt(baseCoord,7);
+    output.pixel=UruiParameterAt(baseCoord,0)*input.vertex.x+UruiParameterAt(baseCoord,1)*input.vertex.y+UruiParameterAt(baseCoord,3)*input.vertex.w;
+    if(input.vertex.z!=0)output.pixel+=UruiParameterAt(baseCoord,2)*input.vertex.z;
     output.vertex=mul(UNITY_MATRIX_VP,output.pixel);
-    float4 transform=UruiParameter(input.source.y,6);
+    float4 transform=UruiParameterAt(baseCoord,6);
     output.uv=input.uv*transform.xy+transform.zw;
-    output.color=input.color*UruiParameter(input.source.y,5);
-    float4 metadata=UruiParameter(input.source.y,7);
-    output.clipRect=UruiParameter(input.source.y,4);
+    output.color=input.color*UruiParameterAt(baseCoord,5);
+    output.clipRect=(((int)metadata.x)&1)!=0?UruiParameterAt(baseCoord,4):0;
     output.state=float4(metadata.x,input.source.x,metadata.z,0);
     float4 bounds=UruiParameterTexel(metadata.z);
     output.effectUv=(input.vertex.xy-bounds.xy)*bounds.zw;

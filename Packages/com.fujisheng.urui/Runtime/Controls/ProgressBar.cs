@@ -17,6 +17,10 @@ namespace URUI.Controls
         float currentValue;
         float low;
         float high = 100;
+        float writtenLow = float.NaN;
+        float writtenHigh = float.NaN;
+        float writtenValue = float.NaN;
+        float writtenPercent = float.NaN;
         Action project;
         bool projectionQueued;
         /// <summary>
@@ -56,7 +60,7 @@ namespace URUI.Controls
         /// </summary>
         public override string Text
         {
-            get => GetAttribute("data-urui-label") ?? label.Text;
+            get => GetAttribute("data-urui-label") ?? label?.Text ?? "";
             set => SetAttribute("data-urui-label", value);
         }
         /// <summary>
@@ -210,19 +214,36 @@ namespace URUI.Controls
         void Project()
         {
             projectionQueued = false;
-            if (!IsValid || !fill.IsValid || !label.IsValid)
+            if (!IsValid || (fill != null && !fill.IsValid) || (label != null && !label.IsValid))
             {
                 return;
             }
-            fill.Style.Width = Length.Percent(high > low ? (float)(((double)currentValue - low) / ((double)high - low) * 100) : 0);
+            float percent = high > low ? (float)(((double)currentValue - low) / ((double)high - low) * 100) : 0;
+            if (fill != null && writtenPercent != percent)
+            {
+                fill.Style.SetPercent("width", percent);
+                writtenPercent = percent;
+            }
             var caption = GetAttribute("data-urui-label");
-            if (caption != null)
+            if (label != null && caption != null)
             {
                 label.Text = caption;
             }
-            SetAttribute("aria-valuemin", low.ToString("R", CultureInfo.InvariantCulture));
-            SetAttribute("aria-valuemax", high.ToString("R", CultureInfo.InvariantCulture));
-            SetAttribute("aria-valuenow", currentValue.ToString("R", CultureInfo.InvariantCulture));
+            if (writtenLow != low)
+            {
+                SetAttribute("aria-valuemin", low.ToString("R", CultureInfo.InvariantCulture));
+                writtenLow = low;
+            }
+            if (writtenHigh != high)
+            {
+                SetAttribute("aria-valuemax", high.ToString("R", CultureInfo.InvariantCulture));
+                writtenHigh = high;
+            }
+            if (writtenValue != currentValue)
+            {
+                SetAttribute("aria-valuenow", currentValue.ToString("R", CultureInfo.InvariantCulture));
+                writtenValue = currentValue;
+            }
         }
         float ReadInitial(string name, float fallback)
         {

@@ -11,25 +11,21 @@ namespace URUI.Internal.Rendering.Shaders
     internal sealed class ShaderPropertyContract : ScriptableObject
     {
         public const string BuiltinPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/Premultiplied.shader";
-        public const string BuiltinHash = "457a41bfd9530616ab58124aab9e39c07b880030eb472ff8261cfc30b6d1b1b3";
+        public const string BuiltinHash = "e72e926aec9fe2b8c663adbec0d346abe375ee2936acf7ea920438370af34c36";
         public const string SamplingPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/BorrowedTextureSampling.cginc";
-        public const string SamplingHash = "c1fd347bb710881dd4ce216291b77e6703e44fd685881766c48b942efa495cb1";
+        public const string SamplingHash = "6be8f2a2c386995fe04e9db3b252920dbd320f704122d43b015b7f34dd4a816a";
         public const string ColorPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/PremultipliedColor.cginc";
-        public const string ColorHash = "c2b97f762b4b38cbfd5f1ed96c5c3f8c4db437bbdb6c561eb21fe6c7304c5726";
+        public const string ColorHash = "3b4c1d6e177a437e5a048be72a9851228eddd495efb603822fbfae79430bd4fb";
         public const string PalettePath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/PremultipliedPalette.cginc";
-        public const string PaletteHash = "3c7e2ed11fab88f49d71331e274c381c7bbf419994f019acf1e4734b97ddfc29";
+        public const string PaletteHash = "34be457bba1aa52391a11ca82838cc8e1945a159ebd25c32f7664a0ffed88037";
         public const string ParametersPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/RenderParameters.cginc";
-        public const string ParametersHash = "25d6608e0294441f4e1a5a58f1c230836530ea55a2b6582528a2347c3b416244";
+        public const string ParametersHash = "0df621c72f3d7a1144f9c9e66678772e3d7b8e7125b976e077187d8551ee2472";
         public const string CssColorPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/CssColorOps.cginc";
-        public const string CssColorHash = "32f6e6108f784522c6b96c86b3dee1d6b2ddea50891cfdce04dcbf0ac67e94bc";
+        public const string CssColorHash = "4820705e4b07286d6edad8eb44be8deb0fb4984ff99d306211c988540edcb85f";
         public const string MaskPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/DirectMask.cginc";
-        public const string MaskHash = "30f3ada67d605858010051c7412b228c49b6a6bfbfa0ff85be9ff29303b1af73";
+        public const string MaskHash = "3fb5d296c1f448ce1a79cea5f2b84334e40c5f5a349ea933ddc25e5606214c37";
         public const string ProgramPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/PremultipliedProgram.cginc";
-        public const string ProgramHash = "8af603e6de0a82587b3a7f690d55568bdb1b9bfee596de4533a47235890ccd6f";
-        public const string FetchPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/PremultipliedFetch.shader";
-        public const string FetchHash = "8441aafe4d24bb8fbcadae4906f50e527a6bd374fd2a1a4de26d7285b58dfe0a";
-        public const string FramebufferPath = "Packages/com.fujisheng.urui/Runtime/Resources/URUI/FramebufferBlend.cginc";
-        public const string FramebufferHash = "93bbb5e65eb94580f4ab7d34bee0c3f81f1850d202025995bc59a3aa72052893";
+        public const string ProgramHash = "2e80dbd97f66e23351aeed1b8ee3b18caa2fea54eca7f7572bc817908ab4577a";
         [SerializeField]
         Shader verifiedShader;
         [SerializeField]
@@ -93,7 +89,7 @@ namespace URUI.Internal.Rendering.Shaders
         {
             // Sampling reads the geometry-local addressing flag; command-state equality includes all flag bits.
             // Audit the whole shared source closure before allowing recorded parameter reuse.
-            foreach (var source in new[] { (SamplingPath, SamplingHash), (ColorPath, ColorHash), (PalettePath, PaletteHash), (ParametersPath, ParametersHash), (CssColorPath, CssColorHash), (MaskPath, MaskHash), (ProgramPath, ProgramHash), (FetchPath, FetchHash), (FramebufferPath, FramebufferHash) })
+            foreach (var source in new[] { (SamplingPath, SamplingHash), (ColorPath, ColorHash), (PalettePath, PaletteHash), (ParametersPath, ParametersHash), (CssColorPath, CssColorHash), (MaskPath, MaskHash), (ProgramPath, ProgramHash) })
             {
                 string path = ShaderSources.ResolveAssetPath(source.Item1);
                 if (!System.IO.File.Exists(path))
@@ -107,18 +103,6 @@ namespace URUI.Internal.Rendering.Shaders
                 }
             }
             return true;
-        }
-
-        public void BindBuiltinForEditor(Shader source)
-        {
-            if (UnityEditor.AssetDatabase.GetAssetPath(source) != BuiltinPath)
-            {
-                throw new System.ArgumentException("Only the audited framework shader is supported by contract V7");
-            }
-
-            verifiedShader = source;
-            verifiedSourceHash = BuiltinHash;
-            revision = 7;
         }
 #endif
     }

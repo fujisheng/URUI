@@ -15,6 +15,7 @@ namespace URUI.Controls
         readonly Document document;
         readonly string previousWidth;
         readonly List<(Element element, bool text)> children = new();
+        URUI.Internal.Interop.NativeMethods.ElementRefreshStamp lastStableStamp;
         bool disposed;
         /// <summary>
         /// 用于子项具有固定或固有宽度的横向滚动内容；无需在业务代码计算条目数量和单元格宽度。
@@ -30,6 +31,11 @@ namespace URUI.Controls
         void Apply(Document owner)
         {
             if (disposed || !content.IsValid || !content.HasLayout)
+            {
+                return;
+            }
+            var hasStamp = document.TryGetRefreshStamp(out var stamp);
+            if (hasStamp && stamp.Matches(lastStableStamp))
             {
                 return;
             }
@@ -68,8 +74,13 @@ namespace URUI.Controls
             var outerWidth = Mathf.Max(0, right + box.width - inner.xMax);
             if (Mathf.Abs(box.width - outerWidth) <= .01f)
             {
+                if (hasStamp)
+                {
+                    lastStableStamp = stamp;
+                }
                 return;
             }
+            lastStableStamp = default;
             var width = document.Styles.GetComputed(content).GetKeyword("box-sizing") == "border-box" ? outerWidth : outerWidth - (box.width - inner.width);
             content.Style.SetWidth(Mathf.Max(0, width));
         }

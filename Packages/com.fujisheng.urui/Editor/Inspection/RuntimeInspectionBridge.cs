@@ -16,12 +16,14 @@ namespace URUI.Editor.Inspection
     {
         internal readonly Element Element;
         IDisposable imageOverride;
+        Document imageOverrideDocument;
         string imageAsset;
         internal InspectedNode(Element element, string id)
         {
             Element = element;
             Id = id;
         }
+        void OnDocumentUnloaded(Document _) => ReleaseImageOverride();
         public string Id
         {
             get;
@@ -110,6 +112,12 @@ namespace URUI.Editor.Inspection
         /// </summary>
         public void ReleaseImageOverride()
         {
+            var doc = imageOverrideDocument;
+            imageOverrideDocument = null;
+            if (doc)
+            {
+                doc.Unloaded -= OnDocumentUnloaded;
+            }
             var owned = imageOverride;
             imageOverride = null;
             imageAsset = null;
@@ -148,12 +156,12 @@ namespace URUI.Editor.Inspection
                         throw new InvalidOperationException("Image Texture2D asset not found.");
                     }
                 }
-                imageOverride?.Dispose();
-                imageOverride = null;
-                imageAsset = null;
+                ReleaseImageOverride();
                 if (texture)
                 {
                     imageOverride = element.Document.OverrideImageForInspection(element, texture);
+                    imageOverrideDocument = element.Document;
+                    imageOverrideDocument.Unloaded += OnDocumentUnloaded;
                     imageAsset = value;
                 }
                 return;
@@ -287,9 +295,9 @@ namespace URUI.Editor.Inspection
         }
         public static InspectedNode Pick(Document document, Vector2 position) => Inspect(document.Pick(position));
         /// <summary>
-        /// The native context is available only after the previous Surface finishes shutting down.
+        /// Multi-Surface ABI v13 allows preview hosts to run alongside active runtime Surfaces.
         /// </summary>
-        public static bool CanCreatePreview => !URUI.Internal.Hosting.RenderHost.ActiveHost;
+        public static bool CanCreatePreview => true;
         public static EditorPreviewHost CreatePreview(int width, int height) => new EditorPreviewHost(width, height);
         public static CapturedPixels CaptureLive(Document document)
         {
@@ -297,31 +305,40 @@ namespace URUI.Editor.Inspection
             {
                 throw new InvalidOperationException("Select a loaded Play Mode document.");
             }
-            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline != null)
-            {
-                throw new InvalidOperationException("Live capture currently requires the Built-in render pipeline.");
-            }
             var camera = document.Host.InspectionCamera;
-            if (!camera)
+            bool isSrp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline != null;
+            int width = camera ? camera.pixelWidth : document.Surface.Width;
+            int height = camera ? camera.pixelHeight : document.Surface.Height;
+            if (!isSrp && !camera)
             {
                 throw new InvalidOperationException("Runtime camera unavailable.");
             }
-            int width = camera.pixelWidth;
-            int height = camera.pixelHeight;
             if (width < 1 || height < 1 || width > 8192 || height > 8192)
             {
                 throw new InvalidOperationException("Capture size outside supported range.");
             }
-            var previousTarget = camera.targetTexture;
+            var previousTarget = camera ? camera.targetTexture : null;
             var previousActive = RenderTexture.active;
             var target = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32) { hideFlags = HideFlags.HideAndDontSave };
             Texture2D pixels = null;
             try
             {
                 target.Create();
-                camera.targetTexture = target;
                 Refresh(document);
-                camera.Render();
+                if (isSrp)
+                {
+                    RenderTexture.active = target;
+                    GL.Clear(true, true, camera ? camera.backgroundColor : Color.clear);
+                    if (!document.Host.SubmitPreview(target))
+                    {
+                        throw new InvalidOperationException("Live SRP capture is not ready.");
+                    }
+                }
+                else
+                {
+                    camera.targetTexture = target;
+                    camera.Render();
+                }
                 RenderTexture.active = target;
                 pixels = new Texture2D(width, height, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
                 pixels.ReadPixels(new Rect(0, 0, width, height), 0, 0);
@@ -338,7 +355,10 @@ namespace URUI.Editor.Inspection
             }
             finally
             {
-                camera.targetTexture = previousTarget;
+                if (!isSrp && camera)
+                {
+                    camera.targetTexture = previousTarget;
+                }
                 RenderTexture.active = previousActive;
                 URUI.Resources.GpuRetirement.Retire(() =>
                 {

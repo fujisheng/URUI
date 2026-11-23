@@ -104,19 +104,57 @@ namespace URUI.Tests
         }
 
         [Test]
+        public void RegionReuseWaitsForConflictingQueuedWritesAndACompletedSeed()
+        {
+            using var targets = new EffectTargetPool();
+            using var content = LayerContentLease.Rent(targets.Rent(4, 4, RenderTextureFormat.ARGB32), 1, false);
+            var serial = 0UL;
+            (ulong generation, bool publishes) Submit(ulong version, bool partial = false)
+            {
+                content.RecordWrite(++serial, version, partial);
+                Assert.That(content.PinWrite(serial, out var generation, out var publishes), Is.True);
+                return (generation, publishes);
+            }
+            var first = Submit(11);
+            Assert.That(first.publishes, Is.True);
+            Assert.That(content.CanRedrawRegion(11), Is.False);
+            content.FinishWrite(first.generation, true);
+            Assert.That(content.CanRedrawRegion(11), Is.True);
+
+            var older = Submit(11, partial: true);
+            var conflict = Submit(12);
+            Assert.That(older.publishes || conflict.publishes, Is.False);
+            Assert.That(content.CanRedrawRegion(11), Is.False);
+            content.FinishWrite(conflict.generation, false);
+            content.FinishWrite(older.generation, false);
+
+            var cancelled = Submit(12);
+            Assert.That(cancelled.publishes, Is.True);
+            content.FinishWrite(cancelled.generation, false);
+            Assert.That(content.CanRedrawRegion(12), Is.False);
+            var latest = Submit(12);
+            Assert.That(latest.publishes, Is.True);
+            content.FinishWrite(latest.generation, true);
+            Assert.That(content.CanRedrawRegion(12), Is.True);
+        }
+
+        [Test]
         public void PointerLayoutsMatchNativeProtocol()
         {
             Assert.That(Marshal.SizeOf<RenderPlanTargetRequest>(), Is.EqualTo(32));
             Assert.That(Marshal.SizeOf<RenderPlanVertex>(), Is.EqualTo(32));
             Assert.That(Marshal.SizeOf<RenderPlanParameter>(), Is.EqualTo(128));
-            Assert.That(Marshal.SizeOf<RenderPlanOperation>(), Is.EqualTo(128));
+            Assert.That(Marshal.SizeOf<RenderPlanOperation>(), Is.EqualTo(136));
+            Assert.That(Marshal.OffsetOf<RenderPlanOperation>("BaseParameter").ToInt64(), Is.EqualTo(128));
             Assert.That(Marshal.SizeOf<RenderPlanInputPacket>(), Is.EqualTo(IntPtr.Size == 8 ? 80 : 56));
             Assert.That(Marshal.SizeOf<RenderPlanPacket>(), Is.EqualTo(IntPtr.Size == 8 ? 144 : 128));
             Assert.That(Marshal.OffsetOf<RenderPlanPacket>("ExtraParameters").ToInt64(), Is.EqualTo(IntPtr.Size == 8 ? 120 : 108));
             Assert.That(Marshal.SizeOf<RenderPlanPrepareRequest>(), Is.EqualTo(128));
             Assert.That(Marshal.SizeOf<RenderPlanFeedback>(), Is.EqualTo(104));
+            Assert.That(Marshal.OffsetOf<RenderPlanFeedback>("Transforms").ToInt64(), Is.EqualTo(96));
             Assert.That(Marshal.SizeOf<RenderPlanPreparePacket>(), Is.EqualTo(IntPtr.Size == 8 ? 56 : 48));
-            Assert.That(Marshal.SizeOf<RenderPlanLayerRegion>(), Is.EqualTo(40));
+            Assert.That(Marshal.SizeOf<RenderPlanLayerRegion>(), Is.EqualTo(48));
+            Assert.That(Marshal.OffsetOf<RenderPlanLayerRegion>("AliasLayer").ToInt64(), Is.EqualTo(40));
             Assert.That(Marshal.SizeOf<RenderPlanBindings>(), Is.EqualTo(IntPtr.Size == 8 ? 80 : 60));
             Assert.That(Marshal.SizeOf<RenderPlanExternalBinding>(), Is.EqualTo(8));
             Assert.That(Marshal.SizeOf<RenderPlanVertexStream>(), Is.EqualTo(24));
@@ -127,18 +165,19 @@ namespace URUI.Tests
         [Test]
         public void RejectsExpiredCrossThreadAndCrossDocumentInputs()
         {
-            var lease = NativeRenderPlanLease.Begin(out var input);
+            var surface = document.Surface.SurfaceHandle;
+            var lease = NativeRenderPlanLease.Begin(surface, out var input);
             try
             {
                 int status = 0;
                 RenderPlanPacket output = default;
                 var other = new Thread(() =>
                 {
-                    status = NativeMethods.urui_plan_compile(input.Lease, default, out output);
+                    status = NativeMethods.urui_plan_compile(surface, input.Lease, default, out output);
                 });
                 other.Start();
                 other.Join();
-                Assert.That(status, Is.EqualTo(-3));
+                Assert.That(status, Is.EqualTo(NativeStatus.WrongThread));
                 Assert.That(output.Lease, Is.Zero);
                 var otherRoot = new GameObject("Other lease document");
                 var otherDocument = otherRoot.AddComponent<Document>();
@@ -146,7 +185,7 @@ namespace URUI.Tests
                 try
                 {
                     otherDocument.LoadHtml("<!doctype html><html><head></head><body></body></html>", "/other.html");
-                    Assert.That(NativeMethods.urui_plan_compile(input.Lease, default, out output), Is.EqualTo(-2));
+                    Assert.That(NativeMethods.urui_plan_compile(surface, input.Lease, default, out output), Is.EqualTo(NativeStatus.NotReady));
                     Assert.That(output.Lease, Is.Zero);
                 }
                 finally
@@ -158,20 +197,21 @@ namespace URUI.Tests
             {
                 lease.Dispose();
             }
-            Assert.That(NativeMethods.urui_plan_compile(input.Lease, default, out var expired), Is.EqualTo(-2));
+            Assert.That(NativeMethods.urui_plan_compile(surface, input.Lease, default, out var expired), Is.EqualTo(NativeStatus.NotReady));
             Assert.That(expired.Operations, Is.EqualTo(IntPtr.Zero));
         }
         [Test]
         public void FourLeasesAndBudgetAreEnforced()
         {
+            var surface = document.Surface.SurfaceHandle;
             var leases = new NativeRenderPlanLease[4];
             try
             {
                 for (var i = 0; i < leases.Length; i++)
                 {
-                    leases[i] = NativeRenderPlanLease.Begin(out _);
+                    leases[i] = NativeRenderPlanLease.Begin(surface, out _);
                 }
-                Assert.That(NativeMethods.urui_plan_begin(out var fifth), Is.EqualTo(-5));
+                Assert.That(NativeMethods.urui_plan_begin(surface, out var fifth), Is.EqualTo(NativeStatus.Reentrancy));
                 Assert.That(fifth.Lease, Is.Zero);
             }
             finally
@@ -185,14 +225,15 @@ namespace URUI.Tests
         [Test]
         public void GeometryIsBorrowedOnlyInsideItsPlanLease()
         {
-            using var input = NativeRenderPlanLease.Begin(out _);
+            var surface = document.Surface.SurfaceHandle;
+            using var input = NativeRenderPlanLease.Begin(surface, out _);
             var plan = input.Compile(default, out var packet);
             var operation = Marshal.PtrToStructure<RenderPlanOperation>(packet.Operations);
             Assert.That(operation.Kind, Is.EqualTo(1));
             Assert.That(plan.Geometry(operation.Geometry).VertexCount, Is.GreaterThan(0));
             var token = plan.Token;
             plan.Dispose();
-            Assert.That(NativeMethods.urui_plan_geometry(token, operation.Geometry, out var expired), Is.EqualTo(-2));
+            Assert.That(NativeMethods.urui_plan_geometry(surface, token, operation.Geometry, out var expired), Is.EqualTo(NativeStatus.NotReady));
             Assert.That(expired.Vertices, Is.EqualTo(IntPtr.Zero));
         }
         sealed class Captures : IRenderPlanPreparationBindings, IDisposable
@@ -203,6 +244,7 @@ namespace URUI.Tests
             internal int Elements;
             internal readonly List<EffectFrame> Frames = new();
             public RenderTexture ResolveCapture(ulong resource) => targets.TryGetValue(resource, out var texture) ? texture : null;
+            public void BeginFeedbackBatch(int requestCount) { }
             static Rect Rect(Vector4 value) => new(value.x, value.y, value.z, value.w);
             public RenderPlanFeedback Prepare(in RenderPlanPrepareRequest request)
             {
@@ -261,7 +303,7 @@ namespace URUI.Tests
             document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}div{width:8px;height:8px;--urui-effect:lease-element;}img{width:8px;height:8px;--urui-image-effect:lease-image;}</style></head><body><div><div><img src='white.png'></div></div></body></html>", "/nested-lease.html");
             document.SynchronizeLayout();
             using var captures = new Captures();
-            using var input = NativeRenderPlanLease.Begin(out var packet);
+            using var input = NativeRenderPlanLease.Begin(document.Surface.SurfaceHandle, out var packet);
             RenderPlanPreparation.Resolve(input, packet, captures);
             Assert.That(captures.Images, Is.EqualTo(1));
             Assert.That(captures.Elements, Is.EqualTo(2));

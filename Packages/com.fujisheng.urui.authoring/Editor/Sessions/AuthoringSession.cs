@@ -77,12 +77,34 @@ namespace URUI.Authoring.Sessions
         {
             if (File != null && identities != null)
             {
-                identityHistory[Workspace.HistoryPosition] = new IdentitySnapshot
+                int pos = Workspace.HistoryPosition;
+                identityHistory[pos] = new IdentitySnapshot
                 {
                     Path = File.Path,
                     Text = File.Text,
                     Identities = identities.Copy()
                 };
+                if (identityHistory.Count > SourceWorkspace.MaxHistoryEntries + 4)
+                {
+                    int minKeep = pos - SourceWorkspace.MaxHistoryEntries;
+                    int maxKeep = pos + SourceWorkspace.MaxHistoryEntries;
+                    List<int> stale = null;
+                    foreach (int key in identityHistory.Keys)
+                    {
+                        if (key < minKeep || key > maxKeep)
+                        {
+                            stale ??= new List<int>();
+                            stale.Add(key);
+                        }
+                    }
+                    if (stale != null)
+                    {
+                        for (int i = 0; i < stale.Count; i++)
+                        {
+                            identityHistory.Remove(stale[i]);
+                        }
+                    }
+                }
             }
             Changed?.Invoke();
         }
@@ -295,40 +317,78 @@ Value = markup
             }
             var candidate = Model;
             bool structural = false;
-            foreach (var edit in edits)
+            bool allSet = edits.Count > 1;
+            if (allSet)
             {
-                string next;
-                switch (edit.Operation)
+                for (int i = 0; i < edits.Count; i++)
                 {
-                    case "set":
-                        if (edit.Property == "image")
-                        {
-                            string relative = edit.Value == null ? null : Preview.AuthoringAssetPaths.Reference(Workspace.ProjectRoot, File.Path, edit.Value);
-                            next = candidate.SetAttribute(edit.Node, "src", relative);
-                        }
-                        else
-                        {
-                            next = SetSource(candidate, edit.Node, edit.Property, edit.Value);
-                        }
+                    if (edits[i].Operation != "set")
+                    {
+                        allSet = false;
                         break;
-                    case "insert":
-                        next = candidate.Insert(edit.Parent, edit.Value, edit.Index);
-                        break;
-                    case "remove":
-                        next = candidate.Remove(edit.Node);
-                        break;
-                    case "move":
-                        next = candidate.Move(edit.Node, edit.Parent, edit.Index);
-                        break;
-                    default:
-                        throw new InvalidOperationException("Unsupported authoring operation: " + edit.Operation);
+                    }
                 }
-                if (edit.Operation != "set" && edits.Count != 1)
+            }
+            bool appliedBatch = false;
+            if (allSet)
+            {
+                var batch = new SourceDocument.PropertyEdit[edits.Count];
+                for (int i = 0; i < edits.Count; i++)
                 {
-                    throw new InvalidOperationException("Structural commands require an individual transaction because node keys are revision-local.");
+                    var edit = edits[i];
+                    if (edit.Property == "image")
+                    {
+                        string relative = edit.Value == null ? null : Preview.AuthoringAssetPaths.Reference(Workspace.ProjectRoot, File.Path, edit.Value);
+                        batch[i] = new SourceDocument.PropertyEdit(edit.Node, "attr.src", relative);
+                    }
+                    else
+                    {
+                        batch[i] = new SourceDocument.PropertyEdit(edit.Node, edit.Property, edit.Value);
+                    }
                 }
-                structural |= edit.Operation != "set";
-                candidate = SourceDocument.Parse(next);
+                if (Model.TryApplyPropertyBatch(batch, out string spliced))
+                {
+                    candidate = spliced == Model.Text ? Model : SourceDocument.Parse(spliced);
+                    appliedBatch = true;
+                }
+            }
+            if (!appliedBatch)
+            {
+                foreach (var edit in edits)
+                {
+                    string next;
+                    switch (edit.Operation)
+                    {
+                        case "set":
+                            if (edit.Property == "image")
+                            {
+                                string relative = edit.Value == null ? null : Preview.AuthoringAssetPaths.Reference(Workspace.ProjectRoot, File.Path, edit.Value);
+                                next = candidate.SetAttribute(edit.Node, "src", relative);
+                            }
+                            else
+                            {
+                                next = SetSource(candidate, edit.Node, edit.Property, edit.Value);
+                            }
+                            break;
+                        case "insert":
+                            next = candidate.Insert(edit.Parent, edit.Value, edit.Index);
+                            break;
+                        case "remove":
+                            next = candidate.Remove(edit.Node);
+                            break;
+                        case "move":
+                            next = candidate.Move(edit.Node, edit.Parent, edit.Index);
+                            break;
+                        default:
+                            throw new InvalidOperationException("Unsupported authoring operation: " + edit.Operation);
+                    }
+                    if (edit.Operation != "set" && edits.Count != 1)
+                    {
+                        throw new InvalidOperationException("Structural commands require an individual transaction because node keys are revision-local.");
+                    }
+                    structural |= edit.Operation != "set";
+                    candidate = SourceDocument.Parse(next);
+                }
             }
             var nextIdentities = identities;
             if (structural)

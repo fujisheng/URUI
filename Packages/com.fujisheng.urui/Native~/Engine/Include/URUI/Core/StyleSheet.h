@@ -61,6 +61,19 @@ namespace URUI
         /// Returns the compiled element definition for a given element and its hierarchy.
         SharedPtr<const ElementDefinition> GetElementDefinition(const Element* element) const;
 
+        bool HasSiblingCombinator() const
+        {
+            return styled_node_index.has_sibling_combinator;
+        }
+        bool HasPseudoClass(const String& name) const
+        {
+            return styled_node_index.pseudo_classes_any.count(name) != 0;
+        }
+        bool HasNonSubjectPseudoClass(const String& name) const
+        {
+            return styled_node_index.pseudo_classes_non_subject.count(name) != 0;
+        }
+
         /// Returns a list of instanced decorators from the declarations. The instances are cached for faster future retrieval.
         const DecoratorPtrList& InstanceDecorators(RenderManager& render_manager,
                                                    const DecoratorDeclarationList& declaration_list,
@@ -95,6 +108,7 @@ namespace URUI
 
         // Map of all styled nodes, that is, they have one or more properties.
         StyleSheetIndex styled_node_index;
+        bool node_index_built = false;
 
         // Index of node sets to element definitions.
         using ElementDefinitionCache = UnorderedMap<StyleSheetIndex::NodeList, SharedPtr<const ElementDefinition>>;

@@ -1,4 +1,5 @@
 #include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <algorithm>
 #include <array>
@@ -8,7 +9,7 @@
 
 static double Misses(int nodes, int mode)
 {
-    assert(urui_create(128, 128) == 1);
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1);
     std::string html =
         "<!doctype html><html><head><style>body{margin:0;}div{position:absolute;left:0;top:0;width:4px;height:4px;}</style></head><body>";
     for (int n = 0; n < nodes; n++)
@@ -16,9 +17,9 @@ static double Misses(int nodes, int mode)
         html += "<div></div>";
     }
     html += "</body></html>";
-    LoadTestDocument(html.c_str(), "/hit-query.html");
-    urui_update();
-    auto* context = URUI::GetContext("urui");
+    LoadTestDocument(g_test_surface, html.c_str(), "/hit-query.html");
+    urui_surface_update(g_test_surface);
+    auto* context = URUI::GetContext(0);
     assert(context->AllowsNativeRecordingReuse());
     for (int n = 0; n < 8; n++)
     {
@@ -38,17 +39,17 @@ static double Misses(int nodes, int mode)
         time = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count() / 128;
     }
     std::sort(times.begin(), times.end());
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     return times[2];
 }
 static void Changes()
 {
-    assert(urui_create(128, 128) == 1);
-    auto owner = LoadTestDocument(
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1);
+    auto owner = LoadTestDocument(g_test_surface, 
         "<!doctype html><html><head><style>body{margin:0;}div{position:absolute;width:20px;height:20px;}</style></head><body><div id='a'></div><div id='b'></div></body></html>",
         "/hit-mutations.html");
-    urui_update();
-    auto* context = URUI::GetContext("urui");
+    urui_surface_update(g_test_surface);
+    auto* context = URUI::GetContext(0);
     auto* doc = context->GetDocument(0);
     auto* a = doc->GetElementById("a");
     auto* b = doc->GetElementById("b");
@@ -75,10 +76,10 @@ static void Changes()
     assert(context->GetElementAtPoint({5, 5}, nullptr, a) == a);
     assert(hit() == b);
     b->SetProperty("visibility", "hidden");
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(hit() == a);
     b->RemoveProperty("visibility");
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(hit() == b);
     auto* parent = b->GetParentNode();
     auto removed = parent->RemoveChild(b);
@@ -88,17 +89,17 @@ static void Changes()
     auto child = doc->CreateElement("div");
     auto* next = child.get();
     parent->AppendChild(std::move(child));
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(hit() == next);
     doc->Hide();
     assert(hit() != next);
     doc->Show();
-    urui_update();
+    urui_surface_update(g_test_surface);
     assert(hit() == next);
-    assert(urui_document_close(owner) == 1);
-    urui_update();
+    assert(urui_document_close(g_test_surface, owner) == 1);
+    urui_surface_update(g_test_surface);
     assert(hit() != next);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 class HitProbe : public URUI::Element
 {
@@ -115,21 +116,21 @@ public:
 int HitProbe::calls = 0;
 static void UnknownHit()
 {
-    assert(urui_create(128, 128) == 1);
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1);
     URUI::ElementInstancerGeneric<HitProbe> instancer;
     URUI::Factory::RegisterElementInstancer("urui-hit-probe", &instancer);
-    LoadTestDocument(
+    LoadTestDocument(g_test_surface, 
         "<!doctype html><html><head></head><body><urui-hit-probe id='probe'></urui-hit-probe></body></html>",
         "/opaque-hit.html");
-    urui_update();
-    auto* context = URUI::GetContext("urui");
+    urui_surface_update(g_test_surface);
+    auto* context = URUI::GetContext(0);
     auto* probe = context->GetDocument(0)->GetElementById("probe");
     HitProbe::calls = 0;
     assert(context->GetElementAtPoint({5, 5}) != probe);
     assert(context->GetElementAtPoint({5, 5}) == probe);
     assert(context->GetElementAtPoint({5, 5}) != probe);
     assert(HitProbe::calls == 3);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 int main(int argc, char** argv)
 {

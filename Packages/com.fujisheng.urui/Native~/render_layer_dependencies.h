@@ -5,6 +5,9 @@ struct LayerDependencyState
     Buffer<uint64_t> words;
     uint64_t version = 0;
     bool dynamic = false;
+    bool damageBlocked = false;
+    InkRegion damage;
+    std::array<float, 4> damageRect{};
     explicit LayerDependencyState(Budget* budget) : words(Allocator<uint64_t>(budget))
     {
     }
@@ -14,7 +17,9 @@ struct LayerDependencyState
     {
         words.clear();
         version = 0;
-        dynamic = false;
+        dynamic = damageBlocked = false;
+        damage = {};
+        damageRect = {};
     }
     void Add(uint64_t value)
     {
@@ -107,7 +112,7 @@ public:
     }
     uint64_t Version(LayerDependencyState& state)
     {
-        if (tombstones > entries.size())
+        if (tombstones >= table.size() / 4)
         {
             std::fill(table.begin(), table.end(), Empty);
             tombstones = 0;

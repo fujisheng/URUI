@@ -13,8 +13,8 @@ Shader "URUI.Effect/Stroke"
    #include "Packages/com.fujisheng.urui/Runtime/Resources/URUI/ElementPaint.cginc"
    struct input { float4 vertex:POSITION; float4 color:COLOR; };
    struct output { float4 vertex:SV_POSITION; float4 color:COLOR; float2 pixel:TEXCOORD0; };
-   output vert(input v) { output o; o.vertex=UnityObjectToClipPos(v.vertex); o.pixel=mul(unity_ObjectToWorld,v.vertex).xy; o.color=v.color; return o; }
-   float4 frag(output i):SV_Target { UruiClipPaint(i.pixel); i.color.a*=_UruiPaintOpacity; return i.color; }
+   output vert(input v) { output o; o.vertex=UnityObjectToClipPos(v.vertex); o.pixel=mul(unity_ObjectToWorld,v.vertex).xy; o.color=float4(v.color.rgb,v.color.a*_UruiPaintOpacity); return o; }
+   float4 frag(output i):SV_Target { UruiClipPaint(i.pixel); return i.color; }
    ENDCG
   }
  }

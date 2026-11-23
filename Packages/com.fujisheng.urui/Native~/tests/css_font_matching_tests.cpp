@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <cassert>
 #include <filesystem>
@@ -7,7 +9,7 @@
 
 int main(int argc, char** argv)
 {
-    assert(argc == 2 && urui_create(400, 200) == 1);
+    assert(argc == 2 && urui_surface_create(400, 200, &g_test_surface) == 1);
     const auto assets = (std::filesystem::path(__FILE__).parent_path() / "fixtures/fonts").string();
     const auto normal = URUI::Style::FontStyle::Normal;
     const auto weight = URUI::Style::FontWeight::Normal;
@@ -49,7 +51,7 @@ int main(int argc, char** argv)
         assert(reinterpret_cast<URUI::FontFaceHandleDefault*>(sans_handle)->GetGlyphs().count(codepoint));
         assert(reinterpret_cast<URUI::FontFaceHandleDefault*>(mono_handle)->GetGlyphs().count(codepoint));
         assert(sans_width != mono_width);
-        auto* context = URUI::GetContext("urui");
+        auto* context = URUI::GetContext(0);
         auto page = [&](const URUI::String& fallback)
         {
             return context->LoadDocumentFromMemory(
@@ -78,7 +80,7 @@ int main(int argc, char** argv)
         second->Close();
         context->Update();
         assert(glyph_width(first_handle) == sans_width);
-        urui_destroy();
+        urui_surface_destroy(g_test_surface);
         std::cout << "Document family-list glyph fallback and cache isolation passed\n";
         return 0;
     }
@@ -95,7 +97,7 @@ int main(int argc, char** argv)
     {
         assert(false);
     }
-    auto* context = URUI::GetContext("urui");
+    auto* context = URUI::GetContext(0);
     auto* doc = context->LoadDocumentFromMemory("<!doctype html><html><head><style>" + css +
                                                     "</style></head><body><div id='same'>iiiiWWWW</div></body></html>",
                                                 assets + "/font-matching.html");
@@ -113,6 +115,6 @@ int main(int argc, char** argv)
         context->Update();
         assert(measure(text->GetComputedValues().font_face_handle()) == a);
     }
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Document font " << mode << " contracts passed\n";
 }

@@ -34,6 +34,7 @@ namespace URUI.Controls
         bool searching;
         bool measuredMinimum;
         bool disposed;
+        URUI.Internal.Interop.NativeMethods.ElementRefreshStamp lastStableStamp;
         /// <summary>
         /// 保留作者尺寸与对齐的外层节点。
         /// </summary>
@@ -71,7 +72,11 @@ namespace URUI.Controls
             previousFont = content.Style.Get("font-size");
             previousPending = host.ClassListContains("text-fit-pending");
             // 脱离层级不销毁节点身份；池化重新挂载后仍由同一个适配器持有控制器。
-            detached = host.RegisterCallback<DetachFromDocumentEvent>(_ => initialized = false);
+            detached = host.RegisterCallback<DetachFromDocumentEvent>(_ =>
+            {
+                initialized = false;
+                lastStableStamp = default;
+            });
             attached = host.RegisterCallback<AttachToDocumentEvent>(_ =>
             {
                 if (!disposed)
@@ -93,6 +98,7 @@ namespace URUI.Controls
                 throw new ObjectDisposedException(nameof(TextFit));
             }
             initialized = false;
+            lastStableStamp = default;
             Fits = false;
             Host.AddToClassList("text-fit-pending");
         }
@@ -200,6 +206,11 @@ namespace URUI.Controls
             {
                 return;
             }
+            var hasStamp = document.TryGetRefreshStamp(out var currentStamp);
+            if (initialized && !searching && hasStamp && currentStamp.Matches(lastStableStamp))
+            {
+                return;
+            }
             var size = Host.ContentRect.size;
             if (size.x <= 0 || size.y <= 0)
             {
@@ -217,6 +228,7 @@ namespace URUI.Controls
             if (!initialized || lastSize != size || minimum != min || maximum != max || lastSignature != signature || lastFamily != family || lastWeight != weight)
             {
                 initialized = true;
+                lastStableStamp = default;
                 lastSize = size;
                 minimum = min;
                 maximum = max;
@@ -235,6 +247,10 @@ namespace URUI.Controls
             }
             if (!searching)
             {
+                if (hasStamp)
+                {
+                    lastStableStamp = currentStamp;
+                }
                 return;
             }
             var fits = Content.Layout.height <= size.y + .2f && Content.ScrollSize.x <= size.x + .2f;

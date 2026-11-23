@@ -10,7 +10,11 @@ namespace URUI.Controls
         readonly List<IDisposable> controllers = new List<IDisposable>();
         internal bool HasSkin => controllers.Count != 0;
         protected AuthoredControlSkin(ElementContext context) : base(context) { }
-        protected void Own(IDisposable controller) => controllers.Add(controller);
+        protected void Own(IDisposable controller)
+        {
+            controllers.Add(controller);
+            Document.InvalidateUpdateHooks();
+        }
         protected abstract void Bind(bool strict);
         protected virtual void RefreshSkin()
         {
@@ -48,6 +52,7 @@ namespace URUI.Controls
     internal sealed class AuthoredSliderSkin : AuthoredControlSkin
     {
         internal AuthoredSliderSkin(ElementContext context) : base(context) { }
+        internal override bool HasUpdateHook => !HasSkin;
         protected override void Bind(bool strict)
         {
             var children = Hierarchy.Children();
@@ -91,6 +96,7 @@ namespace URUI.Controls
     internal sealed class AuthoredDropdownSkin : AuthoredControlSkin
     {
         DropdownVisual visual;
+        URUI.Internal.Interop.NativeMethods.ElementRefreshStamp lastStamp;
         internal AuthoredDropdownSkin(ElementContext context) : base(context) { }
         protected override void Bind(bool strict)
         {
@@ -126,13 +132,22 @@ namespace URUI.Controls
             visual = new DropdownVisual(control, button, label, popup, option);
             Own(visual);
         }
-        protected override void RefreshSkin() => visual.Refresh();
+        protected override void RefreshSkin()
+        {
+            if (Document.TryGetRefreshStamp(out var stamp) && stamp.Matches(lastStamp))
+            {
+                return;
+            }
+            lastStamp = stamp;
+            visual.Refresh();
+        }
     }
 
     internal sealed class AuthoredScrollSkin : AuthoredControlSkin
     {
         readonly HashSet<Element> tracks = new HashSet<Element>();
         readonly List<ScrollbarVisual> visuals = new List<ScrollbarVisual>();
+        URUI.Internal.Interop.NativeMethods.ElementRefreshStamp lastStamp;
         internal AuthoredScrollSkin(ElementContext context) : base(context) { }
         internal bool OwnsTrack(Element track) => tracks.Contains(track);
         bool InThisFrame(Element element)
@@ -190,9 +205,14 @@ namespace URUI.Controls
         }
         protected override void RefreshSkin()
         {
-            foreach (var visual in visuals)
+            if (Document.TryGetRefreshStamp(out var stamp) && stamp.Matches(lastStamp))
             {
-                visual.Refresh();
+                return;
+            }
+            lastStamp = stamp;
+            for (int i = 0; i < visuals.Count; i++)
+            {
+                visuals[i].Refresh();
             }
         }
     }

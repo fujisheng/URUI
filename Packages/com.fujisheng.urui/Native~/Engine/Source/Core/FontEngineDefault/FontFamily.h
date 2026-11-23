@@ -39,6 +39,7 @@ namespace URUI
 
         /// Releases resources owned by sized font faces, including their textures and rendered glyphs.
         void ReleaseFontResources();
+        void ReleaseTextures(RenderManager& render_manager);
 
     protected:
         String name;

@@ -87,6 +87,7 @@ namespace URUI
         error = FT_Get_MM_Var(face, &var);
         if (error)
         {
+            FT_Done_Face(face);
             return true;
         }
 

@@ -85,17 +85,17 @@ namespace URUI::RenderPlan
         return (!geometry.index_count || geometry.indices) && end <= geometry.index_bytes &&
                geometry.index_count % 3 == 0;
     }
-    inline uint32_t ExternalIndex(const URUIPlanExternalGeometry& geometry, uint32_t index)
+    inline bool TryExternalIndex(const URUIPlanExternalGeometry& geometry, uint32_t index, uint32_t& out) noexcept
     {
         if (index >= geometry.index_count)
         {
-            throw std::out_of_range("external index range");
+            return false;
         }
         const uint64_t offset = (uint64_t(geometry.index_start) + index) * geometry.index_stride;
         if (!geometry.indices || (geometry.index_stride != 2 && geometry.index_stride != 4) ||
             offset + geometry.index_stride > geometry.index_bytes)
         {
-            throw std::invalid_argument("external index storage");
+            return false;
         }
         const auto* input = static_cast<const uint8_t*>(geometry.indices) + offset;
         uint32_t value = 0;
@@ -112,28 +112,35 @@ namespace URUI::RenderPlan
         const int64_t result = int64_t(value) + geometry.base_vertex;
         if (result < 0 || uint64_t(result) >= geometry.vertex_count)
         {
+            return false;
+        }
+        out = uint32_t(result);
+        return true;
+    }
+    inline uint32_t ExternalIndex(const URUIPlanExternalGeometry& geometry, uint32_t index)
+    {
+        uint32_t result = 0;
+        if (!TryExternalIndex(geometry, index, result))
+        {
             throw std::out_of_range("external vertex index");
         }
-        return uint32_t(result);
+        return result;
     }
-    inline bool ValidateExternalGeometry(const URUIPlanExternalGeometry& geometry)
+    inline bool ValidateExternalGeometry(const URUIPlanExternalGeometry& geometry) noexcept
     {
         if (!ValidateExternalLayout(geometry))
         {
             return false;
         }
-        try
+        uint32_t vertex = 0;
+        for (uint32_t n = 0; n < geometry.index_count; n++)
         {
-            for (uint32_t n = 0; n < geometry.index_count; n++)
+            if (!TryExternalIndex(geometry, n, vertex))
             {
-                ExternalIndex(geometry, n);
+                return false;
             }
-            return true;
         }
-        catch (const std::exception&)
-        {
-            return false;
-        }
+        return true;
     }
     inline const uint8_t* ExternalAttribute(const URUIPlanExternalGeometry& geometry,
                                             const URUIPlanAttribute& attribute, uint32_t vertex)

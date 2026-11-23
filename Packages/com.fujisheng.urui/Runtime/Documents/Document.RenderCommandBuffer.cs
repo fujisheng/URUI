@@ -6,7 +6,7 @@ namespace URUI.Documents
     {
         /// <summary>
         /// 当前帧 URUI 已录制的命令缓冲。为空表示文档未加载或宿主尚未就绪。
-        /// 仅在不持有需退役的 GPU 资源时可借用；可释放图片、图层及 Linear 标准颜色合成须使用 SubmitRendering。
+        /// 仅在不持有需退役的 GPU 资源时可借用；可释放图片及图层须使用 SubmitRendering。
         /// </summary>
         public CommandBuffer RenderCommandBuffer
         {

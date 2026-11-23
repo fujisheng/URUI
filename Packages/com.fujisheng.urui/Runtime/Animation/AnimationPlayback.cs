@@ -14,7 +14,9 @@ namespace URUI.Animation
         internal readonly AnimationController Owner;
         internal readonly Element Root;
         internal readonly string ActiveClass;
+        internal readonly string PrepareClass;
         readonly AnimationGroup group;
+        readonly string completionClass;
         readonly TaskCompletionSource<bool> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         readonly Dictionary<(Element, string), Tracks> observed = new();
         readonly List<IDisposable> subscriptions = new();
@@ -24,6 +26,7 @@ namespace URUI.Animation
         bool started;
         bool sealedGroup;
         int stableFrames;
+        int prepareTicksRemaining;
         bool restart;
         sealed class Tracks
         {
@@ -36,21 +39,35 @@ namespace URUI.Animation
         }
         public Task Finished => completion.Task;
         public bool IsPlaying => !completion.Task.IsCompleted;
-        internal AnimationPlayback(AnimationController owner, long identity, Element root, string activeClass, AnimationGroup group, bool restart)
+        internal bool HasCompletionClass => !string.IsNullOrEmpty(completionClass);
+        internal AnimationPlayback(AnimationController owner, long identity, Element root, string activeClass, AnimationGroup group, bool restart, string completionClass, string prepareClass = null)
         {
             Owner = owner;
             Identity = identity;
             Root = root;
             ActiveClass = activeClass;
+            PrepareClass = prepareClass;
             this.group = group;
             this.restart = restart;
+            this.completionClass = completionClass;
             subscriptions.Add(root.RegisterCallback<AnimationCreatedEvent>(Created));
             subscriptions.Add(root.RegisterCallback<AnimationEndEvent>(Ended));
         }
         internal void Start(CancellationToken token)
         {
             cancellation = token.Register(() => Owner.RequestCancel(this, token));
-            if (IsPlaying && !restart)
+            if (!IsPlaying)
+            {
+                return;
+            }
+            if (!string.IsNullOrEmpty(PrepareClass))
+            {
+                prepareTicksRemaining = 2;
+                restart = false;
+                Root.AddToClassList(PrepareClass);
+                return;
+            }
+            if (!restart)
             {
                 Begin();
             }
@@ -91,9 +108,24 @@ namespace URUI.Animation
             {
                 return;
             }
-            if (!Root.IsValid || !Root.IsAttached || !Root.IsVisibleInHierarchy)
+            if (!Root.IsValid || !Root.IsAttached || (prepareTicksRemaining == 0 && !Root.IsVisibleInHierarchy))
             {
                 Cancel();
+                return;
+            }
+            if (prepareTicksRemaining > 0)
+            {
+                if (--prepareTicksRemaining > 0)
+                {
+                    return;
+                }
+                Root.RemoveFromClassList(PrepareClass);
+                if (!Root.IsVisibleInHierarchy)
+                {
+                    Cancel();
+                    return;
+                }
+                Begin();
                 return;
             }
             if (restart)
@@ -165,6 +197,10 @@ namespace URUI.Animation
                     {
                         return;
                     }
+                }
+                if (HasCompletionClass && IsPlaying)
+                {
+                    Root.AddToClassList(completionClass);
                 }
                 Finish(null, false, default);
             }

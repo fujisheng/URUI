@@ -16,39 +16,6 @@ namespace URUI.Effect.Rendering
         static readonly string[] detailModes = { "none", "masking", "multiply", "additive", "replace", "multiply-additive", "subtractive" };
         static readonly string[] edgeModes = { "none", "plain", "shiny" };
         static readonly string[] patternAreas = { "all", "inner", "edge" };
-        internal static readonly StylePropertyDefinition[] Parameters = CreateParameters();
-        static StylePropertyDefinition[] CreateParameters()
-        {
-            var result = new List<StylePropertyDefinition>();
-            foreach (var name in new[] { "transition-filter", "transition-reverse", "transition-keep-aspect-ratio",
-                "transition-color-filter", "transition-color-glow", "transition-pattern-reverse", "detail-filter",
-                "edge-mode", "edge-color-filter", "edge-color-glow", "pattern-area" })
-            {
-                result.Add(new("--urui-fx-" + name, StyleValueType.Keyword));
-            }
-            foreach (var name in new[] { "transition-progress", "transition-width", "transition-softness", "transition-rotation",
-                "transition-range-min", "transition-range-max", "transition-auto-play-speed", "detail-intensity",
-                "detail-threshold-min", "detail-threshold-max", "edge-width", "edge-shiny-progress", "edge-shiny-width", "edge-shiny-auto-play-speed" })
-            {
-                result.Add(new("--urui-fx-" + name, StyleValueType.Number));
-            }
-            foreach (var group in new[] { "transition", "detail" })
-            {
-                result.Add(new("--urui-fx-" + group + "-texture", StyleValueType.Image));
-                foreach (var field in new[] { "scale", "offset", "speed" })
-                {
-                    foreach (var axis in new[] { "x", "y" })
-                    {
-                        result.Add(new("--urui-fx-" + group + "-texture-" + field + "-" + axis, StyleValueType.Number));
-                    }
-                }
-            }
-            foreach (var name in new[] { "transition-color", "detail-color", "edge-color" })
-            {
-                result.Add(new("--urui-fx-" + name, StyleValueType.Color));
-            }
-            return result.ToArray();
-        }
         static readonly Dictionary<string, string> names = new(StringComparer.Ordinal);
         static readonly Dictionary<string, (string X, string Y)> vectors = new(StringComparer.Ordinal);
         static string Name(string name)

@@ -121,6 +121,7 @@ namespace URUI
         /// Called by URUI when it wants to garbage collect memory used by fonts.
         /// @note All existing FontFaceHandles and FontEffectsHandles are considered invalid after this call.
         virtual void ReleaseFontResources();
+        virtual void ReleaseTextures(RenderManager& render_manager);
     };
 
 }

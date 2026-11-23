@@ -12,5 +12,8 @@ namespace URUI.Documents
                 return animations ??= new AnimationController(this);
             }
         }
+
+        internal bool CommitAnimationCompletionClasses()
+            => IsLoaded && !HasPendingInvalidation && animations?.CommitCompletionClasses() == true;
     }
 }

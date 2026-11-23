@@ -30,7 +30,7 @@ namespace URUI.Resources
             parentFingerprint = ownerFingerprint;
             nodeIndex = index;
         }
-        internal unsafe int Begin(ulong document, ulong root)
+        internal unsafe int Begin(ulong surface, ulong document, ulong root)
         {
             using var sample = beginMarker.Auto();
             if (data == null || data.Length == 0)
@@ -39,7 +39,7 @@ namespace URUI.Resources
             }
             fixed (byte* bytes = data)
             {
-                return NativeMethods.urui_element_begin_compiled_template(document, root, (IntPtr)bytes, data.Length);
+                return NativeMethods.urui_element_begin_compiled_template(surface, document, root, (IntPtr)bytes, data.Length);
             }
         }
     }

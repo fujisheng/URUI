@@ -26,11 +26,22 @@ namespace URUI
                                                       Vector<Diagnostic>* diagnostics)
     {
         resource_error.clear();
-        auto specification =
+        SharedPtr<PropertySpecification> specification =
             document ? document->GetStyleSpecificationStorage()
-                     : SharedPtr<PropertySpecification>(StyleSheetSpecification::GetPropertySpecification().Clone());
-        property_specifications.push_back(specification);
-        StyleSheetParser parser(specification.get(), diagnostics);
+                     : StyleSheetSpecification::GetSharedPropertySpecification();
+        StyleSheetParser parser(specification.get(), diagnostics,
+                                [&]() -> PropertySpecification&
+                                {
+                                    if (document)
+                                    {
+                                        specification = document->EnsureMutableStyleSpecificationStorage();
+                                    }
+                                    else
+                                    {
+                                        specification = SharedPtr<PropertySpecification>(specification->Clone());
+                                    }
+                                    return *specification;
+                                });
         bool result = parser.Parse(media_blocks, stream, begin_line_number,
                                    [&]
                                    {
@@ -52,6 +63,7 @@ namespace URUI
                                        }
                                        return true;
                                    });
+        property_specifications.push_back(std::move(specification));
         return result;
     }
 
@@ -249,6 +261,18 @@ namespace URUI
     StyleSheet* StyleSheetContainer::GetCompiledStyleSheet()
     {
         return compiled_style_sheet;
+    }
+
+    SharedPtr<StyleSheetContainer> StyleSheetContainer::CloneMediaShell() const
+    {
+        SharedPtr<StyleSheetContainer> clone = MakeShared<StyleSheetContainer>();
+        clone->property_specifications = property_specifications;
+        clone->media_blocks.reserve(media_blocks.size());
+        for (const MediaBlock& media_block : media_blocks)
+        {
+            clone->media_blocks.emplace_back(media_block.properties, media_block.stylesheet, media_block.modifier);
+        }
+        return clone;
     }
 
     SharedPtr<StyleSheetContainer>

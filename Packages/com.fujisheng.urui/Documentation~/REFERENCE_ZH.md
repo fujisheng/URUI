@@ -14,6 +14,8 @@
 // 用作者状态类启动命名组；一个根/状态由最新句柄拥有，生命周期不进入业务 VM。
 public sealed class AnimationController
 public AnimationPlayback Play(Element root, string activeClass, AnimationGroup animationNames, CancellationToken token = default);
+// 在结束帧绘制前切换到终态类，直到显式移除或再次播放。
+public AnimationPlayback Play(Element root, string activeClass, AnimationGroup animationNames, CancellationToken token, string completionClass);
 ```
 
 ### AnimationGroup
@@ -1776,6 +1778,8 @@ public bool SubmitRendering(UnityEngine.Rendering.ScriptableRenderContext contex
 public sealed class SurfaceInput
 // 是否使用 Unity 旧输入后端。关闭后仍可显式发送输入。
 public bool UseUnityInput { get; set; }
+// 以 Unity 屏幕坐标查询该点是否应由 UI 接管。可见模态文档覆盖整个 Surface，文档根与 body 空白允许场景输入。
+public bool BlocksPointer(Vector2 screenPosition);
 // 发送文档坐标指针输入；触摸编号必须非负，且在接触期间保持稳定。
 public void SendPointer(PointerPhase phase, Vector2 position, int pointerId = 0, bool isTouch = false, int button = 0, int pressedButtons = 0, Vector2 delta = default, InputModifiers modifiers = InputModifiers.None);
 // 发送键盘事件；文本字符使用 SendText，修饰键随本次事件提供。

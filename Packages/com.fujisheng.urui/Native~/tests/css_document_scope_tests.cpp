@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <cassert>
 #include <cmath>
@@ -31,9 +33,9 @@ static void Opacity(URUI::Element* element, float expected)
 }
 int main()
 {
-    assert(urui_create(400, 200) == 1);
-    assert(urui_set_ui_time(0) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
+    assert(urui_surface_set_ui_time(g_test_surface, 0) == 1);
+    auto* context = URUI::GetContext(0);
     auto* a = Load(*context, "ui/a.html", ".2", 50, ".4");
     auto* elementA = a->GetElementById("same");
     Opacity(elementA, .2f);
@@ -46,14 +48,14 @@ int main()
     a->SetClass("go", true);
     b->SetClass("go", true);
     context->Update();
-    assert(urui_set_ui_time(.5) == 1);
-    urui_update();
+    assert(urui_surface_set_ui_time(g_test_surface, .5) == 1);
+    urui_surface_update(g_test_surface);
     Opacity(elementA, .2f);
     Opacity(elementB, .45f);
     b->Close();
     context->Update();
-    assert(urui_set_ui_time(1.1) == 1);
-    urui_update();
+    assert(urui_surface_set_ui_time(g_test_surface, 1.1) == 1);
+    urui_surface_update(g_test_surface);
     Opacity(elementA, .2f);
     context->SetDimensions({640, 360});
     context->Update();
@@ -100,6 +102,6 @@ int main()
     fontB->Close();
     context->Update();
     assert(measure(fontA) == widthA);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Per-document CSS scope contracts passed\n";
 }

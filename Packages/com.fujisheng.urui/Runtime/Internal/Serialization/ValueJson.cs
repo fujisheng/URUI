@@ -59,13 +59,26 @@ namespace URUI.Internal.Serialization
                 String(text, value.ToString());
                 return;
             }
-            if (value is byte || value is sbyte || value is short || value is ushort || value is int || value is uint || value is long || value is ulong || value is float || value is double || value is decimal)
+            if (value is double d)
             {
-                double number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
-                if (double.IsNaN(number) || double.IsInfinity(number))
+                if (double.IsNaN(d) || double.IsInfinity(d))
                 {
                     throw new InvalidOperationException("JSON numbers must be finite.");
                 }
+                text.Append(d.ToString("G17", CultureInfo.InvariantCulture));
+                return;
+            }
+            if (value is float f)
+            {
+                if (float.IsNaN(f) || float.IsInfinity(f))
+                {
+                    throw new InvalidOperationException("JSON numbers must be finite.");
+                }
+                text.Append(f.ToString("G9", CultureInfo.InvariantCulture));
+                return;
+            }
+            if (value is byte || value is sbyte || value is short || value is ushort || value is int || value is uint || value is long || value is ulong || value is decimal)
+            {
                 text.Append(Convert.ToString(value, CultureInfo.InvariantCulture));
                 return;
             }

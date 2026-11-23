@@ -95,6 +95,7 @@ struct UiOutput
 UiOutput Vertex(UruiImageInput input)
 {
     UiOutput output;float4 baseState=UruiParameter(input.source.y,7);_UiRuntimeBase=baseState.z;_UiFieldBase=_UiRuntimeBase+16;
+    UruiUiLoadVertexRows();
     float4 runtime=UruiUiRuntime(1);_UiInputFlags=(int)runtime.w;
     int code=(int)floor(input.vertex.z/65536);float metadata=input.vertex.z-code*65536;int copy=code/3;
     UiVertex vertex;

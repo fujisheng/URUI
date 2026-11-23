@@ -64,13 +64,13 @@ namespace URUI.Editor.Authoring
             {
                 throw new InvalidOperationException("作者依赖 URL 不能为空或包含 NUL。");
             }
-            var required = NativeMethods.urui_resolve_resource_url(baseUrl, source, null, 0);
-            if (required <= 0)
+            var status = NativeMethods.urui_resolve_resource_url(baseUrl, source, null, 0, out var required);
+            if ((status != NativeStatus.BufferTooSmall && status != NativeStatus.Ok) || required <= 0)
             {
                 throw new InvalidOperationException("作者依赖 URL 无效或越出本地资源域：" + source);
             }
             var bytes = new byte[required];
-            if (NativeMethods.urui_resolve_resource_url(baseUrl, source, bytes, bytes.Length) != required)
+            if (NativeMethods.urui_resolve_resource_url(baseUrl, source, bytes, bytes.Length, out var actual) != NativeStatus.Ok || actual != required)
             {
                 throw new InvalidOperationException("作者依赖 URL 解析失败：" + source);
             }

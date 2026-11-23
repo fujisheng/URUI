@@ -17,6 +17,7 @@ namespace URUI.Internal.Hosting
         BorrowedTextureRegistry.SubmissionPins legacyImagePins = ImagePinRetirement.RentPins();
         readonly List<ImageSubmissionFence> imageSubmissions = new List<ImageSubmissionFence>();
         readonly ImageSubmissionBudget submissionBudget = new();
+
         ImageSubmissionFence ReserveImageSubmission()
         {
             submissionBudget.Reserve();
@@ -39,8 +40,10 @@ namespace URUI.Internal.Hosting
                 throw;
             }
         }
+
         readonly Stack<ImageSubmissionFence> idleImageSubmissions = new();
         Action<ImageSubmissionFence> returnImageSubmission;
+
         void ReturnImageSubmission(ImageSubmissionFence submission)
         {
             if (this && !resourcesReleased && idleImageSubmissions.Count < 8)
@@ -52,6 +55,7 @@ namespace URUI.Internal.Hosting
                 submission.DisposeBarrier();
             }
         }
+
         void ReleaseSubmissionPool()
         {
             while (idleImageSubmissions.Count > 0)
@@ -59,31 +63,33 @@ namespace URUI.Internal.Hosting
                 idleImageSubmissions.Pop().DisposeBarrier();
             }
         }
+
         CommandBuffer contextValidationBuffer;
         bool externalBufferExposed;
+        bool submissionImmediate;
+        bool recordingForContext;
         bool hasOwnedImages;
         bool imageSubmissionFaulted;
 
         void StartImageResolver()
         {
-            if (NativeMethods.urui_image_resolver_version() != 2
-                || NativeMethods.urui_set_image_resolver(imageResolveCallback, imageReleaseCallback) != 1)
+            if (NativeMethods.urui_image_resolver_version() != NativeMethods.ExpectedImageResolverVersion
+                || NativeMethods.urui_surface_set_image_resolver(SurfaceHandle, imageResolveCallback, imageReleaseCallback) != NativeStatus.Ok)
             {
-                throw new InvalidOperationException("URUI 按需图片需要原生 ImageResolver2 协议。");
+                throw new InvalidOperationException($"URUI 按需图片需要原生 ImageResolver v{NativeMethods.ExpectedImageResolverVersion} 协议。");
             }
         }
 
         [AOT.MonoPInvokeCallback(typeof(NativeMethods.ImageResolveCallback))]
-        static int ResolveImage(ulong documentHandle, IntPtr source, out ulong resource, out ulong sourceIdentity, out int width, out int height)
+        static int ResolveImage(ulong surface, ulong documentHandle, IntPtr source, out ulong resource, out ulong sourceIdentity, out int width, out int height)
         {
             resource = sourceIdentity = 0;
             width = height = 0;
-            var host = ActiveHost;
-            if (!host)
+            if (!TryGetHost(surface, out var host))
             {
                 return 0;
             }
-            var owner = URUI.Hosting.Surface.FindDocument(documentHandle);
+            var owner = URUI.Hosting.Surface.FindDocument(surface, documentHandle);
             var resolver = owner ? owner.ResolverFor(documentHandle) : null;
             if (resolver == null)
             {
@@ -98,25 +104,35 @@ namespace URUI.Internal.Hosting
                 {
                     return 0;
                 }
-                if (lease.HasRelease && !SystemInfo.supportsGraphicsFence && SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null)
+                var ownsImage = lease.HasRelease;
+                if (ownsImage && !SystemInfo.supportsGraphicsFence && SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null)
                 {
                     throw new NotSupportedException("可释放图片需要 GPU fence；此设备请返回始终由调用者持有的借用图片。");
                 }
-                if (lease.HasRelease && host.externalBufferExposed)
+                if (ownsImage && host.externalBufferExposed)
                 {
                     throw new InvalidOperationException("已借出无法追踪提交的 RenderCommandBuffer，不能接纳可释放图片；请先重载并使用 SubmitRendering。");
                 }
-                var id = host.borrowedTextures.RegisterResolved(lease);
-                if (lease.HasRelease)
+                var texture = lease.Texture;
+                var id = host.borrowedTextures.RegisterResolved(lease, out var identity);
+                lease = null;
+                try
+                {
+                    host.resolvedImageOwners.Add(id, owner);
+                }
+                catch
+                {
+                    host.borrowedTextures.ReleaseResolved(id);
+                    throw;
+                }
+                if (ownsImage)
                 {
                     host.hasOwnedImages = true;
                 }
-                sourceIdentity = host.borrowedTextures.SourceIdentity(lease.Texture);
-                host.resolvedImageOwners.Add(id, owner);
                 resource = id;
-                width = lease.Texture.width;
-                height = lease.Texture.height;
-                lease = null;
+                sourceIdentity = identity;
+                width = texture.width;
+                height = texture.height;
                 return 1;
             }
             catch (Exception error)
@@ -139,13 +155,13 @@ namespace URUI.Internal.Hosting
         }
 
         [AOT.MonoPInvokeCallback(typeof(NativeMethods.ImageReleaseCallback))]
-        static void ReleaseImage(ulong resource)
+        static void ReleaseImage(ulong surface, ulong resource)
         {
-            var host = ActiveHost;
-            if (!host)
+            if (!TryGetHostIncludingDestroyed(surface, out var host))
             {
                 return;
             }
+            host.hasReleasedResolvedImages = true;
             host.resolvedImageOwners.Remove(resource, out var owner);
             owner?.BeginImageCallback();
             try
@@ -167,6 +183,12 @@ namespace URUI.Internal.Hosting
             legacyImagePins = ImagePinRetirement.Retire(legacyImagePins, imageSubmissions);
         }
 
+        internal void CollectPendingRetirements()
+        {
+            ImagePinRetirement.Collect();
+            CollectImageSubmissions();
+        }
+
         internal void ReleaseCachedImage(ulong owner, string source)
         {
             if (!active)
@@ -181,32 +203,116 @@ namespace URUI.Internal.Hosting
             // 先撤销未来可能再次提交的旧命令，再用原有 fence 保护已提交的纹理。
             RequireRecordingReady();
             RetireLegacyImages();
-            if (NativeMethods.urui_document_release_image(owner, source) < 0)
+            if (NativeMethods.urui_document_release_image(SurfaceHandle, owner, source) < 0)
             {
-                throw new InvalidOperationException("图片缓存释放失败：" + NativeMethods.LastError());
+                throw new InvalidOperationException("图片缓存释放失败：" + NativeMethods.LastError(SurfaceHandle));
             }
         }
 
         internal void RetirePaintResources(List<IDisposable> resources)
-            => RetirePaintResources(resources, null);
+            => RetirePaintResources(resources, null, tearingDown: false);
 
         internal void RetirePaintResource(IDisposable resource)
-            => RetirePaintResources(null, resource);
+            => RetirePaintResources(null, resource, tearingDown: false);
 
-        void RetirePaintResources(List<IDisposable> resources, IDisposable resource)
+        void RetirePaintResources(List<IDisposable> resources, IDisposable resource, bool tearingDown = false)
         {
             if (imageSubmissionFaulted)
             {
+                if (tearingDown)
+                {
+                    return;
+                }
                 throw new InvalidOperationException("绘制提交尚未安全结束，保留外部绘制资源。");
             }
             InvalidateRecording(true);
-            RequireRecordingReady();
+            if (!tearingDown)
+            {
+                RequireRecordingReady();
+            }
             legacyImagePins = ImagePinRetirement.Retire(legacyImagePins, imageSubmissions, resources, resource);
         }
 
         // UI 与 fence 在同一 SRP 上下文排队；管线须在当前渲染回调结束前 Submit。
         internal bool SubmitRendering(ScriptableRenderContext context, RenderTargetIdentifier target, Rect viewport, URUI.Rendering.RenderTargetInfo targetInfo = default)
             => SubmitCommands(context, target, viewport, false, targetInfo);
+
+        // Unity 6 RenderGraph 路径：直接向 UnsafePass 提供的 CommandBuffer 录制当前帧 UI 与 GPU fence。
+        internal bool SubmitRendering(CommandBuffer commandBuffer, RenderTargetIdentifier target, Rect viewport, URUI.Rendering.RenderTargetInfo targetInfo = default)
+        {
+            if (commandBuffer == null)
+            {
+                throw new ArgumentNullException(nameof(commandBuffer));
+            }
+            if (!active || buffer == null || !RestoreSceneCamera())
+            {
+                return false;
+            }
+            RequireRecordingReady();
+            var savedBuffer = buffer;
+            directSubmissionBuffer = commandBuffer;
+            submissionTarget = target;
+            submissionViewport = viewport;
+            submissionTargetInfo = targetInfo;
+            submissionImmediate = false;
+            ImageSubmissionFence submission = null;
+            try
+            {
+                InvalidateRecording(true);
+                SynchronizeLayoutStateForSubmission();
+                var phase = default(PhaseFrame);
+                recordingForContext = true;
+                try
+                {
+                    if (!DrawFrame(ref phase))
+                    {
+                        return false;
+                    }
+                }
+                finally
+                {
+                    recordingForContext = false;
+                }
+                ImagePinRetirement.Collect();
+                CollectImageSubmissions();
+                if (planResources?.HasRecordingGeometry == true || parameterPages?.Current != null || hasOwnedImages || HasLayerResources || (OwnerSurface && (OwnerSurface.HasPainters || OwnerSurface.HasEffects)))
+                {
+                    if (imageSubmissionFaulted)
+                    {
+                        throw new InvalidOperationException("URUI 图片提交状态不确定，Surface 保留相关资源并拒绝继续提交。");
+                    }
+                    if (!SystemInfo.supportsGraphicsFence && SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null)
+                    {
+                        throw new NotSupportedException("可释放图片的 SRP 提交需要 GPU fence。");
+                    }
+                    submission = ReserveImageSubmission();
+                    submission.pins.Acquire(borrowedTextures);
+                    submission.PinParameters(parameterPages?.Current);
+                    PinLayerWrites(submission);
+                    planResources?.PinSubmission(submission.Geometry, submission.GeometrySet);
+                    externalGeometryInputs?.Programs.PinSubmission(submission.Programs, submission.ProgramSet);
+                    submission.fence = commandBuffer.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.PixelProcessing);
+                }
+                NotifyEffectSubmission();
+                return true;
+            }
+            catch
+            {
+                if (submission != null)
+                {
+                    submission.uncertain = true;
+                    imageSubmissionFaulted = true;
+                }
+                throw;
+            }
+            finally
+            {
+                directSubmissionBuffer = null;
+                buffer = savedBuffer;
+                // RenderGraph command buffer is transient; force next non-RG submission to re-record into mainBuffers.
+                InvalidateRecording(true);
+            }
+        }
 
 #if UNITY_EDITOR
         internal bool SubmitPreview(RenderTexture target)
@@ -233,7 +339,7 @@ namespace URUI.Internal.Hosting
                 context.ExecuteCommandBuffer(contextValidationBuffer);
             }
             RequireRecordingReady();
-            if (geometryRecordingPending || colorPassGroups != 0 || !submissionTarget.HasValue || !submissionTarget.Value.Equals(target) || submissionViewport != viewport || !submissionTargetInfo.Equals(targetInfo) || submissionImmediate != immediate)
+            if (geometryRecordingPending || hasPartialLayerWrites || !submissionTarget.HasValue || !submissionTarget.Value.Equals(target) || submissionViewport != viewport || !submissionTargetInfo.Equals(targetInfo) || submissionImmediate != immediate)
             {
                 // SRP 的中间颜色目标与 CameraTarget 可以不同；目标变化必须同步重录，不能漏掉首帧。
                 submissionTarget = target;
@@ -242,7 +348,7 @@ namespace URUI.Internal.Hosting
                 submissionImmediate = immediate;
                 InvalidateRecording(true);
                 // SRP 首次绘制可能早于正常 LateUpdate，绘制器读取几何前先发布布局。
-                SynchronizeLayoutState();
+                SynchronizeLayoutStateForSubmission();
                 var phase = default(PhaseFrame);
                 recordingForContext = !immediate;
                 try
@@ -282,17 +388,17 @@ namespace URUI.Internal.Hosting
                     submission.pins.Acquire(borrowedTextures);
                     submission.PinParameters(parameterPages?.Current);
                     PinLayerWrites(submission);
-                    planResources?.PinSubmission(submission.Geometry);
-                    externalGeometryInputs?.Programs.PinSubmission(submission.Programs);
+                    planResources?.PinSubmission(submission.Geometry, submission.GeometrySet);
+                    externalGeometryInputs?.Programs.PinSubmission(submission.Programs, submission.ProgramSet);
                     submission.barrier ??= new CommandBuffer { name = "URUI SRP submitted image lease fence" };
                     submission.barrier.Clear();
                     submission.fence = submission.barrier.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.PixelProcessing);
                 }
                 if (immediate)
                 {
-                    foreach (var commands in recordedBuffers)
+                    for (var i = 0; i < recordedBuffers.Count; i++)
                     {
-                        Graphics.ExecuteCommandBuffer(commands);
+                        Graphics.ExecuteCommandBuffer(recordedBuffers[i]);
                     }
                     if (submission != null)
                     {
@@ -301,12 +407,16 @@ namespace URUI.Internal.Hosting
                 }
                 else
                 {
-                    foreach (var commands in recordedBuffers)
+                    var isCameraTarget = SubmissionOutput.Equals(BuiltinRenderTextureType.CameraTarget);
+                    for (var i = 0; i < recordedBuffers.Count; i++)
                     {
-                        // 外部缓冲可以切换离屏附件。先重新发布宿主相机，避免下一个
-                        // 缓冲把上个缓冲的离屏目标当作 CameraTarget；不强制 Submit。
-                        context.SetupCameraProperties(targetCamera);
-                        context.ExecuteCommandBuffer(commands);
+                        // Only re-publish host camera properties when writing directly to CameraTarget
+                        // or after an offscreen external surface buffer may have changed camera bindings.
+                        if ((i == 0 && isCameraTarget) || (i > 0 && hasExternalSurfaceWrites))
+                        {
+                            context.SetupCameraProperties(targetCamera);
+                        }
+                        context.ExecuteCommandBuffer(recordedBuffers[i]);
                     }
                     if (submission != null)
                     {
@@ -352,7 +462,7 @@ namespace URUI.Internal.Hosting
                     continue;
                 }
                 imageSubmissions.RemoveAt(i);
-                item.Release();
+                item.Release(completed: true);
                 if (i > imageSubmissions.Count)
                 {
                     i = imageSubmissions.Count;

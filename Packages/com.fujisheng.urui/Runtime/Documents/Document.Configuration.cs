@@ -63,14 +63,15 @@ namespace URUI.Documents
             {
                 throw new InvalidOperationException("请先加载文档。");
             }
-            var result = NativeMethods.urui_document_preload_image(NativeHandle, source, out var width, out var height);
+            var surfaceHandle = SurfaceHandle;
+            var result = NativeMethods.urui_document_preload_image(surfaceHandle, NativeHandle, source, out var width, out var height);
             dimensions = new Vector2Int(width, height);
             FinishNativeCall();
             if (result < 0)
             {
-                throw new InvalidOperationException("URUI 图片预加载被拒绝：" + NativeMethods.LastError());
+                throw new InvalidOperationException("URUI 图片预加载被拒绝：" + NativeMethods.LastError(surfaceHandle));
             }
-            return result == 1;
+            return result == NativeStatus.Ok;
         }
         /// <summary>
         /// 下次加载使用的外置资源；数组使用副本；注册同步借用 TextAsset 原始数据，可包含字体字节。
@@ -212,6 +213,10 @@ namespace URUI.Documents
         void ValidateImages()
         {
             images = images ?? Array.Empty<ImageAsset>();
+            if (images.Length == 0)
+            {
+                return;
+            }
             var names = new HashSet<string>(StringComparer.Ordinal);
             var spriteNames = new HashSet<string>(StringComparer.Ordinal);
             foreach (var image in images)
@@ -223,14 +228,16 @@ namespace URUI.Documents
                 }
 
                 BorrowedTextureRegistry.ValidateTexture(image.Texture);
-                foreach (var sprite in image.Sprites)
+                var width = image.Texture.width;
+                var height = image.Texture.height;
+                foreach (var sprite in image.SpriteSpan)
                 {
                     RequireName(sprite.Name, nameof(Images));
                     var rect = sprite.Region;
                     if (!spriteNames.Add(sprite.Name) || !float.IsFinite(rect.x) || !float.IsFinite(rect.y) ||
                         !float.IsFinite(rect.width) || !float.IsFinite(rect.height) || rect.x < 0 || rect.y < 0 ||
-                        rect.width <= 0 || rect.height <= 0 || (double)rect.x + rect.width > image.Texture.width ||
-                        (double)rect.y + rect.height > image.Texture.height || !float.IsFinite(sprite.DisplayScale) || sprite.DisplayScale <= 0 ||
+                        rect.width <= 0 || rect.height <= 0 || (double)rect.x + rect.width > width ||
+                        (double)rect.y + rect.height > height || !float.IsFinite(sprite.DisplayScale) || sprite.DisplayScale <= 0 ||
                         (double)rect.width * sprite.DisplayScale > float.MaxValue || (double)rect.height * sprite.DisplayScale > float.MaxValue)
                     {
                         throw new ArgumentException("图集区域名称重复、源像素越界或显示比例无效：" + sprite.Name, nameof(Images));

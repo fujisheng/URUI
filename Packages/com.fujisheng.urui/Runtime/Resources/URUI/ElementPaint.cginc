@@ -6,10 +6,7 @@ void UruiClipPaint(float2 pixel)
 {
     if (_UruiClipEnabled > 0.5)
     {
-        clip(pixel.x - _UruiClipRect.x);
-        clip(pixel.y - _UruiClipRect.y);
-        clip(_UruiClipRect.z - pixel.x);
-        clip(_UruiClipRect.w - pixel.y);
+        clip(float4(pixel - _UruiClipRect.xy, _UruiClipRect.zw - pixel));
     }
 }
 #endif

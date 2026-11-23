@@ -19,6 +19,8 @@ namespace URUI.Documents
         TextAsset source;
         [SerializeField]
         CompiledDocumentAsset compiledSource;
+        internal TextAsset SerializedSource => source;
+        internal CompiledDocumentAsset SerializedCompiledSource => compiledSource;
         [SerializeField]
         ImageAsset[] images = Array.Empty<ImageAsset>();
         [SerializeField]
@@ -43,6 +45,8 @@ namespace URUI.Documents
         {
             unityThread = Thread.CurrentThread.ManagedThreadId;
         }
+
+        internal ulong SurfaceHandle => host && host.Ready ? host.SurfaceHandle : 0;
 
         /// <summary>
         /// 文档已同步完成加载，可以查询元素。
@@ -90,5 +94,16 @@ namespace URUI.Documents
         }
         Action<Document> layoutUpdated;
         Delegate[] layoutCallbacks;
+
+        internal bool TryGetRefreshStamp(out URUI.Internal.Interop.NativeMethods.ElementRefreshStamp stamp)
+        {
+            var surfaceHandle = SurfaceHandle;
+            if (surfaceHandle == 0 || URUI.Internal.Interop.NativeMethods.urui_element_refresh_stamp(surfaceHandle, out stamp) != URUI.Internal.Interop.NativeStatus.Ok)
+            {
+                stamp = default;
+                return false;
+            }
+            return stamp.Reusable;
+        }
     }
 }

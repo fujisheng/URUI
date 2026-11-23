@@ -129,12 +129,12 @@ namespace URUI.Resources
             }
         }
 
-        internal unsafe int Load(ulong owner)
+        internal unsafe int Load(ulong surface, ulong owner)
         {
             Validate(true);
             fixed (byte* bytes = data)
             {
-                return NativeMethods.urui_document_load_compiled(owner, (IntPtr)bytes, data.Length);
+                return NativeMethods.urui_document_load_compiled(surface, owner, (IntPtr)bytes, data.Length);
             }
         }
     }

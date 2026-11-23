@@ -57,11 +57,12 @@ namespace URUI
         {
             bool success = true;
             int height = 1;
+            int first_unplaced_index = 0;
 
             while (num_placed_rectangles != unplaced_rectangles)
             {
                 TextureLayoutRow row;
-                int row_size = row.Generate(layout, dimensions.x, height);
+                int row_size = row.Generate(layout, dimensions.x, height, &first_unplaced_index);
                 if (row_size == 0)
                 {
                     success = false;

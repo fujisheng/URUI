@@ -20,13 +20,15 @@ namespace URUI
         PlainPropertiesIterator(const PropertyMap& inline_properties, const PropertyMap* definition_properties,
                                 const PropertyMap* animations = nullptr, const PropertyMap* transitions = nullptr,
                                 const PropertyMap* hints = nullptr)
-            : maps{&inline_properties, definition_properties, animations, transitions, hints}
         {
+            const PropertyMap* candidates[5] = {&inline_properties, definition_properties, animations, transitions, hints};
             for (unsigned i = 0; i < 5; ++i)
             {
-                if (maps[i])
+                if (candidates[i] && !candidates[i]->empty())
                 {
-                    iterators[i] = maps[i]->begin();
+                    maps[map_count] = candidates[i];
+                    iterators[map_count] = candidates[i]->begin();
+                    ++map_count;
                 }
             }
             Proceed();
@@ -41,33 +43,34 @@ namespace URUI
         {
             const auto& entry = *iterators[phase];
             const Property* winner = &entry.second;
-            for (const auto* map : maps)
+            for (unsigned i = phase + 1; i < map_count; ++i)
             {
-                if (map)
+                const auto candidate = maps[i]->find(entry.first);
+                if (candidate != maps[i]->end() && winner->priority < candidate->second.priority)
                 {
-                    const auto candidate = map->find(entry.first);
-                    if (candidate != map->end() && winner->priority < candidate->second.priority)
-                    {
-                        winner = &candidate->second;
-                    }
+                    winner = &candidate->second;
                 }
             }
             return {entry.first, *winner};
         }
         bool AtEnd() const
         {
-            return phase == 5;
+            return phase == map_count;
         }
 
     private:
         void Proceed()
         {
-            for (; phase < 5; ++phase)
+            if (map_count <= 1)
             {
-                if (!maps[phase])
+                if (phase < map_count && iterators[phase] == maps[phase]->end())
                 {
-                    continue;
+                    phase = map_count;
                 }
+                return;
+            }
+            for (; phase < map_count; ++phase)
+            {
                 for (; iterators[phase] != maps[phase]->end(); ++iterators[phase])
                 {
                     const auto id = iterators[phase]->first;
@@ -81,6 +84,7 @@ namespace URUI
         }
         const PropertyMap* maps[5];
         PropertyIt iterators[5];
+        unsigned map_count = 0;
         unsigned phase = 0;
         PropertyIdSet visited;
     };

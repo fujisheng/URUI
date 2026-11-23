@@ -114,6 +114,12 @@ namespace URUI
 
     Vector2f FlexFormattingContext::GetMaxContentSize(Element* element)
     {
+        Vector2f cached_size;
+        if (LayoutDetails::LookupCachedMaxContentSize(element, cached_size))
+        {
+            return cached_size;
+        }
+
         // A large but finite number is used here, since layouting doesn't always work well with infinities.
         const Vector2f infinity(10000.0f, 10000.0f);
         RootBox root(infinity);
@@ -132,6 +138,7 @@ namespace URUI
         Vector2f scrollable_content_size;
         float flex_baseline = 0.f;
         context.Format(flex_resulting_content_size, visible_overflow_size, scrollable_content_size, flex_baseline);
+        LayoutDetails::StoreCachedMaxContentSize(element, flex_resulting_content_size);
         return flex_resulting_content_size;
     }
 
@@ -198,6 +205,9 @@ namespace URUI
         float cross_offset;
         // Only used for baseline cross alignment
         float cross_baseline_top;
+        // Reusable layout from Pass 3 for leaf/#text-only block items when final size matches.
+        UniquePtr<LayoutBox> cached_cross_layout_box;
+        Vector2f cached_cross_box_size{-1.f, -1.f};
     };
 
     struct FlexLine
@@ -385,6 +395,8 @@ namespace URUI
 
             const float sum_padding_border = item.main.sum_edges - (item.main.margin_a + item.main.margin_b);
 
+            bool column_probed = false;
+            float column_probe_width = -1.f;
             // Find the flex base size (possibly negative when using border box sizing)
             if (computed.flex_basis().type != Style::FlexBasis::Auto)
             {
@@ -427,6 +439,11 @@ namespace URUI
                                                      (format_box.GetSize().x >= 0 ? &format_box : nullptr),
                                                      FormattingContextType::Block);
                 item.inner_flex_base_size = element->GetBox().GetSize().y;
+                if (format_box.GetSize().x >= 0.f)
+                {
+                    column_probed = true;
+                    column_probe_width = format_box.GetSize().x;
+                }
             }
 
             const bool auto_minimum = main_axis_horizontal ? computed.min_width().type == Style::MinWidth::Auto
@@ -440,11 +457,19 @@ namespace URUI
                 }
                 else
                 {
-                    Box probe = item.box;
-                    probe.SetContent({Math::Max(0.f, flex_available_content_size.x - item.cross.sum_edges), -1.f});
-                    FormattingContext::FormatIndependent(flex_container_box, element, &probe,
-                                                         FormattingContextType::Block);
-                    content_minimum = element->GetBox().GetSize().y;
+                    const float probe_width = Math::Max(0.f, flex_available_content_size.x - item.cross.sum_edges);
+                    if (column_probed && column_probe_width == probe_width)
+                    {
+                        content_minimum = item.inner_flex_base_size;
+                    }
+                    else
+                    {
+                        Box probe = item.box;
+                        probe.SetContent({probe_width, -1.f});
+                        FormattingContext::FormatIndependent(flex_container_box, element, &probe,
+                                                             FormattingContextType::Block);
+                        content_minimum = element->GetBox().GetSize().y;
+                    }
                 }
                 if (!item.main.auto_size)
                 {
@@ -493,7 +518,8 @@ namespace URUI
                     // Break into new line.
                     container.lines.emplace_back(std::move(line_items));
                     cursor = item.hypothetical_main_size;
-                    line_items = {std::move(item)};
+                    line_items.clear();
+                    line_items.push_back(std::move(item));
                 }
                 else
                 {
@@ -852,9 +878,30 @@ namespace URUI
                     if (content_size.y < 0.0f)
                     {
                         item.box.SetContent(Vector2f(GetInnerUsedMainSize(item), content_size.y));
-                        FormattingContext::FormatIndependent(flex_container_box, item.element, &item.box,
-                                                             FormattingContextType::Block);
-                        item.hypothetical_cross_size = item.element->GetBox().GetSize().y + item.cross.sum_edges;
+                        UniquePtr<LayoutBox> cross_layout = FormattingContext::FormatIndependent(
+                            flex_container_box, item.element, &item.box, FormattingContextType::Block);
+                        const Vector2f formatted_size = item.element->GetBox().GetSize();
+                        item.hypothetical_cross_size = formatted_size.y + item.cross.sum_edges;
+                        const ComputedValues& item_computed = item.element->GetComputedValues();
+                        if (cross_layout && cross_layout->GetType() == LayoutBox::Type::BlockContainer &&
+                            !LayoutDetails::IsScrollContainer(item_computed.overflow_x(), item_computed.overflow_y()))
+                        {
+                            bool text_or_leaf_only = true;
+                            const int num_children = item.element->GetNumChildren(true);
+                            for (int child_i = 0; child_i < num_children; ++child_i)
+                            {
+                                if (item.element->GetChild(child_i)->GetTagName() != "#text")
+                                {
+                                    text_or_leaf_only = false;
+                                    break;
+                                }
+                            }
+                            if (text_or_leaf_only)
+                            {
+                                item.cached_cross_layout_box = std::move(cross_layout);
+                                item.cached_cross_box_size = formatted_size;
+                            }
+                        }
                     }
                     else
                     {
@@ -1157,8 +1204,17 @@ namespace URUI
 
                 item.box.SetContent(item_size);
 
-                UniquePtr<LayoutBox> item_layout_box = FormattingContext::FormatIndependent(
-                    flex_container_box, item.element, &item.box, FormattingContextType::Block);
+                UniquePtr<LayoutBox> item_layout_box;
+                if (item.cached_cross_layout_box && item.cached_cross_box_size == item_size)
+                {
+                    item_layout_box = std::move(item.cached_cross_layout_box);
+                }
+                else
+                {
+                    item.cached_cross_layout_box.reset();
+                    item_layout_box = FormattingContext::FormatIndependent(
+                        flex_container_box, item.element, &item.box, FormattingContextType::Block);
+                }
 
                 // Set the position of the element within the flex container
                 item.element->SetOffset(flex_content_offset + item_offset, element_flex);

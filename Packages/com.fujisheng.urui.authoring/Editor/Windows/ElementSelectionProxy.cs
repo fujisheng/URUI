@@ -19,13 +19,9 @@ namespace URUI.Authoring.Windows
         [NonSerialized]
         LiveSession live;
         [NonSerialized]
-        string sourceKey;
-        [NonSerialized]
         string sourcePath;
         [NonSerialized]
         string sourceIdentity;
-        [NonSerialized]
-        long structureRevision;
         public bool IsLive => live != null;
         public bool IsObserved => AuthoringEnvironment.HasObservers;
         public string SessionId => IsLive ? live.Id : AuthoringEnvironment.Author.Id;
@@ -61,10 +57,8 @@ namespace URUI.Authoring.Windows
             }
             var proxy = CreateInstance<ElementSelectionProxy>();
             proxy.hideFlags = HideFlags.HideAndDontSave;
-            proxy.sourceKey = key;
             proxy.sourceIdentity = author.NodeIdentity(key);
             proxy.sourcePath = author.File.Path;
-            proxy.structureRevision = author.StructureRevision;
             proxy.name = author.Model.Find(key).Tag;
             proxies[id] = proxy;
             return proxy;

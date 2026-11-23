@@ -83,18 +83,49 @@ namespace URUI.Effect.Rendering
                     EffectObjectLifetime.Destroy(texture);
                     texture = null;
                     data = null;
+                    dirtyRowScratch = null;
                     free.Clear();
                     dirty = false;
+                    dirtyRowMin = int.MaxValue;
+                    dirtyRowMax = -1;
                 }
             }
         }
+        const int TextureWidth = 256;
+        static readonly int[] mirrorOrder = { 0, 1, 2, 0, 2, 3 };
         static readonly Dictionary<(SourceGeometry, ShadowMode, int), Alias> entries = new();
         static readonly Dictionary<(ulong, ShadowMode, int), List<Entry>> shared = new();
         static readonly List<(int Offset, int Length)> free = new();
-        static Vector4[] data;
+        static Color[] data;
+        static Color[] dirtyRowScratch;
         static Texture2D texture;
         static bool dirty;
+        static int dirtyRowMin = int.MaxValue;
+        static int dirtyRowMax = -1;
         internal static Texture Texture => texture;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            foreach (var bucket in shared.Values)
+            {
+                for (int i = 0; i < bucket.Count; i++)
+                {
+                    EffectObjectLifetime.Destroy(bucket[i].Mesh);
+                }
+            }
+            entries.Clear();
+            shared.Clear();
+            free.Clear();
+            EffectObjectLifetime.Destroy(texture);
+            texture = null;
+            data = null;
+            dirtyRowScratch = null;
+            dirty = false;
+            dirtyRowMin = int.MaxValue;
+            dirtyRowMax = -1;
+        }
+
         static int Rent(int count)
         {
             if (count <= 0 || count > Capacity)
@@ -103,14 +134,14 @@ namespace URUI.Effect.Rendering
             }
             if (!texture)
             {
-                texture = new Texture2D(256, 256, TextureFormat.RGBAFloat, false, true)
+                texture = new Texture2D(TextureWidth, TextureWidth, TextureFormat.RGBAFloat, false, true)
                 {
                     name = "URUI effect triangle facts",
                     filterMode = FilterMode.Point,
                     wrapMode = TextureWrapMode.Clamp,
                     hideFlags = HideFlags.HideAndDontSave
                 };
-                data = new Vector4[Capacity];
+                data = new Color[Capacity];
                 free.Add((0, Capacity));
             }
             for (var i = 0; i < free.Count; i++)
@@ -155,13 +186,31 @@ namespace URUI.Effect.Rendering
         }
         internal static void Commit()
         {
-            if (!dirty)
+            if (!dirty || !texture || data == null)
             {
                 return;
             }
-            texture.SetPixelData(data, 0);
+            int rowStart = Math.Max(0, dirtyRowMin);
+            int rowEnd = Math.Min(TextureWidth - 1, dirtyRowMax);
+            int rowCount = rowEnd - rowStart + 1;
+            if (rowCount > 0 && rowCount < TextureWidth / 2)
+            {
+                int pixelCount = rowCount * TextureWidth;
+                if (dirtyRowScratch == null || dirtyRowScratch.Length != pixelCount)
+                {
+                    dirtyRowScratch = new Color[pixelCount];
+                }
+                Array.Copy(data, rowStart * TextureWidth, dirtyRowScratch, 0, pixelCount);
+                texture.SetPixels(0, rowStart, TextureWidth, rowCount, dirtyRowScratch);
+            }
+            else
+            {
+                texture.SetPixelData(data, 0);
+            }
             texture.Apply(false, false);
             dirty = false;
+            dirtyRowMin = int.MaxValue;
+            dirtyRowMax = -1;
         }
         static Rect BuildBounds(SourceGeometry source, Entry entry, int index)
         {
@@ -183,12 +232,12 @@ namespace URUI.Effect.Rendering
                 var row = entry.Offset + start / 3 * 8;
                 var center = data[row];
                 var span = data[row + 1];
-                var pointCenter = b.position + new Vector2(center.x * size.x, center.y * size.y);
-                var denominator = new Vector2(Mathf.Max(.00001f, Mathf.Abs(span.x * size.x - .002f)), Mathf.Max(.00001f, Mathf.Abs(span.y * size.y - .002f)));
+                var pointCenter = b.position + new Vector2(center.r * size.x, center.g * size.y);
+                var denominator = new Vector2(Mathf.Max(.00001f, Mathf.Abs(span.r * size.x - .002f)), Mathf.Max(.00001f, Mathf.Abs(span.g * size.y - .002f)));
                 for (var corner = 0; corner < 3; corner++)
                 {
                     var normalized = data[row + 2 + corner];
-                    var point = b.position + new Vector2(normalized.x * size.x, normalized.y * size.y);
+                    var point = b.position + new Vector2(normalized.r * size.x, normalized.g * size.y);
                     var x = point.x < b.x + .001f || point.x > b.x + size.x - .001f ? ex : 0;
                     var y = point.y < b.y + .001f ? top : point.y > b.y + size.y - .001f ? bottom : 0;
                     point = pointCenter + Vector2.Scale(point - pointCenter, new Vector2(1 + x / denominator.x, 1 + y / denominator.y));
@@ -328,13 +377,13 @@ namespace URUI.Effect.Rendering
                         high = Vector2.Max(high, p);
                         uvLow = Vector2.Min(uvLow, t);
                         uvHigh = Vector2.Max(uvHigh, t);
-                        data[row + 2 + corner] = new Vector4(p.x, p.y, t.x, t.y);
+                        data[row + 2 + corner] = new Color(p.x, p.y, t.x, t.y);
                         data[row + 5 + corner] = (Color)source.Colors[id];
                     }
                     var center = (low + high) * .5f;
                     var uvCenter = (uvLow + uvHigh) * .5f;
-                    data[row] = new Vector4(center.x, center.y, uvCenter.x, uvCenter.y);
-                    data[row + 1] = new Vector4(high.x - low.x, high.y - low.y, 0, 0);
+                    data[row] = new Color(center.x, center.y, uvCenter.x, uvCenter.y);
+                    data[row + 1] = new Color(high.x - low.x, high.y - low.y, 0, 0);
                     void Add(int target, int corner, int code)
                     {
                         var id = source.Indices[start + corner];
@@ -346,10 +395,9 @@ namespace URUI.Effect.Rendering
                     }
                     if (mirror)
                     {
-                        var order = new[] { 0, 1, 2, 0, 2, 3 };
                         for (var i = 0; i < 6; i++)
                         {
-                            Add(start * 2 + i, i % 3, 128 + order[i]);
+                            Add(start * 2 + i, i % 3, 128 + mirrorOrder[i]);
                         }
                         for (var i = 0; i < 3; i++)
                         {
@@ -374,6 +422,7 @@ namespace URUI.Effect.Rendering
                 mesh = new Mesh
                 {
                     name = "URUI effect GPU template",
+                    hideFlags = HideFlags.HideAndDontSave,
                     indexFormat = vertexCount > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16
                 };
                 mesh.vertices = positions;
@@ -404,6 +453,16 @@ namespace URUI.Effect.Rendering
                 bucket.Add(entry);
                 entries.Add(key, alias);
                 dirty = true;
+                int startRow = offset / TextureWidth;
+                int endRow = (offset + length - 1) / TextureWidth;
+                if (startRow < dirtyRowMin)
+                {
+                    dirtyRowMin = startRow;
+                }
+                if (endRow > dirtyRowMax)
+                {
+                    dirtyRowMax = endRow;
+                }
                 return new Lease(key, alias);
             }
             catch

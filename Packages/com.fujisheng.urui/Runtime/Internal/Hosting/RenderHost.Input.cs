@@ -1,8 +1,6 @@
-using UnityInput = UnityEngine.Input;
 using System;
-using System.Text;
 using UnityEngine;
-using URUI.Internal.Input;
+using UnityEngine.Rendering;
 using URUI.Internal.Interop;
 
 namespace URUI.Internal.Hosting
@@ -21,17 +19,20 @@ namespace URUI.Internal.Hosting
             {
                 return;
             }
+            CollectPendingRetirements();
 #if URUI_DEBUG
             using var hostScope = hostMarker.Auto();
             long inputTimer = phaseDiagnostics ? Now() : 0;
             using (inputMarker.Auto())
 #endif
             {
-                if (lastWidth != Screen.width || lastHeight != Screen.height)
+                var width = UIWidth;
+                var height = UIHeight;
+                if (lastWidth != width || lastHeight != height)
                 {
-                    lastWidth = Screen.width;
-                    lastHeight = Screen.height;
-                    NativeMethods.urui_resize(UIWidth, UIHeight);
+                    lastWidth = width;
+                    lastHeight = height;
+                    NativeMethods.urui_surface_resize(SurfaceHandle, width, height);
                 }
                 OwnerSurface.Input.PollUnity();
             }
@@ -66,7 +67,7 @@ namespace URUI.Internal.Hosting
                 }
                 using (nativeUpdatePhase.Auto())
                 {
-                    NativeMethods.urui_update();
+                    NativeMethods.urui_surface_update(SurfaceHandle);
                 }
             }
 #if URUI_DEBUG
@@ -94,7 +95,27 @@ namespace URUI.Internal.Hosting
                 return;
             }
 
-            if (!DrawFrame(ref phase))
+            if (GraphicsSettings.currentRenderPipeline != null)
+            {
+                // SRP defers CommandBuffer recording until SubmitRendering so the frame is
+                // recorded exactly once for the actual SRP render target and viewport.
+                geometryRecordingPending = true;
+                OwnerSurface.BeginDispatch();
+                try
+                {
+                    CommitAnimationCompletionClasses();
+                    if (active && isActiveAndEnabled)
+                    {
+                        NativeMethods.urui_surface_synchronize_geometry(SurfaceHandle);
+                    }
+                }
+                finally
+                {
+                    OwnerSurface.EndDispatch();
+                    OwnerSurface.FinishNativeCall();
+                }
+            }
+            else if (!DrawFrame(ref phase))
             {
                 return;
             }
@@ -102,8 +123,9 @@ namespace URUI.Internal.Hosting
             {
                 return;
             }
-            // URUI 在录制绘制时更新变换矩阵；此后才可同步屏幕空间值。
+            // URUI 在录制绘制或几何同步时更新变换矩阵；此后才可同步屏幕空间值。
             OwnerSurface.NotifyLayoutUpdated();
+            RecordSynchronizedFrameState();
 #if URUI_DEBUG
             if (phaseDiagnostics)
             {
@@ -130,50 +152,13 @@ namespace URUI.Internal.Hosting
             {
                 if (document && document.IsLoaded)
                 {
-                    while (active && NativeMethods.urui_element_pop_click(document.NativeHandle, out _) > 0)
+                    while (active && NativeMethods.urui_element_pop_click(SurfaceHandle, document.NativeHandle, out _) > 0)
                     {
                     }
                 }
             }
             OwnerSurface.RefreshDocuments(true);
             OwnerSurface.FinishNativeCall();
-        }
-
-        public string HitTestId(float logicalX, float logicalY)
-        {
-            if (!active)
-            {
-                return null;
-            }
-            var token = NativeMethods.urui_surface_pick(logicalX, logicalY, out var handle);
-            var owner = URUI.Hosting.Surface.FindDocument(handle);
-            for (var element = owner?.WrapElement(token); element != null; element = element.Parent)
-            {
-                if (!string.IsNullOrEmpty(element.Name))
-                {
-                    return element.Name;
-                }
-            }
-            return null;
-        }
-
-        void EmitMousePointer(PointerPhase pointerPhase, Vector3 mouse)
-        {
-            if (PointerInput == null)
-            {
-                return;
-            }
-
-            float x = mouse.x * UIWidth / Screen.width;
-            float y = UIHeight - 1 - mouse.y * UIHeight / Screen.height;
-            PointerInput(new PointerInputEvent
-            {
-                phase = pointerPhase,
-                pointerId = 0,
-                x = x,
-                y = y,
-                hitId = HitTestId(x, y)
-            });
         }
     }
 }

@@ -361,6 +361,10 @@ namespace URUI
         // Input state; stored from the most recent input events we receive from the application.
         Vector2i mouse_position;
         bool mouse_active;
+        uint64_t last_hover_hit_test_revision = 0;
+        Vector2i last_hover_mouse_position{0, 0};
+        bool last_hover_mouse_active = false;
+        bool hover_chain_valid = false;
 
         // The current state of Touches, required to implement proper inertia scrolling.
         struct TouchState

@@ -1,20 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using URUI.Internal.Interop;
 using URUI.Internal.Rendering;
 using URUI.Rendering.Effects;
+
 namespace URUI.Internal.Hosting
 {
     internal sealed partial class RenderHost
     {
         LayerCommandNative[] layerCommands = Array.Empty<LayerCommandNative>();
-        LayerRegionNative[] layerRegionScratch = Array.Empty<LayerRegionNative>();
-        NativeMethods.EffectInputRegionNative[] effectInputRegionScratch = Array.Empty<NativeMethods.EffectInputRegionNative>();
-        readonly Dictionary<ulong, Rect> effectInputRegions = new();
-        float[] effectTransformScratch = Array.Empty<float>();
         int layerCount;
         int layerCursor;
         int layerOrderCount;
@@ -22,10 +19,9 @@ namespace URUI.Internal.Hosting
         ulong activeLayer;
         readonly HashSet<ulong> layerTargets = new();
         readonly HashSet<ulong> maskSourceLayers = new();
-        readonly HashSet<ulong> haloLayers = new();
+        readonly HashSet<ulong> scalarMaskLayers = new();
         readonly Dictionary<ulong, RectInt> layerRegions = new();
         readonly Dictionary<ulong, ulong> layerAliases = new();
-        readonly Dictionary<ulong, LayerCommandNative> layerEntries = new();
         readonly Dictionary<(ulong, int), EffectTargetPool.Lease> preparedLayerTargets = new();
         readonly HashSet<(ulong, int)> desiredLayerTargets = new();
         readonly Dictionary<(ulong, int), Vector2Int> layerBackdropSizes = new();
@@ -47,53 +43,73 @@ namespace URUI.Internal.Hosting
         RenderTargetIdentifier? submissionTarget;
         Rect submissionViewport;
         URUI.Rendering.RenderTargetInfo submissionTargetInfo;
+
         URUI.Rendering.RenderTargetInfo CurrentTargetInfo => submissionTarget.HasValue ? submissionTargetInfo :
             targetCamera && targetCamera.targetTexture ? URUI.Rendering.RenderTargetInfo.FromTexture(targetCamera.targetTexture) :
             URUI.Rendering.RenderTargetInfo.FromScreen(targetCamera ? targetCamera.targetDisplay : 0, targetCamera && targetCamera.allowMSAA ? Math.Max(1, QualitySettings.antiAliasing) : 1);
-        bool framebufferRootHighPrecision;
-        bool rootTextureRequired;
-        bool rootDirectScreenSource;
+
+        const int CopyBackdropPass = 2;
+        const int EffectCompositePass = 3;
+        const int CopySourcePass = 4;
+        const int ClearLayerPass = 5;
+        const int FastCompositePass = 6;
+
         Rect RootOutputViewport => submissionTarget.HasValue ? submissionViewport : targetCamera.pixelRect;
+
         void CopyScreenRegion(RenderTexture destination, RectInt read)
         {
-            // Resolve the non-sampleable screen alias before reading a bounded
-            // region. Its screen origin remains distinct from a rendered UI layer.
+            // Resolve the non-sampleable screen alias once per unmodified layer-0 state,
+            // then crop the requested region into the backdrop target.
+            layerBound = false;
+            renderState.DisableScissor();
             var capture = LayerTexture(0, -3);
-            buffer.SetRenderTarget(SubmissionOutput);
-            buffer.Blit(SubmissionOutput, capture);
+            if (!screenCaptureValid)
+            {
+                buffer.SetRenderTarget(SubmissionOutput);
+                buffer.Blit(SubmissionOutput, capture);
+                renderState.InvalidateTarget();
+                screenCaptureValid = true;
+            }
             if (!SystemInfo.graphicsUVStartsAtTop && (SystemInfo.copyTextureSupport & CopyTextureSupport.Basic) != 0 && capture.graphicsFormat == destination.graphicsFormat &&
                 capture.antiAliasing == 1 && destination.antiAliasing == 1 && destination.width == read.width && destination.height == read.height &&
                 read.x >= 0 && read.y >= 0 && read.xMax <= capture.width && read.yMax <= capture.height)
             {
                 buffer.CopyTexture(capture, 0, 0, read.x, read.y, read.width, read.height, destination, 0, 0, 0, 0);
+                renderState.InvalidateTarget();
             }
             else
             {
                 buffer.SetGlobalVector(LayerReadRect, new Vector4(read.x, read.y, read.width, read.height));
                 buffer.SetGlobalFloat(LayerReadCameraTarget, SystemInfo.graphicsUVStartsAtTop ? 1 : 0);
-                buffer.Blit(capture, destination, layerCompositeMaterial, 3);
+                buffer.Blit(capture, destination, layerCompositeMaterial, CopyBackdropPass);
+                renderState.InvalidateTarget();
             }
         }
+
         internal static bool CanCopyLayerData(RenderTexture source, RenderTexture destination, CopyTextureSupport capabilities)
             => (capabilities & CopyTextureSupport.Basic) != 0 && source.width == destination.width && source.height == destination.height &&
                 source.graphicsFormat == destination.graphicsFormat && source.antiAliasing == 1 && destination.antiAliasing == 1;
+
         void CopyLayerData(RenderTexture source, RenderTexture destination)
         {
+            layerBound = false;
             if (CanCopyLayerData(source, destination, SystemInfo.copyTextureSupport))
             {
                 buffer.CopyTexture(source, destination);
+                renderState.InvalidateTarget();
             }
             else
             {
                 // 同一个颜色域内覆盖写回；不依赖 WebGL 等后端未公开的复制能力。
+                renderState.DisableScissor();
                 buffer.SetGlobalVector(LayerReadRect, new Vector4(0, 0, source.width, source.height));
                 buffer.SetGlobalFloat(LayerReadCameraTarget, 0);
-                buffer.Blit(source, destination, layerCompositeMaterial, 3);
-                SelectLayer(activeLayer);
+                buffer.Blit(source, destination, layerCompositeMaterial, CopyBackdropPass);
+                renderState.InvalidateTarget();
             }
         }
-        Func<RenderTargetIdentifier> rootTargetResolver;
-        RenderTextureFormat ScreenRootFormat()
+
+        RenderTextureFormat ScreenCaptureFormat()
         {
             // Camera HDR describes the intermediate scene target, not the final
             // display buffer. SDR output must retain its normal LDR clamping.
@@ -102,34 +118,11 @@ namespace URUI.Internal.Hosting
             return displays != null && display >= 0 && display < displays.Length && displays[display].active
                 ? displays[display].format : RenderTextureFormat.ARGB32;
         }
-        RenderTargetIdentifier PrepareRootTarget()
-        {
-            if (!rootTextureRequired)
-            {
-                throw new InvalidOperationException("原生计划未声明屏幕工作目标。");
-            }
-            var size = ScreenOutputSize();
-            var format = ScreenRootFormat();
-            if (preparedLayerTargets.TryGetValue((0, -2), out var existing))
-            {
-                var texture = existing.Texture;
-                if (texture.width == size.x && texture.height == size.y && texture.format == format)
-                {
-                    return new RenderTargetIdentifier(texture);
-                }
-            }
-            // Native preparation permits a parent write; the callback may still be
-            // empty. Rent only when it actually records that write, or in final requests.
-            desiredLayerTargets.Add((0, -2));
-            layerBackdropSizes[(0, -2)] = size;
-            ApplyLayerTargetRequests();
-            return new RenderTargetIdentifier(LayerTexture(0, -2));
-        }
-        bool encodedRasterActive;
+
         bool framebufferFetchActive;
         bool framebufferProgramsChecked;
-        Material framebufferRasterMaterial;
         Material framebufferLayerMaterial;
+
         bool CanUseFramebufferFetch()
         {
             if (QualitySettings.activeColorSpace != ColorSpace.Linear || !HasStandardRasterShader || SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
@@ -148,20 +141,20 @@ namespace URUI.Internal.Hosting
             if (!framebufferProgramsChecked)
             {
                 framebufferProgramsChecked = true;
-                var raster = UnityEngine.Resources.Load<Shader>("URUI/PremultipliedFetch");
                 var layer = UnityEngine.Resources.Load<Shader>("URUI/LayerCompositeFetch");
-                if (raster && layer && raster.isSupported && layer.isSupported && layer.passCount >= 2)
+                if (layer && layer.isSupported)
                 {
-                    framebufferRasterMaterial = new Material(raster) { hideFlags = HideFlags.HideAndDontSave };
                     framebufferLayerMaterial = new Material(layer) { hideFlags = HideFlags.HideAndDontSave };
                 }
             }
-            return framebufferRasterMaterial && framebufferLayerMaterial;
+            return framebufferLayerMaterial;
         }
+
         RenderTargetIdentifier SubmissionOutput => submissionTarget ?? new RenderTargetIdentifier(BuiltinRenderTextureType.CameraTarget);
+
         bool IsScreenOutput => submissionTarget.HasValue && submissionTargetInfo.IsKnown ? submissionTargetInfo.IsScreen :
             !targetCamera.targetTexture && SubmissionOutput.Equals(new RenderTargetIdentifier(BuiltinRenderTextureType.CameraTarget));
-        bool CanFetchOrdinary(ulong layer) => framebufferFetchActive && (layer == 0 ? framebufferRootHighPrecision : targetCamera && targetCamera.allowHDR);
+
         Vector2Int ScreenOutputSize()
         {
             if (submissionTarget.HasValue && submissionTargetInfo.IsKnown)
@@ -179,51 +172,10 @@ namespace URUI.Internal.Hosting
             }
             return new Vector2Int(Display.displays[display].renderingWidth, Display.displays[display].renderingHeight);
         }
-        void CopyScreenRoot()
-        {
-            if (!rootTextureRequired)
-            {
-                throw new InvalidOperationException("原生屏幕工作目标未准备。");
-            }
-            // Unity's default blit resolves the screen target; custom shaders cannot
-            // sample that alias on all Player backends. Subsequent reads use a real RT.
-            if (rootDirectScreenSource)
-            {
-                buffer.Blit(SubmissionOutput, LayerTexture(0, -2));
-            }
-            else
-            {
-                // 标准 Blit 保留屏幕别名的解析能力，方向归一化合入同一次复制。
-                // 局部屏幕采样仍使用 CopyScreenRegion 的独立解析目标。
-                var flip = SystemInfo.graphicsUVStartsAtTop;
-                buffer.Blit(SubmissionOutput, LayerTexture(0, -2), new Vector2(1, flip ? -1 : 1), new Vector2(0, flip ? 1 : 0));
-            }
-            SelectLayer(0);
-        }
-        void PresentScreenRoot()
-        {
-            // A pending encoded root already contains the complete viewport.
-            // Resolve it directly to the output instead of writing and copying
-            // an intermediate version of the same pixels.
-            if (encodedRasterActive && activeLayer == 0)
-            {
-                ResolveEncodedRaster(SubmissionOutput);
-            }
-            else
-            {
-                if (rootDirectScreenSource)
-                {
-                    throw new InvalidOperationException("原生纯几何根目标缺少最终编码解析。");
-                }
-                EndEncodedRaster();
-                buffer.Blit(LayerTexture(0, -2), SubmissionOutput);
-            }
-            buffer.SetRenderTarget(SubmissionOutput);
-            buffer.SetViewport(submissionTarget.HasValue ? submissionViewport : targetCamera.pixelRect);
-            buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(0, UIWidth, UIHeight, 0, -1, 1));
-        }
-        Shader encodedRasterShader;
-        bool encodedRasterCapable;
+
+        Shader standardRasterShader;
+        bool standardRasterShaderSupported;
+
         bool HasStandardRasterShader
         {
             get
@@ -233,38 +185,26 @@ namespace URUI.Internal.Hosting
                     return false;
                 }
                 var current = material.shader;
-                if (current != encodedRasterShader)
+                if (current != standardRasterShader)
                 {
-                    encodedRasterShader = current;
-                    encodedRasterCapable = current && current.name == "URUI/Premultiplied";
+                    standardRasterShader = current;
+                    standardRasterShaderSupported = current && current.name == "URUI/Premultiplied";
                 }
-                return encodedRasterCapable;
+                return standardRasterShaderSupported;
             }
         }
-        bool UsesEncodedRaster
-        {
-            get
-            {
-                if (QualitySettings.activeColorSpace != ColorSpace.Linear || !material)
-                {
-                    return false;
-                }
-                return HasStandardRasterShader;
-            }
-        }
-        static readonly int EncodedTarget = Shader.PropertyToID("_UruiEncodedTarget");
+
         bool HasLayerResources => preparedLayerTargets.Count != 0;
         static readonly int LayerMask = Shader.PropertyToID("_UruiLayerMask");
         static readonly int LayerSource = Shader.PropertyToID("_UruiLayerSource");
-        static readonly int LayerBackdrop = Shader.PropertyToID("_UruiLayerBackdrop");
-        static readonly int LayerBackdropTransform = Shader.PropertyToID("_UruiLayerBackdropTransform");
         static readonly int LayerReadRect = Shader.PropertyToID("_UruiLayerReadRect");
         static readonly int LayerReadCameraTarget = Shader.PropertyToID("_UruiLayerReadCameraTarget");
-        static readonly int LayerReadRootColor = Shader.PropertyToID("_UruiLayerReadRootColor");
         static readonly int LayerMaskEnabled = Shader.PropertyToID("_UruiLayerMaskEnabled");
         static readonly int LayerMaskRect = Shader.PropertyToID("_UruiLayerMaskRect");
         static readonly int LayerClip = Shader.PropertyToID("_UruiLayerClip");
         static readonly int LayerClipEnabled = Shader.PropertyToID("_UruiLayerClipEnabled");
+        readonly FilterRenderContext pooledFilterContext = new();
+
         void DrawElementEffect(int index, LayerCommandNative command, in RenderPlanOperation operation)
         {
             var owner = OwnerSurface.FilterOwner(command.mask);
@@ -274,6 +214,7 @@ namespace URUI.Internal.Hosting
             var captureBounds = capture.Bounds;
             var sourceTexture = LayerTexture(command.source);
             var captureTexture = capture.Lease.Texture;
+            renderState.DisableScissor();
             // 相同像素域和格式只需保留快照；缩放/扩边或无复制能力的平台仍执行覆盖复制。
             if ((SystemInfo.copyTextureSupport & CopyTextureSupport.Basic) != 0 &&
                 captureBounds.x == region.x && captureBounds.y == region.y && captureBounds.width == region.width && captureBounds.height == region.height &&
@@ -281,21 +222,24 @@ namespace URUI.Internal.Hosting
                 sourceTexture.graphicsFormat == captureTexture.graphicsFormat && sourceTexture.antiAliasing == captureTexture.antiAliasing)
             {
                 buffer.CopyTexture(sourceTexture, captureTexture);
+                renderState.InvalidateTarget();
             }
             else
             {
-                buffer.SetRenderTarget(captureTexture);
-                buffer.SetViewport(new Rect(0, 0, captureTexture.width, captureTexture.height));
+                renderState.BindOffscreen(
+                    captureTexture,
+                    new Rect(0, 0, captureTexture.width, captureTexture.height),
+                    Matrix4x4.Ortho(captureBounds.xMin, captureBounds.xMax, captureBounds.yMax, captureBounds.yMin, -1, 1));
                 buffer.ClearRenderTarget(false, true, Color.clear);
-                buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(captureBounds.xMin, captureBounds.xMax, captureBounds.yMax, captureBounds.yMin, -1, 1));
                 buffer.SetGlobalTexture(LayerSource, sourceTexture);
-                buffer.DrawMesh(layerCompositeMesh, Matrix4x4.TRS(new Vector3(region.x, region.y, 0), Quaternion.identity, new Vector3(region.width, region.height, 1)), layerCompositeMaterial, 0, 7);
+                buffer.DrawMesh(layerCompositeMesh, Matrix4x4.TRS(new Vector3(region.x, region.y, 0), Quaternion.identity, new Vector3(region.width, region.height, 1)), layerCompositeMaterial, 0, CopySourcePass);
             }
             var destination = LayerTexture(command.source, 2);
-            buffer.SetRenderTarget(destination);
-            buffer.SetViewport(new Rect(0, 0, region.width, region.height));
+            renderState.BindOffscreen(
+                destination,
+                new Rect(0, 0, region.width, region.height),
+                Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1));
             buffer.ClearRenderTarget(false, true, Color.clear);
-            buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1));
             var transform = Matrix4x4.TRS(new Vector3(captureBounds.x, captureBounds.y, 0), Quaternion.identity, new Vector3(captureBounds.width, captureBounds.height, 1));
             if (operation.Program != 0)
             {
@@ -304,12 +248,13 @@ namespace URUI.Internal.Hosting
                 var page = parameterPages.Current.Texture;
                 properties.SetTexture(mainTextureId, capture.Lease.Texture);
                 properties.SetTexture(parametersId, page);
-                properties.SetVector(parameterSizeId, new Vector4(1f / page.width, 1f / page.height, page.width, page.height));
+                properties.SetFloat(baseParameterId, operation.BaseParameter);
                 buffer.DrawMesh(planResources.Mesh(operation.Geometry), Matrix4x4.identity, imagePrograms[operation.Program], 0, 0, properties);
                 RecordedGeometryDraws++;
                 effectSubmitted.Add(new EffectSubmission { ProcessingPasses = 1 });
-                SelectLayer(activeLayer);
                 CopyLayerData(destination, LayerTexture(command.source));
+                layerBound = false;
+                SelectLayer(activeLayer);
                 return;
             }
             var paint = paintContexts.Open(owner.WrapElement(elementFilterElements[index]), buffer,
@@ -329,10 +274,13 @@ namespace URUI.Internal.Hosting
             finally
             {
                 paint.Close();
-                SelectLayer(activeLayer);
+                renderState.InvalidateTarget();
             }
             CopyLayerData(destination, LayerTexture(command.source));
+            layerBound = false;
+            SelectLayer(activeLayer);
         }
+
         void EnsureLayerProgram()
         {
             if (layerCompositeMaterial)
@@ -345,11 +293,12 @@ namespace URUI.Internal.Hosting
                 throw new InvalidOperationException("缺少 URUI 图层合成 shader。");
             }
             layerCompositeMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-            layerCompositeMesh = new Mesh { name = "URUI Layer Composite Quad" };
+            layerCompositeMesh = new Mesh { name = "URUI Layer Composite Quad", hideFlags = HideFlags.HideAndDontSave };
             layerCompositeMesh.vertices = new[] { Vector3.zero, Vector3.right, new Vector3(1, 1), Vector3.up };
             layerCompositeMesh.uv = new[] { Vector2.up, Vector2.one, Vector2.right, Vector2.zero };
             layerCompositeMesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
         }
+
         Material ElementCompositeMaterial(EffectComposite composite)
         {
             var key = (composite.Source, composite.Destination);
@@ -362,7 +311,24 @@ namespace URUI.Internal.Hosting
             }
             return program;
         }
+
         RectInt Region(ulong id) => id == 0 ? new RectInt(0, 0, UIWidth, UIHeight) : layerRegions[id];
+        bool? scalarMaskSupported;
+
+        bool SupportsScalarMask => scalarMaskSupported ??=
+            SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RHalf) &&
+            SystemInfo.IsFormatSupported(GraphicsFormat.R16_SFloat,
+                GraphicsFormatUsage.Render | GraphicsFormatUsage.Sample | GraphicsFormatUsage.Blend | GraphicsFormatUsage.Linear);
+
+        RenderTextureFormat LayerFormat((ulong Layer, int Slot) key, RenderTextureFormat screen, RenderTextureFormat color)
+        {
+            if (key == (0UL, -3))
+            {
+                return screen;
+            }
+            return key.Slot == 0 && scalarMaskLayers.Contains(key.Layer) ? RenderTextureFormat.RHalf : color;
+        }
+
         RenderTexture LayerTexture(ulong id, int slot = 0)
         {
             if (slot == 0)
@@ -374,6 +340,7 @@ namespace URUI.Internal.Hosting
             }
             return preparedLayerTargets[(id, slot)].Texture;
         }
+
         Rect LayerViewport(ulong id)
         {
             if (id == 0)
@@ -383,6 +350,7 @@ namespace URUI.Internal.Hosting
             var region = Region(id);
             return new Rect(0, 0, region.width, region.height);
         }
+
         RectInt BackdropReadRect(ulong source, ulong target)
         {
             var bounds = Region(source);
@@ -396,83 +364,21 @@ namespace URUI.Internal.Hosting
             int top = Mathf.CeilToInt(viewport.y + viewport.height - (bounds.y - parent.y) * scaleY);
             return new RectInt(left, bottom, Math.Max(1, right - left), Math.Max(1, top - bottom));
         }
-        void CopyBackdrop(ulong source, RenderTexture destination, RectInt read, int pass = 3)
+
+        void CopySurfaceRegion(RenderTexture destination, RectInt read)
         {
-            if (source == 0 && IsScreenOutput && !rootTextureRequired && pass == 3)
+            if (IsScreenOutput)
             {
-                buffer.SetGlobalFloat(LayerReadRootColor, 1);
                 CopyScreenRegion(destination, read);
                 return;
             }
+            renderState.DisableScissor();
             buffer.SetGlobalVector(LayerReadRect, new Vector4(read.x, read.y, read.width, read.height));
-            // Metal 的最终 CameraTarget 采用屏幕原点，texel size 仍可能为正；
-            // 离屏目标和嵌套图层继续使用纹理原点，不能一并翻转。
-            bool cameraTarget = source == 0 && (rootDirectScreenSource || !rootTextureRequired && !targetCamera.targetTexture &&
-                (!submissionTarget.HasValue || submissionTarget.Value.Equals(new RenderTargetIdentifier(BuiltinRenderTextureType.CameraTarget))));
-            buffer.SetGlobalFloat(LayerReadCameraTarget, cameraTarget ? 1 : 0);
-            buffer.SetGlobalFloat(LayerReadRootColor, source == 0 && IsScreenOutput ? 1 : 0);
-            buffer.Blit(LayerTarget(source), destination, layerCompositeMaterial, pass);
+            buffer.SetGlobalFloat(LayerReadCameraTarget, 0);
+            buffer.Blit(SubmissionOutput, destination, layerCompositeMaterial, CopyBackdropPass);
+            renderState.InvalidateTarget();
         }
-        void BeginEncodedRaster()
-        {
-            if (encodedRasterActive || !UsesEncodedRaster)
-            {
-                return;
-            }
-            if (colorPassActive)
-            {
-                BeginColorEncoding();
-                return;
-            }
-            var viewport = LayerViewport(activeLayer);
-            var read = new RectInt(Mathf.FloorToInt(viewport.x), Mathf.FloorToInt(viewport.y),
-                Math.Max(1, Mathf.CeilToInt(viewport.width)), Math.Max(1, Mathf.CeilToInt(viewport.height)));
-            CopyBackdrop(activeLayer, LayerTexture(activeLayer, -1), read, 4);
-            buffer.SetRenderTarget(LayerTexture(activeLayer, -1));
-            buffer.SetViewport(new Rect(0, 0, read.width, read.height));
-            var region = Region(activeLayer);
-            buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1));
-            buffer.SetGlobalFloat(EncodedTarget, 1);
-            encodedRasterActive = true;
-        }
-        void SelectEncodedRaster(Texture texture)
-        {
-            if (texture is RenderTexture)
-            {
-                EndEncodedRaster();
-            }
-            else
-            {
-                BeginEncodedRaster();
-            }
-        }
-        bool EndEncodedRaster()
-        {
-            if (!encodedRasterActive)
-            {
-                return false;
-            }
-            ResolveEncodedRaster(LayerTarget(activeLayer));
-            // 同一缓冲的紧邻绘制可复用解析已恢复的目标、视口和矩阵。
-            return true;
-        }
-        void ResolveEncodedRaster(RenderTargetIdentifier destination)
-        {
-            if (colorPassActive)
-            {
-                ResolveColorEncoding();
-                return;
-            }
-            buffer.SetGlobalFloat(EncodedTarget, 0);
-            SelectLayer(activeLayer, destination);
-            buffer.SetGlobalTexture(LayerSource, LayerTexture(activeLayer, -1));
-            buffer.SetGlobalFloat(LayerReadRootColor, activeLayer == 0 && IsScreenOutput ? 1 : 0);
-            var region = Region(activeLayer);
-            buffer.DrawMesh(layerCompositeMesh, Matrix4x4.TRS(new Vector3(region.x, region.y, 0), Quaternion.identity,
-                new Vector3(region.width, region.height, 1)), layerCompositeMaterial, 0, 5);
-            encodedRasterActive = false;
-            RecordedRasterResolves++;
-        }
+
         void PreparePrimaryLayerTargets()
         {
             desiredLayerTargets.Clear();
@@ -494,25 +400,12 @@ namespace URUI.Internal.Hosting
             }
             ApplyLayerTargetRequests();
         }
+
         unsafe void PrepareFinalLayerTargets(in RenderPlanPacket packet)
         {
             using var profile = finalTargetPhase.Auto();
-            var operations = new ReadOnlySpan<RenderPlanOperation>((void*)packet.Operations, checked((int)packet.OperationCount));
-            if (operations.Length != 0 && operations[0].Kind == 9 && (operations[0].Reason & 1) != 0)
-            {
-                var bounds = operations[0].Bounds;
-                if (!rootTextureRequired || RootPixelGrid() == 0 || bounds.x < 0 || bounds.y < 0 || bounds.z > UIWidth || bounds.w > UIHeight || bounds.z <= bounds.x || bounds.w <= bounds.y ||
-                    bounds.x != Mathf.Floor(bounds.x) || bounds.y != Mathf.Floor(bounds.y) || bounds.z != Mathf.Floor(bounds.z) || bounds.w != Mathf.Floor(bounds.w))
-                {
-                    throw new InvalidOperationException("原生根区域证明无效。");
-                }
-                // 原生证明仅含同域几何；屏幕原点转换可与下一次编码读取融合。
-                // 工作目标和编码目标保持视口容量，不再随动态 ink 宽高反复租还。
-                rootDirectScreenSource = true;
-            }
             desiredLayerTargets.Clear();
             layerBackdropSizes.Clear();
-            memorylessLayerTargets.Clear();
             var requests = new ReadOnlySpan<RenderPlanTargetRequest>((void*)packet.Targets, checked((int)packet.TargetCount));
             foreach (var request in requests)
             {
@@ -528,79 +421,51 @@ namespace URUI.Internal.Hosting
                 Vector2Int size;
                 switch (request.Kind)
                 {
-                    case 1:
+                    case PlanTargetKind.Layer:
                         if (request.Slot != 0 || request.Layer == 0)
                         {
                             throw new InvalidOperationException("原生主层目标无效。");
                         }
                         size = Region(request.Layer).size;
                         break;
-                    case 2:
-                        if (request.Slot != -1)
-                        {
-                            throw new InvalidOperationException("原生编码目标无效。");
-                        }
-                        var viewport = LayerViewport(request.Layer);
-                        size = new Vector2Int(Math.Max(1, Mathf.CeilToInt(viewport.width)), Math.Max(1, Mathf.CeilToInt(viewport.height)));
-                        break;
-                    case 7:
-                        if (request.Slot != -1 || !colorPassCapable)
-                        {
-                            throw new InvalidOperationException("原生瞬时颜色目标无效。");
-                        }
-                        memorylessLayerTargets.Add(key);
-                        size = request.Layer == 0 ? new Vector2Int(CurrentTargetInfo.Width, CurrentTargetInfo.Height) : Region(request.Layer).size;
-                        break;
-                    case 3:
+                    case PlanTargetKind.MaskScratch:
                         if (request.Slot != 1 && request.Slot != 2)
                         {
                             throw new InvalidOperationException("原生临时目标无效。");
                         }
                         size = Region(request.Layer).size;
                         break;
-                    case 6:
+                    case PlanTargetKind.RootCapture:
                         if (!IsScreenOutput || request.Layer != 0 || request.Slot != -3)
                         {
                             throw new InvalidOperationException("原生屏幕解析目标无效。");
                         }
                         size = ScreenOutputSize();
                         break;
-                    case 5:
-                        if (!rootTextureRequired || request.Layer != 0 || request.Slot != -2)
-                        {
-                            throw new InvalidOperationException("原生屏幕工作目标无效。");
-                        }
-                        size = ScreenOutputSize();
-                        break;
-                    default:
+                    case PlanTargetKind.Backdrop:
                         if (request.Slot < 3)
                         {
                             throw new InvalidOperationException("原生背景目标无效。");
                         }
                         size = BackdropReadRect(request.Layer, request.RelatedLayer).size;
                         break;
+                    default:
+                        throw new InvalidOperationException("未知原生目标类型。");
                 }
                 if (request.Slot != 0)
                 {
                     layerBackdropSizes.Add(key, size);
                 }
             }
-            var rootInFinalPlan = desiredLayerTargets.Contains((0, -2));
-            // Opaque callbacks can record nothing. Only an empty final stream may
-            // discard the conservative preparation promise without a parent write.
-            if (rootTextureRequired && !rootInFinalPlan && packet.OperationCount != 0)
-            {
-                throw new InvalidOperationException("原生屏幕工作目标准备与最终计划不一致。");
-            }
-            rootTextureRequired = rootInFinalPlan;
             ApplyLayerTargetRequests();
         }
+
         void ApplyLayerTargetRequests()
         {
             var desired = desiredLayerTargets;
             var backdropSizes = layerBackdropSizes;
             var format = targetCamera && targetCamera.allowHDR ? RenderTextureFormat.ARGBHalf : RenderTextureFormat.ARGB32;
-            var screenFormat = IsScreenOutput ? ScreenRootFormat() : format;
+            var screenFormat = IsScreenOutput ? ScreenCaptureFormat() : format;
             var removed = removedLayerTargets;
             removed.Clear();
             var retired = retiredLayerResources;
@@ -612,7 +477,7 @@ namespace URUI.Internal.Hosting
                 {
                     var size = pair.Key.Item2 != 0 ? backdropSizes[pair.Key] : Region(pair.Key.Item1).size;
                     var texture = pair.Value.Texture;
-                    keep = texture.width == size.x && texture.height == size.y && texture.format == (pair.Key.Item1 == 0 && pair.Key.Item2 <= -2 ? screenFormat : format) && texture.memorylessMode == (memorylessLayerTargets.Contains(pair.Key) ? RenderTextureMemoryless.Color : RenderTextureMemoryless.None);
+                    keep = texture.width == size.x && texture.height == size.y && texture.format == LayerFormat(pair.Key, screenFormat, format);
                 }
                 if (keep && pair.Key.Item2 == 0)
                 {
@@ -646,8 +511,7 @@ namespace URUI.Internal.Hosting
                 if (!preparedLayerTargets.ContainsKey(key))
                 {
                     var size = key.Item2 != 0 ? backdropSizes[key] : Region(key.Item1).size;
-                    var lease = effectTargets.Rent(size.x, size.y, key.Item1 == 0 && key.Item2 <= -2 ? screenFormat : format, key.Item2 == -1,
-                        memorylessLayerTargets.Contains(key) ? RenderTextureMemoryless.Color : RenderTextureMemoryless.None);
+                    var lease = effectTargets.Rent(size.x, size.y, LayerFormat(key, screenFormat, format));
                     preparedLayerTargets.Add(key, lease);
                     if (key.Item2 == 0)
                     {
@@ -657,20 +521,23 @@ namespace URUI.Internal.Hosting
                 }
             }
         }
+
         void BeginLayers()
         {
             layerCursor = 0;
             activeLayer = 0;
+            layerBound = false;
+            scissoredLayer = 0;
+            hasPartialLayerWrites = false;
+            screenCaptureValid = false;
             layerTargets.Clear();
-            encodedRasterActive = false;
-            colorPassActive = false;
-            colorPassGroups = 0;
         }
+
         RenderTargetIdentifier LayerTarget(ulong id)
         {
             if (id == 0)
             {
-                return rootTextureRequired ? new RenderTargetIdentifier(LayerTexture(0, -2)) : SubmissionOutput;
+                return SubmissionOutput;
             }
             if (!layerTargets.Contains(id))
             {
@@ -678,6 +545,7 @@ namespace URUI.Internal.Hosting
             }
             return new RenderTargetIdentifier(LayerTexture(id));
         }
+
         void CreateLayer(ulong id)
         {
             if (id == 0 || (!preparedLayerTargets.ContainsKey((id, 0)) && !layerAliases.ContainsKey(id)) || !layerTargets.Add(id))
@@ -685,24 +553,29 @@ namespace URUI.Internal.Hosting
                 throw new InvalidOperationException("URUI 图层资源身份无效。");
             }
         }
-        void SelectLayer(ulong id) => SelectLayer(id, LayerTarget(id));
-        void SelectLayer(ulong id, RenderTargetIdentifier destination)
+
+        void SelectLayer(ulong id)
         {
-            if (colorPassActive)
+            if (layerBound && activeLayer == id)
             {
-                if (id != activeLayer || !destination.Equals(colorPassTarget))
-                {
-                    throw new InvalidOperationException("原生共享颜色区间内不能切换目标。");
-                }
-                SetColorPassProjection();
                 return;
             }
+            if (scissoredLayer != 0 && scissoredLayer != id)
+            {
+                renderState.DisableScissor();
+                scissoredLayer = 0;
+            }
             activeLayer = id;
-            buffer.SetRenderTarget(destination);
             var region = Region(id);
-            buffer.SetViewport(LayerViewport(id));
-            buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1));
+            renderState.Bind(
+                LayerTarget(id),
+                LayerViewport(id),
+                Matrix4x4.Ortho(region.xMin, region.xMax, region.yMax, region.yMin, -1, 1),
+                scissoredLayer != 0,
+                layerScissor);
+            layerBound = true;
         }
+
         void ReleaseLayer(ulong id)
         {
             if (id == 0 || !layerTargets.Remove(id))
@@ -710,23 +583,16 @@ namespace URUI.Internal.Hosting
                 throw new InvalidOperationException("URUI 图层被重复释放。");
             }
         }
-        CommandNative LayerInputClip(CommandNative command)
-        {
-            if (activeLayer != 0 && haloLayers.Contains(activeLayer) && layerEntries.TryGetValue(activeLayer, out var inherited) &&
-                (command.flags & 1) == inherited.flags && command.clip_x == inherited.clip_x && command.clip_y == inherited.clip_y && command.clip_w == inherited.clip_w && command.clip_h == inherited.clip_h)
-            {
-                command.flags &= ~1;
-            }
-            return command;
-        }
-        void LayerComposite(ulong source, ulong target, ulong mask, int blend, LayerCommandNative command, bool clip = true, int backdropSlot = 3)
+
+        void LayerComposite(ulong source, ulong target, ulong mask, int blend, LayerCommandNative command, bool clip = true)
         {
             if (source == 0)
             {
                 // Surface sampling is an explicit extension. Snapshot only the
                 // requested destination bounds; filtering never writes the
                 // camera target until the bounded final composite.
-                CopyBackdrop(0, LayerTexture(target), BackdropReadRect(target, 0));
+                CopySurfaceRegion(LayerTexture(target), BackdropReadRect(target, 0));
+                layerBound = false;
                 SelectLayer(activeLayer);
                 return;
             }
@@ -734,59 +600,70 @@ namespace URUI.Internal.Hosting
             EffectComposite effectComposite = default;
             var unityComposite = source != target && elementComposites.TryGetValue(source, out effectComposite) && effectComposite.UsesUnityBlend;
             var fetchMask = framebufferFetchActive && source == target && blend == 1 && !clip;
-            bool fetchOver = framebufferFetchActive && !unityComposite && blend == 0 && source != target &&
-                (target == 0 || LayerTexture(source) != LayerTexture(target));
-            bool encodedOver = !fetchOver && !unityComposite && blend == 0 && QualitySettings.activeColorSpace == ColorSpace.Linear;
-            if (encodedOver)
+            var hasClip = clip && (command.flags & 1) != 0;
+            if (hasClip)
             {
-                // CSS sRGB 颜色在编码域合成；仅快照当前组边界，租约沿用已有 fence 退役。
-                var backdropRegion = Region(target);
-                var viewport = LayerViewport(target);
-                var read = BackdropReadRect(source, target);
-                // Shader 使用真正目标的 texel size；目标可能大于或偏移于提交视口。
-                CopyBackdrop(target, LayerTexture(source, backdropSlot), read);
-                buffer.SetGlobalTexture(LayerBackdrop, LayerTexture(source, backdropSlot));
-                var scaleX = viewport.width / backdropRegion.width;
-                var scaleY = viewport.height / backdropRegion.height;
-                buffer.SetGlobalVector(LayerBackdropTransform, new Vector4(scaleX / read.width, -scaleY / read.height,
-                    (viewport.x - backdropRegion.x * scaleX - read.x) / read.width,
-                    (viewport.y + viewport.height + backdropRegion.y * scaleY - read.y) / read.height));
+                var clipRight = command.clip_x + command.clip_w;
+                var clipBottom = command.clip_y + command.clip_h;
+                if (target != source && blend == 0 && (command.clip_w <= 0 || command.clip_h <= 0 ||
+                    command.clip_x >= sourceRegion.xMax || command.clip_y >= sourceRegion.yMax ||
+                    clipRight <= sourceRegion.x || clipBottom <= sourceRegion.y))
+                {
+                    return;
+                }
+                if (command.clip_x <= sourceRegion.x && command.clip_y <= sourceRegion.y &&
+                    clipRight >= sourceRegion.xMax && clipBottom >= sourceRegion.yMax)
+                {
+                    hasClip = false;
+                }
             }
-            buffer.SetGlobalFloat(LayerMaskEnabled, mask != 0 ? 1 : 0);
-            if (mask != 0)
+            var fastAlphaOver = !fetchMask && !unityComposite && blend == 0 && mask == 0 && !hasClip && target != source;
+
+            if (!fastAlphaOver)
             {
-                var region = Region(mask);
-                buffer.SetGlobalTexture(LayerMask, LayerTexture(mask));
-                buffer.SetGlobalVector(LayerMaskRect, new Vector4(region.x, region.y, region.width, region.height));
+                buffer.SetGlobalFloat(LayerMaskEnabled, mask == 0 ? 0 : scalarMaskLayers.Contains(mask) ? 2 : 1);
+                if (mask != 0)
+                {
+                    var region = Region(mask);
+                    buffer.SetGlobalTexture(LayerMask, LayerTexture(mask));
+                    buffer.SetGlobalVector(LayerMaskRect, new Vector4(region.x, region.y, region.width, region.height));
+                }
+                buffer.SetGlobalFloat(LayerClipEnabled, hasClip ? command.flags : 0);
+                buffer.SetGlobalVector(LayerClip, new Vector4(command.clip_x, command.clip_y, command.clip_x + command.clip_w, command.clip_y + command.clip_h));
             }
-            buffer.SetGlobalFloat(LayerClipEnabled, clip ? command.flags : 0);
-            buffer.SetGlobalVector(LayerClip, new Vector4(command.clip_x, command.clip_y, command.clip_x + command.clip_w, command.clip_y + command.clip_h));
             if (!fetchMask)
             {
                 buffer.SetGlobalTexture(LayerSource, LayerTexture(source));
             }
-            if (fetchOver)
-            {
-                buffer.SetGlobalFloat(LayerReadRootColor, target == 0 && IsScreenOutput ? 1 : 0);
-            }
             if (target == source && !fetchMask)
             {
-                buffer.SetRenderTarget(LayerTexture(source, 1));
                 var bounds = Region(source);
-                buffer.SetViewport(new Rect(0, 0, bounds.width, bounds.height));
-                buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(bounds.xMin, bounds.xMax, bounds.yMax, bounds.yMin, -1, 1));
+                layerBound = false;
+                renderState.BindOffscreen(
+                    LayerTexture(source, 1),
+                    new Rect(0, 0, bounds.width, bounds.height),
+                    Matrix4x4.Ortho(bounds.xMin, bounds.xMax, bounds.yMax, bounds.yMin, -1, 1));
             }
             else
             {
                 SelectLayer(target);
+                if (target == 0)
+                {
+                    screenCaptureValid = false;
+                }
             }
+            var pass = fetchMask ? 0 : unityComposite ? EffectCompositePass : fastAlphaOver ? FastCompositePass : blend;
             buffer.DrawMesh(layerCompositeMesh, Matrix4x4.TRS(new Vector3(sourceRegion.x, sourceRegion.y, 0), Quaternion.identity, new Vector3(sourceRegion.width, sourceRegion.height, 1)),
-                fetchMask || fetchOver ? framebufferLayerMaterial : unityComposite ? ElementCompositeMaterial(effectComposite) : layerCompositeMaterial, 0, fetchMask ? 1 : fetchOver ? 0 : unityComposite ? 6 : encodedOver ? 2 : blend);
+                fetchMask ? framebufferLayerMaterial : unityComposite ? ElementCompositeMaterial(effectComposite) : layerCompositeMaterial,
+                0, pass);
             if (target == source && !fetchMask)
             {
                 CopyLayerData(LayerTexture(source, 1), LayerTexture(source));
+                layerBound = false;
+                SelectLayer(activeLayer);
             }
         }
+
         void ApplyNativeLayer(int index, bool skipWrites, in RenderPlanOperation operation)
         {
             if (layerCursor >= layerOrderCount || layerOrder[layerCursor++] != index)
@@ -796,7 +673,7 @@ namespace URUI.Internal.Hosting
             var command = layerCommands[index];
             if ((operation.Reason & 2) != 0)
             {
-                if (command.kind != 4 || command.blend != 0 || command.mask != 0 || command.source == command.target)
+                if (command.kind != LayerCommandKind.Composite || command.blend != 0 || command.mask != 0 || command.source == command.target)
                 {
                     throw new InvalidOperationException("原生最终裁剪不是普通组合成。");
                 }
@@ -809,30 +686,28 @@ namespace URUI.Internal.Hosting
                 {
                     throw new InvalidOperationException("原生最终裁剪必须是有效整数像素域。");
                 }
-                // 保留原始输入数组；仅本次合成消费协议4提供的二值遮罩等价裁剪。
+                // 保留原始输入数组；仅本次合成消费二值遮罩等价裁剪。
                 command.flags |= 1;
                 command.clip_x = x;
                 command.clip_y = y;
                 command.clip_w = checked(right - x);
                 command.clip_h = checked(bottom - y);
             }
-            EndEncodedRaster();
             switch (command.kind)
             {
-                case 1:
+                case LayerCommandKind.Push:
                     CreateLayer(command.target);
                     SelectLayer(command.target);
                     if (!skipWrites)
                     {
-                        buffer.ClearRenderTarget(false, true, Color.clear);
-                        RecordLayerWrite(command.target);
+                        ClearLayer(command.target, operation);
                     }
                     break;
-                case 2:
+                case LayerCommandKind.Pop:
                     SelectLayer(command.target);
                     ReleaseLayer(command.source);
                     break;
-                case 3:
+                case LayerCommandKind.SaveMask:
                     CreateLayer(command.target);
                     if (!skipWrites && !layerAliases.ContainsKey(command.target))
                     {
@@ -840,20 +715,20 @@ namespace URUI.Internal.Hosting
                         RecordLayerWrite(command.target);
                     }
                     break;
-                case 4:
+                case LayerCommandKind.Composite:
                     if (command.blend < 0 || command.blend > 1)
                     {
                         throw new NotSupportedException("未支持的图层混合方式。");
                     }
                     if (!skipWrites)
                     {
-                        LayerComposite(command.source, command.target, command.mask, command.blend, command, backdropSlot: 3 + index);
+                        LayerComposite(command.source, command.target, command.mask, command.blend, command);
                     }
                     break;
-                case 5:
+                case LayerCommandKind.ReleaseMask:
                     ReleaseLayer(command.source);
                     break;
-                case 6:
+                case LayerCommandKind.ApplyMask:
                     if (skipWrites)
                     {
                         break;
@@ -869,28 +744,39 @@ namespace URUI.Internal.Hosting
                     }
                     else
                     {
-                        var context = new FilterRenderContext(buffer, layerCompositeMesh, LayerTexture(command.source), LayerTexture(command.source, 1), LayerTexture(command.source, 2));
-                        OwnerSurface.FilterOwner(command.mask).RecordFilter(context, filterInvocations[index]);
-                        effectSubmitted.Add(new EffectSubmission { ProcessingPasses = context.ProcessingPasses });
+                        renderState.DisableScissor();
+                        layerBound = false;
+                        var context = pooledFilterContext;
+                        context.Open(buffer, layerCompositeMesh, LayerTexture(command.source), LayerTexture(command.source, 1), LayerTexture(command.source, 2));
+                        try
+                        {
+                            OwnerSurface.FilterOwner(command.mask).RecordFilter(context, filterInvocations[index]);
+                            effectSubmitted.Add(new EffectSubmission { ProcessingPasses = context.ProcessingPasses });
+                        }
+                        finally
+                        {
+                            context.Close();
+                            renderState.InvalidateTarget();
+                        }
                         CopyLayerData(LayerTexture(command.source, 2), LayerTexture(command.source));
+                        layerBound = false;
+                        SelectLayer(activeLayer);
                     }
                     break;
                 default:
                     throw new NotSupportedException("未知 URUI 图层操作：" + command.kind);
             }
         }
+
         void FinishLayers(int commandCount, ref PhaseFrame phase)
         {
             using var profile = finishRecordingPhase.Auto();
-            if (colorPassActive)
-            {
-                throw new InvalidOperationException("原生共享颜色区间未结束。");
-            }
-            if (layerCursor != layerOrderCount || activeLayer != 0 || layerTargets.Count != 0)
+            if (layerCursor != layerOrderCount || activeLayer != 0 || scissoredLayer != 0 || layerTargets.Count != 0)
             {
                 throw new InvalidOperationException("URUI 图层或遮罩未平衡释放。");
             }
         }
+
         sealed class LayerProgramRelease : IDisposable
         {
             Material material;
@@ -914,66 +800,110 @@ namespace URUI.Internal.Hosting
                 mesh = null;
             }
         }
-        void ReleaseLayerRendering()
+
+        internal void ReleaseEmptySurfaceTargets()
         {
-            ClearLayerRecording();
-            foreach (var capture in captures.Values)
+            if (captures.Count == 0 && preparedLayerTargets.Count == 0 && layerContents.Count == 0)
             {
-                RetirePaintResource(capture.Lease);
+                return;
             }
-            captures.Clear();
+            retiredLayerResources.Clear();
+            try
+            {
+                ClearLayerRecording();
+                foreach (var capture in captures.Values)
+                {
+                    if (capture.Lease != null)
+                    {
+                        retiredLayerResources.Add(capture.Lease);
+                    }
+                }
+                foreach (var pair in preparedLayerTargets)
+                {
+                    retiredLayerResources.Add(pair.Key.Item2 == 0 ? (IDisposable)layerContents[pair.Key.Item1] : pair.Value);
+                }
+                if (retiredLayerResources.Count > 0)
+                {
+                    RetirePaintResources(retiredLayerResources, null, tearingDown: false);
+                }
+            }
+            finally
+            {
+                retiredLayerResources.Clear();
+                captures.Clear();
+                preparedLayerTargets.Clear();
+                layerContents.Clear();
+                layerVersions.Clear();
+                layerTargets.Clear();
+                maskSourceLayers.Clear();
+                scalarMaskLayers.Clear();
+                layerRegions.Clear();
+                layerAliases.Clear();
+                ClearNativeRecording();
+            }
+        }
+
+        void ReleaseLayerRendering(bool tearingDown = false)
+        {
             var retired = new List<IDisposable>();
-            foreach (var pair in preparedLayerTargets)
+            try
             {
-                retired.Add(pair.Key.Item2 == 0 ? (IDisposable)layerContents[pair.Key.Item1] : pair.Value);
+                ClearLayerRecording();
+                foreach (var capture in captures.Values)
+                {
+                    if (capture.Lease != null)
+                    {
+                        retired.Add(capture.Lease);
+                    }
+                }
+                foreach (var pair in preparedLayerTargets)
+                {
+                    retired.Add(pair.Key.Item2 == 0 ? (IDisposable)layerContents[pair.Key.Item1] : pair.Value);
+                }
+                foreach (var program in elementCompositeMaterials.Values)
+                {
+                    retired.Add(new LayerProgramRelease(program, null));
+                }
+                if (layerCompositeMaterial || layerCompositeMesh)
+                {
+                    retired.Add(new LayerProgramRelease(layerCompositeMaterial, layerCompositeMesh));
+                }
+                if (framebufferLayerMaterial)
+                {
+                    retired.Add(new LayerProgramRelease(framebufferLayerMaterial, null));
+                }
+                if (retired.Count > 0)
+                {
+                    RetirePaintResources(retired, null, tearingDown);
+                }
             }
-            foreach (var program in elementCompositeMaterials.Values)
+            finally
             {
-                retired.Add(new LayerProgramRelease(program, null));
+                captures.Clear();
+                elementCompositeMaterials.Clear();
+                elementComposites.Clear();
+                framebufferLayerMaterial = null;
+                framebufferFetchActive = framebufferProgramsChecked = false;
+                effectGeometryCache.Clear();
+                usedEffectGeometries.Clear();
+                removedEffectGeometries.Clear();
+                preparedLayerTargets.Clear();
+                frozenFilterInvocations.Clear();
+                layerContents.Clear();
+                layerVersions.Clear();
+                textureVersions.Clear();
+                effectTargets?.Dispose();
+                effectTargets = null;
+                layerCompositeMaterial = null;
+                layerCompositeMesh = null;
+                layerTargets.Clear();
+                maskSourceLayers.Clear();
+                scalarMaskLayers.Clear();
+                layerRegions.Clear();
+                layerAliases.Clear();
+                submissionTarget = null;
+                submissionTargetInfo = default;
             }
-            elementCompositeMaterials.Clear();
-            elementComposites.Clear();
-            if (layerCompositeMaterial || layerCompositeMesh)
-            {
-                retired.Add(new LayerProgramRelease(layerCompositeMaterial, layerCompositeMesh));
-            }
-            if (framebufferRasterMaterial)
-            {
-                retired.Add(new LayerProgramRelease(framebufferRasterMaterial, null));
-            }
-            if (framebufferLayerMaterial)
-            {
-                retired.Add(new LayerProgramRelease(framebufferLayerMaterial, null));
-            }
-            if (colorInputMaterial)
-            {
-                retired.Add(new LayerProgramRelease(colorInputMaterial, null));
-            }
-            framebufferRasterMaterial = framebufferLayerMaterial = null;
-            framebufferFetchActive = framebufferProgramsChecked = false;
-            effectGeometryCache.Clear();
-            usedEffectGeometries.Clear();
-            removedEffectGeometries.Clear();
-            if (retired.Count > 0)
-            {
-                RetirePaintResources(retired);
-            }
-            preparedLayerTargets.Clear();
-            frozenFilterInvocations.Clear();
-            layerContents.Clear();
-            layerVersions.Clear();
-            textureVersions.Clear();
-            effectTargets?.Dispose();
-            effectTargets = null;
-            layerCompositeMaterial = null;
-            layerCompositeMesh = null;
-            ReleaseColorPass();
-            layerTargets.Clear();
-            maskSourceLayers.Clear();
-            submissionTarget = null;
-            submissionTargetInfo = default;
-            rootTextureRequired = false;
-            rootDirectScreenSource = false;
         }
     }
 }

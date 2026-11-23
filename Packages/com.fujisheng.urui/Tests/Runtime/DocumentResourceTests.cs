@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 using URUI.Documents;
 using URUI.Hosting;
 using URUI.Resources;
@@ -313,6 +315,56 @@ namespace URUI.Tests
             Assert.AreEqual(1, released, "No frame was submitted; retirement must release this unused lease exactly once.");
         }
 
+        [UnityTest]
+        public IEnumerator ResolverTextureCanUnloadAfterItsLastDocumentCloses()
+        {
+            surface.InitializeForEditor(camera.GetComponent<Camera>());
+            var name = "URUI resolver lifetime " + Guid.NewGuid().ToString("N");
+            a.ImageResolver = b.ImageResolver = _ => new ImageLease(
+                FindTexture(name) ?? new Texture2D(4, 4, TextureFormat.RGBA32, false) { name = name });
+            try
+            {
+                a.LoadHtml(ImageHtml, "ui/a.html");
+                b.LoadHtml(ImageHtml, "ui/b.html");
+                Assert.IsTrue(a.TryLoadImage("icons/shared.png", out _));
+                Assert.IsTrue(b.TryLoadImage("icons/shared.png", out _));
+
+                a.Unload();
+                yield return UnityEngine.Resources.UnloadUnusedAssets();
+                Assert.IsTrue(FindTexture(name), "第二个文档仍在使用共享图片。");
+                Assert.IsTrue(b.TryLoadImage("icons/shared.png", out _));
+                a.LoadHtml(ImageHtml, "ui/a.html");
+                Assert.IsTrue(a.TryLoadImage("icons/shared.png", out _), "重新打开的文档应复用仍生效的源身份。");
+                a.Unload();
+
+                b.Unload();
+                yield return UnityEngine.Resources.UnloadUnusedAssets();
+                Assert.IsFalse(FindTexture(name), "Surface 仍存活时，已释放的图片也必须能被卸载。");
+            }
+            finally
+            {
+                a.Unload();
+                b.Unload();
+                var remaining = FindTexture(name);
+                if (remaining)
+                {
+                    UnityEngine.Object.DestroyImmediate(remaining);
+                }
+            }
+        }
+
+        static Texture2D FindTexture(string name)
+        {
+            foreach (var texture in UnityEngine.Resources.FindObjectsOfTypeAll<Texture2D>())
+            {
+                if (texture.name == name)
+                {
+                    return texture;
+                }
+            }
+            return null;
+        }
+
         [Test]
         public void StagedResolverDoesNotChangeActiveGeneration()
         {
@@ -380,6 +432,10 @@ namespace URUI.Tests
             Assert.IsFalse(b.IsLoaded);
             Assert.IsTrue(a.TryLoadImage("icons/shared.png", out _));
         }
+
+        [Test]
+        public void LongUtf8StaticMappingUsesSameCanonicalUrlAsHtml()
+            => StaticMappingUsesSameCanonicalUrlAsHtml("icons/" + new string('图', 128) + ".png", "ui/a.html");
 
         [TestCase("/icons/shared.png", "ui/a.html")]
         [TestCase("icons/my%20icon.png", "ui/a.html")]

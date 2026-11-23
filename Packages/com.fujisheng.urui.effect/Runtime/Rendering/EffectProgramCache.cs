@@ -16,6 +16,16 @@ namespace URUI.Effect.Rendering
             internal int References;
         }
         static readonly Dictionary<(BlendMode, BlendMode, int, Texture, Texture, Texture, Texture, bool), Entry> programs = new();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            foreach (var entry in programs.Values)
+            {
+                entry.Program?.Dispose();
+            }
+            programs.Clear();
+        }
         internal sealed class Lease : IDisposable
         {
             readonly (BlendMode, BlendMode, int, Texture, Texture, Texture, Texture, bool) key;

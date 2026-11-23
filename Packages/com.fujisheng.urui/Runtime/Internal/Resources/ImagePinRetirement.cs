@@ -38,6 +38,14 @@ namespace URUI.Internal.Resources
         }
         internal readonly List<LayerContentLease> Layers = new();
         internal readonly List<LayerContentLease> ReadLayers = new();
+        List<(LayerContentLease Content, ulong Generation, bool CanPublish)> layerWrites;
+        internal void PinLayerWrite(LayerContentLease content, ulong recording)
+        {
+            if (content.PinWrite(recording, out var generation, out var canPublish))
+            {
+                (layerWrites ??= new()).Add((content, generation, canPublish));
+            }
+        }
         readonly HashSet<EffectTargetPool.Lease> targetSet = new();
         readonly List<EffectTargetPool.Lease> targets = new();
         internal void PinTarget(EffectTargetPool.Lease target)
@@ -58,19 +66,30 @@ namespace URUI.Internal.Resources
             }
         }
         internal readonly List<RenderPlanResources.Entry> Geometry = new();
+        internal readonly HashSet<RenderPlanResources.Entry> GeometrySet = new();
         internal readonly List<ExternalProgramResources.Entry> Programs = new();
+        internal readonly HashSet<ExternalProgramResources.Entry> ProgramSet = new();
         internal Action<ImageSubmissionFence> Return;
-        internal void Release()
+
+        internal void Release(bool completed = false)
         {
             var budget = Budget;
             Budget = null;
             budget?.Release();
             pins.Release();
+            if (layerWrites != null)
+            {
+                foreach (var write in layerWrites)
+                {
+                    write.Content.FinishWrite(write.Generation, completed && write.CanPublish);
+                }
+                layerWrites.Clear();
+            }
             for (var i = 0; i < Layers.Count; i++)
             {
                 var content = Layers[i];
                 Layers[i] = null;
-                content.Release(true);
+                content.Release(completed);
             }
             Layers.Clear();
             for (var i = 0; i < ReadLayers.Count; i++)
@@ -88,6 +107,7 @@ namespace URUI.Internal.Resources
                 target.ReleaseReference();
             }
             targets.Clear();
+            GeometrySet.Clear();
             for (var i = 0; i < Geometry.Count; i++)
             {
                 var entry = Geometry[i];
@@ -95,6 +115,7 @@ namespace URUI.Internal.Resources
                 entry.ReleaseReference();
             }
             Geometry.Clear();
+            ProgramSet.Clear();
             for (var i = 0; i < Programs.Count; i++)
             {
                 var entry = Programs[i];
@@ -123,6 +144,7 @@ namespace URUI.Internal.Resources
                 DisposeBarrier();
             }
         }
+
         internal void DisposeBarrier()
         {
             barrier?.Release();
@@ -130,7 +152,8 @@ namespace URUI.Internal.Resources
             Return = null;
         }
     }
-    // legacy 记录撤销后用真实 fence 归还图片；未知 GPU 状态保留租约，不能按帧数猜测安全。
+
+    // 记录撤销后用真实 fence 归还资源；Play Mode 零散对象销毁合并到帧尾单次 fence，避免 N 次同步 GPU 刷队列。
     internal sealed class ImagePinRetirement : MonoBehaviour
     {
         sealed class Pending
@@ -144,30 +167,34 @@ namespace URUI.Internal.Resources
             internal bool releasing;
             internal IDisposable failedResource;
         }
+
         static ImagePinRetirement owner;
         static readonly List<Pending> pending = new();
         static readonly Stack<Pending> idle = new();
         static readonly Stack<BorrowedTextureRegistry.SubmissionPins> idlePins = new();
+        static readonly List<IDisposable> deferredBatch = new();
+        static readonly List<IDisposable> deferredFlushScratch = new();
         static bool quitting;
+        static bool collecting;
 
-#if !UNITY_EDITOR
-        // Editor Play Mode also raises the quit notifications. Its graphics device
-        // stays active and subsequent authoring previews must still submit retirement fences.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void InitializeShutdown()
+        static void InitializeStatics()
         {
             quitting = false;
+            collecting = false;
+            owner = null;
+#if !UNITY_EDITOR
             Application.quitting -= BeginShutdown;
             Application.quitting += BeginShutdown;
+#endif
         }
 
+#if !UNITY_EDITOR
         void OnApplicationQuit() => BeginShutdown();
 #endif
 
         static void ReleaseBarrierCommands(Pending item)
         {
-            // ExecuteCommandBuffer已复制命令；CPU包装不拥有在途GPU资源的租约。
-            // 保留fence、资源和Return契约，只防止图形设备关闭后再由终结线程释放命令。
             item.barrier?.Release();
             item.barrier = null;
             foreach (var submission in item.submissions)
@@ -192,11 +219,61 @@ namespace URUI.Internal.Resources
         static void BeginShutdown()
         {
             quitting = true;
+            FlushDeferred();
             ReleaseBarrierCommands();
+        }
+
+        static void EnsureOwner()
+        {
+            if (owner || quitting)
+            {
+                return;
+            }
+            var go = new GameObject("URUI resource retirement") { hideFlags = HideFlags.HideAndDontSave };
+            if (Application.isPlaying)
+            {
+                DontDestroyOnLoad(go);
+            }
+            owner = go.AddComponent<ImagePinRetirement>();
         }
 
         internal static BorrowedTextureRegistry.SubmissionPins RentPins()
             => idlePins.Count > 0 ? idlePins.Pop() : new BorrowedTextureRegistry.SubmissionPins();
+
+        // Queues Play Mode disposals into one end-of-frame GPU fence instead of N ExecuteCommandBuffer barriers.
+        internal static void RetireDeferred(IDisposable resource)
+        {
+            if (resource == null)
+            {
+                return;
+            }
+            if (!Application.isPlaying || quitting || SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+            {
+                Retire(null, null, null, resource);
+                return;
+            }
+            EnsureOwner();
+            deferredBatch.Add(resource);
+        }
+
+        internal static void FlushDeferred()
+        {
+            if (deferredBatch.Count == 0)
+            {
+                return;
+            }
+            deferredFlushScratch.Clear();
+            deferredFlushScratch.AddRange(deferredBatch);
+            deferredBatch.Clear();
+            try
+            {
+                Retire(null, null, deferredFlushScratch, null);
+            }
+            finally
+            {
+                deferredFlushScratch.Clear();
+            }
+        }
 
         internal static BorrowedTextureRegistry.SubmissionPins Retire(
             BorrowedTextureRegistry.SubmissionPins images, List<ImageSubmissionFence> submissions,
@@ -232,12 +309,10 @@ namespace URUI.Internal.Resources
             submissions?.Clear();
             if (quitting)
             {
-                // OnDestroy可能在退出消息之后退役最后一帧；不再创建对象或提交GPU命令。
                 item.uncertain = true;
                 ReleaseBarrierCommands(item);
                 return images;
             }
-            // Null 设备没有 GPU 消费者；释放仍走同一个内部所有权收尾。
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
             {
                 if (Release(item))
@@ -246,15 +321,7 @@ namespace URUI.Internal.Resources
                 }
                 return images;
             }
-            if (!owner)
-            {
-                var go = new GameObject("URUI resource retirement") { hideFlags = HideFlags.HideAndDontSave };
-                if (Application.isPlaying)
-                {
-                    DontDestroyOnLoad(go);
-                }
-                owner = go.AddComponent<ImagePinRetirement>();
-            }
+            EnsureOwner();
             try
             {
                 if (!SystemInfo.supportsGraphicsFence)
@@ -282,13 +349,15 @@ namespace URUI.Internal.Resources
         }
 
         void Update() => Collect();
-        static bool collecting;
+        void LateUpdate() => FlushDeferred();
+
         internal static void Collect()
         {
             if (collecting)
             {
                 return;
             }
+            FlushDeferred();
             collecting = true;
             try
             {
@@ -299,9 +368,8 @@ namespace URUI.Internal.Resources
                 collecting = false;
             }
         }
+
 #if UNITY_EDITOR
-        // 编辑器重载不会保留静态退休队列。独立完成证明只覆盖调用前已即时提交的批次，
-        // 不能用一次读回替代未知或尚未 Submit 的 SRP 工作自身的 fence。
         internal static bool TryCompleteImmediateRetirements(Action confirmCompletion)
         {
             if (confirmCompletion == null)
@@ -312,6 +380,7 @@ namespace URUI.Internal.Resources
             {
                 return false;
             }
+            FlushDeferred();
             foreach (var item in pending)
             {
                 if (item.uncertain || item.releasing)
@@ -364,6 +433,7 @@ namespace URUI.Internal.Resources
             }
         }
 #endif
+
         static void CollectPending()
         {
             for (var i = pending.Count - 1; i >= 0; --i)
@@ -419,12 +489,12 @@ namespace URUI.Internal.Resources
                 item.releasing = false;
             }
         }
+
         static bool ReleaseResources(Pending item)
         {
             for (var i = 0; i < item.resources.Count; ++i)
             {
                 var resource = item.resources[i];
-                // 在 Dispose 前移除内部别名；私有租约归池后不能被旧记录再次释放。
                 item.resources[i] = null;
                 if (resource == null)
                 {
@@ -455,10 +525,9 @@ namespace URUI.Internal.Resources
             }
             foreach (var submission in item.submissions)
             {
-                submission.Release();
+                submission.Release(completed: true);
             }
             item.submissions.Clear();
-            // 只缓存已被真实 fence 确认完成的内部批次，限制长期保留容量。
             if (idle.Count < 32 && item.resources.Capacity <= 2048 && item.submissions.Capacity <= 16)
             {
                 idle.Push(item);
@@ -477,6 +546,7 @@ namespace URUI.Internal.Resources
             {
                 return;
             }
+            FlushDeferred();
             ReleaseBarrierCommands();
             owner = null;
             while (idle.Count > 0)

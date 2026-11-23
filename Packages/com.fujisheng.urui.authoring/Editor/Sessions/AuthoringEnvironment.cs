@@ -70,6 +70,7 @@ namespace URUI.Authoring.Sessions
         }
         public static IReadOnlyList<IAuthoringExtension> Extensions => extensions;
         static readonly List<IAuthoringExtension> extensions = new List<IAuthoringExtension>();
+        static readonly List<URUI.Authoring.Source.SourceFile> pollFiles = new List<URUI.Authoring.Source.SourceFile>();
         static double lastTick;
         static double lastPoll;
         static int observers;
@@ -81,7 +82,6 @@ namespace URUI.Authoring.Sessions
         static string RecoveryPath => Path.Combine(ProjectRoot, "Library/URUI/Authoring/working-copy.json");
         static AuthoringEnvironment()
         {
-            RuntimeInspectionBridge.EnableSourceMapping();
             Author = new AuthoringSession(ProjectRoot);
             Author.Changed += () =>
             {
@@ -150,6 +150,10 @@ namespace URUI.Authoring.Sessions
         }
         public static void Observe(bool add)
         {
+            if (add)
+            {
+                RuntimeInspectionBridge.EnableSourceMapping();
+            }
             observers = Math.Max(0, observers + (add ? 1 : -1));
         }
         internal static bool HasUnsavedSources => Author.Workspace.Files.Any(file => file.Dirty);
@@ -158,6 +162,7 @@ namespace URUI.Authoring.Sessions
 
         internal static void Open(string path, bool discardChanges)
         {
+            RuntimeInspectionBridge.EnableSourceMapping();
             path = Author.Workspace.CheckPath(path);
             if (!discardChanges && Author.File != null && path != Author.File.Path && HasUnsavedSources)
             {
@@ -198,6 +203,7 @@ namespace URUI.Authoring.Sessions
             {
                 return;
             }
+            RuntimeInspectionBridge.EnableSourceMapping();
             Preview ??= new PreviewSession(Author, ProjectRoot);
         }
 
@@ -412,16 +418,24 @@ namespace URUI.Authoring.Sessions
                 return;
             }
             lastPoll = now;
+            bool pollChanged = false;
             if (Author.File != null && !EditorApplication.isPlayingOrWillChangePlaymode)
             {
-                foreach (var file in new List<URUI.Authoring.Source.SourceFile>(Author.Workspace.Files))
+                pollFiles.Clear();
+                foreach (var item in Author.Workspace.Files)
                 {
+                    pollFiles.Add(item);
+                }
+                for (int i = 0; i < pollFiles.Count; i++)
+                {
+                    var file = pollFiles[i];
                     try
                     {
-                        if (!file.HasExternalChange)
+                        if (!file.HasExternalChangeFast())
                         {
                             continue;
                         }
+                        pollChanged = true;
                         if (file.Dirty)
                         {
                             Report("source_conflict: external change and unsaved edits: " + file.Path);
@@ -442,11 +456,16 @@ namespace URUI.Authoring.Sessions
                     catch (Exception error)
                     {
                         Report(error.Message);
+                        pollChanged = true;
                         break;
                     }
                 }
+                pollFiles.Clear();
             }
-            Changed?.Invoke();
+            if (pollChanged || EditorApplication.isPlaying || Preview?.Playing == true)
+            {
+                Changed?.Invoke();
+            }
         }
         static void BeforeReload()
         {

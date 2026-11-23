@@ -175,7 +175,7 @@ namespace URUI.Tests
                 document.SynchronizeLayout();
                 Assert.That(Renderer.GeometryUploadBytes, Is.EqualTo(uploaded));
                 var color = Sample();
-                var expected = QualitySettings.activeColorSpace == ColorSpace.Linear ? new Color(0, .5f, .5f).linear : new Color(0, .5f, .5f);
+                var expected = new Color(0, .5f, .5f);
                 Assert.That(color.r, Is.EqualTo(expected.r).Within(3f / 255));
                 Assert.That(color.g, Is.EqualTo(expected.g).Within(3f / 255));
                 Assert.That(color.b, Is.EqualTo(expected.b).Within(3f / 255));
@@ -288,7 +288,7 @@ namespace URUI.Tests
                 RenderTexture.active = target;
                 read.ReadPixels(new Rect(60, 115, 1, 1), 0, 0);
                 read.Apply();
-                var expected = QualitySettings.activeColorSpace == ColorSpace.Linear ? new Color(.5f, .5f, 1).linear : new Color(.5f, .5f, 1);
+                var expected = new Color(.5f, .5f, 1);
                 Assert.That(read.GetPixel(0, 0).r, Is.EqualTo(expected.r).Within(3f / 255), "缓存兄弟仍按当前父层透明度与背景合成。");
             }
             finally
@@ -322,7 +322,7 @@ namespace URUI.Tests
                 pixel.ReadPixels(new Rect(2, 125, 1, 1), 0, 0);
                 pixel.Apply();
                 var color = pixel.GetPixel(0, 0);
-                var expected = QualitySettings.activeColorSpace == ColorSpace.Linear ? new Color(.5f, .5f, 1).linear : new Color(.5f, .5f, 1);
+                var expected = new Color(.5f, .5f, 1);
                 Assert.That(color.r, Is.EqualTo(expected.r).Within(.025f));
                 Assert.That(color.g, Is.EqualTo(expected.g).Within(.025f));
                 Assert.That(color.b, Is.EqualTo(expected.b).Within(.025f));
@@ -336,17 +336,8 @@ namespace URUI.Tests
         }
 
         [UnityTest]
-        public IEnumerator FramebufferFetchPreservesLowAlphaAndKeepsLinearLdrAccumulation()
+        public IEnumerator OpacityGroupsPreserveAccumulatedLowAlpha()
         {
-            if (QualitySettings.activeColorSpace != ColorSpace.Linear || SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Metal)
-            {
-                Assert.Ignore("本用例验证 Metal 颜色附件读取；其他后端继续由既有像素门禁覆盖。");
-            }
-            var fetch = UnityEngine.Resources.Load<Shader>("URUI/PremultipliedFetch");
-            if (fetch && !fetch.isSupported)
-            {
-                Assert.Ignore("当前 Metal 设备不支持颜色附件读取。");
-            }
             camera.allowHDR = true;
             camera.backgroundColor = new Color(.02f, .1f, .3f, 1);
             var body = new System.Text.StringBuilder("<div style='position:absolute;left:0;top:0;width:32px;height:32px;opacity:.75;'>");
@@ -369,15 +360,6 @@ namespace URUI.Tests
                 yield return null;
                 yield return null;
                 camera.Render();
-                if (mode == 0)
-                {
-                    Assert.Zero(Renderer.RecordedRasterResolves, "可读取的高精度目标不应再往返编码辅助目标。");
-                }
-                else
-                {
-                    Assert.IsFalse((bool)typeof(RenderHost).GetMethod("CanFetchOrdinary", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(Renderer, new object[] { 0UL }));
-                    Assert.Greater(Renderer.RecordedRasterResolves, 0, "8位目标必须保留高精度编码累积，避免低 alpha 被逐图元量化丢失。");
-                }
                 Color ReadPixel()
                 {
                     var previous = RenderTexture.active;
@@ -400,45 +382,16 @@ namespace URUI.Tests
                     }
                 }
                 var actual = ReadPixel();
-                // 以同一资源、目标和旧累积程序作参考，包含引擎实际的颜色量化约定。
-                var fields = new[] { "framebufferRasterMaterial", "framebufferLayerMaterial" };
-                var saved = new object[fields.Length];
-                for (var i = 0; i < fields.Length; i++)
-                {
-                    var field = typeof(RenderHost).GetField(fields[i], BindingFlags.Instance | BindingFlags.NonPublic);
-                    saved[i] = field.GetValue(Renderer);
-                    field.SetValue(Renderer, null);
-                }
-                try
-                {
-                    yield return null;
-                    camera.Render();
-                    Assert.Greater(Renderer.RecordedRasterResolves, 0);
-                    var expected = ReadPixel();
-                    TestContext.WriteLine("Target " + format + " sRGB=" + target.sRGB + " fetch=" + actual + " legacy=" + expected + " HDR=" + camera.allowHDR);
-                    Assert.That(actual.r, Is.EqualTo(expected.r).Within(.015f));
-                    Assert.That(actual.g, Is.EqualTo(expected.g).Within(.015f));
-                    Assert.That(actual.b, Is.EqualTo(expected.b).Within(.015f));
-                    Assert.Greater(actual.r, .25f, "低 alpha 重叠不能在逐图元量化中丢失。");
-                }
-                finally
-                {
-                    for (var i = 0; i < fields.Length; i++)
-                    {
-                        typeof(RenderHost).GetField(fields[i], BindingFlags.Instance | BindingFlags.NonPublic).SetValue(Renderer, saved[i]);
-                    }
-                }
+                var channel = target.sRGB ? actual.linear.r : actual.r;
+                Assert.Greater(channel, .25f, "高精度局部组应保留合成前的低 Alpha 重叠。");
             }
         }
 
         [UnityTest]
-        public IEnumerator FramebufferFetchPreservesPatternedTexturePalettesInOpacityGroups()
+        public IEnumerator OpacityGroupsPreservePatternedTexturePalettes()
         {
-            if (QualitySettings.activeColorSpace != ColorSpace.Linear || SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Metal)
-            {
-                Assert.Ignore("验证Metal附件读取中的纹理和多源批次。");
-            }
             camera.allowHDR = true;
+            camera.backgroundColor = Color.black;
             var compressed = UnityEngine.Resources.Load<Texture2D>("URUI.Tests/FramebufferAstcPattern");
             Assert.IsNotNull(compressed);
             TestContext.WriteLine("Imported pattern=" + compressed.format + " graphics=" + compressed.graphicsFormat);
@@ -465,6 +418,7 @@ namespace URUI.Tests
             document.Images = images;
             try
             {
+                Color[] ungrouped = null;
                 for (var mode = 0; mode < 3; mode++)
                 {
                     document.Unload();
@@ -496,40 +450,23 @@ namespace URUI.Tests
                         }
                     }
                     var actual = ReadPixels();
-                    var fields = new[] { "framebufferRasterMaterial", "framebufferLayerMaterial" };
-                    var saved = new object[2];
-                    for (var n = 0; n < 2; n++)
+                    if (mode == 0)
                     {
-                        var field = typeof(RenderHost).GetField(fields[n], BindingFlags.Instance | BindingFlags.NonPublic);
-                        saved[n] = field.GetValue(Renderer);
-                        field.SetValue(Renderer, null);
+                        ungrouped = actual;
+                        Assert.That(Array.Exists(ungrouped, pixel => pixel.r > .1f), Is.True);
+                        continue;
                     }
-                    try
+                    var bad = 0;
+                    for (var n = 0; n < actual.Length; n++)
                     {
-                        yield return null;
-                        camera.Render();
-                        var expected = ReadPixels();
-                        var maxError = 0f;
-                        var bad = 0;
-                        for (var n = 0; n < actual.Length; n++)
+                        var expected = ungrouped[n] * .7f;
+                        var error = Mathf.Max(Mathf.Abs(actual[n].r - expected.r), Mathf.Abs(actual[n].g - expected.g), Mathf.Abs(actual[n].b - expected.b));
+                        if (error > .02f)
                         {
-                            var error = Mathf.Max(Mathf.Abs(actual[n].r - expected[n].r), Mathf.Abs(actual[n].g - expected[n].g), Mathf.Abs(actual[n].b - expected[n].b));
-                            maxError = Mathf.Max(maxError, error);
-                            if (error > .02f)
-                            {
-                                bad++;
-                            }
-                        }
-                        TestContext.WriteLine("Pattern mode=" + mode + " target=" + target.format + " maxError=" + maxError + " badPixels=" + bad);
-                        Assert.Zero(bad, "多源图像批次和opacity图层必须保持原有纹理采样与参数绑定。");
-                    }
-                    finally
-                    {
-                        for (var n = 0; n < 2; n++)
-                        {
-                            typeof(RenderHost).GetField(fields[n], BindingFlags.Instance | BindingFlags.NonPublic).SetValue(Renderer, saved[n]);
+                            bad++;
                         }
                     }
+                    Assert.Zero(bad, "多源图片的透明度应在项目颜色空间中应用一次。");
                 }
             }
             finally
@@ -547,12 +484,8 @@ namespace URUI.Tests
         }
 
         [UnityTest]
-        public IEnumerator SrgbRootsKeepHalfAccumulationForOneByteAlphaOverlaps()
+        public IEnumerator ScreenColorTargetBlendsInProjectColorSpace()
         {
-            if (QualitySettings.activeColorSpace != ColorSpace.Linear)
-            {
-                Assert.Ignore("验证Linear项目中的sRGB根累积。");
-            }
             document.Unload();
             camera.targetTexture = null;
             target.Release();
@@ -561,17 +494,11 @@ namespace URUI.Tests
             target.Create();
             camera.targetTexture = target;
             camera.allowHDR = true;
-            camera.backgroundColor = Color.black;
-            var body = new System.Text.StringBuilder();
-            for (var n = 0; n < 128; n++)
-            {
-                body.Append("<div style='position:absolute;left:0;top:0;width:32px;height:32px;background-color:rgba(255,0,0,.003921568627);'></div>");
-            }
-            Load(body.ToString());
+            camera.backgroundColor = Color.white;
+            Load("<div style='position:absolute;left:0;top:0;width:32px;height:32px;background-color:rgba(0,0,0,.5);'></div>");
             yield return null;
             yield return null;
             camera.Render();
-            Assert.Greater(Renderer.RecordedRasterResolves, 0, "8位sRGB根也必须保留Half累积，不能逐图元写回8位目标。");
             var previous = RenderTexture.active;
             Texture2D read = null;
             try
@@ -580,7 +507,8 @@ namespace URUI.Tests
                 read = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
                 read.ReadPixels(new Rect(12, 115, 1, 1), 0, 0);
                 read.Apply();
-                Assert.Greater(read.GetPixel(0, 0).r, .05f, "低alpha重叠应保留可见颜色。");
+                var expected = QualitySettings.activeColorSpace == ColorSpace.Linear && target.sRGB ? .7354f : .5f;
+                Assert.That(read.GetPixel(0, 0).r, Is.EqualTo(expected).Within(.02f));
             }
             finally
             {
@@ -589,6 +517,87 @@ namespace URUI.Tests
                 {
                     UnityEngine.Object.DestroyImmediate(read);
                 }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator DirectMaskWithBorrowedRepeatTextureAndHighParameterOffsetPreservesEveryScanline()
+        {
+            var portrait = new Texture2D(32, 64, TextureFormat.RGBA32, false, false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            var tallMask = new Texture2D(32, 64, TextureFormat.RGBA32, false, false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            var read = new Texture2D(32, 64, TextureFormat.RGBA32, false, true);
+            var previous = RenderTexture.active;
+            try
+            {
+                var portraitPixels = new Color32[32 * 64];
+                var maskPixels = new Color32[32 * 64];
+                for (var y = 0; y < 64; y++)
+                {
+                    for (var x = 0; x < 32; x++)
+                    {
+                        var i = y * 32 + x;
+                        portraitPixels[i] = new Color32(255, 0, 0, 255);
+                        var inside = x >= 2 && x < 30 && y >= 2 && y < 62;
+                        maskPixels[i] = new Color32(255, 255, 255, (byte)(inside ? 255 : 0));
+                    }
+                }
+                portrait.SetPixels32(portraitPixels);
+                portrait.Apply(false, false);
+                tallMask.SetPixels32(maskPixels);
+                tallMask.Apply(false, false);
+                document.Images = new[]
+                {
+                    new ImageAsset("white.png", Texture2D.whiteTexture),
+                    new ImageAsset("mask.png", mask),
+                    new ImageAsset("portrait.png", portrait),
+                    new ImageAsset("tall-mask.png", tallMask)
+                };
+
+                var body = new System.Text.StringBuilder();
+                // Push the masked element and its DirectMask descriptor past texel 256 (row 1+ of _UruiParameters).
+                for (var i = 0; i < 40; i++)
+                {
+                    body.Append("<div style='position:absolute;left:").Append(80 + (i % 8) * 4)
+                        .Append("px;top:").Append((i / 8) * 4)
+                        .Append("px;width:2px;height:2px;background-color:rgba(0,255,0,1);'></div>");
+                }
+                body.Append("<div style='position:absolute;left:16px;top:16px;width:32px;height:64px;mask-image:url(tall-mask.png);mask-repeat:repeat;'>")
+                    .Append("<img src='portrait.png' style='position:absolute;left:0;top:0;width:32px;height:64px;'>")
+                    .Append("</div>");
+                Load(body.ToString());
+                for (var i = 0; i < 4; i++)
+                {
+                    camera.Render();
+                    yield return null;
+                }
+
+                RenderTexture.active = target;
+                // Unity RenderTexture Y=0 is bottom; CSS top=16..80 maps to RT y = 128-80 = 48 .. 112.
+                read.ReadPixels(new Rect(16, 48, 32, 64), 0, 0);
+                read.Apply();
+                for (var y = 6; y < 58; y++)
+                {
+                    var sample = read.GetPixel(16, y);
+                    Assert.That(sample.r, Is.GreaterThan(0.9f), "DirectMask 重复采样扫描线 y=" + y + " 不得缺失或出现周期性透明度条纹。");
+                    Assert.That(sample.b, Is.LessThan(0.1f), "DirectMask 内部扫描线 y=" + y + " 不应透出蓝色背景。");
+                }
+                var corner = read.GetPixel(0, 0);
+                Assert.That(corner.b, Is.GreaterThan(0.9f), "DirectMask 透明外边界应保持裁切，透出蓝色背景。");
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                UnityEngine.Object.DestroyImmediate(read);
+                UnityEngine.Object.DestroyImmediate(portrait);
+                UnityEngine.Object.DestroyImmediate(tallMask);
             }
         }
 

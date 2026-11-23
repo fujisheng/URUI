@@ -16,7 +16,6 @@ namespace URUI.Rendering
         internal readonly int Display;
         internal readonly bool IsScreen;
         internal bool IsKnown => Format != GraphicsFormat.None;
-        internal bool IsHighPrecision => !IsScreen && (Format == GraphicsFormat.R16G16B16A16_SFloat || Format == GraphicsFormat.R32G32B32A32_SFloat);
         RenderTargetInfo(GraphicsFormat format, int samples, int width, int height, bool screen, int display)
         {
             Format = format;

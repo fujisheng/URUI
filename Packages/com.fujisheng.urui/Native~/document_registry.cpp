@@ -1,14 +1,16 @@
 #include "document_registry.h"
 #include "resource_store.h"
+#include <atomic>
 #include <limits>
 
 namespace URUI::Bridge
 {
-    // 单活动 Surface 的所属线程分配；表面销毁后也不重用旧身份。
-    static uint64_t nextDocumentHandle = 1;
+    // 进程级单调文档句柄；原子递增以支持多 Surface 并发创建，表面销毁后也不重用旧身份。
+    static std::atomic<uint64_t> nextDocumentHandle{1};
 
-    DocumentRegistry::DocumentRegistry(URUI::Context& value, ElementReferences& table, RetireDocument retire)
-        : context(value), references(table), owner(std::this_thread::get_id()), retireDocument(retire)
+    DocumentRegistry::DocumentRegistry(URUI::Context& value, ElementReferences& table, RetireDocument retire,
+                                       void* user)
+        : context(value), references(table), owner(std::this_thread::get_id()), retireDocument(retire), retireUser(user)
     {
     }
 
@@ -21,7 +23,7 @@ namespace URUI::Bridge
     {
         while (!states.empty())
         {
-            if (Close(states.begin()->first) != 1)
+            if (Close(states.begin()->first) != URUI_OK)
             {
                 break;
             }
@@ -32,31 +34,37 @@ namespace URUI::Bridge
     {
         if (!Owner())
         {
-            return -3;
+            return URUI_ERR_WRONG_THREAD;
         }
         if (!result)
         {
-            return -1;
+            return URUI_ERR_INVALID_ARG;
         }
         *result = 0;
-        if (states.size() >= ElementReferences::MaxOutstanding || !nextDocumentHandle ||
-            nextDocumentHandle == std::numeric_limits<uint64_t>::max())
+        if (states.size() >= ElementReferences::MaxOutstanding)
         {
-            return -4;
+            return URUI_ERR_BUDGET;
         }
+        uint64_t handle = nextDocumentHandle.load(std::memory_order_relaxed);
+        do
+        {
+            if (!handle || handle == std::numeric_limits<uint64_t>::max())
+            {
+                return URUI_ERR_BUDGET;
+            }
+        } while (!nextDocumentHandle.compare_exchange_weak(handle, handle + 1, std::memory_order_relaxed));
         try
         {
-            const auto handle = nextDocumentHandle++;
             auto state = std::make_unique<DocumentState>();
             state->handle = handle;
             state->resourceGroup = handle;
             states.emplace(handle, std::move(state));
             *result = handle;
-            return 1;
+            return URUI_OK;
         }
         catch (...)
         {
-            return -8;
+            return URUI_ERR_INTERNAL;
         }
     }
 
@@ -89,20 +97,20 @@ namespace URUI::Bridge
     {
         if (!Owner())
         {
-            return -3;
+            return URUI_ERR_WRONG_THREAD;
         }
         auto* state = Find(handle);
         if (!state)
         {
-            return -2;
+            return URUI_ERR_NOT_READY;
         }
         if (state->retiring)
         {
-            return -5;
+            return URUI_ERR_REENTRANCY;
         }
         if (!document || document->GetContext() != &context || handles.count(document))
         {
-            return -1;
+            return URUI_ERR_INVALID_ARG;
         }
         try
         {
@@ -111,12 +119,13 @@ namespace URUI::Bridge
             auto reference = document->GetObserverPtr();
             handles.emplace(document, handle);
             state->templates.Clear();
+            state->clicks.clear();
             if (auto* previous = state->Element())
             {
                 state->retiring = true;
                 if (retireDocument)
                 {
-                    retireDocument(previous);
+                    retireDocument(retireUser, handle, previous);
                 }
                 previous->Close();
                 references.ClearDocument(previous);
@@ -125,13 +134,13 @@ namespace URUI::Bridge
             state->root = reference;
             state->retiring = false;
             references.DocumentLoaded();
-            return 1;
+            return URUI_OK;
         }
         catch (...)
         {
             state->retiring = false;
             handles.erase(document);
-            return -8;
+            return URUI_ERR_INTERNAL;
         }
     }
 
@@ -139,16 +148,16 @@ namespace URUI::Bridge
     {
         if (!Owner())
         {
-            return -3;
+            return URUI_ERR_WRONG_THREAD;
         }
         const auto it = states.find(handle);
         if (it == states.end())
         {
-            return -2;
+            return URUI_ERR_NOT_READY;
         }
         if (it->second->retiring || it->second->loading)
         {
-            return -5;
+            return URUI_ERR_REENTRANCY;
         }
         if (it->second->Element())
         {
@@ -160,10 +169,11 @@ namespace URUI::Bridge
             it->second->fragment->Commit();
             it->second->fragment.reset();
         }
+        it->second->clicks.clear();
         // Cancellation callbacks still need the published owner and live tokens.
-        if (auto* document = it->second->Element(); document && retireDocument)
+        if (retireDocument)
         {
-            retireDocument(document);
+            retireDocument(retireUser, handle, it->second->Element());
         }
         if (it->second->resources)
         {
@@ -185,9 +195,9 @@ namespace URUI::Bridge
             }
             catch (...)
             {
-                return -8;
+                return URUI_ERR_INTERNAL;
             }
         }
-        return 1;
+        return URUI_OK;
     }
 }

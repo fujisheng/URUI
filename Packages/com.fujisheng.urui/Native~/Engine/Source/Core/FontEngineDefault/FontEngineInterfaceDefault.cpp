@@ -93,4 +93,9 @@ namespace URUI
         FontProvider::ReleaseFontResources();
     }
 
+    void FontEngineInterfaceDefault::ReleaseTextures(RenderManager& render_manager)
+    {
+        FontProvider::ReleaseTextures(render_manager);
+    }
+
 }

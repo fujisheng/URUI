@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
-using UnityEngine;
 using URUI.Internal.Interop;
 using URUI.Rendering;
 
@@ -9,22 +7,12 @@ namespace URUI.Internal.Hosting
 {
     internal sealed partial class RenderHost
     {
-        // 空绘制回调不改变颜色目标；未知自定义材质第一次真正写入前再结束编码域。
         readonly PaintContextPool paintContexts = new();
-        internal void BeginPainterDraw()
-        {
-            if (preRecordingPainter)
-            {
-                return;
-            }
-            EndEncodedRaster();
-        }
-        readonly Dictionary<int, PaintCommandNative> paintCommands = new();
         PaintCommandNative[] paintScratch = Array.Empty<PaintCommandNative>();
-        byte[] paintName = new byte[128];
         readonly Dictionary<ulong, string> paintShaderNames = new();
         readonly HashSet<ulong> livePaintShaders = new();
         readonly List<ulong> removedPaintShaders = new();
+
         void PrunePaintNames()
         {
             removedPaintShaders.Clear();
@@ -40,15 +28,11 @@ namespace URUI.Internal.Hosting
                 paintShaderNames.Remove(id);
             }
         }
-        void ReadPaintCommands()
+
+        unsafe void ReadPaintCommands(in RenderPlanInputPacket input)
         {
-            paintCommands.Clear();
             livePaintShaders.Clear();
-            var count = NativeMethods.urui_get_paint_commands(null, 0);
-            if (count < 0)
-            {
-                throw new InvalidOperationException("外部绘制命令读取失败。");
-            }
+            var count = checked((int)input.PaintCount);
             if (count == 0)
             {
                 paintShaderNames.Clear();
@@ -56,16 +40,11 @@ namespace URUI.Internal.Hosting
             }
             if (paintScratch.Length < count)
             {
-                paintScratch = new PaintCommandNative[count];
+                paintScratch = new PaintCommandNative[Math.Max(count, paintScratch.Length * 2 + 8)];
             }
-            var read = NativeMethods.urui_get_paint_commands(paintScratch, count);
-            if (read != count)
+            new ReadOnlySpan<PaintCommandNative>((void*)input.Paints, count).CopyTo(paintScratch);
+            for (var index = 0; index < count; index++)
             {
-                throw new InvalidOperationException("外部绘制命令数量变化。");
-            }
-            for (var index = 0; index < read; index++)
-            {
-                paintCommands.Add(paintScratch[index].command_index, paintScratch[index]);
                 livePaintShaders.Add(paintScratch[index].shader);
             }
             PrunePaintNames();

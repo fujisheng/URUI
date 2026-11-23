@@ -4,6 +4,7 @@ namespace URUI.Internal.Interop
 {
     /// <summary>
     /// 一条有序绘制命令。geometry/texture 是原生资源句柄，不是可解引用的指针。
+    /// 末尾带显式 4 字节 reserved 对齐填充，与 Native~/urui.h 中的 URUICommand 完全一致。
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal struct CommandNative
@@ -19,5 +20,6 @@ namespace URUI.Internal.Interop
         public int clip_y;
         public int clip_w;
         public int clip_h;
+        public int reserved;
     }
 }

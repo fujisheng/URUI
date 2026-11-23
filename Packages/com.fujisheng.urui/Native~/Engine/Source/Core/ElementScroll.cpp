@@ -40,7 +40,8 @@ namespace URUI
             scrollbars[orientation].element->SetProperty(PropertyId::Visibility, Property(Style::Visibility::Visible));
             scrollbars[orientation].enabled = true;
         }
-        const Property* width = element->GetProperty("scrollbar-width");
+        static const String kScrollbarWidth("scrollbar-width");
+        const Property* width = element->GetProperty(kScrollbarWidth);
         const bool hidden = width && width->Get<int>() == 1;
         scrollbars[orientation].element->SetProperty(
             PropertyId::Visibility, Property(hidden ? Style::Visibility::Hidden : Style::Visibility::Visible));
@@ -140,7 +141,8 @@ namespace URUI
 
     void ElementScroll::FormatScrollbars()
     {
-        const Property* width = element->GetProperty("scrollbar-width");
+        static const String kScrollbarWidth("scrollbar-width");
+        const Property* width = element->GetProperty(kScrollbarWidth);
         if (width && width->Get<int>() == 1)
         {
             if (corner)

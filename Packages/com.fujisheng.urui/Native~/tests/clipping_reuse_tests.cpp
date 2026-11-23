@@ -1,4 +1,5 @@
 #include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <URUI/Core/ElementUtilities.h>
 #include <URUI/Core/RenderManager.h>
@@ -80,7 +81,7 @@ size_t ClipMutationElement::masks = 0;
 
 static void RenderMutation(int mode)
 {
-    assert(urui_create(640, 480) == 1);
+    assert(urui_surface_create(640, 480, &g_test_surface) == 1);
     URUI::ElementInstancerGeneric<ClipMutationElement> instancer;
     URUI::Factory::RegisterElementInstancer("urui-clip-probe", &instancer);
     const std::string css = mode == 3   ? "#p{box-sizing:border-box;padding:10px;border:5px solid transparent;}"
@@ -90,17 +91,17 @@ static void RenderMutation(int mode)
         "<!doctype html><html><head><style>body{margin:0;}#outer{position:relative;width:200px;height:150px;overflow:hidden;}#p{position:relative;width:80px;height:70px;overflow:hidden;}urui-clip-probe{display:block;position:absolute;width:20px;height:20px;}" +
         css +
         "</style></head><body><section id='outer'><section id='p'><urui-clip-probe id='mutate'></urui-clip-probe><urui-clip-probe id='observe'></urui-clip-probe></section></section></body></html>";
-    LoadTestDocument(html.c_str(), "/clip-render-mutation.html");
-    urui_update();
+    LoadTestDocument(g_test_surface, html.c_str(), "/clip-render-mutation.html");
+    urui_surface_update(g_test_surface);
     if (mode == 5)
     {
-        URUI::GetContext("urui")->GetDocument(0)->GetElementById("outer")->SetScrollableOverflowRectangle({400, 300},
+        URUI::GetContext(0)->GetDocument(0)->GetElementById("outer")->SetScrollableOverflowRectangle({400, 300},
                                                                                                           false);
     }
     ClipMutationElement::mode = mode;
     ClipMutationElement::observed = false;
     ClipMutationElement::armed = true;
-    urui_render();
+    urui_surface_render(g_test_surface);
     assert(ClipMutationElement::observed && !ClipMutationElement::armed);
     const auto expected = mode == 1                ? URUI::Rectanglei::FromPositionSize({30, 0}, {80, 70})
                           : mode == 2              ? URUI::Rectanglei::FromSize({40, 30})
@@ -118,12 +119,12 @@ static void RenderMutation(int mode)
     {
         assert(ClipMutationElement::masks == 1);
     }
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 
 static double Measure(int depth)
 {
-    assert(urui_create(2048, 2048) == 1);
+    assert(urui_surface_create(2048, 2048, &g_test_surface) == 1);
     std::string html =
         "<!doctype html><html><head><style>body{margin:0;}.clip{position:relative;width:1024px;height:1024px;overflow:hidden;}.leaf{position:absolute;width:1px;height:1px;background:green;}</style></head><body>";
     for (int index = 0; index < depth; ++index)
@@ -139,14 +140,14 @@ static double Measure(int depth)
         html += "</div>";
     }
     html += "</body></html>";
-    LoadTestDocument(html.c_str(), "/clip-complexity.html");
-    urui_update();
-    auto* context = URUI::GetContext("urui");
+    LoadTestDocument(g_test_surface, html.c_str(), "/clip-complexity.html");
+    urui_surface_update(g_test_surface);
+    auto* context = URUI::GetContext(0);
     // 本测试验证一次原生遍历中的裁剪复用，不能被跨帧整段录制复用绕过。
     auto render_changed_frame = [context]()
     {
         context->DirtyNativeRendering();
-        urui_render();
+        urui_surface_render(g_test_surface);
     };
     for (int iteration = 0; iteration < 30; ++iteration)
     {
@@ -164,26 +165,26 @@ static double Measure(int depth)
                         100);
     }
     std::sort(times.begin(), times.end());
-    assert(urui_command_count() == 2000);
+    assert(urui_command_count(g_test_surface) == 2000);
     std::vector<URUICommand> commands(2000);
-    assert(urui_get_commands(commands.data(), 2000) == 2000);
+    assert(urui_get_commands(g_test_surface, commands.data(), 2000) == 2000);
     // 两个夹具的实际裁剪和绘制负载相同，额外嵌套不能按兄弟数重复支付祖先遍历。
     for (const auto& command : commands)
     {
         assert((command.flags & 1) && command.clip_w == 1024 && command.clip_h == 1024);
     }
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     return times[times.size() / 2];
 }
 
 static void Semantics()
 {
-    assert(urui_create(640, 480) == 1);
-    auto owner = LoadTestDocument(
+    assert(urui_surface_create(640, 480, &g_test_surface) == 1);
+    auto owner = LoadTestDocument(g_test_surface, 
         "<!doctype html><html><head><style>body{margin:0;}section{position:absolute;left:10px;top:15px;width:80px;height:70px;overflow:hidden;}#p{border-radius:8px;}div{position:absolute;width:20px;height:20px;background:green;}#a2{left:5px;}</style></head><body><section id='p'><div id='a1'></div><div id='a2'></div></section><section id='q'><div id='b'></div></section></body></html>",
         "/clip-state.html");
-    urui_update();
-    auto* context = URUI::GetContext("urui");
+    urui_surface_update(g_test_surface);
+    auto* context = URUI::GetContext(0);
     auto& manager = context->GetRenderManager();
     auto* document = context->GetDocument(0);
     auto* a1 = document->GetElementById("a1");
@@ -227,9 +228,9 @@ static void Semantics()
     assert(URUI::ElementUtilities::SetClippingRegion(a2));
     assert(manager.GetScissorRegion() == URUI::Rectanglei::FromPositionSize({10, 15}, {40, 35}));
     manager.ResetState();
-    assert(urui_set_style(owner, "p", "width", "60px") == 1);
-    assert(urui_set_style(owner, "p", "border-radius", "0px") == 1);
-    urui_update();
+    assert(TestSetStyle(g_test_surface, owner, "p", "width", "60px") == 1);
+    assert(TestSetStyle(g_test_surface, owner, "p", "border-radius", "0px") == 1);
+    urui_surface_update(g_test_surface);
     manager.PrepareRender({640, 480});
     assert(URUI::ElementUtilities::SetClippingRegion(a2));
     assert(manager.GetScissorRegion() == URUI::Rectanglei::FromPositionSize({10, 15}, {60, 70}));
@@ -241,7 +242,7 @@ static void Semantics()
     manager.ResetState();
 
     assert(a2->SetProperty("--urui-clip", "none"));
-    urui_update();
+    urui_surface_update(g_test_surface);
     manager.PrepareRender({640, 480});
     assert(URUI::ElementUtilities::SetClippingRegion(a1));
     assert(manager.GetScissorRegion().Valid());
@@ -250,14 +251,14 @@ static void Semantics()
     assert(manager.GetState().clip_mask_list.empty());
     manager.ResetState();
     assert(a2->SetProperty("--urui-clip", "1"));
-    urui_update();
+    urui_surface_update(g_test_surface);
     manager.PrepareRender({640, 480});
     assert(URUI::ElementUtilities::SetClippingRegion(a1));
     assert(manager.GetScissorRegion().Valid());
     assert(URUI::ElementUtilities::SetClippingRegion(a2));
     assert(!manager.GetScissorRegion().Valid());
     manager.ResetState();
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }
 
 int main(int argc, char** argv)

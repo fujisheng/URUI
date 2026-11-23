@@ -36,5 +36,28 @@ namespace URUI.Tests.Editor
                 UnityEngine.Object.DestroyImmediate(contract);
             }
         }
+
+        [Test]
+        public void PremultipliedShaderIncludesDeclareExplicitFloat4TextureTypes()
+        {
+            var regex = new System.Text.RegularExpressions.Regex(@"\bTexture2D\s+(?!<)");
+            var paths = new[]
+            {
+                "Packages/com.fujisheng.urui/Runtime/Resources/URUI/BorrowedTextureSampling.cginc",
+                "Packages/com.fujisheng.urui/Runtime/Resources/URUI/PremultipliedPalette.cginc",
+                "Packages/com.fujisheng.urui/Runtime/Resources/URUI/DirectMask.cginc"
+            };
+            foreach (var assetPath in paths)
+            {
+                var package = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath);
+                Assert.That(package, Is.Not.Null, assetPath);
+                var prefix = "Packages/" + package.name + "/";
+                var fullPath = System.IO.Path.Combine(package.resolvedPath, assetPath.Substring(prefix.Length));
+                Assert.That(System.IO.File.Exists(fullPath), Is.True, fullPath);
+                var source = System.IO.File.ReadAllText(fullPath);
+                Assert.That(regex.IsMatch(source), Is.False,
+                    assetPath + " 必须使用 Texture2D<float4> 而非裸 Texture2D，避免 Unity HLSLcc 将共享寄存器降级为 half/ushort 破坏 32 位参数寻址。");
+            }
+        }
     }
 }

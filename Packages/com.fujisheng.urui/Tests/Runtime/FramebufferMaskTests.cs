@@ -33,7 +33,6 @@ namespace URUI.Tests
             {
                 Assert.Ignore("此后端不支持 framebuffer fetch 或同格式复制；使用原有遮罩路径。");
             }
-            Assert.That(fetch.passCount, Is.GreaterThanOrEqualTo(2));
             int width = variant % 2 == 0 ? 512 : 509;
             int height = variant % 2 == 0 ? 256 : 253;
             var values = new Color[width * height];
@@ -107,7 +106,7 @@ namespace URUI.Tests
                     commands.DrawMesh(mesh, transform, reference, 0, 1);
                     commands.SetRenderTarget(actual);
                     commands.SetViewport(new Rect(0, 0, width, height));
-                    commands.DrawMesh(mesh, transform, candidate, 0, 1);
+                    commands.DrawMesh(mesh, transform, candidate, 0, 0);
                     Graphics.ExecuteCommandBuffer(commands);
                 }
                 var readFormat = format == RenderTextureFormat.ARGBHalf ? TextureFormat.RGBAHalf : TextureFormat.RGBA32;

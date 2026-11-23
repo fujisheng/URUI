@@ -7,12 +7,13 @@ using URUI.Rendering;
 namespace URUI.Internal.Rendering
 {
     /// <summary>
-    /// 外部程序的不可变材质版本；Unity 对象仅在录制与真实提交引用归零后复用。
+    /// 外部程序的不可变材质版本；按源材质实例哈希分桶加速命中，Unity 对象仅在录制与真实提交引用归零后复用。
     /// </summary>
     internal sealed class ExternalProgramResources : IDisposable
     {
         static readonly Unity.Profiling.ProfilerMarker CaptureMarker = new("URUI.ExternalProgram.Capture");
         static readonly Unity.Profiling.ProfilerMarker MatchMarker = new("URUI.ExternalProgram.Match");
+
         internal readonly struct Binding
         {
             internal readonly ulong Identity;
@@ -28,6 +29,7 @@ namespace URUI.Internal.Rendering
                 Dynamic = dynamic;
             }
         }
+
         internal struct ProgramKey
         {
             internal RenderProgramDescriptor Descriptor;
@@ -35,6 +37,91 @@ namespace URUI.Internal.Rendering
             internal int Components;
             internal ulong Identity;
         }
+
+        sealed class ShaderSchema
+        {
+            internal readonly int[] FloatIds;
+            internal readonly int[] ColorIds;
+            internal readonly int[] VectorIds;
+            internal readonly int[] IntIds;
+            internal readonly int[] TextureIds;
+            internal readonly bool[] TextureHasScaleOffset;
+            internal readonly LocalKeyword[] Keywords;
+
+            internal ShaderSchema(Shader shader)
+            {
+                var count = shader.GetPropertyCount();
+                int floats = 0, colors = 0, vectors = 0, ints = 0, textures = 0;
+                for (var i = 0; i < count; i++)
+                {
+                    switch (shader.GetPropertyType(i))
+                    {
+                        case ShaderPropertyType.Float:
+                        case ShaderPropertyType.Range:
+                            floats++;
+                            break;
+                        case ShaderPropertyType.Color:
+                            colors++;
+                            break;
+                        case ShaderPropertyType.Vector:
+                            vectors++;
+                            break;
+                        case ShaderPropertyType.Int:
+                            ints++;
+                            break;
+                        case ShaderPropertyType.Texture:
+                            textures++;
+                            break;
+                    }
+                }
+                FloatIds = floats > 0 ? new int[floats] : Array.Empty<int>();
+                ColorIds = colors > 0 ? new int[colors] : Array.Empty<int>();
+                VectorIds = vectors > 0 ? new int[vectors] : Array.Empty<int>();
+                IntIds = ints > 0 ? new int[ints] : Array.Empty<int>();
+                TextureIds = textures > 0 ? new int[textures] : Array.Empty<int>();
+                TextureHasScaleOffset = textures > 0 ? new bool[textures] : Array.Empty<bool>();
+                floats = colors = vectors = ints = textures = 0;
+                for (var i = 0; i < count; i++)
+                {
+                    var id = shader.GetPropertyNameId(i);
+                    switch (shader.GetPropertyType(i))
+                    {
+                        case ShaderPropertyType.Float:
+                        case ShaderPropertyType.Range:
+                            FloatIds[floats++] = id;
+                            break;
+                        case ShaderPropertyType.Color:
+                            ColorIds[colors++] = id;
+                            break;
+                        case ShaderPropertyType.Vector:
+                            VectorIds[vectors++] = id;
+                            break;
+                        case ShaderPropertyType.Int:
+                            IntIds[ints++] = id;
+                            break;
+                        case ShaderPropertyType.Texture:
+                            TextureIds[textures] = id;
+                            TextureHasScaleOffset[textures] = (shader.GetPropertyFlags(i) & ShaderPropertyFlags.NoScaleOffset) == 0;
+                            textures++;
+                            break;
+                    }
+                }
+                Keywords = shader.keywordSpace.keywords ?? Array.Empty<LocalKeyword>();
+            }
+        }
+
+        static readonly Dictionary<Shader, ShaderSchema> shaderSchemas = new();
+
+        static ShaderSchema SchemaFor(Shader shader)
+        {
+            if (!shaderSchemas.TryGetValue(shader, out var schema))
+            {
+                schema = new ShaderSchema(shader);
+                shaderSchemas.Add(shader, schema);
+            }
+            return schema;
+        }
+
         internal sealed class Entry
         {
             internal bool DynamicResources;
@@ -42,23 +129,26 @@ namespace URUI.Internal.Rendering
             internal int References;
             internal ulong Used;
             internal ulong ResourceVersion;
+            internal int SourceInstanceId;
             internal readonly WeakReference<Material> Source = new(null);
             internal Shader Shader;
             internal int Crc;
-            internal int[] Properties;
-            internal ShaderPropertyType[] Types;
-            internal uint[] TextureVersions;
-            internal LocalKeyword[] Keywords;
+            ShaderSchema schema;
             internal readonly List<ProgramKey> Keys = new();
-            Vector4[] values;
+            float[] floats;
+            Vector4[] colors;
+            Vector4[] vectors;
             int[] integers;
             Texture[] textures;
+            uint[] textureVersions;
+            Vector4[] textureST;
             bool[] keywords;
             int renderQueue;
             bool instancing;
             bool doubleSided;
             MaterialGlobalIlluminationFlags illumination;
             bool retired;
+
             internal void RetainReference()
             {
                 if (retired)
@@ -70,6 +160,7 @@ namespace URUI.Internal.Rendering
                     References++;
                 }
             }
+
             internal void ReleaseReference()
             {
                 if (References == 0)
@@ -79,11 +170,13 @@ namespace URUI.Internal.Rendering
                 References--;
                 Collect();
             }
+
             internal void Retire()
             {
                 retired = true;
                 Collect();
             }
+
             void Collect()
             {
                 if (retired && References == 0 && Material)
@@ -97,6 +190,7 @@ namespace URUI.Internal.Rendering
                     }
                 }
             }
+
             internal bool Matches(Material source, int crc, ulong resourceVersion)
             {
                 using var sample = MatchMarker.Auto();
@@ -108,60 +202,71 @@ namespace URUI.Internal.Rendering
                 {
                     return false;
                 }
-                // CRC 只是快速拒绝；ShaderLab 可反射值逐项核对，不把哈希相等当作内容证明。
-                for (var i = 0; i < Properties.Length; i++)
+                var s = schema;
+                var floatIds = s.FloatIds;
+                for (var i = 0; i < floatIds.Length; i++)
                 {
-                    var id = Properties[i];
-                    switch (Types[i])
+                    if (!floats[i].Equals(source.GetFloat(floatIds[i])))
                     {
-                        case ShaderPropertyType.Color:
-                            if (!values[i].Equals((Vector4)source.GetColor(id)))
-                            {
-                                return false;
-                            }
-                            break;
-                        case ShaderPropertyType.Vector:
-                            if (!values[i].Equals(source.GetVector(id)))
-                            {
-                                return false;
-                            }
-                            break;
-                        case ShaderPropertyType.Float:
-                        case ShaderPropertyType.Range:
-                            if (!values[i].x.Equals(source.GetFloat(id)))
-                            {
-                                return false;
-                            }
-                            break;
-                        case ShaderPropertyType.Int:
-                            if (integers[i] != source.GetInteger(id))
-                            {
-                                return false;
-                            }
-                            break;
-                        case ShaderPropertyType.Texture:
-                            var texture = source.GetTexture(id);
-                            var offset = source.GetTextureOffset(id);
-                            var scale = source.GetTextureScale(id);
-                            if ((texture ? texture.updateCount : 0) != TextureVersions[i] || textures[i] != texture || !values[i].Equals(new Vector4(offset.x, offset.y, scale.x, scale.y)))
-                            {
-                                return false;
-                            }
-                            break;
-                        default:
-                            return false;
+                        return false;
                     }
                 }
-                for (var i = 0; i < Keywords.Length; i++)
+                var colorIds = s.ColorIds;
+                for (var i = 0; i < colorIds.Length; i++)
                 {
-                    if (keywords[i] != source.IsKeywordEnabled(Keywords[i]))
+                    if (!colors[i].Equals((Vector4)source.GetColor(colorIds[i])))
+                    {
+                        return false;
+                    }
+                }
+                var vectorIds = s.VectorIds;
+                for (var i = 0; i < vectorIds.Length; i++)
+                {
+                    if (!vectors[i].Equals(source.GetVector(vectorIds[i])))
+                    {
+                        return false;
+                    }
+                }
+                var intIds = s.IntIds;
+                for (var i = 0; i < intIds.Length; i++)
+                {
+                    if (integers[i] != source.GetInteger(intIds[i]))
+                    {
+                        return false;
+                    }
+                }
+                var texIds = s.TextureIds;
+                var texHasST = s.TextureHasScaleOffset;
+                for (var i = 0; i < texIds.Length; i++)
+                {
+                    var id = texIds[i];
+                    var texture = source.GetTexture(id);
+                    if ((texture ? texture.updateCount : 0) != textureVersions[i] || textures[i] != texture)
+                    {
+                        return false;
+                    }
+                    if (texHasST[i])
+                    {
+                        var offset = source.GetTextureOffset(id);
+                        var scale = source.GetTextureScale(id);
+                        if (!textureST[i].Equals(new Vector4(offset.x, offset.y, scale.x, scale.y)))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                var kw = s.Keywords;
+                for (var i = 0; i < kw.Length; i++)
+                {
+                    if (keywords[i] != source.IsKeywordEnabled(kw[i]))
                     {
                         return false;
                     }
                 }
                 return true;
             }
-            internal void Capture(Material source, int crc, ulong resourceVersion)
+
+            internal void Capture(Material source, int sourceId, int crc, ulong resourceVersion)
             {
                 if (References != 0)
                 {
@@ -171,20 +276,15 @@ namespace URUI.Internal.Rendering
                 if (Shader != shader)
                 {
                     Shader = shader;
-                    var count = shader.GetPropertyCount();
-                    Properties = new int[count];
-                    Types = new ShaderPropertyType[count];
-                    TextureVersions = new uint[count];
-                    for (var i = 0; i < count; i++)
-                    {
-                        Properties[i] = shader.GetPropertyNameId(i);
-                        Types[i] = shader.GetPropertyType(i);
-                    }
-                    Keywords = shader.keywordSpace.keywords;
-                    values = new Vector4[count];
-                    integers = new int[count];
-                    textures = new Texture[count];
-                    keywords = new bool[Keywords.Length];
+                    var s = schema = SchemaFor(shader);
+                    floats = s.FloatIds.Length > 0 ? new float[s.FloatIds.Length] : Array.Empty<float>();
+                    colors = s.ColorIds.Length > 0 ? new Vector4[s.ColorIds.Length] : Array.Empty<Vector4>();
+                    vectors = s.VectorIds.Length > 0 ? new Vector4[s.VectorIds.Length] : Array.Empty<Vector4>();
+                    integers = s.IntIds.Length > 0 ? new int[s.IntIds.Length] : Array.Empty<int>();
+                    textures = s.TextureIds.Length > 0 ? new Texture[s.TextureIds.Length] : Array.Empty<Texture>();
+                    textureVersions = s.TextureIds.Length > 0 ? new uint[s.TextureIds.Length] : Array.Empty<uint>();
+                    textureST = s.TextureIds.Length > 0 ? new Vector4[s.TextureIds.Length] : Array.Empty<Vector4>();
+                    keywords = s.Keywords.Length > 0 ? new bool[s.Keywords.Length] : Array.Empty<bool>();
                 }
                 if (!Material)
                 {
@@ -201,55 +301,69 @@ namespace URUI.Internal.Rendering
                         Material.shader = shader;
                     }
                     Material.CopyPropertiesFromMaterial(source);
+                    // CopyPropertiesFromMaterial does not synchronize these 4 non-property Material states.
+                    Material.renderQueue = source.renderQueue;
+                    Material.enableInstancing = source.enableInstancing;
+                    Material.doubleSidedGI = source.doubleSidedGI;
+                    Material.globalIlluminationFlags = source.globalIlluminationFlags;
                 }
-                // 快照一旦发布便不可写，保存其精确属性值，避免每次匹配再次跨 Unity 边界读同一快照。
                 renderQueue = source.renderQueue;
                 instancing = source.enableInstancing;
                 doubleSided = source.doubleSidedGI;
                 illumination = source.globalIlluminationFlags;
                 DynamicResources = false;
-                for (var i = 0; i < Properties.Length; i++)
+                var currentSchema = schema;
+                var floatIds = currentSchema.FloatIds;
+                for (var i = 0; i < floatIds.Length; i++)
                 {
-                    var id = Properties[i];
-                    textures[i] = null;
-                    switch (Types[i])
+                    floats[i] = source.GetFloat(floatIds[i]);
+                }
+                var colorIds = currentSchema.ColorIds;
+                for (var i = 0; i < colorIds.Length; i++)
+                {
+                    colors[i] = source.GetColor(colorIds[i]);
+                }
+                var vectorIds = currentSchema.VectorIds;
+                for (var i = 0; i < vectorIds.Length; i++)
+                {
+                    vectors[i] = source.GetVector(vectorIds[i]);
+                }
+                var intIds = currentSchema.IntIds;
+                for (var i = 0; i < intIds.Length; i++)
+                {
+                    integers[i] = source.GetInteger(intIds[i]);
+                }
+                var texIds = currentSchema.TextureIds;
+                var texHasST = currentSchema.TextureHasScaleOffset;
+                for (var i = 0; i < texIds.Length; i++)
+                {
+                    var id = texIds[i];
+                    var texture = source.GetTexture(id);
+                    textures[i] = texture;
+                    textureVersions[i] = texture ? texture.updateCount : 0;
+                    if (texHasST[i])
                     {
-                        case ShaderPropertyType.Color:
-                            values[i] = source.GetColor(id);
-                            break;
-                        case ShaderPropertyType.Vector:
-                            values[i] = source.GetVector(id);
-                            break;
-                        case ShaderPropertyType.Float:
-                        case ShaderPropertyType.Range:
-                            values[i] = new Vector4(source.GetFloat(id), 0, 0, 0);
-                            break;
-                        case ShaderPropertyType.Int:
-                            integers[i] = source.GetInteger(id);
-                            break;
-                        case ShaderPropertyType.Texture:
-                            var texture = source.GetTexture(id);
-                            var offset = source.GetTextureOffset(id);
-                            var scale = source.GetTextureScale(id);
-                            textures[i] = texture;
-                            TextureVersions[i] = texture ? texture.updateCount : 0;
-                            values[i] = new Vector4(offset.x, offset.y, scale.x, scale.y);
-                            if (texture && texture is not Texture2D)
-                            {
-                                DynamicResources = true;
-                            }
-                            break;
+                        var offset = source.GetTextureOffset(id);
+                        var scale = source.GetTextureScale(id);
+                        textureST[i] = new Vector4(offset.x, offset.y, scale.x, scale.y);
+                    }
+                    if (texture && texture is not Texture2D)
+                    {
+                        DynamicResources = true;
                     }
                 }
-                for (var i = 0; i < Keywords.Length; i++)
+                var kw = currentSchema.Keywords;
+                for (var i = 0; i < kw.Length; i++)
                 {
-                    keywords[i] = source.IsKeywordEnabled(Keywords[i]);
+                    keywords[i] = source.IsKeywordEnabled(kw[i]);
                 }
+                SourceInstanceId = sourceId;
                 Crc = crc;
                 ResourceVersion = resourceVersion;
                 Source.SetTarget(source);
                 Keys.Clear();
             }
+
             internal Binding Program(ExternalGeometryProgram program)
             {
                 foreach (var key in Keys)
@@ -278,12 +392,24 @@ namespace URUI.Internal.Rendering
                 return new Binding(identity, this, program.Pass, DynamicResources || !program.Descriptor.IsKnown || program.Descriptor.Time != RenderTimeInput.None);
             }
         }
+
         static ulong nextIdentity;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            nextIdentity = 0;
+            shaderSchemas.Clear();
+        }
+
         const int MaximumVersions = 4096;
         readonly List<Entry> entries = new();
+        readonly Dictionary<int, List<Entry>> buckets = new();
+        readonly Stack<List<Entry>> idleBuckets = new();
         readonly List<Entry> recording = new();
         ulong generation;
         bool disposed;
+
         internal void Begin()
         {
             if (disposed)
@@ -296,6 +422,33 @@ namespace URUI.Internal.Rendering
             }
             generation++;
         }
+
+        void AddToBucket(int sourceId, Entry entry)
+        {
+            if (!buckets.TryGetValue(sourceId, out var list))
+            {
+                list = idleBuckets.Count > 0 ? idleBuckets.Pop() : new List<Entry>(2);
+                buckets.Add(sourceId, list);
+            }
+            list.Add(entry);
+        }
+
+        void RemoveFromBucket(int sourceId, Entry entry)
+        {
+            if (sourceId != 0 && buckets.TryGetValue(sourceId, out var list))
+            {
+                list.Remove(entry);
+                if (list.Count == 0)
+                {
+                    buckets.Remove(sourceId);
+                    if (idleBuckets.Count < 128)
+                    {
+                        idleBuckets.Push(list);
+                    }
+                }
+            }
+        }
+
         internal Binding Capture(ExternalGeometryProgram program)
         {
             using var sample = CaptureMarker.Auto();
@@ -304,15 +457,28 @@ namespace URUI.Internal.Rendering
                 throw new ObjectDisposedException(nameof(ExternalProgramResources));
             }
             var source = program.Material;
+            int sourceId = source.GetInstanceID();
             var crc = source.ComputeCRC();
-            Entry available = null;
-            foreach (var entry in entries)
+
+            // O(1) bucket lookup by source Material instance ID first.
+            if (buckets.TryGetValue(sourceId, out var bucket))
             {
-                if (entry.Matches(source, crc, program.ResourceVersion))
+                for (int i = 0; i < bucket.Count; i++)
                 {
-                    entry.Used = generation;
-                    return entry.Program(program);
+                    var candidate = bucket[i];
+                    if (candidate.Matches(source, crc, program.ResourceVersion))
+                    {
+                        candidate.Used = generation;
+                        return candidate.Program(program);
+                    }
                 }
+            }
+
+            // Recycle oldest unreferenced entry if any exists.
+            Entry available = null;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
                 if (entry.References == 0 && entry.Used != generation && (available == null || entry.Used < available.Used))
                 {
                     available = entry;
@@ -327,15 +493,22 @@ namespace URUI.Internal.Rendering
                 available = new Entry();
                 entries.Add(available);
             }
-            available.Capture(source, crc, program.ResourceVersion);
+            else
+            {
+                RemoveFromBucket(available.SourceInstanceId, available);
+            }
+            available.Capture(source, sourceId, crc, program.ResourceVersion);
             available.Used = generation;
+            AddToBucket(sourceId, available);
             return available.Program(program);
         }
+
         internal void CommitRecording()
         {
             EndRecording();
-            foreach (var entry in entries)
+            for (int i = 0; i < entries.Count; i++)
             {
+                var entry = entries[i];
                 if (entry.Used == generation)
                 {
                     entry.RetainReference();
@@ -343,29 +516,42 @@ namespace URUI.Internal.Rendering
                 }
             }
         }
+
         internal void EndRecording()
         {
-            foreach (var entry in recording)
+            for (int i = 0; i < recording.Count; i++)
             {
-                entry.ReleaseReference();
+                recording[i].ReleaseReference();
             }
             recording.Clear();
         }
-        internal void PinSubmission(List<Entry> destination)
+
+        internal void PinSubmission(List<Entry> destination, HashSet<Entry> dedup)
         {
             if (disposed)
             {
                 throw new ObjectDisposedException(nameof(ExternalProgramResources));
             }
-            foreach (var entry in recording)
+            for (int i = 0; i < recording.Count; i++)
             {
-                if (!destination.Contains(entry))
+                var entry = recording[i];
+                if (!dedup.Add(entry))
+                {
+                    continue;
+                }
+                try
                 {
                     entry.RetainReference();
                     destination.Add(entry);
                 }
+                catch
+                {
+                    dedup.Remove(entry);
+                    throw;
+                }
             }
         }
+
         public void Dispose()
         {
             if (disposed)
@@ -374,11 +560,12 @@ namespace URUI.Internal.Rendering
             }
             disposed = true;
             EndRecording();
-            foreach (var entry in entries)
+            for (int i = 0; i < entries.Count; i++)
             {
-                entry.Retire();
+                entries[i].Retire();
             }
             entries.Clear();
+            buckets.Clear();
         }
     }
 }

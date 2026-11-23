@@ -64,7 +64,6 @@ namespace URUI.Effect.Editor
         void OnGUI()
         {
             L.Title(this, "URUI Effect");
-            EditorGUI.BeginChangeCheck();
             preset = (EffectPreset)EditorGUILayout.ObjectField(L.Tr("Preset"), preset, typeof(EffectPreset), false);
             source = (Texture)EditorGUILayout.ObjectField(L.Tr("Texture"), source, typeof(Texture), false);
             time = EditorGUILayout.FloatField(L.Tr("Manual time (s)"), time);
@@ -73,24 +72,25 @@ namespace URUI.Effect.Editor
             {
                 time = 0;
             }
-            var parameters = preset ? preset.CreateParameters() : new EffectParameters();
-            var json = JsonUtility.ToJson(parameters);
-            if (preview == null)
-            {
-                preview = new EffectPreview(parameters);
-            }
-            if (json != parameterJson)
-            {
-                preview.SetParameters(parameters);
-                parameterJson = json;
-            }
-            if (!target)
-            {
-                target = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGBHalf) { hideFlags = HideFlags.HideAndDontSave };
-                target.Create();
-            }
             if (Event.current.type == EventType.Repaint)
             {
+                var parameters = preset ? preset.CreateParameters() : new EffectParameters();
+                var json = JsonUtility.ToJson(parameters);
+                if (preview == null)
+                {
+                    preview = new EffectPreview(parameters);
+                    parameterJson = json;
+                }
+                else if (json != parameterJson)
+                {
+                    preview.SetParameters(parameters);
+                    parameterJson = json;
+                }
+                if (!target)
+                {
+                    target = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGBHalf) { hideFlags = HideFlags.HideAndDontSave };
+                    target.Create();
+                }
                 preview.Render(source ? source : Texture2D.whiteTexture, new Rect(128, 128, 256, 256), time, target, Color.clear);
                 var rect = GUILayoutUtility.GetRect(128, 512, 128, 512, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
                 EditorGUI.DrawTextureTransparent(rect, target, ScaleMode.ScaleToFit);

@@ -6,12 +6,95 @@
 #include "../../../Include/URUI/Core/Math.h"
 #include "../../../Include/URUI/Core/Profiling.h"
 #include "ContainerBox.h"
+#include "FlexFormattingContext.h"
 #include "FormattingContext.h"
 #include "LayoutEngine.h"
+#include <cstring>
 #include <float.h>
 
 namespace URUI
 {
+    namespace
+    {
+        struct MeasureSizeKey
+        {
+            const Element* element;
+            uint32_t cb_x;
+            uint32_t cb_y;
+            bool operator==(const MeasureSizeKey& other) const noexcept
+            {
+                return element == other.element && cb_x == other.cb_x && cb_y == other.cb_y;
+            }
+        };
+
+        struct MeasureSizeKeyHash
+        {
+            size_t operator()(const MeasureSizeKey& key) const noexcept
+            {
+                size_t h = std::hash<const void*>()(key.element);
+                h ^= size_t(key.cb_x) * 2654435761u + 0x9e3779b9u + (h << 6) + (h >> 2);
+                h ^= size_t(key.cb_y) * 2246822519u + 0x9e3779b9u + (h << 6) + (h >> 2);
+                return h;
+            }
+        };
+
+        inline uint32_t FloatBits(float value) noexcept
+        {
+            uint32_t bits = 0;
+            std::memcpy(&bits, &value, sizeof(bits));
+            return bits == 0x80000000u ? 0u : bits;
+        }
+
+        struct LayoutMeasureCache
+        {
+            UnorderedMap<const Element*, Vector2f> max_content_size;
+            robin_hood::unordered_flat_map<MeasureSizeKey, float, MeasureSizeKeyHash> shrink_to_fit_width;
+            robin_hood::unordered_flat_map<MeasureSizeKey, float, MeasureSizeKeyHash> min_content_width;
+        };
+
+        thread_local LayoutMeasureCache* g_active_measure_cache = nullptr;
+    }
+
+    LayoutDetails::ScopedMeasureCache::ScopedMeasureCache()
+    {
+        if (!g_active_measure_cache)
+        {
+            g_active_measure_cache = new LayoutMeasureCache();
+            owns = true;
+        }
+    }
+
+    LayoutDetails::ScopedMeasureCache::~ScopedMeasureCache()
+    {
+        if (owns)
+        {
+            delete g_active_measure_cache;
+            g_active_measure_cache = nullptr;
+        }
+    }
+
+    bool LayoutDetails::LookupCachedMaxContentSize(const Element* element, Vector2f& out_size)
+    {
+        if (!g_active_measure_cache)
+        {
+            return false;
+        }
+        auto it = g_active_measure_cache->max_content_size.find(element);
+        if (it == g_active_measure_cache->max_content_size.end())
+        {
+            return false;
+        }
+        out_size = it->second;
+        return true;
+    }
+
+    void LayoutDetails::StoreCachedMaxContentSize(const Element* element, Vector2f size)
+    {
+        if (g_active_measure_cache)
+        {
+            g_active_measure_cache->max_content_size[element] = size;
+        }
+    }
 
     // Convert width or height of a border box to the width or height of its corresponding content box.
     static inline float BorderSizeToContentSize(float border_size, float border_padding_edges_size)
@@ -246,43 +329,66 @@ namespace URUI
     {
         URUI_ASSERT(element);
 
+        const MeasureSizeKey cache_key{element, FloatBits(containing_block.x), FloatBits(containing_block.y)};
+        if (g_active_measure_cache)
+        {
+            auto it = g_active_measure_cache->shrink_to_fit_width.find(cache_key);
+            if (it != g_active_measure_cache->shrink_to_fit_width.end())
+            {
+                return it->second;
+            }
+        }
+
         // @performance Can we lay out the elements directly using a fit-content size mode, instead of fetching the
         // shrink-to-fit width first? Use a non-definite placeholder for the box content width, and available width as a
         // maximum constraint.
         Box box;
-        float min_height;
-        float max_height;
         LayoutDetails::BuildBox(box, containing_block, element, BuildBoxMode::UnalignedBlock);
-        LayoutDetails::GetDefiniteMinMaxHeight(min_height, max_height, element->GetComputedValues(), box,
-                                               containing_block.y);
+
+        auto store_and_return = [&](float result) -> float
+        {
+            if (g_active_measure_cache)
+            {
+                g_active_measure_cache->shrink_to_fit_width[cache_key] = result;
+            }
+            return result;
+        };
 
         if (box.GetSize().x >= 0.f)
         {
-            return box.GetSize().x;
+            return store_and_return(box.GetSize().x);
         }
 
         // Currently we don't support shrink-to-fit width for tables. Just return a zero-sized width.
         const Style::Display display = element->GetDisplay();
         if (display == Style::Display::Table || display == Style::Display::InlineTable)
         {
-            return 0.f;
+            return store_and_return(0.f);
         }
 
-        // Use a large size for the box content width, so that it is practically unconstrained. This makes the formatting
-        // procedure act as if under a maximum content constraint. Children with percentage sizing values may be scaled
-        // based on this width (such as 'width' or 'margin'), if so, the layout is considered undefined like in CSS 2.
-        const float max_content_constraint_width = containing_block.x + 10000.f;
-        box.SetContent({max_content_constraint_width, box.GetSize().y});
+        float shrink_to_fit_width = 0.f;
+        if (display == Style::Display::Flex || display == Style::Display::InlineFlex)
+        {
+            // FlexContainer::GetShrinkToFitWidth ignores the formatted box when width is not a fixed length
+            // and computes FlexFormattingContext::GetMaxContentSize(element).x directly.
+            shrink_to_fit_width = FlexFormattingContext::GetMaxContentSize(element).x;
+        }
+        else
+        {
+            // Use a large size for the box content width, so that it is practically unconstrained. This makes the formatting
+            // procedure act as if under a maximum content constraint. Children with percentage sizing values may be scaled
+            // based on this width (such as 'width' or 'margin'), if so, the layout is considered undefined like in CSS 2.
+            const float max_content_constraint_width = containing_block.x + 10000.f;
+            box.SetContent({max_content_constraint_width, box.GetSize().y});
 
-        // First, format the element under the above generated box. Then we ask the resulting box for its shrink-to-fit
-        // width. For block containers, this is essentially its largest line or child box.
-        // @performance. Some formatting can be simplified, e.g. absolute elements do not contribute to the shrink-to-fit
-        // width. Also, children of elements with a fixed width and height don't need to be formatted further.
-        RootBox root(Math::Max(containing_block, Vector2f(0.f)));
-        UniquePtr<LayoutBox> layout_box =
-            FormattingContext::FormatIndependent(&root, element, &box, FormattingContextType::Block);
+            // First, format the element under the above generated box. Then we ask the resulting box for its shrink-to-fit
+            // width. For block containers, this is essentially its largest line or child box.
+            RootBox root(Math::Max(containing_block, Vector2f(0.f)));
+            UniquePtr<LayoutBox> layout_box =
+                FormattingContext::FormatIndependent(&root, element, &box, FormattingContextType::Block);
 
-        float shrink_to_fit_width = layout_box->GetShrinkToFitWidth();
+            shrink_to_fit_width = layout_box->GetShrinkToFitWidth();
+        }
         if (containing_block.x >= 0)
         {
             const float available_width =
@@ -290,11 +396,40 @@ namespace URUI
                                    box.GetSizeAcross(BoxDirection::Horizontal, BoxArea::Margin, BoxArea::Padding));
             shrink_to_fit_width = Math::Min(shrink_to_fit_width, available_width);
         }
-        return shrink_to_fit_width;
+        return store_and_return(shrink_to_fit_width);
     }
 
     float LayoutDetails::GetMinContentWidth(Element* element, Vector2f containing_block)
     {
+        const MeasureSizeKey cache_key{element, FloatBits(containing_block.x), FloatBits(containing_block.y)};
+        if (g_active_measure_cache)
+        {
+            auto it = g_active_measure_cache->min_content_width.find(cache_key);
+            if (it != g_active_measure_cache->min_content_width.end())
+            {
+                return it->second;
+            }
+        }
+
+        auto store_and_return = [&](float result) -> float
+        {
+            if (g_active_measure_cache)
+            {
+                g_active_measure_cache->min_content_width[cache_key] = result;
+            }
+            return result;
+        };
+
+        const Style::Display display = element->GetDisplay();
+        if (display == Style::Display::Flex || display == Style::Display::InlineFlex)
+        {
+            if (element->GetComputedValues().width().type == Style::Width::Type::Length)
+            {
+                return store_and_return(0.f);
+            }
+            return store_and_return(Math::Max(0.f, FlexFormattingContext::GetMaxContentSize(element).x));
+        }
+
         Box box;
         BuildBox(box, containing_block, element, BuildBoxMode::UnalignedBlock);
         // A zero available inline size forces every allowed wrap. Existing line and
@@ -302,7 +437,7 @@ namespace URUI
         box.SetContent({0.f, box.GetSize().y});
         RootBox root(Math::Max(containing_block, Vector2f(0.f)));
         auto layout = FormattingContext::FormatIndependent(&root, element, &box, FormattingContextType::Block);
-        return Math::Max(0.f, layout->GetShrinkToFitWidth(true));
+        return store_and_return(Math::Max(0.f, layout->GetShrinkToFitWidth(true)));
     }
 
     ComputedAxisSize LayoutDetails::BuildComputedHorizontalSize(const ComputedValues& computed)

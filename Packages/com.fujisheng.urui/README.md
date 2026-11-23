@@ -39,7 +39,7 @@ Core 不内置业务数据绑定。FUI 的窗口、导航与绑定由独立适�
 
 ## 环境与发布范围
 
-主要验证环境为 Unity **6000.3.22f1 / macOS ARM64 / Metal**，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 **ABI11 / render-plan8 / style4 / effect7 / filter3 / animation1**，正式 C 导出集合由头文件与二进制核对生成。各平台构建、静态审计和实际运行状态分别记录在[插件清单](Documentation~/PLUGINS.json)。
+主要验证环境为 Unity **6000.3.22f1 / macOS ARM64 / Metal**，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 **ABI13 / render-plan9 / style4 / effect7 / filter3 / animation1**，正式 C 导出集合由头文件与二进制核对生成。各平台构建、静态审计和实际运行状态分别记录在[插件清单](Documentation~/PLUGINS.json)。
 
 使用 MainCamera、Input Manager (Old/Both) 或自行注入输入。真实系统 IME、移动软键盘及无障碍边界见[支持范围](Documentation~/LIMITATIONS_ZH.md)。图片借用完整常驻 mip0 的 Texture2D，字体需提供包含所需字形的可读字节资源。
 

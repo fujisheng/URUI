@@ -28,22 +28,19 @@ namespace URUI
     // @property 复用声明解析器；所有 schema 校验完成后才修改属性注册表。
     struct PropertyRegistrationTransaction
     {
-        PropertySpecification& specification;
-        explicit PropertyRegistrationTransaction(PropertySpecification& specification) : specification(specification)
-        {
-        }
+        PropertySpecification* specification = nullptr;
         Vector<String> added;
         Vector<std::pair<PropertyDefinition*, Property>> defaults;
         bool committed = false;
         ~PropertyRegistrationTransaction()
         {
-            if (committed)
+            if (committed || !specification)
             {
                 return;
             }
             for (auto it = added.rbegin(); it != added.rend(); ++it)
             {
-                specification.RemoveLastProperty(*it);
+                specification->RemoveLastProperty(*it);
             }
             for (auto& entry : defaults)
             {
@@ -762,10 +759,12 @@ namespace URUI
 
     static ControlledLifetimeResource<StyleSheetParserData> style_sheet_property_parsers;
 
-    StyleSheetParser::StyleSheetParser(PropertySpecification* specification, Vector<Diagnostic>* diagnostics)
+    StyleSheetParser::StyleSheetParser(PropertySpecification* specification, Vector<Diagnostic>* diagnostics,
+                                       std::function<PropertySpecification&()> ensure_mutable)
         : diagnostic_sink(diagnostics),
-          property_specification(specification ? *specification
-                                               : StyleSheetSpecification::GetMutablePropertySpecification())
+          property_specification(specification ? specification
+                                               : &StyleSheetSpecification::GetMutablePropertySpecification()),
+          ensure_mutable_specification(std::move(ensure_mutable))
     {
         line_number = 0;
         stream = nullptr;
@@ -994,7 +993,8 @@ namespace URUI
     bool StyleSheetParser::ParseFontFaceBlock(Vector<FontFaceRule>& rules,
                                               const SharedPtr<const PropertySource>& source)
     {
-        FontFacePropertyParser font_face_property_parser;
+        FontFacePropertyParser& font_face_property_parser = style_sheet_property_parsers->font_face;
+        font_face_property_parser.Clear();
 
         PropertyDictionary properties;
         font_face_property_parser.SetTargetProperties(&properties);
@@ -1181,7 +1181,7 @@ namespace URUI
         return true;
     }
 
-    bool StyleSheetParser::RegisterPropertyRules(Stream* input, int begin_line_number,
+    bool StyleSheetParser::RegisterPropertyRules(const CssParseResult& css,
                                                  PropertyRegistrationTransaction& transaction)
     {
         struct Declaration
@@ -1197,10 +1197,6 @@ namespace URUI
             SourceSpan span;
         };
         Vector<Declaration> declarations;
-        stream_file_name = StringUtilities::Replace(input->GetSourceURL().GetURL(), '|', ':');
-        String text;
-        input->Read(text, input->Length() - input->Tell());
-        const auto css = ParseCss(text, stream_file_name);
         for (const auto& rule : css.rules)
         {
             if (rule.atRule != "property")
@@ -1234,9 +1230,13 @@ namespace URUI
             declaration.fallback_keyword = parser.fallback_keyword;
             declarations.push_back(std::move(declaration));
         }
+        if (declarations.empty())
+        {
+            return true;
+        }
         UnorderedMap<String, size_t> unique;
         size_t registered = 0;
-        for (auto id : property_specification.GetRegisteredProperties())
+        for (auto id : property_specification->GetRegisteredProperties())
         {
             (void)id;
             registered++;
@@ -1245,7 +1245,7 @@ namespace URUI
         for (size_t i = 0; i < declarations.size(); i++)
         {
             auto& declaration = declarations[i];
-            if (const auto* current = property_specification.GetProperty(declaration.name))
+            if (const auto* current = property_specification->GetProperty(declaration.name))
             {
                 if ((current->GetRegistrationSyntax().empty() &&
                      current->GetDefaultValue()->unit != declaration.value.unit) ||
@@ -1277,10 +1277,15 @@ namespace URUI
             Report(DiagnosticSeverity::Error, "CSS_PROPERTY_CAPACITY", "Registered property capacity exceeded.", {});
             return false;
         }
+        if (ensure_mutable_specification)
+        {
+            property_specification = &ensure_mutable_specification();
+        }
+        transaction.specification = property_specification;
         for (const auto& item : unique)
         {
             const auto& declaration = declarations[item.second];
-            if (const auto* current = property_specification.GetProperty(declaration.name))
+            if (const auto* current = property_specification->GetProperty(declaration.name))
             {
                 auto* target = const_cast<PropertyDefinition*>(current);
                 transaction.defaults.push_back({target, *current->GetDefaultValue()});
@@ -1288,8 +1293,8 @@ namespace URUI
             }
             else
             {
-                auto& definition = property_specification.RegisterProperty(declaration.name, declaration.initial,
-                                                                           declaration.inherited, false);
+                auto& definition = property_specification->RegisterProperty(declaration.name, declaration.initial,
+                                                                            declaration.inherited, false);
                 definition.AddParser(declaration.parser, declaration.parameters);
                 if (!declaration.fallback_keyword.empty())
                 {
@@ -1306,17 +1311,15 @@ namespace URUI
                                  const std::function<bool()>& validate_resources)
     {
         line_offset = begin_line_number - 1;
-        PropertyRegistrationTransaction registration(property_specification);
-        const auto begin = input->Tell();
-        if (!RegisterPropertyRules(input, begin_line_number, registration) ||
-            !input->Seek(static_cast<long>(begin), SEEK_SET))
-        {
-            return false;
-        }
+        PropertyRegistrationTransaction registration;
         String text;
         input->Read(text, input->Length() - input->Tell());
         stream_file_name = StringUtilities::Replace(input->GetSourceURL().GetURL(), '|', ':');
         const auto parsed = ParseCss(text, stream_file_name);
+        if (!RegisterPropertyRules(parsed, registration))
+        {
+            return false;
+        }
         for (const auto& diagnostic : parsed.diagnostics)
         {
             Report(diagnostic.severity, diagnostic.code, diagnostic.message, diagnostic.span);
@@ -1351,7 +1354,7 @@ namespace URUI
                 if (rule.atRule.empty())
                 {
                     PropertyDictionary properties;
-                    PropertySpecificationParser parser(properties, property_specification);
+                    PropertySpecificationParser parser(properties, *property_specification);
                     descriptors(parser, rule);
                     auto leafs = ConstructNodes(*current.stylesheet->root, rule.prelude);
                     if (leafs.empty())
@@ -1382,7 +1385,7 @@ namespace URUI
                     for (const auto& frame : rule.children)
                     {
                         PropertyDictionary properties;
-                        PropertySpecificationParser parser(properties, property_specification);
+                        PropertySpecificationParser parser(properties, *property_specification);
                         for (const auto& declaration : frame.declarations)
                         {
                             if (!declaration.important && !parser.ParseDeclaration(declaration))
@@ -1400,7 +1403,7 @@ namespace URUI
                 }
                 else if (rule.atRule == "supports")
                 {
-                    const auto supported = SupportsDeclaration(rule.prelude, property_specification);
+                    const auto supported = SupportsDeclaration(rule.prelude, *property_specification);
                     if (!supported.first)
                     {
                         Report(DiagnosticSeverity::Warning, "CSS_SUPPORTS",
@@ -1486,7 +1489,7 @@ namespace URUI
             }
             if (changed)
             {
-                property_specification.NotifyRegisteredPropertiesChanged();
+                property_specification->NotifyRegisteredPropertiesChanged();
             }
         }
         return registration.committed;
@@ -1497,7 +1500,7 @@ namespace URUI
         URUI_ASSERT(!stream);
         StreamMemory stream_owner((const byte*)properties.c_str(), properties.size());
         stream = &stream_owner;
-        PropertySpecificationParser parser(parsed_properties, property_specification);
+        PropertySpecificationParser parser(parsed_properties, *property_specification);
         ReadProperties(parser);
         stream = nullptr;
     }

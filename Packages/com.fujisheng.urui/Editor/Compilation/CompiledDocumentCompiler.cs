@@ -96,6 +96,28 @@ namespace URUI.Editor.Compilation
             }
         }
 
+        static string RelativePosixUri(string fromUri, string toUri)
+        {
+            var fromDir = fromUri.LastIndexOf('/') is int slash && slash > 0 ? fromUri.Substring(0, slash) : "";
+            var fromParts = fromDir.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            var toParts = toUri.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            int common = 0;
+            while (common < fromParts.Length && common < toParts.Length && string.Equals(fromParts[common], toParts[common], StringComparison.Ordinal))
+            {
+                common++;
+            }
+            var segments = new List<string>(fromParts.Length - common + toParts.Length - common);
+            for (int i = common; i < fromParts.Length; i++)
+            {
+                segments.Add("..");
+            }
+            for (int i = common; i < toParts.Length; i++)
+            {
+                segments.Add(toParts[i]);
+            }
+            return segments.Count == 0 ? "." : string.Join("/", segments);
+        }
+
         static TextResource[] Discover(TextAsset source, string uri, IReadOnlyList<TextResource> declared, bool fragment)
         {
             var known = new Dictionary<string, TextAsset>(StringComparer.Ordinal) { [uri] = source };
@@ -110,8 +132,8 @@ namespace URUI.Editor.Compilation
                     return found;
                 }
                 var sourcePath = AssetDatabase.GetAssetPath(source);
-                var relative = Path.GetRelativePath(Path.GetDirectoryName(uri), requested);
-                var full = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(sourcePath), Uri.UnescapeDataString(relative)));
+                var relative = RelativePosixUri(uri, requested);
+                var full = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(sourcePath) ?? "", Uri.UnescapeDataString(relative)));
                 var path = Path.GetRelativePath(Path.GetFullPath("."), full).Replace('\\', '/');
                 if (!path.StartsWith("Assets/", StringComparison.Ordinal) && !path.StartsWith("Packages/", StringComparison.Ordinal))
                 {
@@ -144,15 +166,29 @@ namespace URUI.Editor.Compilation
         {
             public string sourceSha256;
         }
+        static string cachedPluginsJsonPath;
+        static DateTime cachedPluginsWriteUtc;
+        static string cachedNativeSourceHash;
+
         static string NativeSourceHash()
         {
-            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(CompiledDocumentCompiler).Assembly);
-            var path = Path.Combine(package.resolvedPath, "Documentation~/PLUGINS.json");
-            var hash = JsonUtility.FromJson<NativeBuild>(File.ReadAllText(path)).sourceSha256;
+            if (string.IsNullOrEmpty(cachedPluginsJsonPath))
+            {
+                var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(CompiledDocumentCompiler).Assembly);
+                cachedPluginsJsonPath = Path.Combine(package.resolvedPath, "Documentation~/PLUGINS.json");
+            }
+            var writeTime = File.GetLastWriteTimeUtc(cachedPluginsJsonPath);
+            if (!string.IsNullOrEmpty(cachedNativeSourceHash) && writeTime == cachedPluginsWriteUtc)
+            {
+                return cachedNativeSourceHash;
+            }
+            var hash = JsonUtility.FromJson<NativeBuild>(File.ReadAllText(cachedPluginsJsonPath)).sourceSha256;
             if (string.IsNullOrEmpty(hash))
             {
                 throw new InvalidOperationException("URUI 原生编译清单缺少源码摘要。");
             }
+            cachedPluginsWriteUtc = writeTime;
+            cachedNativeSourceHash = hash;
             return hash;
         }
         [StructLayout(LayoutKind.Sequential)]
@@ -199,9 +235,11 @@ namespace URUI.Editor.Compilation
             var uri = HtmlResourceDependencies.ResolveUrl("/", sourceUrl);
             var resources = Normalize(dependencies);
             var input = new Resource[resources.Length];
+            var resourceBytes = new byte[resources.Length][];
             var pins = new GCHandle[resources.Length];
             var uris = new IntPtr[resources.Length];
-            var text = new UTF8Encoding(false, true).GetString(source.bytes);
+            var sourceBytes = source.bytes;
+            var text = new UTF8Encoding(false, true).GetString(sourceBytes);
             if (text.IndexOf('\0') >= 0)
             {
                 throw new InvalidOperationException("HTML 不能包含 NUL：" + uri);
@@ -211,6 +249,7 @@ namespace URUI.Editor.Compilation
                 for (var i = 0; i < resources.Length; i++)
                 {
                     var bytes = resources[i].Asset.bytes;
+                    resourceBytes[i] = bytes;
                     pins[i] = GCHandle.Alloc(bytes, GCHandleType.Pinned);
                     var name = Encoding.UTF8.GetBytes(resources[i].Source + '\0');
                     uris[i] = Marshal.AllocHGlobal(name.Length);
@@ -224,30 +263,31 @@ namespace URUI.Editor.Compilation
                 }
                 var encoded = new byte[65536];
                 var status = urui_compile_document(text, uri, fragment ? 1 : 0, input, input.Length, encoded, encoded.Length, out var required);
-                if (status == -3 && required > encoded.Length)
+                if (status == NativeStatus.BufferTooSmall && required > encoded.Length)
                 {
                     encoded = new byte[required];
                     status = urui_compile_document(text, uri, fragment ? 1 : 0, input, input.Length, encoded, encoded.Length, out required);
                 }
-                if (status != 1)
+                if (status != NativeStatus.Ok)
                 {
-                    throw new InvalidOperationException("URUI 编译失败：" + uri + "：" + NativeMethods.LastError() + " (" + status + ")");
+                    throw new InvalidOperationException("URUI 编译失败：" + uri + "：" + NativeMethods.LastError(0) + " (" + status + ")");
                 }
                 Array.Resize(ref encoded, required);
                 var asset = ScriptableObject.CreateInstance<CompiledDocumentAsset>();
                 try
                 {
                     asset.name = source.name;
-                    var fingerprint = Fingerprint(source, uri, resources, fragment);
+                    var fingerprint = Fingerprint(sourceBytes, uri, resources, resourceBytes, fragment);
                     asset.Initialize(uri, encoded, fingerprint, resources, fragment, source);
                     var templates = new List<CompiledTemplate>();
                     if (!fragment)
                     {
-                        foreach (var resource in resources)
+                        for (var i = 0; i < resources.Length; i++)
                         {
+                            var resource = resources[i];
                             if (resource.Source != uri && resource.Source.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
                             {
-                                templates.Add(CompileTemplate(encoded, fingerprint, resource));
+                                templates.Add(CompileTemplate(encoded, fingerprint, resource, resourceBytes[i]));
                             }
                         }
                     }
@@ -276,23 +316,23 @@ namespace URUI.Editor.Compilation
             }
         }
 
-        static CompiledTemplate CompileTemplate(byte[] parent, string fingerprint, TextResource source)
+        static CompiledTemplate CompileTemplate(byte[] parent, string fingerprint, TextResource source, byte[] bytes)
         {
-            var html = new UTF8Encoding(false, true).GetString(source.Asset.bytes);
+            var html = new UTF8Encoding(false, true).GetString(bytes);
             if (html.IndexOf('\0') >= 0)
             {
                 throw new InvalidOperationException("HTML 片段不能包含 NUL：" + source.Source);
             }
             var encoded = new byte[65536];
             var status = urui_compile_template(parent, parent.Length, html, source.Source, encoded, encoded.Length, out var required);
-            if (status == -3 && required > encoded.Length)
+            if (status == NativeStatus.BufferTooSmall && required > encoded.Length)
             {
                 encoded = new byte[required];
                 status = urui_compile_template(parent, parent.Length, html, source.Source, encoded, encoded.Length, out required);
             }
-            if (status != 1)
+            if (status != NativeStatus.Ok)
             {
-                throw new InvalidOperationException("URUI 片段编译失败：" + source.Source + "：" + NativeMethods.LastError());
+                throw new InvalidOperationException("URUI 片段编译失败：" + source.Source + "：" + NativeMethods.LastError(0));
             }
             Array.Resize(ref encoded, required);
             var template = new CompiledTemplate();
@@ -304,14 +344,14 @@ namespace URUI.Editor.Compilation
         {
             var bytes = new byte[65536];
             var status = urui_compiled_document_metadata(encoded, encoded.Length, bytes, bytes.Length, out var required);
-            if (status == -3 && required > bytes.Length)
+            if (status == NativeStatus.BufferTooSmall && required > bytes.Length)
             {
                 bytes = new byte[required];
                 status = urui_compiled_document_metadata(encoded, encoded.Length, bytes, bytes.Length, out required);
             }
-            if (status != 1)
+            if (status != NativeStatus.Ok)
             {
-                throw new InvalidOperationException("URUI 编译节点索引读取失败：" + NativeMethods.LastError());
+                throw new InvalidOperationException("URUI 编译节点索引读取失败：" + NativeMethods.LastError(0));
             }
             var packet = JsonUtility.FromJson<NodePacket>(Encoding.UTF8.GetString(bytes, 0, required - 1));
             if (packet.nodeCount < 0 || packet.nodeCount > 1000000)
@@ -368,6 +408,16 @@ namespace URUI.Editor.Compilation
 
         internal static string Fingerprint(TextAsset source, string uri, IReadOnlyList<TextResource> dependencies, bool fragment)
         {
+            var resourceBytes = new byte[dependencies.Count][];
+            for (var i = 0; i < dependencies.Count; i++)
+            {
+                resourceBytes[i] = dependencies[i].Asset.bytes;
+            }
+            return Fingerprint(source.bytes, uri, dependencies, resourceBytes, fragment);
+        }
+
+        static string Fingerprint(byte[] sourceBytes, string uri, IReadOnlyList<TextResource> dependencies, byte[][] resourceBytes, bool fragment)
+        {
             using var content = new MemoryStream();
             using (var writer = new BinaryWriter(content, Encoding.UTF8, true))
             {
@@ -375,11 +425,11 @@ namespace URUI.Editor.Compilation
                 writer.Write(NativeSourceHash());
                 writer.Write(fragment);
                 writer.Write(uri);
-                WriteBytes(writer, source.bytes);
-                foreach (var resource in dependencies)
+                WriteBytes(writer, sourceBytes);
+                for (var i = 0; i < dependencies.Count; i++)
                 {
-                    writer.Write(resource.Source);
-                    WriteBytes(writer, resource.Asset.bytes);
+                    writer.Write(dependencies[i].Source);
+                    WriteBytes(writer, resourceBytes[i]);
                 }
             }
             using var hash = SHA256.Create();

@@ -101,9 +101,8 @@ namespace URUI.Tests
                 Object.DestroyImmediate(read);
             }
         }
-        static void Rgb(Color actual, Color encoded)
+        static void Rgb(Color actual, Color expected)
         {
-            var expected = QualitySettings.activeColorSpace == ColorSpace.Linear ? encoded.linear : encoded;
             Assert.That(actual.r, Is.EqualTo(expected.r).Within(3f / 255));
             Assert.That(actual.g, Is.EqualTo(expected.g).Within(3f / 255));
             Assert.That(actual.b, Is.EqualTo(expected.b).Within(3f / 255));
@@ -297,7 +296,7 @@ namespace URUI.Tests
         }
 
         [Test]
-        public void EmptyPainterDoesNotSplitTheColorRaster()
+        public void EmptyPainterDoesNotSplitGeometry()
         {
             Load("<img src='red.png'><div id='empty' style='position:absolute;left:8px;top:0;width:3px;height:3px;'></div>" +
                 "<img src='red.png' style='left:4px;'>");
@@ -307,7 +306,6 @@ namespace URUI.Tests
             document.SynchronizeLayout();
             Assert.That(callbacks, Is.GreaterThan(0));
             Assert.That(Host.RecordedGeometryDraws, Is.EqualTo(1));
-            Assert.That(Host.RecordedRasterResolves, Is.EqualTo(QualitySettings.activeColorSpace == ColorSpace.Linear ? 1 : 0));
             Rgb(Pixel(1, 1), new Color(.5f, 0, 0));
             Rgb(Pixel(5, 1), new Color(.5f, 0, 0));
         }
@@ -332,12 +330,11 @@ namespace URUI.Tests
         }
 
         [Test]
-        public void DrawOriginalEffectDoesNotSplitGeometryOrColorRaster()
+        public void DrawOriginalEffectDoesNotSplitGeometry()
         {
             document.Effects.Register(new EffectDefinition("original", EffectKind.Image, new OriginalEffect(), "original", "premultiplied"));
             Load("<img src='red.png'><img src='red.png' style='left:4px;--urui-image-effect:original;'><img src='red.png' style='left:8px;'>");
             Assert.That(Host.RecordedGeometryDraws, Is.EqualTo(1));
-            Assert.That(Host.RecordedRasterResolves, Is.EqualTo(QualitySettings.activeColorSpace == ColorSpace.Linear ? 1 : 0));
             Rgb(Pixel(1, 1), new Color(.5f, 0, 0));
             Rgb(Pixel(5, 1), new Color(.5f, 0, 0));
             Rgb(Pixel(9, 1), new Color(.5f, 0, 0));
@@ -395,15 +392,16 @@ namespace URUI.Tests
         public void DestroyingHiddenGeometryDoesNotRetainItBehindTheStaticCache()
         {
             Load("<img id='visible' src='red.png'><img id='hidden' src='red.png' style='left:4px;'>");
+            var surfaceHandle = document.Surface.SurfaceHandle;
             var commands = new URUI.Internal.Interop.CommandNative[2];
-            Assert.That(URUI.Internal.Interop.NativeMethods.urui_get_commands(commands, commands.Length), Is.EqualTo(2));
+            Assert.That(URUI.Internal.Interop.NativeMethods.urui_get_commands(surfaceHandle, commands, commands.Length), Is.EqualTo(2));
             var hidden = commands[1].geometry;
-            Assert.That(URUI.Internal.Interop.NativeMethods.urui_geometry_exists(hidden), Is.EqualTo(1));
+            Assert.That(URUI.Internal.Interop.NativeMethods.urui_geometry_exists(surfaceHandle, hidden), Is.EqualTo(1));
             document.Q("hidden").Style.Set("display", "none");
             document.SynchronizeLayout();
             document.Q("hidden").Destroy();
             document.SynchronizeLayout();
-            Assert.That(URUI.Internal.Interop.NativeMethods.urui_geometry_exists(hidden), Is.Zero);
+            Assert.That(URUI.Internal.Interop.NativeMethods.urui_geometry_exists(surfaceHandle, hidden), Is.Zero);
             Rgb(Pixel(1, 1), new Color(.5f, 0, 0));
         }
 

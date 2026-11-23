@@ -62,7 +62,7 @@ namespace URUI.Tests
                 document.Surface = surface;
                 asset = Compile("<!doctype html><html><head></head><body><div id='box' class='entry'></div></body></html>");
                 document.Load(asset);
-                Assert.AreEqual(1, NativeMethods.urui_element_compiled_info(document.NativeHandle, document.Body.Token, 0, null, out var info));
+                Assert.AreEqual(1, NativeMethods.urui_element_compiled_info(document.Surface.SurfaceHandle, document.NativeHandle, document.Body.Token, 0, null, out var info));
                 var index = new CompiledNodeIndex();
                 index.Initialize(info.Identity, new[] { 4, 2, 4, 4 }, new[] {
                     new CompiledNodeIndex.Selector {
@@ -102,7 +102,7 @@ nodes = new[] { 3 }
         {
             var bytes = new byte[65536];
             var result = urui_compile_document(html, "/compiled.html", 0, IntPtr.Zero, 0, bytes, bytes.Length, out var length);
-            if (result == -3 && length > bytes.Length)
+            if (result == NativeStatus.BufferTooSmall && length > bytes.Length)
             {
                 bytes = new byte[length];
                 result = urui_compile_document(html, "/compiled.html", 0, IntPtr.Zero, 0, bytes, bytes.Length, out length);

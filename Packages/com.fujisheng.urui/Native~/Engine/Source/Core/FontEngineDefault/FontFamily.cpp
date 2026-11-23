@@ -83,4 +83,15 @@ namespace URUI
         }
     }
 
+    void FontFamily::ReleaseTextures(RenderManager& render_manager)
+    {
+        for (auto& entry : font_faces)
+        {
+            if (entry.face)
+            {
+                entry.face->ReleaseTextures(render_manager);
+            }
+        }
+    }
+
 }

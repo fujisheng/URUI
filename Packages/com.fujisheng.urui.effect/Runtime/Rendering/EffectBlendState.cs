@@ -17,9 +17,6 @@ namespace URUI.Effect.Rendering
             BlendType.Custom => (p.SrcBlendMode, p.DstBlendMode),
             _ => throw new InvalidOperationException("无效的 URUI Blend 模式。")
         };
-        internal static readonly StylePropertyDefinition[] Parameters ={
-            new("--urui-fx-blend-type",StyleValueType.Keyword),new("--urui-fx-src-blend-mode",StyleValueType.Keyword),new("--urui-fx-dst-blend-mode",StyleValueType.Keyword)
-        };
         static BlendMode Factor(string value) => value switch
         {
             "zero" => BlendMode.Zero,

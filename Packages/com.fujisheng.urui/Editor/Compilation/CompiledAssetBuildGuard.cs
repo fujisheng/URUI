@@ -44,9 +44,8 @@ namespace URUI.Editor.Compilation
             {
                 foreach (var document in root.GetComponentsInChildren<Document>(true))
                 {
-                    var serialized = new SerializedObject(document);
-                    var source = serialized.FindProperty("source").objectReferenceValue;
-                    var compiled = serialized.FindProperty("compiledSource").objectReferenceValue as CompiledDocumentAsset;
+                    var source = document.SerializedSource;
+                    var compiled = document.SerializedCompiledSource;
                     if (source && !compiled)
                     {
                         throw new BuildFailedException("URUI 场景文档缺少编译资产：" + document.name + "。请先编译 HTML 并配置 CompiledSource。");

@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include "ElementStyle.h"
 #include <URUI/Core.h>
 #include <algorithm>
@@ -118,8 +120,8 @@ static double UpdateCost(Context& context, bool dense)
 }
 int main()
 {
-    assert(urui_create(128, 128) == 1);
-    auto* context = GetContext("urui");
+    assert(urui_surface_create(128, 128, &g_test_surface) == 1);
+    auto* context = GetContext(0);
     assert(context);
     assert(LoadFontFace(FontPath(), PaintFontFamily, Style::FontStyle::Normal, Style::FontWeight::Normal));
     Contracts(*context);
@@ -150,5 +152,5 @@ int main()
     std::cout << "opacity dense/sparse ratio=" << ratio << std::endl;
     // 独立绘制属性的更新不应随无关局部样式数量线性增长。
     assert(ratio < 2.0);
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
 }

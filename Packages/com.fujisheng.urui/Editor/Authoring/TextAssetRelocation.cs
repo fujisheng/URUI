@@ -57,21 +57,49 @@ namespace URUI.Editor.Authoring
             var pattern = new Regex(@"(?<prefix>^[\t ]*(?:(?:-[\t ]+)?[^:\s'""{}]+:[\t ]*|-[\t ]+)\{[\t ]*fileID:[\t ]*)" +
                 Regex.Escape(previousId.ToString(CultureInfo.InvariantCulture)) +
                 @"(?<suffix>[\t ]*,[\t ]*guid:[\t ]*" + guid + @"[\t ]*,[\t ]*type:[\t ]*\d+[\t ]*\}[\t ]*\r?$)", RegexOptions.Multiline);
+            var guidBytes = Encoding.ASCII.GetBytes(guid);
+            var strictUtf8 = new UTF8Encoding(false, true);
             var files = new List<ReferenceFile>();
             foreach (var assetPath in AssetDatabase.GetAllAssetPaths())
             {
                 var physical = PhysicalPath(assetPath);
-                foreach (var file in new[] { physical, physical + ".meta" })
+                for (int pass = 0; pass < 2; pass++)
                 {
-                    if (!File.Exists(file) || (file == physical && !SerializedExtensions.Contains(System.IO.Path.GetExtension(file))))
+                    var file = pass == 0 ? physical : physical + ".meta";
+                    if (pass == 0 && !SerializedExtensions.Contains(System.IO.Path.GetExtension(file)))
+                    {
+                        continue;
+                    }
+                    if (!File.Exists(file))
                     {
                         continue;
                     }
                     var bytes = File.ReadAllBytes(file);
+                    // 先按 ASCII 字节快速筛查 GUID，跳过 99.9% 无关文件的 UTF-8 解码与正则扫描。
+                    if (bytes.AsSpan().IndexOf(guidBytes) < 0)
+                    {
+                        if (pass == 0 && assetPath != from && Array.IndexOf(AssetDatabase.GetDependencies(assetPath, false), from) >= 0)
+                        {
+                            // 二进制或非标准文本依赖虽不含明文 GUID，仍需按契约显式报错。
+                            try
+                            {
+                                var head = strictUtf8.GetString(bytes, 0, Math.Min(bytes.Length, 16));
+                                if (!head.TrimStart('\uFEFF').StartsWith("%YAML", StringComparison.Ordinal))
+                                {
+                                    throw new InvalidOperationException("依赖不是 Unity 文本序列化资源：" + assetPath);
+                                }
+                            }
+                            catch (DecoderFallbackException)
+                            {
+                                throw new InvalidOperationException("依赖仍采用二进制序列化，请先将此资源转换成文本：" + assetPath);
+                            }
+                        }
+                        continue;
+                    }
                     string text;
                     try
                     {
-                        text = new UTF8Encoding(false, true).GetString(bytes);
+                        text = strictUtf8.GetString(bytes);
                     }
                     catch (DecoderFallbackException)
                     {
@@ -81,7 +109,7 @@ namespace URUI.Editor.Authoring
                         }
                         continue;
                     }
-                    if (file == physical && !text.TrimStart('\uFEFF').StartsWith("%YAML", StringComparison.Ordinal))
+                    if (pass == 0 && !text.TrimStart('\uFEFF').StartsWith("%YAML", StringComparison.Ordinal))
                     {
                         if (assetPath != from && Array.IndexOf(AssetDatabase.GetDependencies(assetPath, false), from) >= 0)
                         {

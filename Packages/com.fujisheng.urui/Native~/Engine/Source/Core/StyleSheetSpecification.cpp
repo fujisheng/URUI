@@ -67,6 +67,7 @@ namespace URUI
                                                                   const String& default_value, bool inherited,
                                                                   bool forces_layout)
     {
+        shared_snapshot.reset();
         return properties.RegisterProperty(property_name, default_value, inherited, forces_layout, id);
     }
 
@@ -78,18 +79,21 @@ namespace URUI
     {
         if (instance)
         {
+            instance->shared_snapshot.reset();
             instance->properties.NotifyRegisteredPropertiesChanged();
         }
     }
 
     bool StyleSheetSpecification::RemoveLastProperty(const String& property_name)
     {
+        instance->shared_snapshot.reset();
         return instance->properties.RemoveLastProperty(property_name);
     }
 
     ShorthandId StyleSheetSpecification::RegisterShorthand(ShorthandId id, const String& shorthand_name,
                                                            const String& property_names, ShorthandType type)
     {
+        shared_snapshot.reset();
         return properties.RegisterShorthand(shorthand_name, property_names, type, id);
     }
 
@@ -263,7 +267,17 @@ namespace URUI
 
     PropertySpecification& StyleSheetSpecification::GetMutablePropertySpecification()
     {
+        instance->shared_snapshot.reset();
         return instance->properties;
+    }
+
+    SharedPtr<PropertySpecification> StyleSheetSpecification::GetSharedPropertySpecification()
+    {
+        if (!instance->shared_snapshot)
+        {
+            instance->shared_snapshot = SharedPtr<PropertySpecification>(instance->properties.Clone());
+        }
+        return instance->shared_snapshot;
     }
 
     void StyleSheetSpecification::RegisterDefaultParsers()
@@ -394,7 +408,6 @@ namespace URUI
 
 	RegisterProperty(PropertyId::OverflowX, "overflow-x", "visible", false, true).AddParser("keyword", "visible, hidden, auto, scroll");
 	RegisterProperty(PropertyId::OverflowY, "overflow-y", "visible", false, true).AddParser("keyword", "visible, hidden, auto, scroll");
-	RegisterProperty("scrollbar-width", "auto", false, true).AddParser("keyword", "auto, none");
 	RegisterShorthand(ShorthandId::Overflow, "overflow", "overflow-x, overflow-y", ShorthandType::Replicate);
 	RegisterProperty(PropertyId::Clip, "--urui-clip", "auto", false, false).AddParser("keyword", "auto, none, always").AddParser("number");
 	RegisterProperty(PropertyId::Visibility, "visibility", "visible", true, false).AddParser("keyword", "visible, hidden");
@@ -506,6 +519,26 @@ namespace URUI
 	// Internationalization properties (internal)
 	RegisterProperty(PropertyId::Language, "--urui-language", "", true, true).AddParser("string");
 	RegisterProperty(PropertyId::Direction, "direction", "ltr", true, true).AddParser("keyword", "auto, ltr, rtl");
+
+	// Built-in URUI image geometry, effect & graphic tint properties.
+	RegisterProperty(PropertyId::ImageEffect, "--urui-image-effect", "none", false, false).AddParser("string");
+	RegisterProperty(PropertyId::ImageDensity, "--urui-image-density", "css-pixels", false, false).AddParser("keyword", "css-pixels, surface");
+	RegisterProperty(PropertyId::ObjectFit, "object-fit", "fill", false, false).AddParser("keyword", "fill, contain, cover");
+	RegisterProperty(PropertyId::ImageSliceTop, "--urui-image-slice-top", "0px", false, false).AddParser("length");
+	RegisterProperty(PropertyId::ImageSliceRight, "--urui-image-slice-right", "0px", false, false).AddParser("length");
+	RegisterProperty(PropertyId::ImageSliceBottom, "--urui-image-slice-bottom", "0px", false, false).AddParser("length");
+	RegisterProperty(PropertyId::ImageSliceLeft, "--urui-image-slice-left", "0px", false, false).AddParser("length");
+	RegisterProperty(PropertyId::ImageFillMode, "--urui-image-fill-mode", "none", false, false).AddParser("keyword", "none, horizontal, vertical, radial90, radial180, radial360");
+	RegisterProperty(PropertyId::ImageFillOrigin, "--urui-image-fill-origin", "0", false, false).AddParser("number");
+	RegisterProperty(PropertyId::ImageFillClockwise, "--urui-image-fill-clockwise", "1", false, false).AddParser("number");
+	RegisterProperty(PropertyId::ImageFillAmount, "--urui-image-fill-amount", "1", false, false).AddParser("number");
+	RegisterProperty(PropertyId::ImageFillCenter, "--urui-image-fill-center", "1", false, false).AddParser("number");
+	RegisterProperty(PropertyId::GraphicTint, "--urui-graphic-tint", "white", false, false).AddParser("color");
+	RegisterProperty(PropertyId::CaretWidth, "--urui-caret-width", "1px", false, true).AddParser("length");
+	RegisterProperty(PropertyId::CaretBlinkRate, "--urui-caret-blink-rate", "0.85", false, false).AddParser("number");
+
+	// Custom (non-enum) built-in properties MUST be registered after all defined PropertyIds.
+	RegisterProperty("scrollbar-width", "auto", false, true).AddParser("keyword", "auto, none");
 
 	URUI_ASSERTMSG(instance->properties.shorthand_map->AssertAllInserted(ShorthandId::NumDefinedIds), "Missing specification for one or more Shorthand IDs.");
 	URUI_ASSERTMSG(instance->properties.property_map->AssertAllInserted(PropertyId::NumDefinedIds), "Missing specification for one or more Property IDs.");

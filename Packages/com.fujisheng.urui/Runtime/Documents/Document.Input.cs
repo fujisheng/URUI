@@ -49,13 +49,13 @@ namespace URUI.Documents
                 }
             }
             // 文档根接收键盘事件，但不加入 HTML 的 Tab 顺序，也不改写作者属性。
-            var result = NativeMethods.urui_element_focus(NativeHandle, DocumentElement.Token, 1);
+            var result = NativeMethods.urui_element_focus(SurfaceHandle, NativeHandle, DocumentElement.Token, 1);
             FinishNativeCall();
             if (result < 0)
             {
                 throw new InvalidOperationException("URUI 文档聚焦被拒绝：" + result);
             }
-            return result == 1;
+            return result == NativeStatus.Ok;
         }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace URUI.Documents
             get
             {
                 CheckThread();
-                return IsLoaded ? WrapElement(NativeMethods.urui_focused_element(NativeHandle)) : null;
+                return IsLoaded ? WrapElement(NativeMethods.urui_focused_element(SurfaceHandle, NativeHandle)) : null;
             }
         }
         /// <summary>
@@ -77,7 +77,7 @@ namespace URUI.Documents
             CheckThread();
             ElementStyle.RequireFinite(position.x);
             ElementStyle.RequireFinite(position.y);
-            return IsLoaded ? WrapElement(NativeMethods.urui_element_pick(NativeHandle, position.x, position.y)) : null;
+            return IsLoaded ? WrapElement(NativeMethods.urui_element_pick(SurfaceHandle, NativeHandle, position.x, position.y)) : null;
         }
     }
 

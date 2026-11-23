@@ -56,7 +56,6 @@ namespace URUI.Effect.Tests
             texture.SetPixels(values);
             texture.Apply();
             material.SetTexture("_UruiParameters", texture);
-            material.SetVector("_UruiParameterSize", new Vector4(1f / 256, 1, 256, 1));
             return texture;
         }
         [UnityTest]

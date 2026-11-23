@@ -41,6 +41,13 @@ namespace URUI.Internal.Rendering
         }
         static ulong nextGeometry;
         static ulong nextRaw;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            nextGeometry = 0;
+            nextRaw = 0;
+        }
         ConditionalWeakTable<Mesh, MeshIdentity> identities = new();
         readonly Dictionary<(ulong, ulong), int> captured = new();
         readonly List<Mesh.MeshDataArray> meshes = new();
@@ -319,7 +326,11 @@ namespace URUI.Internal.Rendering
                     name = "URUI rectangle mask source",
                     hideFlags = HideFlags.HideAndDontSave
                 };
-                rectangleMesh = new Mesh { name = "URUI analytic unit rectangle" };
+                rectangleMesh = new Mesh
+                {
+                    name = "URUI analytic unit rectangle",
+                    hideFlags = HideFlags.HideAndDontSave
+                };
                 rectangleMesh.vertices = new[] { Vector3.zero, Vector3.right, new Vector3(1, 1), Vector3.up };
                 rectangleMesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
                 var descriptor = new RenderProgramDescriptor(RenderTextureEncoding.TextureDeclared, RenderColorSpace.Active, RenderColorSpace.Active,

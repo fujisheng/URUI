@@ -45,6 +45,7 @@ namespace URUI.Effect.Rendering
             values["--urui-fx-sampling-width"] = StyleOverride.Number((float)p.SamplingWidth);
             values["--urui-fx-transition-filter"] = StyleOverride.FromKeyword(Keyword(p.TransitionFilter));
             values["--urui-fx-transition-progress"] = StyleOverride.Number((float)p.TransitionProgress);
+            values["--urui-fx-transition-reverse"] = StyleOverride.FromKeyword(p.TransitionReverse ? "true" : "false");
             values["--urui-fx-transition-texture-scale-x"] = StyleOverride.Number(p.TransitionTextureScale.x);
             values["--urui-fx-transition-texture-scale-y"] = StyleOverride.Number(p.TransitionTextureScale.y);
             values["--urui-fx-transition-texture-offset-x"] = StyleOverride.Number(p.TransitionTextureOffset.x);

@@ -7,7 +7,7 @@ using UnityResources = UnityEngine.Resources;
 
 namespace URUI.Internal.Hosting
 {
-    // 初始化与关闭原生 context、相机命令缓冲及自有资源；失败与禁用走同一套释放顺序。
+    // 初始化与关闭原生 Surface、相机命令缓冲及自有资源；失败与禁用走同一套异常安全释放顺序。
     internal sealed partial class RenderHost
     {
         internal void InitializeForSurface()
@@ -15,8 +15,8 @@ namespace URUI.Internal.Hosting
             Start();
         }
 
-        // Document initializes this component synchronously. Unity may call Start again,
-        // so startupAttempted also prevents a second native context from being created.
+        // Surface initializes this component synchronously. Unity may call Start again,
+        // so startupAttempted also prevents a second native surface from being created.
         void Start()
         {
             if (startupAttempted || resourcesReleased)
@@ -62,47 +62,47 @@ namespace URUI.Internal.Hosting
             {
                 name = "URUI UI"
             };
-            lastWidth = Screen.width;
-            lastHeight = Screen.height;
+            lastWidth = UIWidth;
+            lastHeight = UIHeight;
             try
             {
-                if (NativeMethods.urui_bridge_abi_version() != 11)
+                if (NativeMethods.urui_bridge_abi_version() != NativeMethods.ExpectedBridgeAbiVersion)
                 {
-                    throw new Exception("URUIBridge ABI version 11 is required");
+                    throw new Exception($"URUIBridge ABI version {NativeMethods.ExpectedBridgeAbiVersion} is required");
                 }
-                if (NativeMethods.urui_effect_api_version() != 7)
+                if (NativeMethods.urui_effect_api_version() != NativeMethods.ExpectedEffectApiVersion)
                 {
-                    throw new NotSupportedException("URUI 效果协议 v7 必需，请重建当前目标插件。");
+                    throw new NotSupportedException($"URUI 效果协议 v{NativeMethods.ExpectedEffectApiVersion} 必需，请重建当前目标插件。");
                 }
-
-                if (NativeMethods.urui_texture_protocol_version() != 1)
+                if (NativeMethods.urui_filter_api_version() != NativeMethods.ExpectedFilterApiVersion)
                 {
-                    throw new Exception("URUIBridge texture protocol v1 is required; update all platform plugins");
+                    throw new NotSupportedException($"URUI 滤镜协议 v{NativeMethods.ExpectedFilterApiVersion} 必需，请重建当前目标插件。");
                 }
-                if (NativeMethods.urui_command_protocol_version() != 2)
+                if (NativeMethods.urui_texture_protocol_version() != NativeMethods.ExpectedTextureProtocolVersion)
                 {
-                    throw new Exception("URUIBridge command protocol v2 is required; update all platform plugins");
+                    throw new Exception($"URUIBridge texture protocol v{NativeMethods.ExpectedTextureProtocolVersion} is required; update all platform plugins");
                 }
-
-                if (ActiveHost && ActiveHost != this)
+                if (NativeMethods.urui_command_protocol_version() != NativeMethods.ExpectedCommandProtocolVersion)
                 {
-                    throw new InvalidOperationException("当前原生桥接仅支持一个活动 Surface。请先关闭另一个 Surface。");
-                }
-                if (NativeMethods.urui_create(UIWidth, UIHeight) == 0)
-                {
-                    throw new Exception(NativeMethods.LastError());
+                    throw new Exception($"URUIBridge command protocol v{NativeMethods.ExpectedCommandProtocolVersion} is required; update all platform plugins");
                 }
 
+                if (NativeMethods.urui_surface_create(lastWidth, lastHeight, out var handle) != NativeStatus.Ok || handle == 0)
+                {
+                    throw new Exception(NativeMethods.LastError(0));
+                }
+
+                SurfaceHandle = handle;
                 active = true;
-                ActiveHost = this;
-                if (NativeMethods.urui_set_direct_color_filters(shader.name == "URUI/Premultiplied" ? 1 : 0) != 1)
+                activeHosts[handle] = this;
+                if (NativeMethods.urui_surface_set_direct_color_filters(SurfaceHandle, shader.name == "URUI/Premultiplied" ? 1 : 0) != NativeStatus.Ok)
                 {
                     throw new InvalidOperationException("无法设置 URUI 标准图片滤镜能力。");
                 }
-                DefaultFonts.Install();
+                DefaultFonts.Install(SurfaceHandle);
                 StartImageResolver();
                 SynchronizeUIClock(true);
-                if (NativeMethods.urui_set_event_callback(URUI.Documents.Document.NativeEventCallback) != 1)
+                if (NativeMethods.urui_set_event_callback(SurfaceHandle, URUI.Documents.Document.NativeEventCallback) != NativeStatus.Ok)
                 {
                     throw new InvalidOperationException("URUI Surface 事件初始化失败。");
                 }
@@ -114,7 +114,7 @@ namespace URUI.Internal.Hosting
             }
             catch (EntryPointNotFoundException ex)
             {
-                Debug.LogError("Update Native/URUIBridge to ABI11 with texture protocol v1: " + ex.Message);
+                Debug.LogError($"Update Native/URUIBridge to ABI{NativeMethods.ExpectedBridgeAbiVersion}: " + ex.Message);
                 AbortStartup();
             }
             catch (Exception ex)
@@ -148,42 +148,80 @@ namespace URUI.Internal.Hosting
             return true;
         }
 
-        void AbortStartup()
+        static void SafeCleanup(Action action)
         {
-            ReleaseLayerRendering();
-            ReleaseNativePlanRendering();
-            if (buffer != null)
+            try
             {
-                buffer.Release();
-                buffer = null;
+                action();
             }
-
-            if (material)
+            catch (Exception error)
             {
-                DestroyRenderObject(material);
-                material = null;
+                Debug.LogException(error);
             }
-
-            if (active)
-            {
-                NativeMethods.urui_destroy();
-                active = false;
-            }
-
-            if (ReferenceEquals(ActiveHost, this))
-            {
-                ActiveHost = null;
-            }
-
-            borrowedTextures.Clear();
-            RetireLegacyImages();
-            enabled = false;
         }
 
-        void OnDisable()
+        void DestroyNativeSurface()
+        {
+            var handle = SurfaceHandle;
+            active = false;
+            SurfaceHandle = 0;
+            if (handle != 0)
+            {
+                try
+                {
+                    SafeCleanup(() => NativeMethods.urui_surface_destroy(handle));
+                }
+                finally
+                {
+                    if (activeHosts.TryGetValue(handle, out var registered) && ReferenceEquals(registered, this))
+                    {
+                        activeHosts.Remove(handle);
+                    }
+                }
+            }
+        }
+
+        void AbortStartup()
+        {
+            try
+            {
+                SafeCleanup(() => ReleaseLayerRendering(tearingDown: true));
+                SafeCleanup(ReleaseNativePlanRendering);
+                if (buffer != null)
+                {
+                    var current = buffer;
+                    buffer = null;
+                    SafeCleanup(current.Release);
+                }
+                if (material)
+                {
+                    var current = material;
+                    material = null;
+                    SafeCleanup(() => DestroyRenderObject(current));
+                }
+            }
+            finally
+            {
+                DestroyNativeSurface();
+                SafeCleanup(borrowedTextures.Clear);
+                SafeCleanup(RetireLegacyImages);
+                if (this)
+                {
+                    enabled = false;
+                }
+            }
+        }
+
+        void OnDisable() => DisableHost(deferredDisable: false);
+
+        void DisableHost(bool deferredDisable)
         {
             UnsubscribeEffectSubmissions();
-            if (resourcesReleased || OwnerSurface?.Defer(OnDisable) == true)
+            if (resourcesReleased || OwnerSurface?.Defer(() => DisableHost(deferredDisable: true)) == true)
+            {
+                return;
+            }
+            if (deferredDisable && this && isActiveAndEnabled)
             {
                 return;
             }
@@ -216,59 +254,60 @@ namespace URUI.Internal.Hosting
                 return;
             }
             resourcesReleased = true;
-            ReleaseSubmissionPool();
-            if (this)
+            try
             {
-                enabled = false;
-            }
-            InvalidateRecording(true);
-
-            frameUsedGeometry.Clear();
-            frameStaleGeometry.Clear();
-            ReleaseNativePlanRendering();
-            if (buffer != null)
-            {
-                buffer.Release();
-                buffer = null;
-            }
-
-            foreach (var item in meshes.Values)
-            {
-                if (item.mesh)
+                SafeCleanup(ReleaseSubmissionPool);
+                if (this)
                 {
-                    DestroyRenderObject(item.mesh);
+                    enabled = false;
+                }
+                SafeCleanup(() => InvalidateRecording(true));
+
+                frameUsedGeometry.Clear();
+                frameStaleGeometry.Clear();
+                SafeCleanup(ReleaseNativePlanRendering);
+                if (buffer != null)
+                {
+                    var current = buffer;
+                    buffer = null;
+                    SafeCleanup(current.Release);
+                }
+
+                foreach (var item in meshes.Values)
+                {
+                    if (item.mesh)
+                    {
+                        var mesh = item.mesh;
+                        SafeCleanup(() => DestroyRenderObject(mesh));
+                    }
+                }
+                meshes.Clear();
+                idleGeometry.Clear();
+                pooledGeometryBytes = 0;
+
+                foreach (var item in textures.Values)
+                {
+                    if (item.Texture)
+                    {
+                        var texture = item.Texture;
+                        SafeCleanup(() => DestroyRenderObject(texture));
+                    }
+                }
+                textures.Clear();
+
+                SafeCleanup(() => ReleaseLayerRendering(tearingDown: true));
+                if (material)
+                {
+                    var current = material;
+                    material = null;
+                    SafeCleanup(() => DestroyRenderObject(current));
                 }
             }
-
-            meshes.Clear();
-            idleGeometry.Clear();
-            pooledGeometryBytes = 0;
-            foreach (var item in textures.Values)
+            finally
             {
-                if (item)
-                {
-                    DestroyRenderObject(item);
-                }
-            }
-
-            textures.Clear();
-            ReleaseLayerRendering();
-            if (material)
-            {
-                DestroyRenderObject(material);
-            }
-
-            if (active)
-            {
-                NativeMethods.urui_destroy();
-                active = false;
-            }
-
-            borrowedTextures.Clear();
-            RetireLegacyImages();
-            if (ReferenceEquals(ActiveHost, this))
-            {
-                ActiveHost = null;
+                DestroyNativeSurface();
+                SafeCleanup(borrowedTextures.Clear);
+                SafeCleanup(RetireLegacyImages);
             }
         }
     }

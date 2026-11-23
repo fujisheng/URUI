@@ -90,7 +90,8 @@ struct Fixture
         draw.parameter.matrix[13] = 20;
         draw.parameter.uv[0] = 16;
         draw.parameter.uv[1] = 12;
-        bindings.frame_flags = 1 | 2 | 4 | 32 | 64 | 128;
+        bindings.frame_flags = URUI_PLAN_RESOURCE_PIXEL_ALIGNED_ROOT | URUI_PLAN_RESOURCE_HDR_CAMERA |
+                               URUI_PLAN_RESOURCE_SHADER_IMAGE_PAINT | URUI_PLAN_RESOURCE_FRAMEBUFFER_FETCH;
         bindings.externals = &external;
         bindings.external_count = 1;
         bindings.external_geometry = &geometry;
@@ -175,6 +176,55 @@ struct Fixture
         return source_version;
     }
 };
+static void EmptyMaskedGroup(bool painter, bool content)
+{
+    Fixture value;
+    value.layers[1].command_index = content ? 1 : 0;
+    const int count = content ? 2 : 1;
+    for (int i = 2; i < 8; i++)
+    {
+        value.layers[i].command_index = count;
+    }
+    URUIPaintCommand paint{600, 750, count - 1, 0};
+    URUIPlanExternalBinding external{uint32_t(count - 1), 1};
+    URUIPlanBindings bindings{};
+    bindings.frame_flags = value.bindings.frame_flags;
+    if (painter)
+    {
+        bindings.externals = &external;
+        bindings.external_count = 1;
+    }
+    URUIPlanInputPacket input{};
+    URUIPlanPreparePacket ready{};
+    URUIRenderPlanPacket plan{};
+    assert(value.session.Begin(1, value.commands, value.matrices, count, painter ? &paint : nullptr, painter ? 1 : 0,
+                               value.layers, 8, input) == 1);
+    assert(value.session.Resolve(input.lease, nullptr, Resolve, ready, &bindings) == 1 && ready.ready);
+    if (!painter && !content)
+    {
+        auto withdrawn = bindings;
+        withdrawn.frame_flags &= ~64u;
+        assert(value.session.Compile(input.lease, withdrawn, Resolve, plan) < 0 && plan.lease == 0);
+    }
+    assert(value.session.Compile(input.lease, bindings, Resolve, plan) == 1);
+    if (painter)
+    {
+        assert(ready.region_count > 0 && plan.target_count > 0);
+        assert(std::any_of(plan.operations, plan.operations + plan.operation_count,
+                           [](const auto& op) { return op.kind == URUI_PLAN_EXTERNAL; }));
+    }
+    else if (content)
+    {
+        assert(plan.operation_count > 0);
+    }
+    else
+    {
+        assert(ready.region_count == 0 && ready.layer_index_count == 0 && plan.operation_count == 0 &&
+               plan.target_count == 0);
+    }
+    assert(value.session.Release(plan.lease) == 1 && value.session.Release(input.lease) == 1);
+}
+
 static void NestedCacheVersion(bool single_leaf)
 {
     Fixture value;
@@ -250,8 +300,39 @@ static void NestedCacheVersion(bool single_leaf)
               << "->" << moved[1] << std::endl;
     assert(first[0] == moved[0] && first[1] != moved[1]);
 }
+static void AnalyticMaskStorage()
+{
+    Fixture value;
+    value.draw.parameter.tint[1] = 3;
+    const auto flags = value.bindings.frame_flags;
+    for (bool supported : {false, true})
+    {
+        value.bindings.frame_flags = flags | (supported ? URUI_PLAN_RESOURCE_SCALAR_MASK_SUPPORTED : 0);
+        URUIPlanInputPacket input{};
+        URUIPlanPreparePacket ready{};
+        URUIRenderPlanPacket plan{};
+        assert(value.session.Begin(1, value.commands, value.matrices, 3, &value.paint, 1, value.layers, 8, input) == 1);
+        assert(value.session.Resolve(input.lease, nullptr, Resolve, ready, &value.bindings) == 1 && ready.ready);
+        int scalar = 0;
+        for (uint32_t n = 0; n < ready.region_count; n++)
+        {
+            if (ready.regions[n].flags & URUI_PLAN_LAYER_SCALAR_MASK)
+            {
+                assert(ready.regions[n].layer == 2 || ready.regions[n].layer == 3);
+                scalar++;
+            }
+        }
+        assert(scalar == (supported ? 2 : 0));
+        assert(value.session.Compile(input.lease, value.bindings, Resolve, plan) == 1);
+        assert(value.session.Release(plan.lease) == 1 && value.session.Release(input.lease) == 1);
+    }
+}
 int main()
 {
+    EmptyMaskedGroup(false, false);
+    EmptyMaskedGroup(true, false);
+    EmptyMaskedGroup(false, true);
+    AnalyticMaskStorage();
     {
         Fixture prepared;
         URUIPlanInputPacket input{};

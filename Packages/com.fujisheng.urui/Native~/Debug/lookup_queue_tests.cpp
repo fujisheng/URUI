@@ -21,8 +21,17 @@ namespace
 }
 extern "C" int urui_lookup_queue_selftest()
 {
-    auto* ctx = URUI::GetContext("urui");
-    if (!ctx || ctx->GetNumDocuments() != 0)
+    URUI::Context* ctx = nullptr;
+    for (int i = 0; i < URUI::GetNumContexts(); ++i)
+    {
+        auto* candidate = URUI::GetContext(i);
+        if (candidate && candidate->GetNumDocuments() == 0)
+        {
+            ctx = candidate;
+            break;
+        }
+    }
+    if (!ctx)
     {
         return -1;
     }

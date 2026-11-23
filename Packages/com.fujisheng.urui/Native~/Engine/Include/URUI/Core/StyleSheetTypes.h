@@ -113,6 +113,12 @@ namespace URUI
         NodeIndex classes;
         NodeIndex tags;
         NodeList other;
+        NodeList other_attr;
+
+        // Selector dependency metadata collected during BuildIndex() to avoid over-invalidating subtrees/siblings.
+        bool has_sibling_combinator = false;
+        UnorderedSet<String> pseudo_classes_any;
+        UnorderedSet<String> pseudo_classes_non_subject;
     };
 }
 

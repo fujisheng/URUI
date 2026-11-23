@@ -448,12 +448,7 @@ namespace URUI
 
     void CompiledArchive::Specification(SharedPtr<PropertySpecification>& value)
     {
-        if (!writing)
-        {
-            value = SharedPtr<PropertySpecification>(StyleSheetSpecification::GetPropertySpecification().Clone());
-        }
         const auto* previous = specification;
-        specification = value.get();
         Vector<PropertyId> ids;
         if (writing)
         {
@@ -468,6 +463,18 @@ namespace URUI
         uint32_t count = writing ? Checked(ids.size()) : 0;
         Value(count);
         Count(count);
+        if (!writing)
+        {
+            if (count == 0)
+            {
+                value = StyleSheetSpecification::GetSharedPropertySpecification();
+            }
+            else
+            {
+                value = SharedPtr<PropertySpecification>(StyleSheetSpecification::GetPropertySpecification().Clone());
+            }
+        }
+        specification = value.get();
         for (uint32_t i = 0; i < count; i++)
         {
             auto id = writing ? ids[i] : PropertyId::Invalid;
@@ -1014,7 +1021,88 @@ namespace URUI
         return false;
     }
 
+    namespace
+    {
+        struct CachedCompiledDocument
+        {
+            uint64_t hash = 0;
+            Vector<byte> encoded;
+            SharedPtr<const CompiledDocument> document;
+        };
+
+        std::list<CachedCompiledDocument>& CompiledDocumentCacheEntries()
+        {
+            static std::list<CachedCompiledDocument> entries;
+            return entries;
+        }
+        size_t& CompiledDocumentCacheBytes()
+        {
+            static size_t bytes = 0;
+            return bytes;
+        }
+    }
+
+    SharedPtr<const CompiledDocument> ReadCompiledDocumentCached(const byte* data, size_t size, String& error)
+    {
+        if (!data || size == 0 || size > CompiledArchive::MaxBytes)
+        {
+            error = "Invalid compiled asset size.";
+            return {};
+        }
+        const uint64_t quick_hash = ContentHash(data, size);
+        auto& entries = CompiledDocumentCacheEntries();
+        for (auto it = entries.begin(); it != entries.end(); ++it)
+        {
+            if (it->hash == quick_hash && it->encoded.size() == size &&
+                std::memcmp(it->encoded.data(), data, size) == 0)
+            {
+                entries.splice(entries.begin(), entries, it);
+                error.clear();
+                return entries.front().document;
+            }
+        }
+        auto result = MakeShared<CompiledDocument>();
+        if (!ReadCompiledDocument(data, size, *result, error))
+        {
+            return {};
+        }
+        constexpr size_t maxEntries = 32;
+        constexpr size_t maxEncodedBytes = 16 * 1024 * 1024;
+        if (size <= maxEncodedBytes)
+        {
+            auto& bytes = CompiledDocumentCacheBytes();
+            while (!entries.empty() && (entries.size() >= maxEntries || bytes + size > maxEncodedBytes))
+            {
+                bytes -= entries.back().encoded.size();
+                entries.pop_back();
+            }
+            entries.push_front({quick_hash, Vector<byte>(data, data + size), result});
+            bytes += size;
+        }
+        return result;
+    }
+
+    void ClearCompiledDocumentCache()
+    {
+        CompiledDocumentCacheEntries().clear();
+        CompiledDocumentCacheBytes() = 0;
+    }
+
     bool BuildCompiledDocument(ElementDocument& target, CompiledDocument&& compiled, Vector<Diagnostic>& diagnostics)
+    {
+        if (!compiled.specification || compiled.html.kind != HtmlDocumentKind::Document)
+        {
+            return false;
+        }
+        if (!BuildHtmlDocument(target, compiled.html, diagnostics, &compiled))
+        {
+            return false;
+        }
+        target.SetCompiledIdentity(compiled.identity);
+        return true;
+    }
+
+    bool BuildCompiledDocument(ElementDocument& target, const CompiledDocument& compiled, Vector<Diagnostic>& diagnostics)
     {
         if (!compiled.specification || compiled.html.kind != HtmlDocumentKind::Document)
         {

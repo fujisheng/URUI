@@ -90,6 +90,47 @@ namespace URUI.Editor.Inspection
                 throw;
             }
         }
+        public void Resize(int width, int height)
+        {
+            if (width < 1 || height < 1 || width > 8192 || height > 8192)
+            {
+                throw new ArgumentOutOfRangeException(nameof(width));
+            }
+            if (!Surface || !camera)
+            {
+                throw new ObjectDisposedException(nameof(EditorPreviewHost));
+            }
+            if (Target && Target.width == width && Target.height == height)
+            {
+                Surface.Viewport = new Vector2Int(width, height);
+                return;
+            }
+            var replacement = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                name = "URUI Authoring"
+            };
+            if (!replacement.Create())
+            {
+                UnityEngine.Object.DestroyImmediate(replacement);
+                throw new InvalidOperationException("无法创建预览渲染目标。");
+            }
+            var previous = Target;
+            Target = replacement;
+            camera.targetTexture = replacement;
+            Surface.Viewport = new Vector2Int(width, height);
+            if (previous)
+            {
+                URUI.Resources.GpuRetirement.Retire(() =>
+                {
+                    if (previous)
+                    {
+                        previous.Release();
+                        URUI.Resources.GpuRetirement.DestroyOwnedObject(previous);
+                    }
+                });
+            }
+        }
         public void Advance(float delta)
         {
             if (!float.IsFinite(delta) || delta < 0)
@@ -156,42 +197,58 @@ namespace URUI.Editor.Inspection
         public void Dispose()
         {
             var hadContent = FrameId != 0 || (Document && Document.IsLoaded);
+            bool keepTargetForRetry = false;
             try
             {
-                if (Document && Document.IsLoaded)
+                try
                 {
-                    Document.Unload();
+                    if (Document && Document.IsLoaded)
+                    {
+                        Document.Unload();
+                    }
+                }
+                finally
+                {
+                    if (Surface)
+                    {
+                        Surface.ReleaseForEditor();
+                    }
+                }
+                if (hadContent && Target && !URUI.Internal.Resources.ImagePinRetirement.TryCompleteImmediateRetirements(ConfirmSubmittedWork))
+                {
+                    keepTargetForRetry = true;
+                    throw new InvalidOperationException("预览包含无法确认的 GPU 提交，保留资源以便重试释放。");
                 }
             }
             finally
             {
-                if (Surface)
+                if (!keepTargetForRetry)
                 {
-                    Surface.ReleaseForEditor();
+                    if (camera)
+                    {
+                        camera.targetTexture = null;
+                    }
+                    if (root)
+                    {
+                        UnityEngine.Object.DestroyImmediate(root);
+                    }
+                    root = null;
+                    camera = null;
+                    Document = null;
+                    Surface = null;
+                    if (Target)
+                    {
+                        Target.Release();
+                        UnityEngine.Object.DestroyImmediate(Target);
+                        Target = null;
+                    }
+                    if (scene.IsValid())
+                    {
+                        EditorSceneManager.ClosePreviewScene(scene);
+                    }
+                    scene = default;
                 }
             }
-            if (hadContent && Target && !URUI.Internal.Resources.ImagePinRetirement.TryCompleteImmediateRetirements(ConfirmSubmittedWork))
-            {
-                throw new InvalidOperationException("预览包含无法确认的 GPU 提交，保留资源以便重试释放。");
-            }
-            if (root)
-            {
-                UnityEngine.Object.DestroyImmediate(root);
-            }
-            root = null;
-            Document = null;
-            Surface = null;
-            if (Target)
-            {
-                Target.Release();
-                UnityEngine.Object.DestroyImmediate(Target);
-                Target = null;
-            }
-            if (scene.IsValid())
-            {
-                EditorSceneManager.ClosePreviewScene(scene);
-            }
-            scene = default;
         }
         void ConfirmSubmittedWork()
         {

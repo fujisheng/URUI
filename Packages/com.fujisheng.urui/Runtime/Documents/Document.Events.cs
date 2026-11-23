@@ -10,6 +10,12 @@ namespace URUI.Documents
 {
     public sealed partial class Document
     {
+        internal enum DeferInvalidation
+        {
+            None,
+            InvalidatesDocument
+        }
+
         static readonly NativeMethods.ElementEventCallback eventCallback = ReceiveNativeEvent;
         internal static NativeMethods.ElementEventCallback NativeEventCallback => eventCallback;
         int invalidatingRequests;
@@ -18,12 +24,14 @@ namespace URUI.Documents
         int eventDepth;
         int nativeDepth;
         int imageCallbackDepth;
+
         internal void BeginImageCallback()
         {
             nativeDepth++;
             imageCallbackDepth++;
             surface.BeginDispatch();
         }
+
         internal void EndImageCallback()
         {
             imageCallbackDepth--;
@@ -33,16 +41,18 @@ namespace URUI.Documents
 
         internal void StartEvents()
         {
-            if (NativeMethods.urui_animation_api_version() != 1)
+            if (NativeMethods.urui_animation_api_version() != NativeMethods.ExpectedAnimationApiVersion)
             {
-                throw new NotSupportedException("需要 URUI 命名动画协议 v1。");
+                throw new NotSupportedException($"需要 URUI 命名动画协议 v{NativeMethods.ExpectedAnimationApiVersion}。");
             }
-            if (NativeMethods.urui_element_api_version() != 3 || Marshal.SizeOf<ElementEventNative>() != 80)
+            var expectedEventSize = IntPtr.Size == 8 ? 88 : 84;
+            if (NativeMethods.urui_element_api_version() != NativeMethods.ExpectedElementApiVersion ||
+                Marshal.SizeOf<ElementEventNative>() != expectedEventSize)
             {
-                throw new InvalidOperationException("URUI 原生插件需要元素协议版本 3 和 80 字节事件包。");
+                throw new InvalidOperationException($"URUI 原生插件需要元素协议版本 {NativeMethods.ExpectedElementApiVersion} 和 {expectedEventSize} 字节事件包。");
             }
 
-            if (NativeMethods.urui_document_listen(NativeHandle) != 1)
+            if (NativeMethods.urui_document_listen(SurfaceHandle, NativeHandle) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("URUI 同步事件初始化失败。");
             }
@@ -51,7 +61,7 @@ namespace URUI.Documents
         [AOT.MonoPInvokeCallback(typeof(NativeMethods.ElementEventCallback))]
         static int ReceiveNativeEvent(ref ElementEventNative native)
         {
-            var owner = URUI.Hosting.Surface.FindDocument(native.document);
+            var owner = URUI.Hosting.Surface.FindDocument(native.surface, native.document);
             if (ReferenceEquals(owner, null))
             {
                 return 2;
@@ -107,18 +117,10 @@ namespace URUI.Documents
                 }
                 if (value is AnimationEndEvent || value is AnimationCreatedEvent)
                 {
-                    var bytes = new byte[128];
-                    var read = NativeMethods.urui_animation_current_event(native.document, bytes, bytes.Length, out var identity, out var iterations);
-                    if (read < 0 && -read > bytes.Length)
-                    {
-                        bytes = new byte[-read];
-                        read = NativeMethods.urui_animation_current_event(native.document, bytes, bytes.Length, out identity, out iterations);
-                    }
-                    if (read <= 0)
+                    if (!NativeMethods.TryReadAnimationCurrentEvent(native.surface, native.document, out var animationName, out var identity, out var iterations))
                     {
                         throw new InvalidOperationException("原生命名动画事件无效。");
                     }
-                    var animationName = System.Text.Encoding.UTF8.GetString(bytes, 0, read - 1);
                     var property = Marshal.PtrToStringUTF8(native.text) ?? "";
                     if (value is AnimationEndEvent animation)
                     {
@@ -177,7 +179,7 @@ namespace URUI.Documents
                 for (var current = target; current != null; current = current.Parent)
                 {
                     path.Add((current, current.CaptureSubscriptions()));
-                    if (!value.Bubbles || value is GeometryChangedEvent || value is AttachToDocumentEvent || value is DetachFromDocumentEvent)
+                    if (!value.Bubbles)
                     {
                         break;
                     }
@@ -231,6 +233,7 @@ namespace URUI.Documents
                 {
                     eventDepth--;
                     surface.EndDispatch();
+                    value.CurrentTarget = null;
                     value.Dispatching = false;
                 }
             }
@@ -243,7 +246,7 @@ namespace URUI.Documents
                 && !HasPendingInvalidation && !value.IsImmediatePropagationStopped;
         }
 
-        internal bool Defer(Action action, bool invalidates = true, bool catchExceptions = false)
+        internal bool Defer(Action action, DeferInvalidation invalidation, bool catchExceptions = false)
         {
             if (effectCallbackDepth != 0 || surface && surface.IsEffectCallback)
             {
@@ -253,7 +256,7 @@ namespace URUI.Documents
             {
                 return false;
             }
-            EnqueueDeferred(action, invalidates, catchExceptions);
+            EnqueueDeferred(action, invalidation, catchExceptions);
             return true;
         }
 
@@ -261,9 +264,9 @@ namespace URUI.Documents
         {
             if (!changingContent)
             {
-                return Defer(action);
+                return Defer(action, DeferInvalidation.InvalidatesDocument);
             }
-            EnqueueDeferred(action, true);
+            EnqueueDeferred(action, DeferInvalidation.InvalidatesDocument);
             return true;
         }
 
@@ -272,19 +275,21 @@ namespace URUI.Documents
             readonly Document owner;
             readonly Action action;
             readonly FragmentChange fragment;
-            readonly bool invalidates;
+            readonly DeferInvalidation invalidation;
             readonly bool catchExceptions;
-            internal DeferredAction(Document owner, Action action, bool invalidates, bool catchExceptions)
+
+            internal DeferredAction(Document owner, Action action, DeferInvalidation invalidation, bool catchExceptions)
             {
                 this.owner = owner;
                 this.action = action;
                 fragment = owner?.fragmentChange;
-                this.invalidates = invalidates;
+                this.invalidation = invalidation;
                 this.catchExceptions = catchExceptions;
             }
+
             internal void Invoke()
             {
-                if (!ReferenceEquals(owner, null) && invalidates)
+                if (!ReferenceEquals(owner, null) && invalidation == DeferInvalidation.InvalidatesDocument)
                 {
                     owner.invalidatingRequests--;
                 }
@@ -308,17 +313,17 @@ namespace URUI.Documents
             }
         }
 
-        internal void EnqueueDeferred(Action action, bool invalidates, bool catchExceptions = false)
+        internal void EnqueueDeferred(Action action, DeferInvalidation invalidation, bool catchExceptions = false)
         {
             if (ReferenceEquals(surface, null))
             {
                 throw new InvalidOperationException("文档回调缺少所属 Surface。");
             }
-            if (invalidates)
+            if (invalidation == DeferInvalidation.InvalidatesDocument)
             {
                 invalidatingRequests++;
             }
-            surface.Enqueue(new DeferredAction(this, action, invalidates, catchExceptions));
+            surface.Enqueue(new DeferredAction(this, action, invalidation, catchExceptions));
         }
 
         /// <summary>
@@ -334,7 +339,7 @@ namespace URUI.Documents
             {
                 throw new ArgumentNullException(nameof(action));
             }
-            if (Defer(action, false, true))
+            if (Defer(action, DeferInvalidation.None, catchExceptions: true))
             {
                 return;
             }
@@ -347,6 +352,7 @@ namespace URUI.Documents
             eventDepth++;
             surface.BeginDispatch();
         }
+
         internal void EndControlUpdate()
         {
             eventDepth--;

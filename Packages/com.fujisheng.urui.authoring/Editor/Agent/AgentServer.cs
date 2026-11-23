@@ -22,17 +22,40 @@ namespace URUI.Authoring.Agent
     public static class AgentServer
     {
         const int MaxBodyBytes = 1048576;
-        static HttpListener listener;
+        const int RequestReadTimeoutMs = 5000;
+
+        sealed class ServerState
+        {
+            internal readonly HttpListener Listener;
+            internal readonly AgentJobQueue Jobs;
+            internal readonly AgentDispatcher Dispatcher;
+            internal readonly string Token;
+            internal readonly string ExpectedAuth;
+            internal readonly string Epoch;
+            internal readonly string Url;
+            internal readonly string ExpectedHost;
+            internal readonly string ExpectedOrigin;
+            internal readonly CancellationTokenSource Shutdown = new CancellationTokenSource();
+
+            internal ServerState(HttpListener listener, AgentJobQueue jobs, AgentDispatcher dispatcher, string token, string epoch, string url)
+            {
+                Listener = listener;
+                Jobs = jobs;
+                Dispatcher = dispatcher;
+                Token = token;
+                ExpectedAuth = "Bearer " + token;
+                Epoch = epoch;
+                Url = url;
+                ExpectedHost = new Uri(url).Authority;
+                ExpectedOrigin = url.TrimEnd('/');
+            }
+        }
+
+        static ServerState activeState;
         static Thread thread;
-        static AgentJobQueue jobs;
-        static AgentDispatcher dispatcher;
-        static string token;
-        static string epoch;
-        static string url;
-        static volatile bool running;
         static string Preference => "URUI.Authoring.Agent." + Application.dataPath;
         public static string EndpointPath => Path.Combine(AuthoringEnvironment.ProjectRoot, "Library/URUI/Authoring/endpoint.json");
-        public static bool IsRunning => running;
+        public static bool IsRunning => Volatile.Read(ref activeState) != null;
         [DllImport("libc", SetLastError = true)]
         static extern int chmod(string path, uint mode);
         static AgentServer()
@@ -85,7 +108,7 @@ namespace URUI.Authoring.Agent
 
         public static void Start()
         {
-            if (running)
+            if (Volatile.Read(ref activeState) != null)
             {
                 return;
             }
@@ -105,23 +128,22 @@ namespace URUI.Authoring.Agent
             {
                 rng.GetBytes(random);
             }
-            token = BitConverter.ToString(random).Replace("-", "").ToLowerInvariant();
-            epoch = Guid.NewGuid().ToString("N");
-            url = "http://127.0.0.1:" + port + "/";
-            listener = new HttpListener();
+            string token = BitConverter.ToString(random).Replace("-", "").ToLowerInvariant();
+            string epoch = Guid.NewGuid().ToString("N");
+            string url = "http://127.0.0.1:" + port + "/";
+            var listener = new HttpListener();
             listener.Prefixes.Add(url);
+            ServerState state = null;
             try
             {
                 listener.Start();
-                jobs = new AgentJobQueue(epoch);
-                dispatcher = new AgentDispatcher(epoch);
+                var jobs = new AgentJobQueue(epoch);
+                var dispatcher = new AgentDispatcher(epoch);
+                state = new ServerState(listener, jobs, dispatcher, token, epoch, url);
                 Directory.CreateDirectory(Path.GetDirectoryName(EndpointPath));
                 string temporary = EndpointPath + ".tmp";
                 File.WriteAllText(temporary, AgentJson.Stringify(AgentDispatcher.Obj("apiVersion", 1, "url", url, "token", token, "editorSession", epoch, "project", AuthoringEnvironment.ProjectRoot)), new UTF8Encoding(false));
-                if ((Application.platform == RuntimePlatform.OSXEditor || Application.platform == RuntimePlatform.LinuxEditor) && chmod(temporary, 384) != 0)
-                {
-                    throw new IOException("Cannot restrict endpoint file permissions.");
-                }
+                RestrictEndpointPermissions(temporary);
                 if (File.Exists(EndpointPath))
                 {
                     File.Replace(temporary, EndpointPath, null);
@@ -130,21 +152,31 @@ namespace URUI.Authoring.Agent
                 {
                     File.Move(temporary, EndpointPath);
                 }
-                running = true;
+                Volatile.Write(ref activeState, state);
                 AuthoringEnvironment.Observe(true);
                 thread = new Thread(Listen)
                 {
                     IsBackground = true,
                     Name = "URUI Authoring HTTP"
                 };
-                thread.Start();
+                thread.Start(state);
                 AuthoringEnvironment.Report("Local Agent API enabled · " + EndpointPath);
             }
             catch
             {
-                listener?.Close();
-                listener = null;
-                jobs?.Invalidate();
+                Volatile.Write(ref activeState, null);
+                try
+                {
+                    state?.Shutdown.Cancel();
+                    state?.Shutdown.Dispose();
+                }
+                catch { }
+                state?.Jobs.Invalidate();
+                try
+                {
+                    listener.Close();
+                }
+                catch { }
                 if (File.Exists(EndpointPath + ".tmp"))
                 {
                     File.Delete(EndpointPath + ".tmp");
@@ -152,37 +184,91 @@ namespace URUI.Authoring.Agent
                 throw;
             }
         }
+        static void RestrictEndpointPermissions(string path)
+        {
+            if (Application.platform == RuntimePlatform.OSXEditor || Application.platform == RuntimePlatform.LinuxEditor)
+            {
+                if (chmod(path, 384) != 0)
+                {
+                    throw new IOException("Cannot restrict endpoint file permissions.");
+                }
+                return;
+            }
+            if (Application.platform == RuntimePlatform.WindowsEditor)
+            {
+                string user = Environment.UserName;
+                if (string.IsNullOrEmpty(user))
+                {
+                    return;
+                }
+                string domain = Environment.UserDomainName;
+                string account = string.IsNullOrEmpty(domain) ? user : domain + "\\" + user;
+                try
+                {
+                    var psi = new ProcessStartInfo("icacls", $"\"{path}\" /inheritance:r /grant:r \"{account}:(R,W)\"")
+                    {
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    using (var process = Process.Start(psi))
+                    {
+                        process?.WaitForExit(3000);
+                    }
+                }
+                catch
+                {
+                    // Best-effort ACL restriction on Windows environments where icacls is unavailable.
+                }
+            }
+        }
         public static void Stop()
         {
-            if (running)
+            var state = Interlocked.Exchange(ref activeState, null);
+            if (state != null)
             {
                 AuthoringEnvironment.Observe(false);
+                try
+                {
+                    state.Shutdown.Cancel();
+                }
+                catch { }
+                state.Jobs.Invalidate();
+                try
+                {
+                    state.Listener.Close();
+                }
+                catch { }
             }
-            running = false;
-            jobs?.Invalidate();
-            listener?.Close();
-            listener = null;
-            if (thread != null && thread != Thread.CurrentThread)
-            {
-                thread.Join(1000);
-            }
+            var worker = thread;
             thread = null;
-            jobs = null;
-            dispatcher = null;
+            if (worker != null && worker != Thread.CurrentThread)
+            {
+                worker.Join(1000);
+            }
+            if (state != null)
+            {
+                try
+                {
+                    state.Shutdown.Dispose();
+                }
+                catch { }
+            }
             if (File.Exists(EndpointPath))
             {
                 File.Delete(EndpointPath);
             }
         }
-        static void Listen()
+        static void Listen(object arg)
         {
-            var current = listener;
-            while (running)
+            var state = (ServerState)arg;
+            while (!state.Shutdown.IsCancellationRequested)
             {
                 HttpListenerContext context;
                 try
                 {
-                    context = current.GetContext();
+                    context = state.Listener.GetContext();
                 }
                 catch (Exception error) when (error is HttpListenerException || error is ObjectDisposedException)
                 {
@@ -190,7 +276,15 @@ namespace URUI.Authoring.Agent
                 }
                 try
                 {
-                    Handle(context);
+                    Handle(state, context);
+                }
+                catch (OperationCanceledException)
+                {
+                    try
+                    {
+                        context.Response.Abort();
+                    }
+                    catch { }
                 }
                 catch (Exception error)
                 {
@@ -210,7 +304,7 @@ namespace URUI.Authoring.Agent
                 }
             }
         }
-        static void Handle(HttpListenerContext context)
+        static void Handle(ServerState state, HttpListenerContext context)
         {
             var request = context.Request;
             if (request.RemoteEndPoint == null || !IPAddress.IsLoopback(request.RemoteEndPoint.Address))
@@ -218,24 +312,23 @@ namespace URUI.Authoring.Agent
                 Send(context, 403, "{\"error\":\"loopback_required\"}");
                 return;
             }
-            if (!ConstantEquals(request.Headers["Authorization"], "Bearer " + token))
+            if (!ConstantEquals(request.Headers["Authorization"], state.ExpectedAuth))
             {
                 Send(context, 401, "{\"error\":\"authentication_required\"}");
                 return;
             }
-            if (request.Headers["X-URUI-Session"] != epoch)
+            if (request.Headers["X-URUI-Session"] != state.Epoch)
             {
                 Send(context, 409, "{\"error\":\"editor_session_changed\"}");
                 return;
             }
-            var expectedHost = new Uri(url).Authority;
-            if (!string.Equals(request.Headers["Host"], expectedHost, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(request.Headers["Host"], state.ExpectedHost, StringComparison.OrdinalIgnoreCase))
             {
                 Send(context, 403, "{\"error\":\"invalid_host\"}");
                 return;
             }
             string origin = request.Headers["Origin"];
-            if (!string.IsNullOrEmpty(origin) && origin != url.TrimEnd('/'))
+            if (!string.IsNullOrEmpty(origin) && origin != state.ExpectedOrigin)
             {
                 Send(context, 403, "{\"error\":\"invalid_origin\"}");
                 return;
@@ -253,45 +346,69 @@ namespace URUI.Authoring.Agent
                     Send(context, 415, "{\"error\":\"json_required\"}");
                     return;
                 }
-                using (var body = new MemoryStream())
+                using (var readCts = CancellationTokenSource.CreateLinkedTokenSource(state.Shutdown.Token))
                 {
-                    var buffer = new byte[8192];
-                    int count;
-                    while ((count = request.InputStream.Read(buffer, 0, buffer.Length)) > 0)
+                    readCts.CancelAfter(RequestReadTimeoutMs);
+                    using (readCts.Token.Register(() =>
                     {
-                        if (body.Length + count > MaxBodyBytes)
+                        try
                         {
-                            Send(context, 413, "{\"error\":\"request_too_large\"}");
-                            return;
+                            context.Response.Abort();
                         }
-                        body.Write(buffer, 0, count);
-                    }
-                    var json = new UTF8Encoding(false, true).GetString(body.ToArray());
-                    if (!(AgentJson.Parse(json) is Dictionary<string, object> command))
+                        catch { }
+                    }))
+                    using (var body = new MemoryStream())
                     {
-                        throw new InvalidOperationException("bad_request: expected JSON object");
+                        var buffer = new byte[8192];
+                        int count;
+                        while ((count = request.InputStream.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            readCts.Token.ThrowIfCancellationRequested();
+                            if (body.Length + count > MaxBodyBytes)
+                            {
+                                Send(context, 413, "{\"error\":\"request_too_large\"}");
+                                return;
+                            }
+                            body.Write(buffer, 0, count);
+                        }
+                        var json = new UTF8Encoding(false, true).GetString(body.GetBuffer(), 0, (int)body.Length);
+                        if (!(AgentJson.Parse(json) is Dictionary<string, object> command))
+                        {
+                            throw new InvalidOperationException("bad_request: expected JSON object");
+                        }
+                        var job = state.Jobs.Submit(command);
+                        Send(context, 202, AgentJson.Stringify(AgentDispatcher.Obj("job", job.Id, "status", job.Status, "editorSession", state.Epoch)));
                     }
-                    var job = jobs.Submit(command);
-                    Send(context, 202, AgentJson.Stringify(AgentDispatcher.Obj("job", job.Id, "status", job.Status, "editorSession", epoch)));
                 }
             }
             else if (path.StartsWith("/v1/jobs/", StringComparison.Ordinal))
             {
                 string id = path.Substring(9);
-                var job = jobs.Read(id);
-                if (job == null)
-                {
-                    Send(context, 404, "{\"error\":\"job_not_found\"}");
-                    return;
-                }
                 if (request.HttpMethod == "DELETE")
                 {
-                    Send(context, jobs.Cancel(id) ? 200 : 409, "{\"job\":\"" + id + "\",\"status\":\"" + jobs.Read(id).Status + "\"}");
+                    bool cancelled = state.Jobs.TryCancel(id, out var snapshot);
+                    if (snapshot == null)
+                    {
+                        Send(context, 404, "{\"error\":\"job_not_found\"}");
+                        return;
+                    }
+                    Send(context, cancelled ? 200 : 409, AgentJson.Stringify(AgentDispatcher.Obj("job", snapshot.Id, "status", snapshot.Status)));
                     return;
                 }
                 if (request.HttpMethod != "GET")
                 {
+                    if (state.Jobs.Read(id) == null)
+                    {
+                        Send(context, 404, "{\"error\":\"job_not_found\"}");
+                        return;
+                    }
                     Send(context, 405, "{\"error\":\"method_not_allowed\"}");
+                    return;
+                }
+                var job = state.Jobs.Read(id);
+                if (job == null)
+                {
+                    Send(context, 404, "{\"error\":\"job_not_found\"}");
                     return;
                 }
                 string header = AgentJson.Stringify(AgentDispatcher.Obj("job", job.Id, "status", job.Status));
@@ -326,13 +443,14 @@ namespace URUI.Authoring.Agent
         }
         static void Pump()
         {
-            if (!running || jobs == null)
+            var state = Volatile.Read(ref activeState);
+            if (state == null)
             {
                 return;
             }
             var timer = Stopwatch.StartNew();
             int count = 0;
-            while (count++ < 4 && timer.ElapsedMilliseconds < 16 && jobs.RunNext(epoch, request => AgentJson.Stringify(dispatcher.Execute(request))))
+            while (count++ < 4 && timer.ElapsedMilliseconds < 16 && state.Jobs.RunNext(state.Epoch, request => AgentJson.Stringify(state.Dispatcher.Execute(request))))
             {
             }
         }

@@ -16,25 +16,16 @@ namespace URUI.Effect.Rendering
             this.resources = resources;
             this.parameters = parameters;
         }
-        static readonly StylePropertyDefinition[] baseParameters = {
-            new("--urui-fx-tone-filter", StyleValueType.Keyword), new("--urui-fx-tone-intensity", StyleValueType.Number),
-            new("--urui-fx-color-filter", StyleValueType.Keyword), new("--urui-fx-color-intensity", StyleValueType.Number),
-            new("--urui-fx-color", StyleValueType.Color), new("--urui-fx-color-glow", StyleValueType.Keyword),
-            new("--urui-fx-target-mode", StyleValueType.Keyword), new("--urui-fx-target-color", StyleValueType.Color),
-            new("--urui-fx-target-range", StyleValueType.Number), new("--urui-fx-target-softness", StyleValueType.Number),
-            new("--urui-fx-sampling-filter", StyleValueType.Keyword), new("--urui-fx-sampling-intensity", StyleValueType.Number),
-            new("--urui-fx-sampling-width", StyleValueType.Number), new("--urui-fx-sampling-scale", StyleValueType.Number),
-            new("--urui-fx-allow-to-modify-mesh-shape", StyleValueType.Keyword)
-        };
         internal static readonly StylePropertyDefinition[] Parameters = CombineParameters();
         static StylePropertyDefinition[] CombineParameters()
         {
-            var values = new System.Collections.Generic.List<StylePropertyDefinition>(baseParameters);
-            values.AddRange(EffectVisualProperties.Parameters);
-            values.AddRange(EffectGradation.Parameters);
-            values.AddRange(EffectShadowProperties.Parameters);
-            values.AddRange(EffectBlendState.Parameters);
-            return values.ToArray();
+            var fields = UIEffectParameters.Layout.Fields;
+            var values = new StylePropertyDefinition[fields.Count];
+            for (var i = 0; i < fields.Count; i++)
+            {
+                values[i] = fields[i].Property;
+            }
+            return values;
         }
         public IElementEffect Create(EffectContext context)
         {
@@ -48,7 +39,7 @@ namespace URUI.Effect.Rendering
         readonly EffectResources resources;
         readonly Func<URUI.Elements.Element, EffectParameters> parameterSource;
         readonly EffectParameters geometryParameters = new();
-        readonly Gradient defaultGradient = new();
+        static readonly Gradient defaultGradient = new();
         readonly Vector4[] runtime = new Vector4[14];
         UIEffectGeometry.Lease geometry;
         URUI.Rendering.Effects.EffectGeometry sourceTopology;
@@ -66,6 +57,7 @@ namespace URUI.Effect.Rendering
         Gradient gradientSource;
         Vector3 resourceKeys = new(float.NaN, float.NaN, float.NaN);
         Vector3 resourceOrigins;
+        int resourceReadyMask;
         Texture cssTransition;
         Texture cssDetail;
         Texture cssGradient;
@@ -122,17 +114,56 @@ namespace URUI.Effect.Rendering
             }
             var keys = new Vector3(UIEffectParameters.Number(v, UIEffectParameters.TransitionTexture), UIEffectParameters.Number(v, UIEffectParameters.DetailTexture), UIEffectParameters.Number(v, UIEffectParameters.GradationGradient));
             var origins = new Vector3(UIEffectParameters.Number(v, UIEffectParameters.TransitionTexture + 1), UIEffectParameters.Number(v, UIEffectParameters.DetailTexture + 1), UIEffectParameters.Number(v, UIEffectParameters.GradationGradient + 1));
-            if (context.Element != null && (keys != resourceKeys || origins != resourceOrigins))
+            if (context.Element != null)
             {
-                var style = preparation.Frame.Style;
-                var ready = PrepareImage(style, "--urui-fx-transition-texture") & PrepareImage(style, "--urui-fx-detail-texture") & PrepareImage(style, "--urui-fx-gradation-gradient");
-                cssTransition = resources?.GetImage("--urui-fx-transition-texture");
-                cssDetail = resources?.GetImage("--urui-fx-detail-texture");
-                cssGradient = resources?.GetImage("--urui-fx-gradation-gradient");
-                if (ready)
+                bool transitionChanged = keys.x != resourceKeys.x || origins.x != resourceOrigins.x || (resourceReadyMask & 1) == 0;
+                bool detailChanged = keys.y != resourceKeys.y || origins.y != resourceOrigins.y || (resourceReadyMask & 2) == 0;
+                bool gradientChanged = keys.z != resourceKeys.z || origins.z != resourceOrigins.z || (resourceReadyMask & 4) == 0;
+                if (transitionChanged || detailChanged || gradientChanged)
                 {
-                    resourceKeys = keys;
-                    resourceOrigins = origins;
+                    var style = preparation.Frame.Style;
+                    if (transitionChanged)
+                    {
+                        if (PrepareImage(style, "--urui-fx-transition-texture"))
+                        {
+                            resourceKeys.x = keys.x;
+                            resourceOrigins.x = origins.x;
+                            resourceReadyMask |= 1;
+                        }
+                        else
+                        {
+                            resourceReadyMask &= ~1;
+                        }
+                        cssTransition = resources?.GetImage("--urui-fx-transition-texture");
+                    }
+                    if (detailChanged)
+                    {
+                        if (PrepareImage(style, "--urui-fx-detail-texture"))
+                        {
+                            resourceKeys.y = keys.y;
+                            resourceOrigins.y = origins.y;
+                            resourceReadyMask |= 2;
+                        }
+                        else
+                        {
+                            resourceReadyMask &= ~2;
+                        }
+                        cssDetail = resources?.GetImage("--urui-fx-detail-texture");
+                    }
+                    if (gradientChanged)
+                    {
+                        if (PrepareImage(style, "--urui-fx-gradation-gradient"))
+                        {
+                            resourceKeys.z = keys.z;
+                            resourceOrigins.z = origins.z;
+                            resourceReadyMask |= 4;
+                        }
+                        else
+                        {
+                            resourceReadyMask &= ~4;
+                        }
+                        cssGradient = resources?.GetImage("--urui-fx-gradation-gradient");
+                    }
                 }
             }
             var nextTransition = origins.x >= (float)StyleValueOrigin.Author ? cssTransition : preset?.TransitionTexture;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using URUI.Internal.Interop;
+using URUI.Internal.Rendering.Shaders;
 using URUI.Resources;
 
 namespace URUI.Internal.Resources
@@ -13,24 +14,20 @@ namespace URUI.Internal.Resources
     {
         internal const ulong ExternalBit = 1UL << 63;
         static ulong nextId = ExternalBit;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            nextId = ExternalBit;
+        }
         readonly Dictionary<ulong, Entry> entries = new Dictionary<ulong, Entry>();
         readonly Dictionary<Texture, Entry> sources = new Dictionary<Texture, Entry>();
 
         readonly Dictionary<ulong, HashSet<Entry>> documents = new();
-        readonly Dictionary<Texture, ulong> sourceIdentities = new();
+        readonly Dictionary<Texture, (ulong Identity, int NativeLeases)> sourceIdentities = new();
         ulong nextSourceIdentity;
-        internal ulong SourceIdentity(Texture texture)
-        {
-            if (!sourceIdentities.TryGetValue(texture, out var identity))
-            {
-                if (nextSourceIdentity == ulong.MaxValue)
-                {
-                    throw new InvalidOperationException("URUI image source identities exhausted");
-                }
-                sourceIdentities.Add(texture, identity = ++nextSourceIdentity);
-            }
-            return identity;
-        }
+        ulong validationSerial;
+        bool inValidatedFrame;
         internal IEnumerable<Texture> Textures
         {
             get
@@ -49,12 +46,29 @@ namespace URUI.Internal.Resources
             internal int width;
             internal int height;
             internal GraphicsFormat format;
+            internal FilterMode filterMode;
+            internal TextureWrapMode wrapMode;
+            internal Vector4 sourceInfo;
+            internal bool isLive;
+            internal bool isUNorm;
+            internal bool metaInitialized;
+            internal ulong validatedSerial;
             internal ImageLease lease;
             internal bool nativeHeld;
             internal int pins;
             internal int documents;
 
-            internal void Validate()
+            internal void InitMeta()
+            {
+                isLive = texture is RenderTexture;
+                isUNorm = GraphicsFormatUtility.IsUNormFormat(GraphicsFormatUtility.GetLinearFormat(format));
+                filterMode = texture.filterMode;
+                wrapMode = texture.wrapMode;
+                sourceInfo = TextureShaderState.ComputeBorrowedSourceInfo(texture, width, height, format, filterMode, wrapMode);
+                metaInitialized = true;
+            }
+
+            internal void Validate(ulong serial = 0)
             {
                 if (!texture)
                 {
@@ -64,6 +78,21 @@ namespace URUI.Internal.Resources
                 if (texture.width != width || texture.height != height || texture.graphicsFormat != format)
                 {
                     throw new InvalidOperationException("URUI borrowed image dimensions/format changed. Unload and reload the document after reinitializing its texture.");
+                }
+                var fm = texture.filterMode;
+                var wm = texture.wrapMode;
+                if (!metaInitialized || fm != filterMode || wm != wrapMode)
+                {
+                    filterMode = fm;
+                    wrapMode = wm;
+                    isLive = texture is RenderTexture;
+                    isUNorm = GraphicsFormatUtility.IsUNormFormat(GraphicsFormatUtility.GetLinearFormat(format));
+                    sourceInfo = TextureShaderState.ComputeBorrowedSourceInfo(texture, width, height, format, fm, wm);
+                    metaInitialized = true;
+                }
+                if (serial != 0)
+                {
+                    validatedSerial = serial;
                 }
             }
         }
@@ -116,7 +145,7 @@ namespace URUI.Internal.Resources
 
         internal static bool IsBorrowed(ulong id) => (id & ExternalBit) != 0;
 
-        internal void Register(ulong owner, ImageBinding[] images)
+        internal void Register(ulong surface, ulong owner, ImageBinding[] images)
         {
             if (documents.ContainsKey(owner))
             {
@@ -153,6 +182,7 @@ namespace URUI.Internal.Resources
                         height = height,
                         format = texture.graphicsFormat
                     };
+                    entry.InitMeta();
                     entries.Add(entry.id, entry);
                     sources.Add(texture, entry);
                 }
@@ -160,9 +190,9 @@ namespace URUI.Internal.Resources
                 {
                     entry.documents++;
                 }
-                if (NativeMethods.urui_document_register_external_texture(owner, image.source, width, height, entry.id) != 1)
+                if (NativeMethods.urui_document_register_external_texture(surface, owner, image.source, width, height, entry.id) != NativeStatus.Ok)
                 {
-                    throw new InvalidOperationException("URUI borrowed image registration: " + NativeMethods.LastError());
+                    throw new InvalidOperationException("URUI borrowed image registration: " + NativeMethods.LastError(surface));
                 }
             }
         }
@@ -186,15 +216,41 @@ namespace URUI.Internal.Resources
 
         internal void Validate()
         {
+            var serial = unchecked(++validationSerial);
+            if (serial == 0)
+            {
+                serial = ++validationSerial;
+                foreach (var entry in entries.Values)
+                {
+                    entry.validatedSerial = 0;
+                }
+            }
             foreach (var entry in entries.Values)
             {
-                entry.Validate();
+                entry.Validate(serial);
             }
+            inValidatedFrame = true;
+        }
+
+        internal void EndFrameValidation()
+        {
+            inValidatedFrame = false;
         }
 
         internal bool TryResolve(ulong id, out Texture texture)
         {
-            texture = null;
+            if (!TryResolveValidated(id, out var entry))
+            {
+                texture = null;
+                return false;
+            }
+            texture = entry.texture;
+            return true;
+        }
+
+        bool TryResolveValidated(ulong id, out Entry resolved)
+        {
+            resolved = null;
             if (!IsBorrowed(id))
             {
                 return false;
@@ -203,12 +259,15 @@ namespace URUI.Internal.Resources
             {
                 throw new InvalidOperationException("URUI image belongs to an expired or different document generation");
             }
-            entry.Validate();
-            texture = entry.texture;
+            if (!inValidatedFrame || entry.validatedSerial != validationSerial)
+            {
+                entry.Validate(inValidatedFrame ? validationSerial : 0);
+            }
+            resolved = entry;
             return true;
         }
 
-        internal ulong RegisterResolved(ImageLease lease)
+        internal ulong RegisterResolved(ImageLease lease, out ulong sourceIdentity)
         {
             if (lease == null)
             {
@@ -220,6 +279,15 @@ namespace URUI.Internal.Resources
             {
                 throw new InvalidOperationException("URUI image resource IDs exhausted");
             }
+            if (!sourceIdentities.TryGetValue(texture, out var source))
+            {
+                if (nextSourceIdentity == ulong.MaxValue)
+                {
+                    throw new InvalidOperationException("URUI image source identities exhausted");
+                }
+                source.Identity = ++nextSourceIdentity;
+            }
+            source.NativeLeases = checked(source.NativeLeases + 1);
             var entry = new Entry
             {
                 id = ++nextId,
@@ -230,7 +298,18 @@ namespace URUI.Internal.Resources
                 lease = lease,
                 nativeHeld = true
             };
+            entry.InitMeta();
             entries.Add(entry.id, entry);
+            try
+            {
+                sourceIdentities[texture] = source;
+            }
+            catch
+            {
+                entries.Remove(entry.id);
+                throw;
+            }
+            sourceIdentity = source.Identity;
             return entry.id;
         }
 
@@ -242,12 +321,22 @@ namespace URUI.Internal.Resources
             BorrowedTextureRegistry owner;
             internal int Count => pinned.Count;
             internal bool AcquireOne(BorrowedTextureRegistry registry, ulong id, out Texture texture)
+                => AcquireOneValidated(registry, id, out texture, out _, out _, out _);
+
+            internal bool AcquireOneValidated(BorrowedTextureRegistry registry, ulong id, out Texture texture, out Vector4 sourceInfo, out bool isLive, out bool isUNorm)
             {
-                if (!registry.TryResolve(id, out texture))
+                if (!registry.TryResolveValidated(id, out var entry))
                 {
+                    texture = null;
+                    sourceInfo = default;
+                    isLive = false;
+                    isUNorm = false;
                     return false;
                 }
-                var entry = registry.entries[id];
+                texture = entry.texture;
+                sourceInfo = entry.sourceInfo;
+                isLive = entry.isLive;
+                isUNorm = entry.isUNorm;
                 if (entry.lease == null)
                 {
                     return true;
@@ -306,7 +395,10 @@ namespace URUI.Internal.Resources
                     }
                     try
                     {
-                        entry.Validate();
+                        if (!registry.inValidatedFrame || entry.validatedSerial != registry.validationSerial)
+                        {
+                            entry.Validate(registry.inValidatedFrame ? registry.validationSerial : 0);
+                        }
                         pinned.Add(entry);
                         entry.pins++;
                     }
@@ -344,11 +436,22 @@ namespace URUI.Internal.Resources
 
         internal void ReleaseResolved(ulong id)
         {
-            if (!entries.TryGetValue(id, out var entry) || entry.lease == null)
+            if (!entries.TryGetValue(id, out var entry) || !entry.nativeHeld)
             {
                 return;
             }
             entry.nativeHeld = false;
+            // URI 声明只需要对仍被原生持有的来源维持相同身份。在途提交继续持有 Entry。
+            var texture = entry.texture;
+            var source = sourceIdentities[texture];
+            if (--source.NativeLeases == 0)
+            {
+                sourceIdentities.Remove(texture);
+            }
+            else
+            {
+                sourceIdentities[texture] = source;
+            }
             Collect(entry);
         }
 

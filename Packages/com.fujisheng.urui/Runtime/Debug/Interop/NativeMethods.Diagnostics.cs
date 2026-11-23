@@ -40,16 +40,16 @@ namespace URUI.Internal.Interop
         internal static extern int urui_lookup_queue_selftest();
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_texture_lifecycle_selftest();
+        internal static extern int urui_texture_lifecycle_selftest(ulong surface);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_touch_selftest();
+        internal static extern int urui_touch_selftest(ulong surface);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_dom_selftest();
+        internal static extern int urui_dom_selftest(ulong surface);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int urui_transform_selftest();
+        internal static extern int urui_transform_selftest(ulong surface);
     }
 }
 #endif

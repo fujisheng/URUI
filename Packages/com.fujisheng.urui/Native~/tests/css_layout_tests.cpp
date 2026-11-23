@@ -1,5 +1,6 @@
 #include "urui.h"
 #include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include <cassert>
 #include <cmath>
@@ -16,8 +17,8 @@ int main()
     const URUI::String html((std::istreambuf_iterator<char>(input)), {});
     std::ifstream reference(fixtures / "layout-browser.tsv");
     assert(!html.empty() && reference);
-    assert(urui_create(400, 400) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(400, 400, &g_test_surface) == 1);
+    auto* context = URUI::GetContext(0);
     auto* document = context->LoadDocumentFromMemory(html, (fixtures / "layout.html").string());
     assert(document);
     document->Show();
@@ -102,7 +103,7 @@ int main()
     context->Update();
     std::ifstream visibility_input(fixtures / "visibility.html");
     const URUI::String visibility_html((std::istreambuf_iterator<char>(visibility_input)), {});
-    const auto visibility_owner = LoadTestDocument(visibility_html.c_str(), "ui/visibility.html");
+    const auto visibility_owner = LoadTestDocument(g_test_surface, visibility_html.c_str(), "ui/visibility.html");
     auto* visibility = context->GetDocument(context->GetNumDocuments() - 1);
     auto* parent = visibility->GetElementById("parent");
     auto* inherited = visibility->GetElementById("inherited");
@@ -118,9 +119,9 @@ int main()
     assert(context->GetElementAtPoint({230, 20}) == visibility->GetElementById("layer-child"));
     assert(context->GetElementAtPoint({5, 5}) != parent);
     assert(context->GetElementAtPoint({5, 5}) != inherited);
-    urui_update();
+    urui_surface_update(g_test_surface);
     URUIPlanInputPacket input_frame{};
-    assert(urui_plan_begin(&input_frame) == 1);
+    assert(urui_plan_begin(g_test_surface, &input_frame) == 1);
     bool green = false;
     bool blue = false;
     for (uint32_t command = 0; command < input_frame.command_count; command++)
@@ -128,10 +129,10 @@ int main()
         const auto& draw = input_frame.commands[command];
         int vertices = 0;
         int indices = 0;
-        assert(urui_get_geometry_info(draw.geometry, &vertices, &indices) == 1);
+        assert(urui_get_geometry_info(g_test_surface, draw.geometry, &vertices, &indices) == 1);
         std::vector<URUIVertex> painted(vertices);
         std::vector<int> triangles(indices);
-        assert(urui_copy_geometry(draw.geometry, painted.data(), vertices, triangles.data(), indices) == 1);
+        assert(urui_copy_geometry(g_test_surface, draw.geometry, painted.data(), vertices, triangles.data(), indices) == 1);
         const auto& tint = input_frame.uniforms[command].tint;
         for (auto& vertex : painted)
         {
@@ -148,7 +149,7 @@ int main()
         }
     }
     assert(green && blue);
-    assert(urui_plan_release(input_frame.lease) == 1);
+    assert(urui_plan_release(g_test_surface, input_frame.lease) == 1);
     parent->SetProperty("display", "none");
     context->Update();
     assert(!shown->IsVisible(true) && !shown->Focus());
@@ -157,8 +158,8 @@ int main()
     context->Update();
     assert(shown->IsVisible(true) && shown->Focus());
     assert(context->GetElementAtPoint({30, 30}) == shown);
-    assert(urui_document_close(visibility_owner) == 1);
-    urui_destroy();
+    assert(urui_document_close(g_test_surface, visibility_owner) == 1);
+    urui_surface_destroy(g_test_surface);
     assert(failures == 0);
     std::cout << "Browser-referenced layout: " << count << " boxes passed (0.5 CSS px tolerance)\n";
 }

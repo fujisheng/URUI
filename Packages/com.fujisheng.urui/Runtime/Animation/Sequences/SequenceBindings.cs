@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using URUI.Elements;
 using URUI.Internal.Interop;
@@ -15,8 +16,10 @@ namespace URUI.Animation
             internal int Depth;
             internal bool Captured;
             internal readonly List<SequenceTrack> Tracks = new List<SequenceTrack>();
-            internal NativeMethods.SequenceSample[] Samples;
-            internal NativeMethods.SequenceSample[] Previous;
+            internal IntPtr[] TrackNames;
+            internal IntPtr[] TrackEasings;
+            internal NativeMethods.SequenceSampleNative[] Samples;
+            internal NativeMethods.SequenceSampleNative[] Previous;
             internal int Count;
             internal int PreviousCount;
         }
@@ -32,13 +35,47 @@ namespace URUI.Animation
             internal double PreviousLocal;
         }
         readonly Element root;
-        internal bool IsValid => root.IsValid && Styles.TrueForAll(b => InRoot(b.Node)) && Extensions.TrueForAll(b => InRoot(b.Node));
+        readonly ulong surfaceHandle;
+        readonly ulong documentHandle;
+        byte[] utf8Pool;
+        GCHandle utf8PoolHandle;
+        NativeMethods.SequenceBatchItemNative[] batchItems;
+        NativeMethods.SequenceSampleNative[] batchSamples;
+
+        internal bool IsValid
+        {
+            get
+            {
+                if (!root.IsValid)
+                {
+                    return false;
+                }
+                for (int i = 0; i < Styles.Count; i++)
+                {
+                    if (!InRoot(Styles[i].Node))
+                    {
+                        return false;
+                    }
+                }
+                for (int i = 0; i < Extensions.Count; i++)
+                {
+                    if (!InRoot(Extensions[i].Node))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
         bool InRoot(Element node) => node.IsValid && node.IsAttached && (ReferenceEquals(node, root) || root.Contains(node));
         internal readonly List<Css> Styles = new List<Css>();
         internal readonly List<Extension> Extensions = new List<Extension>();
+
         internal SequenceBindings(Element root, SequenceDefinition definition, ulong owner, ISequenceTrackFactory explicitFactory, IDictionary<string, Element> slots)
         {
             this.root = root;
+            surfaceHandle = root.SurfaceHandle;
+            documentHandle = root.NativeHandle;
             try
             {
                 int keyCount = 0;
@@ -56,14 +93,21 @@ namespace URUI.Animation
                         }
                         values.Add(node);
                     }
-                    foreach (var child in node.Hierarchy.Children())
+                    var hierarchy = node.Hierarchy;
+                    int childCount = hierarchy.ChildCount;
+                    for (int i = 0; i < childCount; i++)
                     {
-                        pending.Push(child);
+                        var child = hierarchy.ChildAt(i);
+                        if (child != null)
+                        {
+                            pending.Push(child);
+                        }
                     }
                 }
                 var properties = new Dictionary<SequenceTrack, HashSet<string>>();
-                foreach (var track in definition.Tracks)
+                for (int t = 0; t < definition.Tracks.Count; t++)
                 {
+                    var track = definition.Tracks[t];
                     if (track.Muted)
                     {
                         continue;
@@ -91,13 +135,21 @@ namespace URUI.Animation
                     }
                     if (track.Kind == "css")
                     {
-                        int count = NativeMethods.urui_keyframes_count(target.NativeHandle, target.CheckedToken(), track.Keyframes);
+                        int count = NativeMethods.urui_keyframes_count(surfaceHandle, documentHandle, target.CheckedToken(), track.Keyframes);
                         if (count < 1 || (keyCount += count) > 4096)
                         {
                             throw new InvalidOperationException("活动轨道合计不能超过4096个关键帧，且引用必须存在。");
                         }
                         properties[track] = Properties(target, track.Keyframes);
-                        var binding = Styles.Find(value => ReferenceEquals(value.Node, target));
+                        Css binding = null;
+                        for (int i = 0; i < Styles.Count; i++)
+                        {
+                            if (ReferenceEquals(Styles[i].Node, target))
+                            {
+                                binding = Styles[i];
+                                break;
+                            }
+                        }
                         if (binding == null)
                         {
                             binding = new Css
@@ -111,8 +163,9 @@ namespace URUI.Animation
                             }
                             Styles.Add(binding);
                         }
-                        foreach (var previous in binding.Tracks)
+                        for (int i = 0; i < binding.Tracks.Count; i++)
                         {
+                            var previous = binding.Tracks[i];
                             if (SequenceTiming.Overlaps(previous, track) && properties[previous].Overlaps(properties[track]))
                             {
                                 throw new InvalidOperationException("动画轨道在同一时段控制相同属性：" + previous.Id + " / " + track.Id);
@@ -122,7 +175,15 @@ namespace URUI.Animation
                     }
                     else
                     {
-                        var binding = Extensions.Find(value => ReferenceEquals(value.Node, target) && value.Kind == track.Kind);
+                        Extension binding = null;
+                        for (int i = 0; i < Extensions.Count; i++)
+                        {
+                            if (ReferenceEquals(Extensions[i].Node, target) && Extensions[i].Kind == track.Kind)
+                            {
+                                binding = Extensions[i];
+                                break;
+                            }
+                        }
                         if (binding == null)
                         {
                             binding = new Extension
@@ -132,8 +193,9 @@ namespace URUI.Animation
                             };
                             Extensions.Add(binding);
                         }
-                        foreach (var previous in binding.Tracks)
+                        for (int i = 0; i < binding.Tracks.Count; i++)
                         {
+                            var previous = binding.Tracks[i];
                             if (SequenceTiming.Overlaps(previous, track))
                             {
                                 throw new InvalidOperationException("扩展轨道的活动区间重叠：" + track.Target);
@@ -143,20 +205,35 @@ namespace URUI.Animation
                     }
                 }
                 Styles.Sort((a, b) => a.Depth.CompareTo(b.Depth));
-                foreach (var binding in Styles)
+                int totalTracks = 0;
+                for (int i = 0; i < Styles.Count; i++)
                 {
+                    var binding = Styles[i];
                     StableSort(binding.Tracks);
-                    binding.Samples = new NativeMethods.SequenceSample[binding.Tracks.Count];
-                    binding.Previous = new NativeMethods.SequenceSample[binding.Tracks.Count];
-                    for (int i = 0; i < binding.Tracks.Count; i++)
-                    {
-                        binding.Samples[i] = Entry(binding.Tracks[i], 0);
-                    }
-                    Native(binding, binding.Samples, binding.Samples.Length, 2);
-                    binding.Captured = true;
+                    totalTracks += binding.Tracks.Count;
                 }
-                foreach (var binding in Extensions)
+                BuildUtf8Pool();
+                if (Styles.Count > 0)
                 {
+                    batchItems = new NativeMethods.SequenceBatchItemNative[Styles.Count];
+                    batchSamples = new NativeMethods.SequenceSampleNative[Math.Max(1, totalTracks)];
+                    for (int i = 0; i < Styles.Count; i++)
+                    {
+                        var binding = Styles[i];
+                        int trackCount = binding.Tracks.Count;
+                        binding.Samples = new NativeMethods.SequenceSampleNative[trackCount];
+                        binding.Previous = new NativeMethods.SequenceSampleNative[trackCount];
+                        for (int j = 0; j < trackCount; j++)
+                        {
+                            binding.Samples[j] = Entry(binding, j, 0);
+                        }
+                        Native(binding, binding.Samples, trackCount, 2);
+                        binding.Captured = true;
+                    }
+                }
+                for (int i = 0; i < Extensions.Count; i++)
+                {
+                    var binding = Extensions[i];
                     StableSort(binding.Tracks);
                     var factory = explicitFactory?.Kind == binding.Kind ? explicitFactory : SequenceTrackRegistry.Find(root.Document, binding.Kind);
                     if (factory == null)
@@ -179,6 +256,70 @@ namespace URUI.Animation
                 throw;
             }
         }
+
+        ~SequenceBindings()
+        {
+            if (utf8PoolHandle.IsAllocated)
+            {
+                utf8PoolHandle.Free();
+            }
+        }
+
+        void BuildUtf8Pool()
+        {
+            if (Styles.Count == 0)
+            {
+                return;
+            }
+            var offsets = new Dictionary<string, int>(StringComparer.Ordinal);
+            var unique = new List<string>();
+            int totalBytes = 0;
+            void Collect(string value)
+            {
+                var key = value ?? "";
+                if (!offsets.ContainsKey(key))
+                {
+                    offsets.Add(key, totalBytes);
+                    unique.Add(key);
+                    totalBytes += Encoding.UTF8.GetByteCount(key) + 1;
+                }
+            }
+            for (int i = 0; i < Styles.Count; i++)
+            {
+                var tracks = Styles[i].Tracks;
+                for (int j = 0; j < tracks.Count; j++)
+                {
+                    Collect(tracks[j].Keyframes);
+                    Collect(tracks[j].Easing);
+                }
+            }
+            utf8Pool = new byte[Math.Max(1, totalBytes)];
+            int cursor = 0;
+            for (int i = 0; i < unique.Count; i++)
+            {
+                var text = unique[i];
+                if (text.Length > 0)
+                {
+                    cursor += Encoding.UTF8.GetBytes(text, 0, text.Length, utf8Pool, cursor);
+                }
+                utf8Pool[cursor++] = 0;
+            }
+            utf8PoolHandle = GCHandle.Alloc(utf8Pool, GCHandleType.Pinned);
+            var basePtr = utf8PoolHandle.AddrOfPinnedObject();
+            for (int i = 0; i < Styles.Count; i++)
+            {
+                var binding = Styles[i];
+                int trackCount = binding.Tracks.Count;
+                binding.TrackNames = new IntPtr[trackCount];
+                binding.TrackEasings = new IntPtr[trackCount];
+                for (int j = 0; j < trackCount; j++)
+                {
+                    binding.TrackNames[j] = IntPtr.Add(basePtr, offsets[binding.Tracks[j].Keyframes ?? ""]);
+                    binding.TrackEasings[j] = IntPtr.Add(basePtr, offsets[binding.Tracks[j].Easing ?? ""]);
+                }
+            }
+        }
+
         static void StableSort(List<SequenceTrack> tracks)
         {
             for (int i = 1; i < tracks.Count; i++)
@@ -193,62 +334,118 @@ namespace URUI.Animation
                 tracks[index] = track;
             }
         }
-        static NativeMethods.SequenceSample Entry(SequenceTrack track, float progress) => new NativeMethods.SequenceSample
+
+        static NativeMethods.SequenceSampleNative Entry(Css binding, int trackIndex, float progress) => new NativeMethods.SequenceSampleNative
         {
-            Name = track.Keyframes,
-            Easing = track.Easing,
+            Name = binding.TrackNames[trackIndex],
+            Easing = binding.TrackEasings[trackIndex],
             Progress = progress
         };
-        static HashSet<string> Properties(Element node, string name)
+
+        HashSet<string> Properties(Element node, string name)
         {
-            int result = NativeMethods.urui_keyframes_properties(node.NativeHandle, node.CheckedToken(), name, null, 0, out int size);
-            if (result != -3 || size < 1 || size > 1048576)
+            var token = node.CheckedToken();
+            int result = NativeMethods.urui_keyframes_properties(surfaceHandle, documentHandle, token, name, null, 0, out int size);
+            if ((result != NativeStatus.BufferTooSmall && result != NativeStatus.Ok) || size < 1 || size > 1048576)
             {
                 throw new InvalidOperationException("动画关键帧不存在或不可读取：" + name);
             }
             var bytes = new byte[size];
-            if (NativeMethods.urui_keyframes_properties(node.NativeHandle, node.CheckedToken(), name, bytes, size, out int actual) != 1 || actual != size)
+            if (NativeMethods.urui_keyframes_properties(surfaceHandle, documentHandle, token, name, bytes, size, out int actual) != NativeStatus.Ok || actual != size)
             {
                 throw new InvalidOperationException("动画关键帧版本变化。");
             }
             return new HashSet<string>(Encoding.UTF8.GetString(bytes, 0, size - 1).Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries), StringComparer.Ordinal);
         }
-        static void Native(Css binding, NativeMethods.SequenceSample[] samples, int count, int mode)
+
+        unsafe void Native(Css binding, NativeMethods.SequenceSampleNative[] samples, int count, int mode)
         {
-            int result = NativeMethods.urui_sequence_sample(binding.Node.NativeHandle, binding.Node.CheckedToken(), binding.Owner, samples, count, mode);
-            if (result != 1)
+            int result;
+            if (count > 0 && samples != null)
+            {
+                fixed (NativeMethods.SequenceSampleNative* ptr = samples)
+                {
+                    result = NativeMethods.urui_sequence_sample(surfaceHandle, documentHandle, binding.Node.CheckedToken(), binding.Owner, ptr, count, mode);
+                }
+            }
+            else
+            {
+                result = NativeMethods.urui_sequence_sample(surfaceHandle, documentHandle, binding.Node.CheckedToken(), binding.Owner, null, 0, mode);
+            }
+            if (result != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("动画采样失败：" + result + "，请检查关键帧、缓动、插件版本及属性控制权。");
             }
         }
+
+        unsafe void ApplyBatch(int itemCount, int sampleCount)
+        {
+            if (itemCount == 0)
+            {
+                return;
+            }
+            fixed (NativeMethods.SequenceBatchItemNative* itemsPtr = batchItems)
+            fixed (NativeMethods.SequenceSampleNative* samplesPtr = batchSamples)
+            {
+                int result = NativeMethods.urui_sequence_apply_batch(
+                    surfaceHandle, documentHandle, itemsPtr, itemCount,
+                    sampleCount > 0 ? samplesPtr : null, sampleCount);
+                if (result != NativeStatus.Ok)
+                {
+                    throw new InvalidOperationException("动画采样失败：" + result + "，请检查关键帧、缓动、插件版本及属性控制权。");
+                }
+            }
+        }
+
         internal void Sample(double time)
         {
             if (!IsValid)
             {
                 throw new InvalidOperationException("动画节点已失效或移出播放根。");
             }
-            foreach (var binding in Styles)
+            if (Styles.Count > 0)
             {
-                binding.Count = 0;
-                foreach (var track in binding.Tracks)
+                int sampleOffset = 0;
+                for (int i = 0; i < Styles.Count; i++)
                 {
-                    var at = SequenceTiming.At(track, time);
-                    if (at.Active)
+                    var binding = Styles[i];
+                    binding.Count = 0;
+                    uint startOffset = (uint)sampleOffset;
+                    var tracks = binding.Tracks;
+                    for (int j = 0; j < tracks.Count; j++)
                     {
-                        binding.Samples[binding.Count++] = Entry(track, at.Progress);
+                        var at = SequenceTiming.At(tracks[j], time);
+                        if (at.Active)
+                        {
+                            var sample = Entry(binding, j, at.Progress);
+                            binding.Samples[binding.Count++] = sample;
+                            batchSamples[sampleOffset++] = sample;
+                        }
                     }
+                    batchItems[i] = new NativeMethods.SequenceBatchItemNative
+                    {
+                        Token = binding.Node.CheckedToken(),
+                        Owner = binding.Owner,
+                        SampleOffset = startOffset,
+                        SampleCount = (uint)binding.Count,
+                        Mode = 0,
+                        Reserved = 0
+                    };
                 }
-                Native(binding, binding.Samples, binding.Count, 0);
+                ApplyBatch(Styles.Count, sampleOffset);
             }
             try
             {
                 ApplyStyles(false);
-                foreach (var binding in Extensions)
+                for (int i = 0; i < Extensions.Count; i++)
                 {
+                    var binding = Extensions[i];
                     binding.Selected = null;
                     binding.Local = 0;
-                    foreach (var track in binding.Tracks)
+                    var tracks = binding.Tracks;
+                    for (int j = 0; j < tracks.Count; j++)
                     {
+                        var track = tracks[j];
                         var at = SequenceTiming.At(track, time);
                         if (at.Active)
                         {
@@ -270,8 +467,9 @@ namespace URUI.Animation
                 {
                     errors.Add(rollback);
                 }
-                foreach (var binding in Extensions)
+                for (int i = 0; i < Extensions.Count; i++)
                 {
+                    var binding = Extensions[i];
                     try
                     {
                         binding.Driver.Sample(binding.Previous, binding.PreviousLocal, binding.Previous != null);
@@ -287,24 +485,31 @@ namespace URUI.Animation
                 }
                 throw;
             }
-            foreach (var binding in Styles)
+            for (int i = 0; i < Styles.Count; i++)
             {
-                Array.Copy(binding.Samples, binding.Previous, binding.Count);
+                var binding = Styles[i];
+                if (binding.Count > 0)
+                {
+                    Array.Copy(binding.Samples, binding.Previous, binding.Count);
+                }
                 binding.PreviousCount = binding.Count;
             }
-            foreach (var binding in Extensions)
+            for (int i = 0; i < Extensions.Count; i++)
             {
+                var binding = Extensions[i];
                 binding.Previous = binding.Selected;
                 binding.PreviousLocal = binding.Local;
             }
         }
+
         void Layout()
         {
-            if (NativeMethods.urui_sequence_layout(root.NativeHandle) != 1)
+            if (NativeMethods.urui_sequence_layout(surfaceHandle, documentHandle) != NativeStatus.Ok)
             {
                 throw new InvalidOperationException("动画布局上下文已失效。");
             }
         }
+
         void ApplyStyles(bool previous)
         {
             if (Styles.Count == 0)
@@ -312,10 +517,20 @@ namespace URUI.Animation
                 return;
             }
             // Start from the frozen authoring base, so mixed units never inherit a previously sampled layout.
-            foreach (var binding in Styles)
+            for (int i = 0; i < Styles.Count; i++)
             {
-                Native(binding, null, 0, 3);
+                var binding = Styles[i];
+                batchItems[i] = new NativeMethods.SequenceBatchItemNative
+                {
+                    Token = binding.Node.CheckedToken(),
+                    Owner = binding.Owner,
+                    SampleOffset = 0,
+                    SampleCount = 0,
+                    Mode = 3,
+                    Reserved = 0
+                };
             }
+            ApplyBatch(Styles.Count, 0);
             Layout();
             for (int first = 0; first < Styles.Count;)
             {
@@ -325,50 +540,83 @@ namespace URUI.Animation
                     end++;
                 }
                 // First settle this depth's own geometry/font, then resolve transforms/em against it.
+                int itemCount = end - first;
+                int sampleOffset = 0;
+                for (int i = first; i < end; i++)
+                {
+                    var binding = Styles[i];
+                    int count = previous ? binding.PreviousCount : binding.Count;
+                    var source = previous ? binding.Previous : binding.Samples;
+                    uint startOffset = (uint)sampleOffset;
+                    for (int j = 0; j < count; j++)
+                    {
+                        batchSamples[sampleOffset++] = source[j];
+                    }
+                    batchItems[i - first] = new NativeMethods.SequenceBatchItemNative
+                    {
+                        Token = binding.Node.CheckedToken(),
+                        Owner = binding.Owner,
+                        SampleOffset = startOffset,
+                        SampleCount = (uint)count,
+                        Mode = count == 0 ? 3 : 1,
+                        Reserved = 0
+                    };
+                }
                 for (int pass = 0; pass < 2; pass++)
                 {
-                    for (int i = first; i < end; i++)
-                    {
-                        var binding = Styles[i];
-                        int count = previous ? binding.PreviousCount : binding.Count;
-                        Native(binding, previous ? binding.Previous : binding.Samples, count, count == 0 ? 3 : 1);
-                    }
+                    ApplyBatch(itemCount, sampleOffset);
                     Layout();
                 }
                 first = end;
             }
         }
+
         public void Dispose()
         {
             List<Exception> errors = null;
-            foreach (var binding in Styles)
+            try
             {
-                if (binding.Captured && binding.Node.IsValid)
+                for (int i = 0; i < Styles.Count; i++)
+                {
+                    var binding = Styles[i];
+                    if (binding.Captured && binding.Node.IsValid)
+                    {
+                        try
+                        {
+                            Native(binding, null, 0, 1);
+                            binding.Captured = false;
+                        }
+                        catch (Exception error)
+                        {
+                            (errors ??= new List<Exception>()).Add(error);
+                        }
+                    }
+                }
+                for (int i = 0; i < Extensions.Count; i++)
                 {
                     try
                     {
-                        Native(binding, null, 0, 1);
-                        binding.Captured = false;
+                        Extensions[i].Driver?.Dispose();
                     }
                     catch (Exception error)
                     {
                         (errors ??= new List<Exception>()).Add(error);
                     }
                 }
+                Styles.Clear();
+                Extensions.Clear();
             }
-            foreach (var binding in Extensions)
+            finally
             {
-                try
+                if (utf8PoolHandle.IsAllocated)
                 {
-                    binding.Driver?.Dispose();
+                    utf8PoolHandle.Free();
                 }
-                catch (Exception error)
-                {
-                    (errors ??= new List<Exception>()).Add(error);
-                }
+                utf8Pool = null;
+                batchItems = null;
+                batchSamples = null;
+                GC.SuppressFinalize(this);
             }
-            Styles.Clear();
-            Extensions.Clear();
             if (errors != null)
             {
                 throw new AggregateException("部分动画覆盖未能恢复。", errors);

@@ -13,17 +13,27 @@ namespace URUI
     {
     }
 
-    int TextureLayoutRow::Generate(TextureLayout& layout, int max_width, int y)
+    int TextureLayoutRow::Generate(TextureLayout& layout, int max_width, int y, int* shared_first_unplaced)
     {
         int width = 1;
-        int first_unplaced_index = 0;
+        const int num_rectangles = layout.GetNumRectangles();
+        int scan_start = shared_first_unplaced ? *shared_first_unplaced : 0;
+        while (scan_start < num_rectangles && layout.GetRectangle(scan_start).IsPlaced())
+        {
+            ++scan_start;
+        }
+        if (shared_first_unplaced)
+        {
+            *shared_first_unplaced = scan_start;
+        }
+        int first_unplaced_index = scan_start;
         int placed_rectangles = 0;
 
         while (width < max_width)
         {
             // Find the first unplaced rectangle we can fit.
             int index;
-            for (index = first_unplaced_index; index < layout.GetNumRectangles(); ++index)
+            for (index = first_unplaced_index; index < num_rectangles; ++index)
             {
                 TextureLayoutRectangle& rectangle = layout.GetRectangle(index);
                 if (!rectangle.IsPlaced())
@@ -35,7 +45,7 @@ namespace URUI
                 }
             }
 
-            if (index == layout.GetNumRectangles())
+            if (index == num_rectangles)
             {
                 return placed_rectangles;
             }
@@ -58,6 +68,15 @@ namespace URUI
             }
 
             first_unplaced_index = index + 1;
+            if (shared_first_unplaced && index == *shared_first_unplaced)
+            {
+                int next_unplaced = index + 1;
+                while (next_unplaced < num_rectangles && layout.GetRectangle(next_unplaced).IsPlaced())
+                {
+                    ++next_unplaced;
+                }
+                *shared_first_unplaced = next_unplaced;
+            }
         }
 
         return placed_rectangles;

@@ -35,7 +35,7 @@ namespace URUI.Tests
                     resources.EndRecording();
                     document.LoadHtml(markup, "/generation-upload.html");
                     document.SynchronizeLayout();
-                    using var input = NativeRenderPlanLease.Begin(out _);
+                    using var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _);
                     using var lease = input.Compile(default, out var packet);
                     resources.Apply(lease, packet);
                     var operation = Marshal.PtrToStructure<RenderPlanOperation>(packet.Operations);
@@ -74,7 +74,7 @@ namespace URUI.Tests
                 document.LoadHtml("<!doctype html><html><head><style>body{margin:0;}img{position:absolute;width:8px;height:8px;}</style></head><body><img id='a' src='white.png'><img src='white.png' style='left:16px;'><img src='white.png' style='left:32px;'></body></html>", "/native-upload.html");
                 document.SynchronizeLayout();
                 using var resources = new RenderPlanResources(resource => resource.Dispose());
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var lease = input.Compile(default, out var packet))
                     {
@@ -89,7 +89,7 @@ namespace URUI.Tests
                 var before = resources.GeometryUploadBytes;
                 document.Q("a").Style.Set("left", "3px");
                 document.SynchronizeLayout();
-                using (var input = NativeRenderPlanLease.Begin(out _))
+                using (var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _))
                 {
                     using (var lease = input.Compile(default, out var packet))
                     {
@@ -100,7 +100,7 @@ namespace URUI.Tests
                 Assert.That(resources.GeometryUploadBytes, Is.EqualTo(before));
                 for (var i = 0; i < 300; i++)
                 {
-                    using var input = NativeRenderPlanLease.Begin(out _);
+                    using var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _);
                     using var lease = input.Compile(default, out var packet);
                     resources.Apply(lease, packet);
                 }
@@ -116,7 +116,7 @@ namespace URUI.Tests
                 {
                     for (var i = 0; i < 32; i++)
                     {
-                        using var input = NativeRenderPlanLease.Begin(out _);
+                        using var input = NativeRenderPlanLease.Begin(surface.SurfaceHandle, out _);
                         using var lease = input.Compile(default, out var packet);
                         resources.Apply(lease, packet);
                     }

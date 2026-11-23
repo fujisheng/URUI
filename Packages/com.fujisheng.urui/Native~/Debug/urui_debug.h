@@ -7,8 +7,6 @@
 extern "C"
 {
 #endif
-    // Nanoseconds accumulated on the Unity main thread since the previous take.
-    // geometry_compile_ns is nested in render_ns when URUI compiles while rendering.
     typedef struct
     {
         uint64_t text_ns;
@@ -23,6 +21,7 @@ extern "C"
         uint32_t text_calls, geometry_compiles, geometry_vertices, geometry_indices, text_fast_calls,
             text_fallback_calls, text_lookups;
     } URUIProfile;
+
     typedef struct URUIApiProfile
     {
         uint64_t style_ns;
@@ -30,6 +29,7 @@ extern "C"
         uint64_t style_calls;
         uint64_t attribute_calls;
     } URUIApiProfile;
+
     typedef struct URUITypedProbe
     {
         uint64_t total_ns;
@@ -41,11 +41,13 @@ extern "C"
         uint64_t rejects;
         uint64_t clock_pairs;
     } URUITypedProbe;
+
     typedef struct URUIStyleProbe
     {
         uint64_t lookup_ns, parse_ns, apply_ns, compare_ns, calls, parsed_calls, rejected_calls, properties, comparable,
             equal_properties, equal_calls, unsupported_calls;
     } URUIStyleProbe;
+
     typedef struct URUILookupProfile
     {
         uint64_t lookup_ns, style_lookup_ns, queries, style_queries, nodes_visited, max_frontier, inline_calls,
@@ -63,10 +65,10 @@ extern "C"
     URUI_API int urui_lookup_profile_take(URUILookupProfile* out);
     URUI_API int urui_lookup_inline_enable(int enabled);
     URUI_API int urui_lookup_queue_selftest(void);
-    URUI_API int urui_texture_lifecycle_selftest(void);
-    URUI_API int urui_touch_selftest(void);
-    URUI_API int urui_dom_selftest(void);
-    URUI_API int urui_transform_selftest(void);
+    URUI_API int urui_texture_lifecycle_selftest(URUISurfaceHandle surface);
+    URUI_API int urui_touch_selftest(URUISurfaceHandle surface);
+    URUI_API int urui_dom_selftest(URUISurfaceHandle surface);
+    URUI_API int urui_transform_selftest(URUISurfaceHandle surface);
 #ifdef __cplusplus
 }
 #endif

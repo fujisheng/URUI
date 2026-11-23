@@ -76,4 +76,15 @@ namespace URUI
         HandleMap().swap(handles);
     }
 
+    void FontFace::ReleaseTextures(RenderManager& render_manager)
+    {
+        for (auto& entry : handles)
+        {
+            if (entry.second)
+            {
+                entry.second->ReleaseTextures(render_manager);
+            }
+        }
+    }
+
 }

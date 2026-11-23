@@ -4,17 +4,25 @@
 sampler2D _DetailTex;
 half4 UruiDetail(half4 color,float2 local)
 {
-    if (_DetailFilter==0) return color;
+    int filter=_DetailFilter;
+    if (filter==0) return color;
     half4 original=color;
-    float2 uv=local*_DetailTex_ST.xy+_DetailTex_ST.zw+_EffectTime*_DetailTex_Speed;
+    float4 row16=UruiParameterTexel(_UiFieldBase+16);
+    float4 row17=UruiParameterTexel(_UiFieldBase+17);
+    float2 uv=local*row16.zw+row17.xy+_EffectTime*row17.zw;
     half4 detail=tex2D(_DetailTex,uv);
-    if (_DetailFilter==1) { color.a*=UruiInverseRange(_DetailThreshold.x,_DetailThreshold.y,detail.a); return color; }
+    if (filter==1)
+    {
+        float2 thresh=saturate(UruiParameterTexel(_UiFieldBase+11).xy);
+        color.a*=UruiInverseRange(thresh.x,thresh.y,detail.a);
+        return color;
+    }
     detail*=_DetailColor;
-    if (_DetailFilter==2) color.rgb*=detail.rgb;
-    else if (_DetailFilter==3) color.rgb+=detail.rgb*color.a;
-    else if (_DetailFilter==6) color.rgb-=detail.rgb*color.a;
-    else if (_DetailFilter==4) color.rgb=detail.rgb*color.a;
-    else if (_DetailFilter==5) color.rgb*=1+detail.rgb;
+    if (filter==2) color.rgb*=detail.rgb;
+    else if (filter==3) color.rgb+=detail.rgb*color.a;
+    else if (filter==6) color.rgb-=detail.rgb*color.a;
+    else if (filter==4) color.rgb=detail.rgb*color.a;
+    else if (filter==5) color.rgb*=1+detail.rgb;
     return lerp(original,color,_DetailIntensity*detail.a);
 }
 #endif

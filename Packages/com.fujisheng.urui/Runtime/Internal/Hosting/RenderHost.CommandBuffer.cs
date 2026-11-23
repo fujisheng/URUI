@@ -11,10 +11,6 @@ namespace URUI.Internal.Hosting
         {
             get
             {
-                if (CanUseColorPass())
-                {
-                    throw new System.InvalidOperationException("原生共享颜色附件必须通过 SubmitRendering 在实际 SRP 上下文中录制并提交。");
-                }
                 PrepareGeometryRecording();
                 if (parameterPages?.Current != null || hasOwnedImages || HasLayerResources || (OwnerSurface && (OwnerSurface.HasPainters || OwnerSurface.HasEffects)))
                 {

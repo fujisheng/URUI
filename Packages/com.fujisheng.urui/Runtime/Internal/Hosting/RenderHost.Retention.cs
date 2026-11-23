@@ -37,12 +37,15 @@ namespace URUI.Internal.Hosting
                 throw new InvalidOperationException("URUI 绘制记录恢复失败。", error);
             }
         }
+
         void InvalidateRecording(bool clear)
         {
             if (!clear)
             {
                 return;
             }
+            // 命令可能在录制后、提交前被清空。同一目标的下一次提交也必须重录。
+            geometryRecordingPending = true;
             effectSubmitted.Clear();
             if (buffer == null)
             {
@@ -60,6 +63,5 @@ namespace URUI.Internal.Hosting
                 Debug.LogException(error);
             }
         }
-        public void NotifyExternalRenderResourcesChanged() => InvalidateRecording(false);
     }
 }

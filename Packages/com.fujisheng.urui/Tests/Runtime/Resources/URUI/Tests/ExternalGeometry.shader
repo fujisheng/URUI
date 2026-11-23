@@ -1,6 +1,6 @@
 Shader "URUI.Tests/ExternalGeometry"
 {
- Properties { _FactFloat("Fact Float",Float)=0 _FactInt("Fact Integer",Integer)=0 _FactColor("Fact Color",Color)=(0,0,0,0)  _TestTexture("Test Texture",2D)="white"{} _TestTint("Test Tint",Vector)=(1,1,1,1) [HideInInspector] _UruiParameters("Parameters",2D)="black"{} [HideInInspector] _UruiParameterSize("Parameter Size",Vector)=(1,1,1,1) }
+ Properties { _FactFloat("Fact Float",Float)=0 _FactInt("Fact Integer",Integer)=0 _FactColor("Fact Color",Color)=(0,0,0,0)  _TestTexture("Test Texture",2D)="white"{} _TestTint("Test Tint",Vector)=(1,1,1,1) [HideInInspector] _UruiParameters("Parameters",2D)="black"{} }
  SubShader
  {
   Cull Off ZWrite Off ZTest Always Blend One OneMinusSrcAlpha

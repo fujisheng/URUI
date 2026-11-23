@@ -57,7 +57,7 @@ namespace URUI.Controls
         /// </summary>
         protected override void OnInitialize()
         {
-            value = NormalizeValue(ParseValue(NativeMethods.ReadControl(NativeHandle, Token)));
+            value = NormalizeValue(ParseValue(NativeMethods.ReadControl(SurfaceHandle, NativeHandle, Token)));
             Focusable = true;
         }
         /// <summary>
@@ -93,12 +93,12 @@ namespace URUI.Controls
             writeDepth++;
             try
             {
-                if (NativeMethods.urui_control_value_write(NativeHandle, Token, FormatValue(normalized)) != 1)
+                if (NativeMethods.urui_control_value_write(SurfaceHandle, NativeHandle, Token, FormatValue(normalized)) != NativeStatus.Ok)
                 {
                     throw new InvalidOperationException("原生控件拒绝值写入。");
                 }
 
-                value = NormalizeValue(ParseValue(NativeMethods.ReadControl(NativeHandle, Token)));
+                value = NormalizeValue(ParseValue(NativeMethods.ReadControl(SurfaceHandle, NativeHandle, Token)));
             }
             finally
             {
@@ -132,7 +132,7 @@ namespace URUI.Controls
             try
             {
                 action();
-                value = ParseValue(NativeMethods.ReadControl(NativeHandle, Token));
+                value = ParseValue(NativeMethods.ReadControl(SurfaceHandle, NativeHandle, Token));
             }
             finally
             {
@@ -164,7 +164,7 @@ namespace URUI.Controls
             T next;
             try
             {
-                next = NormalizeValue(ParseValue(NativeMethods.ReadControl(NativeHandle, Token)));
+                next = NormalizeValue(ParseValue(NativeMethods.ReadControl(SurfaceHandle, NativeHandle, Token)));
             }
             catch (FormatException)
             {

@@ -288,22 +288,44 @@ namespace URUI.Effect
                 var channels = playback.Channels;
                 var animated = playbackValues ??= new(StringComparer.Ordinal);
                 animated.Clear();
-                void Set(EffectTweenChannels channel, bool active, string key, float value)
+                bool Set(EffectTweenChannels channel, bool active, string key, float value)
                 {
                     if (active && (channels & channel) != 0)
                     {
                         animated[key] = StyleOverride.Number(value);
+                        return author.GetOrigin(key) <= StyleValueOrigin.Author;
                     }
+                    return false;
                 }
-                Set(EffectTweenChannels.Tone, p.ToneFilter != ToneFilter.None, "--urui-fx-tone-intensity", rate);
-                Set(EffectTweenChannels.Color, p.ColorFilter != ColorFilter.None, "--urui-fx-color-intensity", rate);
-                Set(EffectTweenChannels.Sampling, p.SamplingFilter != SamplingFilter.None, "--urui-fx-sampling-intensity", rate);
-                Set(EffectTweenChannels.Transition, p.TransitionFilter != TransitionFilter.None, "--urui-fx-transition-progress", rate);
-                Set(EffectTweenChannels.GradationOffset, p.GradationMode != GradationMode.None, "--urui-fx-gradation-offset", -1 + 2 * rate);
-                Set(EffectTweenChannels.GradationRotation, p.GradationMode is GradationMode.Angle or GradationMode.AngleGradient, "--urui-fx-gradation-rotation", 360 * rate);
-                Set(EffectTweenChannels.EdgeShiny, p.EdgeMode == EdgeMode.Shiny, "--urui-fx-edge-shiny-progress", rate);
+                if (Set(EffectTweenChannels.Tone, p.ToneFilter != ToneFilter.None, "--urui-fx-tone-intensity", rate))
+                {
+                    p.ToneIntensity = UnityEngine.Mathf.Clamp01(rate);
+                }
+                if (Set(EffectTweenChannels.Color, p.ColorFilter != ColorFilter.None, "--urui-fx-color-intensity", rate))
+                {
+                    p.ColorIntensity = UnityEngine.Mathf.Clamp01(rate);
+                }
+                if (Set(EffectTweenChannels.Sampling, p.SamplingFilter != SamplingFilter.None, "--urui-fx-sampling-intensity", rate))
+                {
+                    p.SamplingIntensity = UnityEngine.Mathf.Clamp01(rate);
+                }
+                if (Set(EffectTweenChannels.Transition, p.TransitionFilter != TransitionFilter.None, "--urui-fx-transition-progress", rate))
+                {
+                    p.TransitionProgress = UnityEngine.Mathf.Clamp01(rate);
+                }
+                if (Set(EffectTweenChannels.GradationOffset, p.GradationMode != GradationMode.None, "--urui-fx-gradation-offset", -1 + 2 * rate))
+                {
+                    p.GradationOffset = UnityEngine.Mathf.Clamp(-1 + 2 * rate, -1, 1);
+                }
+                if (Set(EffectTweenChannels.GradationRotation, p.GradationMode is GradationMode.Angle or GradationMode.AngleGradient, "--urui-fx-gradation-rotation", 360 * rate))
+                {
+                    p.GradationRotation = UnityEngine.Mathf.Clamp(360 * rate, 0, 360);
+                }
+                if (Set(EffectTweenChannels.EdgeShiny, p.EdgeMode == EdgeMode.Shiny, "--urui-fx-edge-shiny-progress", rate))
+                {
+                    p.EdgeShinyProgress = UnityEngine.Mathf.Clamp01(rate);
+                }
                 style = new EffectStyleView(author, values, animated);
-                EffectParameterReader.Read(style, p);
             }
             // Keep original CSS image declarations in the style view. Direct preset textures stay in the pure snapshot.
             lastStyleView = style;
@@ -368,7 +390,7 @@ namespace URUI.Effect
                 UIEffectParameters.ApplyOverrides(values, lastStyleView);
             }
         }
-        internal EffectParameters RenderingParameters => resolvedParameters;
+        internal EffectParameters RenderingParameters => resolvedParameters ?? lastSnapshot ?? parameters;
         public void Dispose()
         {
             if (disposed)

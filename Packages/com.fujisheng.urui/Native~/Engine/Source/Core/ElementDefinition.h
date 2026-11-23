@@ -33,9 +33,15 @@ namespace URUI
             return properties;
         }
 
+        bool HasVarOrInherit() const
+        {
+            return has_var_or_inherit;
+        }
+
     private:
         PropertyDictionary properties;
         PropertyIdSet property_ids;
+        bool has_var_or_inherit = false;
     };
 
 }

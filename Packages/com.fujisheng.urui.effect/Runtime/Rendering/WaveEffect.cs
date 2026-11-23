@@ -23,6 +23,13 @@ namespace URUI.Effect.Rendering
             new(parameters[1],9,keywords:new RenderKeywordMapping[]{new RenderKeywordMapping("horizontal",0),new("vertical",1)}),
             new(parameters[9],10),new(parameters[10],11),new(parameters[12],12)});
         public static EffectDefinition Define(string name = "ui-wave") => new(name, EffectKind.Image, new Factory(), "wave:v2", "straight texture input; premultiplied HDR output", parameters, true, renderProgram: EffectProgramDescriptors.Wave, renderParameters: layout);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            MaterialResource.ResetStatics();
+            Grid.ResetStatics();
+        }
         sealed class Factory : IEffectFactory
         {
             public IElementEffect Create(EffectContext context) => new Instance(context);
@@ -31,6 +38,16 @@ namespace URUI.Effect.Rendering
         {
             static Material shared;
             static int references;
+
+            internal static void ResetStatics()
+            {
+                if (shared)
+                {
+                    URUI.Resources.GpuRetirement.DestroyOwnedObject(shared);
+                }
+                shared = null;
+                references = 0;
+            }
             bool disposed;
             internal Material Material => shared;
             internal MaterialResource()
@@ -68,6 +85,16 @@ namespace URUI.Effect.Rendering
                 internal int count;
             }
             static readonly Dictionary<(int, int), Entry> entries = new();
+
+            internal static void ResetStatics()
+            {
+                foreach (var item in entries.Values)
+                {
+                    URUI.Resources.GpuRetirement.DestroyOwnedObject(item.mesh);
+                }
+                entries.Clear();
+            }
+
             readonly (int, int) key;
             Entry entry;
             internal Mesh Mesh => entry.mesh;
@@ -102,7 +129,7 @@ namespace URUI.Effect.Rendering
                             indices[i + 5] = v + columns + 2;
                         }
                     }
-                    var mesh = new Mesh { name = "URUI shared wave grid" };
+                    var mesh = new Mesh { name = "URUI shared wave grid", hideFlags = HideFlags.HideAndDontSave };
                     mesh.vertices = vertices;
                     mesh.uv = uv;
                     mesh.uv2 = new Vector2[vertices.Length];

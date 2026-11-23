@@ -19,6 +19,9 @@ namespace URUI.Effect
         IDisposable registration;
         Vector2[] endpoints = Array.Empty<Vector2>();
         Color[] colors = Array.Empty<Color>();
+        readonly List<Vector3> meshVertices = new();
+        readonly List<Color> meshColors = new();
+        readonly List<int> meshIndices = new();
         bool dirty = true;
         bool disposed;
         float width;
@@ -30,7 +33,8 @@ namespace URUI.Effect
             {
                 var shader = UnityEngine.Resources.Load<Shader>("URUI.Effect/Stroke") ?? throw new InvalidOperationException("缺少线段绘制shader。");
                 material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-                mesh = new Mesh { name = "URUI strokes" };
+                mesh = new Mesh { name = "URUI strokes", hideFlags = HideFlags.HideAndDontSave };
+                mesh.MarkDynamic();
                 registration = element.Document.AttachPainter(element, "strokes", Paint, Release);
             }
             catch
@@ -80,12 +84,13 @@ namespace URUI.Effect
 
         void Paint(ElementPaintContext context)
         {
-            var text = element.ResolvedStyle.Get("--urui-line-width") ?? "1px";
-            if (text.EndsWith("px", StringComparison.OrdinalIgnoreCase))
+            var raw = element.ResolvedStyle.Get("--urui-line-width") ?? "1px";
+            var span = raw.AsSpan();
+            if (span.EndsWith("px".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
-                text = text.Substring(0, text.Length - 2);
+                span = span.Slice(0, span.Length - 2);
             }
-            if (!float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var requested) || !float.IsFinite(requested) || requested <= 0)
+            if (!float.TryParse(span, NumberStyles.Float, CultureInfo.InvariantCulture, out var requested) || !float.IsFinite(requested) || requested <= 0)
             {
                 throw new InvalidOperationException("--urui-line-width 必须为有限的正px长度。");
             }
@@ -103,9 +108,23 @@ namespace URUI.Effect
 
         void BuildMesh()
         {
-            var vertices = new List<Vector3>(colors.Length * 4);
-            var tint = new List<Color>(colors.Length * 4);
-            var indices = new List<int>(colors.Length * 6);
+            meshVertices.Clear();
+            meshColors.Clear();
+            meshIndices.Clear();
+            int expectedVertices = colors.Length * 4;
+            int expectedIndices = colors.Length * 6;
+            if (meshVertices.Capacity < expectedVertices)
+            {
+                meshVertices.Capacity = expectedVertices;
+            }
+            if (meshColors.Capacity < expectedVertices)
+            {
+                meshColors.Capacity = expectedVertices;
+            }
+            if (meshIndices.Capacity < expectedIndices)
+            {
+                meshIndices.Capacity = expectedIndices;
+            }
             for (var i = 0; i < colors.Length; i++)
             {
                 var from = endpoints[i * 2];
@@ -116,22 +135,28 @@ namespace URUI.Effect
                     continue;
                 }
                 var normal = new Vector2(-delta.y, delta.x).normalized * (width * .5f);
-                var start = vertices.Count;
-                vertices.Add(from - normal);
-                vertices.Add(from + normal);
-                vertices.Add(to + normal);
-                vertices.Add(to - normal);
-                for (var n = 0; n < 4; n++)
-                {
-                    tint.Add(colors[i]);
-                }
-                indices.AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
+                var start = meshVertices.Count;
+                meshVertices.Add(from - normal);
+                meshVertices.Add(from + normal);
+                meshVertices.Add(to + normal);
+                meshVertices.Add(to - normal);
+                var color = colors[i];
+                meshColors.Add(color);
+                meshColors.Add(color);
+                meshColors.Add(color);
+                meshColors.Add(color);
+                meshIndices.Add(start);
+                meshIndices.Add(start + 1);
+                meshIndices.Add(start + 2);
+                meshIndices.Add(start);
+                meshIndices.Add(start + 2);
+                meshIndices.Add(start + 3);
             }
             mesh.Clear();
-            mesh.indexFormat = vertices.Count > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
-            mesh.SetVertices(vertices);
-            mesh.SetColors(tint);
-            mesh.SetTriangles(indices, 0);
+            mesh.indexFormat = meshVertices.Count > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.SetVertices(meshVertices);
+            mesh.SetColors(meshColors);
+            mesh.SetTriangles(meshIndices, 0);
             mesh.RecalculateBounds();
         }
 

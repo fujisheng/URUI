@@ -10,16 +10,16 @@ namespace URUI.Effect.Tests
     public sealed class PrimitiveColorTests
     {
         [UnityTest]
-        public IEnumerator TransparentPrimitivesImagesAndNestedGroupsUseSrgbSourceOver() => Verify(0);
+        public IEnumerator TransparentPrimitivesImagesAndNestedGroupsUseProjectColorSpace() => Verify(0);
         [UnityTest]
-        public IEnumerator BatchedGeometryUsesSrgbSourceOver() => Verify(1);
+        public IEnumerator BatchedGeometryUsesProjectColorSpace() => Verify(1);
         [UnityTest]
-        public IEnumerator TransformedGeometryUsesSrgbSourceOver() => Verify(2);
+        public IEnumerator TransformedGeometryUsesProjectColorSpace() => Verify(2);
 
         static IEnumerator Verify(int mode)
         {
-            var host = new GameObject("CSS source over document");
-            var cameraObject = new GameObject("CSS source over camera", typeof(Camera));
+            var host = new GameObject("Project color blend document");
+            var cameraObject = new GameObject("Project color blend camera", typeof(Camera));
             cameraObject.tag = "MainCamera";
             var camera = cameraObject.GetComponent<Camera>();
             camera.allowHDR = false;
@@ -66,11 +66,22 @@ namespace URUI.Effect.Tests
                 try
                 {
                     RenderTexture.active = target;
-                    // 期望值由编码域 source-over 手算；只取平坦内部像素，不涉及文字抗锯齿。
-                    var expected = new[] {
-                        new Color32(112, 80, 64, 255), new Color32(112, 80, 64, 255),
-                        new Color32(112, 80, 64, 255), new Color32(72, 72, 80, 255),
-                        new Color32(52, 92, 112, 255), new Color32(72, 72, 80, 255)
+                    Color ProjectColor(Color32 value)
+                    {
+                        Color color = value;
+                        return QualitySettings.activeColorSpace == ColorSpace.Linear ? color.linear : color;
+                    }
+
+                    var background = ProjectColor(new Color32(32, 64, 96, 255));
+                    var source = ProjectColor(new Color32(192, 96, 32, 255));
+                    var overlay = ProjectColor(new Color32(32, 160, 192, 255));
+                    var half = Color.Lerp(background, source, .5f);
+                    var quarter = Color.Lerp(background, source, .25f);
+                    var expected = new[]
+                    {
+                        half, half, half, quarter,
+                        background * .625f + source * .125f + overlay * .25f,
+                        quarter
                     };
                     var names = new[] { "rgba", "image", "group", "nested rgba", "overlapping rgba", "nested image" };
                     for (var index = 0; index < (mode == 0 ? expected.Length : 1); index++)
@@ -78,9 +89,10 @@ namespace URUI.Effect.Tests
                         read.ReadPixels(new Rect(10 + index * 20, 69, 1, 1), 0, 0);
                         read.Apply();
                         var actual = (Color32)read.GetPixel(0, 0);
-                        Assert.That((int)actual.r, Is.EqualTo((int)expected[index].r).Within(2), names[index] + " red");
-                        Assert.That((int)actual.g, Is.EqualTo((int)expected[index].g).Within(2), names[index] + " green");
-                        Assert.That((int)actual.b, Is.EqualTo((int)expected[index].b).Within(2), names[index] + " blue");
+                        var pixel = (Color32)(target.sRGB ? expected[index].gamma : expected[index]);
+                        Assert.That((int)actual.r, Is.EqualTo((int)pixel.r).Within(2), names[index] + " red");
+                        Assert.That((int)actual.g, Is.EqualTo((int)pixel.g).Within(2), names[index] + " green");
+                        Assert.That((int)actual.b, Is.EqualTo((int)pixel.b).Within(2), names[index] + " blue");
                         Assert.AreEqual(255, actual.a, names[index] + " alpha");
                     }
                 }

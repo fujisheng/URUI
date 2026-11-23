@@ -219,7 +219,7 @@ namespace URUI.Rendering.Effects
             parameterProperties.Clear();
             parameterProperties.SetTexture("_MainTex", frame.Source);
             parameterProperties.SetTexture("_UruiParameters", parameterTexture);
-            parameterProperties.SetVector("_UruiParameterSize", new Vector4(1f / parameterTexture.width, 1f / parameterTexture.height, parameterTexture.width, parameterTexture.height));
+            parameterProperties.SetFloat("_UruiBaseParameter", 0f);
             commands.DrawMesh(drawMesh, Matrix4x4.identity, program.Program, 0, 0, parameterProperties);
         }
         public void Dispose()

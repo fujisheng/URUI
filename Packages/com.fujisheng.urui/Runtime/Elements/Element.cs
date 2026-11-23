@@ -18,7 +18,10 @@ namespace URUI.Elements
         {
             get;
         }
+        internal ulong SurfaceHandle => document.SurfaceHandle;
         bool invalid;
+        ulong validatedRefRevision;
+        ElementStyle style;
 
         internal Element(Document document, uint generation, ulong token, ulong nativeHandle)
         {
@@ -26,7 +29,6 @@ namespace URUI.Elements
             this.generation = generation;
             this.token = token;
             NativeHandle = nativeHandle;
-            Style = new ElementStyle(this);
         }
 
         /// <summary>
@@ -37,13 +39,13 @@ namespace URUI.Elements
             get
             {
                 RequireValid();
-                return ReadString(0);
+                return ReadString(ElementReadField.Name);
             }
 
             set
             {
                 RequireText(value, nameof(value));
-                Write(0, null, value);
+                Write(ElementWriteField.Name, null, value);
             }
         }
 
@@ -55,7 +57,7 @@ namespace URUI.Elements
             get
             {
                 RequireValid();
-                return ReadString(1);
+                return ReadString(ElementReadField.Tag);
             }
         }
 
@@ -70,13 +72,13 @@ namespace URUI.Elements
             get
             {
                 RequireValid();
-                return ReadString(2);
+                return ReadString(ElementReadField.PlainText);
             }
 
             set
             {
                 RequireText(value, nameof(value));
-                Write(1, null, value);
+                Write(ElementWriteField.PlainText, null, value);
                 document.SweepInvalidElements();
             }
         }
@@ -84,10 +86,7 @@ namespace URUI.Elements
         /// <summary>
         /// 行内 CSS 写入入口；布局和样式计算仍由 URUI 完成。
         /// </summary>
-        public ElementStyle Style
-        {
-            get;
-        }
+        public ElementStyle Style => style ??= new ElementStyle(this);
 
         /// <summary>
         /// 节点未销毁，且所属文档仍是当前加载世代；脱离层级的节点仍有效。
@@ -101,8 +100,24 @@ namespace URUI.Elements
                 {
                     return false;
                 }
-
-                return ValidateSnapshot(document.IsCurrent(generation) && NativeMethods.urui_element_ref_valid(NativeHandle, token) == 1);
+                if (!document.IsCurrent(generation))
+                {
+                    Invalidate();
+                    return false;
+                }
+                var surface = document.SurfaceHandle;
+                var refRev = document.RefRevision;
+                if (refRev != 0 && validatedRefRevision == refRev && surface != 0)
+                {
+                    return true;
+                }
+                if (surface != 0 && NativeMethods.urui_element_ref_valid(surface, NativeHandle, token) == NativeStatus.Ok)
+                {
+                    validatedRefRevision = refRev;
+                    return true;
+                }
+                Invalidate();
+                return false;
             }
         }
 
@@ -116,6 +131,7 @@ namespace URUI.Elements
             }
             if (valid)
             {
+                validatedRefRevision = document.RefRevision;
                 return true;
             }
             Invalidate();
@@ -130,7 +146,7 @@ namespace URUI.Elements
             get
             {
                 RequireValid();
-                return NativeMethods.urui_element_attached(NativeHandle, token) == 1;
+                return NativeMethods.urui_element_attached(SurfaceHandle, NativeHandle, token) == NativeStatus.Ok;
             }
         }
 
@@ -141,7 +157,7 @@ namespace URUI.Elements
         {
             RequireValid();
             Document.RequireName(name, nameof(name));
-            return ReadString(3, name);
+            return ReadString(ElementReadField.Attribute, name);
         }
 
         /// <summary>
@@ -160,7 +176,7 @@ namespace URUI.Elements
             {
                 throw new InvalidOperationException("控件类型在创建时确定，不能通过属性更换。");
             }
-            Write(2, name, value);
+            Write(ElementWriteField.Attribute, name, value);
             Document.FinishNativeCall();
             OnAttributeChanged(name);
         }
@@ -176,7 +192,8 @@ namespace URUI.Elements
             {
                 throw new InvalidOperationException("控件类型在创建时确定，不能移除类型属性。");
             }
-            RequireSuccess(NativeMethods.urui_element_erase(NativeHandle, token, 0, name), "移除属性");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_erase(surface, NativeHandle, token, ElementEraseField.Attribute, name), "移除属性");
             document.MarkGeometryChanged();
             Document.FinishNativeCall();
             OnAttributeChanged(name);
@@ -199,7 +216,7 @@ namespace URUI.Elements
             RequireValid();
             RequireText(html, nameof(html));
             Document.RequireName(sourceUrl, nameof(sourceUrl));
-            if (document.Defer(() => SetInnerHtml(html, sourceUrl)))
+            if (document.Defer(() => SetInnerHtml(html, sourceUrl), Document.DeferInvalidation.InvalidatesDocument))
             {
                 return;
             }
@@ -216,7 +233,7 @@ namespace URUI.Elements
             {
                 throw new ArgumentNullException(nameof(template));
             }
-            if (document.Defer(() => SetInnerHtml(template)))
+            if (document.Defer(() => SetInnerHtml(template), Document.DeferInvalidation.InvalidatesDocument))
             {
                 return;
             }
@@ -229,7 +246,7 @@ namespace URUI.Elements
         public string GetInnerHtml()
         {
             RequireValid();
-            return NativeMethods.ReadElement(NativeHandle, token, 4);
+            return NativeMethods.ReadElement(SurfaceHandle, NativeHandle, token, ElementReadField.InnerHtml);
         }
 
         /// <summary>
@@ -242,40 +259,15 @@ namespace URUI.Elements
             ElementStyle.RequireFinite(translation.y);
             ElementStyle.RequireFinite(scale.x);
             ElementStyle.RequireFinite(scale.y);
-            RequireSuccess(NativeMethods.urui_element_ref_set_translate_scale_2d(NativeHandle, token, translation.x, translation.y, scale.x, scale.y), "设置变换");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_ref_set_translate_scale_2d(surface, NativeHandle, token, translation.x, translation.y, scale.x, scale.y), "设置变换");
             document.MarkGeometryChanged();
         }
 
         /// <summary>
         /// 更新运行时TRS，保留作者变换原点的单位、数值与样式表来源。
         /// </summary>
-        public void SetTransform(Vector3 translation, Quaternion rotation, Vector3 scale)
-        {
-            var originX = Style.Get("--urui-transform-origin-x");
-            var originY = Style.Get("--urui-transform-origin-y");
-            SetTransform(translation, rotation, scale, new Vector2(50, 50));
-            if (originX == null)
-            {
-                Style.Remove("--urui-transform-origin-x");
-            }
-            else
-            {
-                Style.Set("--urui-transform-origin-x", originX);
-            }
-            if (originY == null)
-            {
-                Style.Remove("--urui-transform-origin-y");
-            }
-            else
-            {
-                Style.Set("--urui-transform-origin-y", originY);
-            }
-        }
-
-        /// <summary>
-        /// 更新运行时 TRS 与百分比变换原点；使用原生变换原语，不生成样式文本。
-        /// </summary>
-        public void SetTransform(Vector3 translation, Quaternion rotation, Vector3 scale, Vector2 originPercent)
+        public unsafe void SetTransform(Vector3 translation, Quaternion rotation, Vector3 scale)
         {
             RequireValid();
             var norm = (double)rotation.x * rotation.x + (double)rotation.y * rotation.y +
@@ -286,13 +278,59 @@ namespace URUI.Elements
             }
             rotation = rotation.normalized;
             rotation.ToAngleAxis(out var angle, out var axis);
-            var values = new[] { translation.x, translation.y, translation.z, axis.x, axis.y, axis.z, angle,
-                scale.x, scale.y, scale.z, originPercent.x, originPercent.y };
-            foreach (var value in values)
+            float* values = stackalloc float[10];
+            values[0] = translation.x;
+            values[1] = translation.y;
+            values[2] = translation.z;
+            values[3] = axis.x;
+            values[4] = axis.y;
+            values[5] = axis.z;
+            values[6] = angle;
+            values[7] = scale.x;
+            values[8] = scale.y;
+            values[9] = scale.z;
+            for (var i = 0; i < 10; i++)
             {
-                ElementStyle.RequireFinite(value);
+                ElementStyle.RequireFinite(values[i]);
             }
-            RequireSuccess(NativeMethods.urui_element_trs(NativeHandle, token, values, values.Length), "设置 TRS");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_trs_ex(surface, NativeHandle, token, values, 10, preserveOrigin: 1), "设置 TRS");
+            document.MarkGeometryChanged();
+        }
+
+        /// <summary>
+        /// 更新运行时 TRS 与百分比变换原点；使用原生变换原语，不生成样式文本。
+        /// </summary>
+        public unsafe void SetTransform(Vector3 translation, Quaternion rotation, Vector3 scale, Vector2 originPercent)
+        {
+            RequireValid();
+            var norm = (double)rotation.x * rotation.x + (double)rotation.y * rotation.y +
+                (double)rotation.z * rotation.z + (double)rotation.w * rotation.w;
+            if (double.IsNaN(norm) || double.IsInfinity(norm) || norm <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(rotation));
+            }
+            rotation = rotation.normalized;
+            rotation.ToAngleAxis(out var angle, out var axis);
+            float* values = stackalloc float[12];
+            values[0] = translation.x;
+            values[1] = translation.y;
+            values[2] = translation.z;
+            values[3] = axis.x;
+            values[4] = axis.y;
+            values[5] = axis.z;
+            values[6] = angle;
+            values[7] = scale.x;
+            values[8] = scale.y;
+            values[9] = scale.z;
+            values[10] = originPercent.x;
+            values[11] = originPercent.y;
+            for (var i = 0; i < 12; i++)
+            {
+                ElementStyle.RequireFinite(values[i]);
+            }
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_trs_ex(surface, NativeHandle, token, values, 12, preserveOrigin: 0), "设置 TRS");
             document.MarkGeometryChanged();
         }
 
@@ -305,7 +343,8 @@ namespace URUI.Elements
             ElementStyle.RequireFinite(value.b);
             ElementStyle.RequireFinite(value.a);
             Color32 bytes = value;
-            RequireSuccess(NativeMethods.urui_element_color(NativeHandle, token, property, bytes.r, bytes.g, bytes.b, bytes.a), "设置颜色");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_color(surface, NativeHandle, token, property, bytes.r, bytes.g, bytes.b, bytes.a), "设置颜色");
             document.MarkGeometryChanged();
         }
 
@@ -316,13 +355,13 @@ namespace URUI.Elements
         {
             RequireValid();
             RequireClassName(className);
-            int result = NativeMethods.urui_element_class(NativeHandle, token, className, -1);
+            int result = NativeMethods.urui_element_class(SurfaceHandle, NativeHandle, token, className, ClassAction.Query);
             if (result < 0)
             {
                 throw new InvalidOperationException("URUI 无法读取类名。");
             }
 
-            return result == 1;
+            return result == NativeStatus.Ok;
         }
 
         /// <summary>
@@ -342,7 +381,8 @@ namespace URUI.Elements
         {
             RequireValid();
             RequireClassName(className);
-            RequireSuccess(NativeMethods.urui_element_class(NativeHandle, token, className, enabled ? 1 : 0), "更新类名");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_class(surface, NativeHandle, token, className, enabled ? ClassAction.Add : ClassAction.Remove), "更新类名");
             document.MarkGeometryChanged();
         }
 
@@ -350,14 +390,15 @@ namespace URUI.Elements
         {
             Document.RequireName(name, nameof(name));
             RequireText(value, nameof(value));
-            Write(4, name, value);
+            Write(ElementWriteField.InlineStyle, name, value);
         }
 
         internal void RemoveStyle(string name)
         {
             RequireValid();
             Document.RequireName(name, nameof(name));
-            RequireSuccess(NativeMethods.urui_element_erase(NativeHandle, token, 1, name), "移除行内样式");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_erase(surface, NativeHandle, token, ElementEraseField.InlineStyle, name), "移除行内样式");
             document.MarkGeometryChanged();
         }
 
@@ -368,14 +409,16 @@ namespace URUI.Elements
         }
 
         static readonly Unity.Profiling.ProfilerMarker numericStyleWriteMarker = new("URUI.Style.WriteNumeric");
+
         internal void SetNumeric(string name, float value, int unit)
         {
             RequireValid();
             Document.RequireName(name, nameof(name));
             ElementStyle.RequireFinite(value);
+            var surface = SurfaceHandle;
             using (numericStyleWriteMarker.Auto())
             {
-                RequireSuccess(NativeMethods.urui_element_number(NativeHandle, token, name, value, unit), "更新动态数值");
+                RequireSuccess(surface, NativeMethods.urui_element_number(surface, NativeHandle, token, name, value, unit), "更新动态数值");
             }
             document.MarkGeometryChanged();
         }
@@ -383,7 +426,8 @@ namespace URUI.Elements
         void Write(int field, string name, string value)
         {
             RequireValid();
-            RequireSuccess(NativeMethods.urui_element_write(NativeHandle, token, field, name, value), "更新元素");
+            var surface = SurfaceHandle;
+            RequireSuccess(surface, NativeMethods.urui_element_write(surface, NativeHandle, token, field, name, value), "更新元素");
             document.MarkGeometryChanged();
         }
 
@@ -404,7 +448,10 @@ namespace URUI.Elements
             }
 
             invalid = true;
+            validatedRefRevision = 0;
             UserData = null;
+            strings?.Clear();
+            styleStrings?.Clear();
             try
             {
                 OnInvalidated();
@@ -413,12 +460,14 @@ namespace URUI.Elements
             {
                 Debug.LogException(error);
             }
-            foreach (var subscription in subscriptions)
+            if (subscriptions != null)
             {
-                subscription.Clear();
+                foreach (var subscription in subscriptions)
+                {
+                    subscription.Clear();
+                }
+                subscriptions.Clear();
             }
-
-            subscriptions.Clear();
             subscriptionSnapshot = null;
         }
 
@@ -442,11 +491,11 @@ namespace URUI.Elements
             }
         }
 
-        internal static void RequireSuccess(int result, string operation)
+        internal static void RequireSuccess(ulong surface, int result, string operation)
         {
-            if (result != 1)
+            if (result != NativeStatus.Ok)
             {
-                throw new InvalidOperationException("URUI 无法" + operation + "：" + NativeMethods.LastError());
+                throw new InvalidOperationException("URUI 无法" + operation + "：" + NativeMethods.LastError(surface));
             }
         }
     }

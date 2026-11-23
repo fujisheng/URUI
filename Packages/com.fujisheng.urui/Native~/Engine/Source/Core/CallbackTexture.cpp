@@ -106,4 +106,9 @@ namespace URUI
         return Texture(texture);
     }
 
+    void CallbackTextureSource::ReleaseTextures(RenderManager& render_manager) const
+    {
+        textures.erase(&render_manager);
+    }
+
 }

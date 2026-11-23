@@ -6,8 +6,9 @@ namespace URUI.Controls
     {
         internal static void Install(Document document)
         {
-            document.RegisterFactory("label", context => new Label(context));
-            document.RegisterFactory("img", context => new Image(context));
+            document.RegisterFactory("label", context => new Label(context), eagerInitialize: false);
+            document.RegisterFactory("template", context => new Template(context), eagerInitialize: false);
+            document.RegisterFactory("img", context => new Image(context), eagerInitialize: false);
             document.RegisterFactory("button", context => new Button(context));
             document.RegisterFactory("input", context => new Toggle(context), "checkbox");
             document.RegisterFactory("input", context => new RadioButton(context), "radio");

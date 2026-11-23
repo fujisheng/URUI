@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
+using URUI.Internal.Interop;
 
 namespace URUI.Editor.Authoring
 {
@@ -89,7 +90,11 @@ namespace URUI.Editor.Authoring
         {
             get;
         }
-        internal HtmlNodeInfo(string tag, string id, string classes, string source, string href, string rel, int line, bool inert, string inlineStyle, string styleText)
+        public string InputType
+        {
+            get;
+        }
+        internal HtmlNodeInfo(string tag, string id, string classes, string source, string href, string rel, int line, bool inert, string inlineStyle, string styleText, string inputType)
         {
             InlineStyle = inlineStyle;
             StyleText = styleText;
@@ -101,6 +106,7 @@ namespace URUI.Editor.Authoring
             Rel = rel;
             Line = line;
             IsInert = inert;
+            InputType = inputType;
         }
     }
     public sealed class HtmlValidationResult
@@ -158,6 +164,7 @@ namespace URUI.Editor.Authoring
         [Serializable]
         sealed class Node
         {
+            public Attributes attributes;
             public string tag;
             public string id;
             public string classes;
@@ -168,6 +175,12 @@ namespace URUI.Editor.Authoring
             public string styleText;
             public int line;
             public bool inert;
+        }
+
+        [Serializable]
+        sealed class Attributes
+        {
+            public string type;
         }
         [DllImport("URUIBridge", CallingConvention = CallingConvention.Cdecl)]
         static extern int urui_validate_html([MarshalAs(UnmanagedType.LPUTF8Str)] string source,
@@ -193,7 +206,7 @@ namespace URUI.Editor.Authoring
             {
                 var bytes = new byte[4096];
                 var status = urui_validate_html(text, sourceUrl, isFragment ? 1 : 0, bytes, bytes.Length, out var required);
-                if (status == -3 && required > bytes.Length)
+                if (status == NativeStatus.BufferTooSmall && required > bytes.Length)
                 {
                     bytes = new byte[required];
                     status = urui_validate_html(text, sourceUrl, isFragment ? 1 : 0, bytes, bytes.Length, out required);
@@ -211,7 +224,8 @@ namespace URUI.Editor.Authoring
                     }
                     foreach (var value in packet.nodes ?? Array.Empty<Node>())
                     {
-                        nodes.Add(new HtmlNodeInfo(value.tag, value.id, value.classes, value.source, value.href, value.rel, value.line, value.inert, value.inlineStyle, value.styleText));
+                        nodes.Add(new HtmlNodeInfo(value.tag, value.id, value.classes, value.source, value.href, value.rel,
+                            value.line, value.inert, value.inlineStyle, value.styleText, value.attributes?.type));
                     }
                 }
             }

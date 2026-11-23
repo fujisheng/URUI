@@ -14,6 +14,7 @@ namespace URUI.Internal.Rendering
     internal sealed unsafe class NativeProgramLayout : IDisposable
     {
         readonly Document document;
+        readonly ulong surface;
         readonly ulong owner;
         readonly RenderParameterLayout layout;
         ulong identity;
@@ -34,11 +35,12 @@ namespace URUI.Internal.Rendering
             {
                 throw new ArgumentException("程序布局名不能为空。", nameof(name));
             }
-            if (NativeMethods.urui_program_parameter_api_version() != 1)
+            if (NativeMethods.urui_program_parameter_api_version() != NativeMethods.ExpectedProgramParameterApiVersion)
             {
-                throw new NotSupportedException("需要原生程序参数协议 v1。");
+                throw new NotSupportedException("需要原生程序参数协议 v" + NativeMethods.ExpectedProgramParameterApiVersion + "。");
             }
             Name = name;
+            surface = document.SurfaceHandle;
             owner = document.NativeHandle;
             var root = document.DocumentElement ?? throw new InvalidOperationException("程序布局需要已加载文档。");
             var keywordCount = 0;
@@ -91,8 +93,8 @@ namespace URUI.Internal.Rendering
                 }
                 fixed (ProgramParameterField* pointer = fields)
                 {
-                    var result = NativeMethods.urui_program_layout_register(owner, root.CheckedToken(), name, (IntPtr)pointer, (uint)fields.Length, (uint)layout.RowCount, out identity);
-                    if (result != 1)
+                    var result = NativeMethods.urui_program_layout_register(surface, owner, root.CheckedToken(), name, (IntPtr)pointer, (uint)fields.Length, (uint)layout.RowCount, out identity);
+                    if (result != NativeStatus.Ok)
                     {
                         throw new InvalidOperationException("程序固定字段注册失败：" + name + " / " + result);
                     }
@@ -123,8 +125,8 @@ namespace URUI.Internal.Rendering
             }
             fixed (Vector4* pointer = values)
             {
-                var result = NativeMethods.urui_program_layout_values(owner, element.CheckedToken(), identity, (IntPtr)pointer, (uint)layout.RowCount);
-                if (result != 1)
+                var result = NativeMethods.urui_program_layout_values(surface, owner, element.CheckedToken(), identity, (IntPtr)pointer, (uint)layout.RowCount);
+                if (result != NativeStatus.Ok)
                 {
                     throw new InvalidOperationException("程序固定字段读取失败：" + result);
                 }
@@ -259,8 +261,8 @@ namespace URUI.Internal.Rendering
             {
                 return;
             }
-            var result = NativeMethods.urui_program_layout_release(owner, previous);
-            if (result != 1 && result != -2)
+            var result = NativeMethods.urui_program_layout_release(surface, owner, previous);
+            if (result != NativeStatus.Ok && result != NativeStatus.NotReady)
             {
                 throw new InvalidOperationException("程序布局释放失败：" + result);
             }

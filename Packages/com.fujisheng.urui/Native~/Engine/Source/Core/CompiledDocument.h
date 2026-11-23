@@ -22,9 +22,13 @@ namespace URUI
                          Vector<Diagnostic>& diagnostics, bool fragment = false);
     bool ReadCompiledDocument(const byte* data, size_t size, CompiledDocument& output, String& error,
                               const PropertySpecification* rebind = nullptr);
+    SharedPtr<const CompiledDocument> ReadCompiledDocumentCached(const byte* data, size_t size, String& error);
+    void ClearCompiledDocumentCache();
     bool CompileTemplate(const String& html, const String& source, const byte* parent, size_t parent_size,
                          Vector<byte>& output, Vector<Diagnostic>& diagnostics);
     bool BuildCompiledDocument(ElementDocument& target, CompiledDocument&& compiled, Vector<Diagnostic>& diagnostics);
+    bool BuildCompiledDocument(ElementDocument& target, const CompiledDocument& compiled,
+                               Vector<Diagnostic>& diagnostics);
 
     // 文档私有的不可变片段计划；实例化仍创建独立 DOM，不持有页面投影。
     class CompiledTemplateCache

@@ -5696,6 +5696,28 @@
       }
     },
     {
+      "name": "scrollbar-width",
+      "category": "property",
+      "status": "standard",
+      "values": [
+        [
+          "keyword",
+          "auto, none"
+        ]
+      ],
+      "initial": "auto",
+      "inherited": false,
+      "percentageBase": 0,
+      "source": {
+        "path": "URUI/Packages/com.fujisheng.urui/Native~/Engine/Source/Core/StyleSheetSpecification.cpp",
+        "line": 541
+      },
+      "test": {
+        "owner": "T07",
+        "state": "verified"
+      }
+    },
+    {
       "name": "overscroll-behavior",
       "category": "property",
       "status": "standard",

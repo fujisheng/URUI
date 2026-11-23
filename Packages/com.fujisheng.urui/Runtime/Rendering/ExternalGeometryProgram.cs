@@ -57,7 +57,7 @@ namespace URUI.Rendering
             }
             if (descriptor.IsKnown)
             {
-                if (!material.HasProperty("_UruiParameters") || !material.HasProperty("_UruiParameterSize"))
+                if (!material.HasProperty("_UruiParameters"))
                 {
                     throw new ArgumentException("已知外部程序必须声明 URUI 参数表契约。", nameof(material));
                 }

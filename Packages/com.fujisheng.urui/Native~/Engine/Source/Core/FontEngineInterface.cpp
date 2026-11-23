@@ -88,4 +88,8 @@ namespace URUI
     {
     }
 
+    void FontEngineInterface::ReleaseTextures(RenderManager& /*render_manager*/)
+    {
+    }
+
 }

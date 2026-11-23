@@ -1,4 +1,6 @@
 #include "urui.h"
+#include "test_document.h"
+static URUISurfaceHandle g_test_surface = 0;
 #include <URUI/Core.h>
 #include "Engine/Source/Core/ElementStyle.h"
 #include <cassert>
@@ -6,8 +8,8 @@
 
 int main()
 {
-    assert(urui_create(400, 200) == 1);
-    auto* context = URUI::GetContext("urui");
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
+    auto* context = URUI::GetContext(0);
     auto* document = context->LoadDocumentFromMemory(
         "<!doctype html><html><head><style>body{width:100px;font-size:14px;}"
         "#width{width:var(--w);--w:50px;} #font{font-size:var(--s);--s:20px;}"
@@ -118,6 +120,6 @@ int main()
     detachedDocument->Close();
     assert(resolutions <= 1);
     memoDocument->Close();
-    urui_destroy();
+    urui_surface_destroy(g_test_surface);
     std::cout << "Dynamic CSS value invalidation contracts passed\n";
 }

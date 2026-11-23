@@ -335,6 +335,10 @@ namespace URUI.Effect.Tests
                 }
                 void Equal(Color actual, Color expected)
                 {
+                    if (target.sRGB)
+                    {
+                        actual = actual.linear;
+                    }
                     Assert.That(actual.r, Is.EqualTo(expected.r).Within(.025f));
                     Assert.That(actual.g, Is.EqualTo(expected.g).Within(.025f));
                     Assert.That(actual.b, Is.EqualTo(expected.b).Within(.025f));
@@ -447,11 +451,10 @@ namespace URUI.Effect.Tests
                 var nested = Sample(150, 50);
                 var sibling = Sample(220, 50);
                 var outside = Sample(10, 50);
-                float Expected(float encoded) => EffectHtmlFixtureAssets.TargetChannel(encoded);
-                Assert.That(single.r, Is.EqualTo(Expected(.5f)).Within(.025f));
-                Assert.That(single.b, Is.EqualTo(Expected(.5f)).Within(.025f));
-                Assert.That(nested.r, Is.EqualTo(Expected(.25f)).Within(.025f));
-                Assert.That(nested.b, Is.EqualTo(Expected(.75f)).Within(.025f));
+                Assert.That(single.r, Is.EqualTo(.5f).Within(.025f));
+                Assert.That(single.b, Is.EqualTo(.5f).Within(.025f));
+                Assert.That(nested.r, Is.EqualTo(.25f).Within(.025f));
+                Assert.That(nested.b, Is.EqualTo(.75f).Within(.025f));
                 Assert.That(sibling.g, Is.GreaterThan(.95f));
                 Assert.That(sibling.r, Is.LessThan(.02f));
                 Assert.That(outside.b, Is.GreaterThan(.95f));

@@ -26,8 +26,8 @@ namespace URUI.Effect.Tests
             Assert.That(URUI.Rendering.Effects.EffectStatistics.GetTargets().LeasedTargets, Is.LessThanOrEqualTo(baseline), "单叶解析羽化不能新增离屏目标。");
             var top = fixture.Read.GetPixel(128, 255 - 72);
             var center = fixture.Read.GetPixel(128, 255 - 128);
-            Assert.That(top.r, Is.EqualTo(EffectHtmlFixtureAssets.TargetChannel(128f / 255 * 8.5f / 32)).Within(3f / 255));
-            Assert.That(center.r, Is.EqualTo(EffectHtmlFixtureAssets.TargetChannel(128f / 255)).Within(3f / 255));
+            Assert.That(top.r, Is.EqualTo(128f / 255 * 8.5f / 32).Within(3f / 255));
+            Assert.That(center.r, Is.EqualTo(128f / 255).Within(3f / 255));
             var node = fixture.Document.Q("subject");
             var index = 0;
             System.Action cycle = () =>
@@ -147,11 +147,10 @@ namespace URUI.Effect.Tests
                 var center = Sample(70, 60);
                 var top = Sample(70, 22);
                 var bottom = Sample(70, 110);
-                float Expected(float encoded) => EffectHtmlFixtureAssets.TargetChannel(encoded);
-                Assert.That(center.r, Is.EqualTo(Expected(.5f)).Within(.025f), "浏览器 sRGB source-over 只应用一次组透明度。");
-                Assert.That(center.b, Is.EqualTo(Expected(.5f)).Within(.025f));
-                Assert.That(top.r, Is.InRange(Expected(.025f), Expected(.12f)));
-                Assert.That(bottom.r, Is.InRange(Expected(.08f), Expected(.17f)));
+                Assert.That(center.r, Is.EqualTo(.5f).Within(.025f), "项目颜色空间只应用一次组透明度。");
+                Assert.That(center.b, Is.EqualTo(.5f).Within(.025f));
+                Assert.That(top.r, Is.InRange(.025f, .12f));
+                Assert.That(bottom.r, Is.InRange(.08f, .17f));
                 node.Style.SetHeight(140);
                 yield return null;
                 yield return null;
@@ -160,7 +159,7 @@ namespace URUI.Effect.Tests
                     camera.Render();
                 }
                 var resized = Sample(70, 150);
-                Assert.That(resized.r, Is.InRange(Expected(.08f), Expected(.17f)));
+                Assert.That(resized.r, Is.InRange(.08f, .17f));
                 node.AddToClassList("opaque");
                 yield return null;
                 yield return null;

@@ -291,18 +291,6 @@ public sealed class BorrowedImageValidation : MonoBehaviour
             Destroy(image);
             await Frames();
             Check(!image, "caller owns final texture destruction");
-            var stateType = typeof(Document).Assembly.GetType("URUI.Internal.Rendering.Shaders.ShaderPropertyState");
-            var state = Activator.CreateInstance(stateType, true);
-            var commandType = typeof(Document).Assembly.GetType("URUI.Internal.Interop.CommandNative");
-            var solid = Activator.CreateInstance(commandType);
-            var borrowedWhite = Activator.CreateInstance(commandType);
-            commandType.GetField("texture").SetValue(borrowedWhite, 1UL << 63);
-            var block = new MaterialPropertyBlock();
-            var material = new Material(Shader.Find("URUI/Premultiplied"));
-            var needsWrite = stateType.GetMethod("NeedsWrite");
-            Check((bool)needsWrite.Invoke(state, new object[] { block, Texture2D.whiteTexture, solid, true, material }), "first shader state write required");
-            CheckDeferred((bool)needsWrite.Invoke(state, new object[] { block, Texture2D.whiteTexture, borrowedWhite, true, material }), "switching solid/borrowed mode rewrites uniforms even for same white texture");
-            Destroy(material);
             if (report.failedChecks.Count > 0)
             {
                 throw new Exception(string.Join("; ", report.failedChecks));

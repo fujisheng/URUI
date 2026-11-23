@@ -178,20 +178,60 @@ namespace URUI
         return node;
     }
 
+    namespace
+    {
+        void CollectSelectorDependencies(const CompoundSelector& selector, StyleSheetIndex& index, bool is_non_subject);
+
+        void CollectTreeDependencies(const StyleSheetNode* node, StyleSheetIndex& index, bool is_non_subject)
+        {
+            if (!node)
+            {
+                return;
+            }
+            CollectSelectorDependencies(node->GetSelector(), index, is_non_subject);
+            for (const auto& child : node->GetChildren())
+            {
+                CollectTreeDependencies(child.get(), index, is_non_subject);
+            }
+        }
+
+        void CollectSelectorDependencies(const CompoundSelector& selector, StyleSheetIndex& index, bool is_non_subject)
+        {
+            if (selector.combinator == SelectorCombinator::NextSibling ||
+                selector.combinator == SelectorCombinator::SubsequentSibling)
+            {
+                index.has_sibling_combinator = true;
+            }
+            for (const String& pseudo : selector.pseudo_class_names)
+            {
+                index.pseudo_classes_any.insert(pseudo);
+                if (is_non_subject)
+                {
+                    index.pseudo_classes_non_subject.insert(pseudo);
+                }
+            }
+            for (const StructuralSelector& structural : selector.structural_selectors)
+            {
+                if (structural.selector_tree && structural.selector_tree->root)
+                {
+                    CollectTreeDependencies(structural.selector_tree->root.get(), index, is_non_subject);
+                }
+            }
+        }
+    }
+
     void StyleSheetNode::BuildIndex(StyleSheetIndex& styled_node_index) const
     {
+        const bool is_non_subject = !children.empty();
+        CollectSelectorDependencies(selector, styled_node_index, is_non_subject);
+
         // If this has properties defined, then we insert it into the styled node index.
         if (!properties.Empty())
         {
             auto IndexInsertNode =
                 [](StyleSheetIndex::NodeIndex& node_index, const String& key, const StyleSheetNode* node)
             {
-                StyleSheetIndex::NodeList& nodes = node_index[Hash<String>()(key)];
-                auto it = std::find(nodes.begin(), nodes.end(), node);
-                if (it == nodes.end())
-                {
-                    nodes.push_back(node);
-                }
+                node_index[Hash<String>()(key)].push_back(node);
             };
 
             // Add this node to the appropriate index for looking up applicable nodes later. Prioritize the most unique requirement first and the most
@@ -209,6 +249,10 @@ namespace URUI
             else if (!selector.tag.empty())
             {
                 IndexInsertNode(styled_node_index.tags, selector.tag, this);
+            }
+            else if (!selector.attributes.empty())
+            {
+                styled_node_index.other_attr.push_back(this);
             }
             else
             {

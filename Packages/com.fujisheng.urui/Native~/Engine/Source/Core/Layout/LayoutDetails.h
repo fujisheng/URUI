@@ -96,6 +96,21 @@ namespace URUI
         static float GetShrinkToFitWidth(Element* element, Vector2f containing_block);
         static float GetMinContentWidth(Element* element, Vector2f containing_block);
 
+        class ScopedMeasureCache
+        {
+        public:
+            ScopedMeasureCache();
+            ~ScopedMeasureCache();
+            ScopedMeasureCache(const ScopedMeasureCache&) = delete;
+            ScopedMeasureCache& operator=(const ScopedMeasureCache&) = delete;
+
+        private:
+            bool owns = false;
+        };
+
+        static bool LookupCachedMaxContentSize(const Element* element, Vector2f& out_size);
+        static void StoreCachedMaxContentSize(const Element* element, Vector2f size);
+
         /// Build computed axis size along the horizontal direction (width and friends).
         static ComputedAxisSize BuildComputedHorizontalSize(const ComputedValues& computed);
         /// Build computed axis size along the vertical direction (height and friends).

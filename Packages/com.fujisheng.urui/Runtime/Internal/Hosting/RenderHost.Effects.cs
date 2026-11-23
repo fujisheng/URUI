@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 using URUI.Internal.Interop;
 using URUI.Rendering;
 using URUI.Rendering.Effects;
+
 namespace URUI.Internal.Hosting
 {
     internal sealed partial class RenderHost
@@ -15,13 +15,16 @@ namespace URUI.Internal.Hosting
             internal Action Callback;
             internal int ProcessingPasses;
         }
+
         readonly List<EffectSubmission> effectSubmitted = new();
+
         internal void QueueEffectSubmission(URUI.Documents.Document owner, Action callback)
             => effectSubmitted.Add(new EffectSubmission
             {
                 Owner = owner,
                 Callback = callback
             });
+
         bool effectSubmitHook;
         bool builtinCameraRendering;
         bool builtinDetachedForAdmission;
@@ -30,6 +33,7 @@ namespace URUI.Internal.Hosting
         URUI.Internal.Resources.ImageSubmissionFence builtinSubmission;
         readonly Dictionary<ulong, ulong> imageEffectSlots = new();
         readonly Dictionary<int, ulong> imageEffectInputKeys = new();
+
         void SubscribeEffectSubmissions()
         {
             if (effectSubmitHook)
@@ -40,6 +44,7 @@ namespace URUI.Internal.Hosting
             Camera.onPostRender += EffectCameraSubmitted;
             effectSubmitHook = true;
         }
+
         void UnsubscribeEffectSubmissions()
         {
             if (!effectSubmitHook)
@@ -51,6 +56,7 @@ namespace URUI.Internal.Hosting
             effectSubmitHook = false;
             effectSubmitted.Clear();
         }
+
         bool HasBuiltinSubmissionResources()
         {
             if (parameterPages?.Current != null || HasLayerResources || planResources?.HasRecordingGeometry == true)
@@ -66,6 +72,7 @@ namespace URUI.Internal.Hosting
             }
             return false;
         }
+
         void EndBuiltinCameraWindow()
         {
             builtinCameraRendering = false;
@@ -78,6 +85,7 @@ namespace URUI.Internal.Hosting
                 owner.FinishNativeCall();
             }
         }
+
         void RecoverAbortedBuiltinCamera()
         {
             if (!builtinCameraRendering || builtinCameraFrame == Time.frameCount)
@@ -95,6 +103,7 @@ namespace URUI.Internal.Hosting
             EndBuiltinCameraWindow();
             Debug.LogError("URUI Built-in 相机未完成提交，保留无法确认的 GPU 资源。");
         }
+
         void EffectCameraPreparing(Camera camera)
         {
             if (camera != targetCamera || UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline)
@@ -130,7 +139,7 @@ namespace URUI.Internal.Hosting
                     foreach (var pending in imageSubmissions)
                     {
                         if (pending.CameraSubmission && pending.CameraFrame == Time.frameCount && !pending.uncertain && !pending.AwaitingCamera &&
-                                                    pending.Recording == recordingSerial && pending.CanPinParameters(parameterPages?.Current))
+                            pending.Recording == recordingSerial && pending.CanPinParameters(parameterPages?.Current))
                         {
                             submission = pending;
                             break;
@@ -148,8 +157,8 @@ namespace URUI.Internal.Hosting
                     submission.pins.Append(borrowedTextures);
                     submission.PinParameters(parameterPages?.Current);
                     PinLayerWrites(submission);
-                    planResources?.PinSubmission(submission.Geometry);
-                    externalGeometryInputs?.Programs.PinSubmission(submission.Programs);
+                    planResources?.PinSubmission(submission.Geometry, submission.GeometrySet);
+                    externalGeometryInputs?.Programs.PinSubmission(submission.Programs, submission.ProgramSet);
                     submission.barrier ??= new UnityEngine.Rendering.CommandBuffer { name = "URUI camera submission fence" };
                     submission.barrier.Clear();
                     submission.fence = submission.barrier.CreateGraphicsFence(UnityEngine.Rendering.GraphicsFenceType.CPUSynchronisation, UnityEngine.Rendering.SynchronisationStageFlags.PixelProcessing);
@@ -200,6 +209,7 @@ namespace URUI.Internal.Hosting
                 throw;
             }
         }
+
         void EffectCameraSubmitted(Camera camera)
         {
             if (camera != targetCamera || UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline || !builtinCameraRendering)
@@ -230,6 +240,7 @@ namespace URUI.Internal.Hosting
                 EndBuiltinCameraWindow();
             }
         }
+
         void NotifyEffectSubmission()
         {
             var count = effectSubmitted.Count;
@@ -250,26 +261,17 @@ namespace URUI.Internal.Hosting
                 }
             }
         }
+
         string PaintName(ulong shader)
         {
             if (paintShaderNames.TryGetValue(shader, out var cached))
             {
                 return cached;
             }
-            var count = NativeMethods.urui_paint_shader_name(shader, paintName, paintName.Length);
-            if (count <= 0)
+            if (!NativeMethods.TryReadPaintShaderName(SurfaceHandle, shader, out var name))
             {
                 throw new InvalidOperationException("效果程序名已失效。");
             }
-            if (count > paintName.Length)
-            {
-                paintName = new byte[count];
-                if (NativeMethods.urui_paint_shader_name(shader, paintName, count) != count)
-                {
-                    throw new InvalidOperationException("效果程序名变化。");
-                }
-            }
-            var name = Encoding.UTF8.GetString(paintName, 0, count - 1);
             paintShaderNames.Add(shader, name);
             return name;
         }
