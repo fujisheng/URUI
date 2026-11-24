@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="/urui/behaviors.css" />
+  <link rel="stylesheet" href="/solstice-core/Css/tokens.css" />
+  <link rel="stylesheet" href="/solstice-core/Css/base.css" />
+  <link rel="stylesheet" href="/solstice-core/Css/solstice.css" />
+</head>
+<body style="background-color: transparent;">
+  <div id="sol-root" class="sol-root theme-obsidian">
+    <div class="modal-scrim">
+      <section class="hud-panel-strong settings-dialog">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--sol-gold);">圣殿系统设置 · SETTINGS</div>
+            <div style="font-size: 11px; color: var(--sol-muted);">CSS 变量主题实时切换 · URP 舞台同步</div>
+          </div>
+          <button type="button" id="btn-settings-close" class="tool-mini-btn">关闭</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--sol-cyan);">界面视觉主题 · HUD THEME</div>
+          <div class="theme-row">
+            <button type="button" id="theme-obsidian" class="theme-card-btn is-active">
+              <span>夜曜靛蓝</span>
+              <span class="mono" style="font-size: 10px; color: var(--sol-muted);">Obsidian Indigo</span>
+            </button>
+            <button type="button" id="theme-crimson" class="theme-card-btn">
+              <span>烬火绯红</span>
+              <span class="mono" style="font-size: 10px; color: var(--sol-muted);">Ember Crimson</span>
+            </button>
+            <button type="button" id="theme-alabaster" class="theme-card-btn">
+              <span>晨曦玉石</span>
+              <span class="mono" style="font-size: 10px; color: var(--sol-muted);">Sunlit Alabaster</span>
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background-color: var(--sol-surface-soft); border: 1px solid var(--sol-border-soft);">
+          <span style="font-size: 13px;">音效音量 Volume</span>
+          <input type="range" id="settings-volume" min="0" max="100" value="80" style="width: 240px;" />
+          <span id="settings-volume-val" class="mono" style="font-size: 12px; color: var(--sol-gold);">80%</span>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background-color: var(--sol-surface-soft); border: 1px solid var(--sol-border-soft);">
+          <span style="font-size: 13px;">减弱 3D 镜头视差动效</span>
+          <input type="checkbox" id="settings-reduced-motion" />
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--sol-muted);">远征军公告标语（实时同步圣殿看板）</div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="settings-banner-input" class="armory-search-box" style="flex: 1;" value="日冕旅团 · 曦光重燃" />
+            <button type="button" id="btn-settings-apply" class="hud-btn-cta" style="height: 36px; font-size: 13px;">应用保存</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,46 +1,45 @@
-# URUI
+# URUI Core (`com.fujisheng.urui`)
 
-URUI 使用 HTML/CSS 描述 Unity 游戏界面的结构、布局、皮肤和动画，通过 C# 查询节点、更新数据及处理输入。当前版本 `0.8.0-preview.1`，程序集 `URUI.Runtime`。HTML/CSS 支持范围以 [HtmlCssSupport.json](Documentation~/HtmlCssSupport.json) 为准。
+**English** | [中文](README_ZH.md)
 
-## 文档导航
+Version: `0.8.0-preview.1` · Unity Baseline: `6000.3.22f1` · Native Protocol: `ABI13 / render-plan9 / element4 / 172 exports`
 
-| 要完成的工作 | 阅读文档 |
-| --- | --- |
-| 安装包、配置 Unity 与原生插件 | [安装](Documentation~/INSTALL_ZH.md) |
-| 运行样例、创建第一个页面 | [快速开始](Documentation~/QUICK_START_ZH.md) |
-| 加载页面、查询/创建节点、操作层级 | [Document 与 Element API](Documentation~/API_ZH.md) |
-| 按钮、输入框、滑块、下拉框、列表 | [控件使用](Documentation~/CONTROLS_ZH.md) |
-| 默认外观、图片按钮与状态反馈 | [默认控件与作者皮肤](Documentation~/DEFAULT_CONTROLS_ZH.md) |
-| 点击、指针捕获、键盘及组合串 | [输入与事件](Documentation~/EVENTS_ZH.md) |
-| CSS 更新、计算样式、动画播放与时钟 | [样式与动画](Documentation~/STYLES_ANIMATION_ZH.md) |
-| 图片、字体、租约、重载和释放 | [生命周期与资源](Documentation~/LIFECYCLE_ZH.md) |
-| 自定义绘制、效果扩展、提交和视频 | [渲染扩展与媒体](Documentation~/RENDERING_ZH.md) |
-| 查类型、完整签名、默认参数及继承关系 | [接口声明参考](Documentation~/REFERENCE_ZH.md) |
-| 判断平台、输入和性能验证范围 | [支持范围](Documentation~/LIMITATIONS_ZH.md)、[插件清单](Documentation~/PLUGINS.json) |
-| 后续方向与代码规范 | [路线图](Documentation~/ROADMAP_ZH.md)、[代码约定](Documentation~/CODE_STYLE_ZH.md) |
+URUI Core embeds a native HTML/CSS layout and rendering engine (`URUIBridge`) inside Unity while keeping business C# completely text-first: HTML defines structure, CSS drives layout/theming/keyframes, and managed C# (`Document`, `Surface`, `Element`, controls) manages logic without per-element `MonoBehaviour` overhead.
 
-## 推荐从 Game Flow 开始
+![SOLSTICE Core Showcase](Documentation~/Images/solstice.gif)
 
-Package Manager → URUI → Samples → **Game Flow** → Import，打开导入目录中的 `GameFlow.unity` 并进入 Play Mode。菜单 **Tools > URUI > Open Game Flow Sample** 也会导入并打开场景。安装包本身不会自动导入样例。
+## Primary & Learning Samples
 
-样例展示加载、模拟登录、主页、背包、设置和排行榜，登录及排行使用本地 mock。HTML/CSS、图片、字体、脚本与场景均随包提供。标准导入目录为 `Assets/Samples/URUI/<包版本>/Game Flow`，以 Unity 实际路径为准。包内 `Samples~/Game Flow` 是源码，Assets 目录是导入副本。见 [Game Flow 说明](Samples~/Game%20Flow/README.md)。
+| Sample | Purpose | Compatibility |
+| --- | --- | --- |
+| **Solstice** *(Primary)* | Modern fantasy tactical RPG HUD: 3 CSS themes, `Radial360` skills, `SequencePlayer` summon reveal, controls, 10k `ListView`, `Surface.GetRenderingStatistics()` | Built-in & URP |
+| **Hello URUI** | Minimal document loading, style writes, disposable `ClickEvent` subscriptions | Built-in & URP |
+| **Element Playground** | Explicit DOM node creation, reparenting, class toggles, detachment/destruction | Built-in & URP |
+| **Runtime Controls** | Typed form controls, focus navigation, virtualized `ListView` | Built-in & URP |
 
-![Game Flow：Unity Editor 实际运行录制](Documentation~/Images/game-flow.gif)
+Quick launch in Editor: **Tools → URUI → Open Solstice Sample** (imports and opens `Solstice.unity`), or open [`../../SampleProject/`](../../SampleProject) for the full URP 3D + Effects edition.
 
-动图为 Unity Editor 实际运行录制，不是 Player 验收。Hello URUI、Element Playground 与 Runtime Controls 可分别用于学习最小接入、节点操作和类型化控件。
+## Documentation ([EN](Documentation~/QUICK_START.md) / [中文](Documentation~/QUICK_START_ZH.md))
 
-## 核心使用关系
+| Guide | English | 中文 |
+| --- | --- | --- |
+| Installation & Native Plugins | [INSTALL.md](Documentation~/INSTALL.md) | [INSTALL_ZH.md](Documentation~/INSTALL_ZH.md) |
+| Quick Start & First Screen | [QUICK_START.md](Documentation~/QUICK_START.md) | [QUICK_START_ZH.md](Documentation~/QUICK_START_ZH.md) |
+| Document & Element API | [API.md](Documentation~/API.md) | [API_ZH.md](Documentation~/API_ZH.md) |
+| Controls & Virtual ListView | [CONTROLS.md](Documentation~/CONTROLS.md) | [CONTROLS_ZH.md](Documentation~/CONTROLS_ZH.md) |
+| Default Control Skinning | [DEFAULT_CONTROLS.md](Documentation~/DEFAULT_CONTROLS.md) | [DEFAULT_CONTROLS_ZH.md](Documentation~/DEFAULT_CONTROLS_ZH.md) |
+| Input, Focus & Events | [EVENTS.md](Documentation~/EVENTS.md) | [EVENTS_ZH.md](Documentation~/EVENTS_ZH.md) |
+| Lifecycle, Ownership & GPU Leases | [LIFECYCLE.md](Documentation~/LIFECYCLE.md) | [LIFECYCLE_ZH.md](Documentation~/LIFECYCLE_ZH.md) |
+| CSS Styles & Unified Animation | [STYLES_ANIMATION.md](Documentation~/STYLES_ANIMATION.md) | [STYLES_ANIMATION_ZH.md](Documentation~/STYLES_ANIMATION_ZH.md) |
+| SRP Submission, Painters & Stats | [RENDERING.md](Documentation~/RENDERING.md) | [RENDERING_ZH.md](Documentation~/RENDERING_ZH.md) |
+| Code Style Conventions | [CODE_STYLE.md](Documentation~/CODE_STYLE.md) | [CODE_STYLE_ZH.md](Documentation~/CODE_STYLE_ZH.md) |
+| Support Matrix & Limitations | [LIMITATIONS.md](Documentation~/LIMITATIONS.md) | [LIMITATIONS_ZH.md](Documentation~/LIMITATIONS_ZH.md) |
+| Roadmap | [ROADMAP.md](Documentation~/ROADMAP.md) | [ROADMAP_ZH.md](Documentation~/ROADMAP_ZH.md) |
+| Complete Public C# Reference | [REFERENCE.md](Documentation~/REFERENCE.md) | [REFERENCE_ZH.md](Documentation~/REFERENCE_ZH.md) |
+| Verification & Editor Fixtures | [Tests~/Editor/README.md](Tests~/Editor/README.md) | [Tests~/Editor/README_ZH.md](Tests~/Editor/README_ZH.md) |
 
-一个活动 `URUI.Hosting.Surface` 统一管理视口、时钟、输入和绘制；多个 `URUI.Documents.Document` 各自拥有 DOM、样式和资源。通过 `document.Q<T>()` 查询，或 `document.Create<T>()` 创建同文档节点。原始输入入口为 `document.Surface.Input`，节点操作在 Unity 主线程完成。
+## Machine-Readable Schemas & Notices
 
-Core 不内置业务数据绑定。FUI 的窗口、导航与绑定由独立适配包接入；普通 Unity 组件也可以直接使用 Core。可选 [URUI.Effect](../com.fujisheng.urui.effect/README.md) 提供效果控制器、预设、粒子与表面处理，Core 不依赖该包。
-
-普通几何按透明混合依赖合批，每批最多绑定 8 张原纹理，不制作图集或复制图片。纹理预算、颜色域、裁剪、变换、自定义绘制和图层会影响批次；效果可能产生额外绘制及 RenderTexture。具体性能需在目标项目和设备测量。
-
-## 环境与发布范围
-
-主要验证环境为 Unity **6000.3.22f1 / macOS ARM64 / Metal**，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 **ABI13 / render-plan9 / style4 / effect7 / filter3 / animation1**，正式 C 导出集合由头文件与二进制核对生成。各平台构建、静态审计和实际运行状态分别记录在[插件清单](Documentation~/PLUGINS.json)。
-
-使用 MainCamera、Input Manager (Old/Both) 或自行注入输入。真实系统 IME、移动软键盘及无障碍边界见[支持范围](Documentation~/LIMITATIONS_ZH.md)。图片借用完整常驻 mip0 的 Texture2D，字体需提供包含所需字形的可读字节资源。
-
-项目许可见 [LICENSE.md](LICENSE.md)，第三方许可见 [Third Party Notices](Third%20Party%20Notices.md) 与 `Documentation~/Licenses/`。
+- CSS / API / Control Support Matrix: [`Documentation~/HtmlCssSupport.json`](Documentation~/HtmlCssSupport.json)
+- Native Binary Checksums & Exports: [`Documentation~/PLUGINS.json`](Documentation~/PLUGINS.json)
+- Changelog: [`CHANGELOG.md`](CHANGELOG.md) · Notices: [`Third Party Notices.md`](Third%20Party%20Notices.md) · License: [`LICENSE.md`](LICENSE.md)

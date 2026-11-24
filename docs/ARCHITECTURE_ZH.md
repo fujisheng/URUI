@@ -1,31 +1,59 @@
-# URUI 架构
+# URUI 核心架构说明
 
-当前架构由共享宿主、独立文档、托管节点、原生排版与 Unity 渲染组成。HTML/CSS 拥有结构、样式和关键帧，C# 拥有业务意图；具体接口以[Core API](../Packages/com.fujisheng.urui/Documentation~/API_ZH.md)为准。
+[English](ARCHITECTURE.md) | **中文**
 
-## 数据流
+URUI 将 **作者文本表示（HTML/CSS）**、**原生排版与渲染计划编译（`URUIBridge`）** 以及 **Unity 托管调度（`Surface`、`Document`、`Element`、`RenderHost`）** 明确分层，兼顾文本可读性与原生级性能。
 
-1. Surface 管理共享原生上下文、视口、时钟和原始输入。
-2. 每个 Document 加载自己的 HTML、CSS、字体与图片资源，创建独立 DOM/样式和资源代际。
-3. 原生引擎解析、布局并生成有序绘制命令；托管 Element 包装按所属文档与 token 保持身份。
-4. Unity 宿主同步网格/参数，按透明混合依赖合批并提交；GPU 资源等待真实 fence 后退役。
-5. Surface.Input 分发输入，原生事件同步进入托管 capture/target/bubble 与控件默认行为。
+## 分层结构
 
-所有节点操作限 Unity 主线程。Loaded 表示 DOM 可查询；布局、绘制和提交完成分别有自己的时点。成功重载使旧节点失效，失败候选保留旧文档。页面关闭不卸载其他文档。
+```text
++-------------------------------------------------------------------+
+|  作者文本资产：HTML5 / CSS3 / .urui-sequence.json / 字体 / 贴图     |
++-------------------------------------------------------------------+
+             |                         |
+             v（AOT 预编译 / 运行时加载）   v（仅限 Editor）
++---------------------------+  +------------------------------------+
+| com.fujisheng.urui        |  | com.fujisheng.urui.authoring       |
+| - Surface（共享上下文宿主）|  | - 源码保真 AST（HTML / CSS）         |
+| - Document（多文档层叠）   |  | - 可视化层级 / 检查器 / 动画时间轴    |
+| - 类型化控件与统一动画      |  | - 本机 Agent HTTP v1 协议           |
+| - RenderHost（GPU 合批）   |  +------------------------------------+
++---------------------------+
+             |
+             v（C ABI13 · 172 个正式导出 · iOS/WebGL 使用 __Internal）
++-------------------------------------------------------------------+
+| URUIBridge 原生 C++ 引擎                                           |
+| - 裁剪派生自 RmlUi 的严格 DOM / Flexbox / CSS 层叠核心              |
+| - FreeType 2.13.3 亚像素字形光栅化                                 |
+| - render-plan9 有序渲染计划与参数纹理编译                           |
++-------------------------------------------------------------------+
+             |
+             v（可选效果扩展层）
++-------------------------------------------------------------------+
+| com.fujisheng.urui.effect                                         |
+| - 106 个 --urui-fx-* 参数属性                                     |
+| - EffectController / WaveEffect / TextureEffectSurface / 粒子节点   |
++-------------------------------------------------------------------+
+```
 
-## 模块边界
+## 关键架构概念
 
-| 模块 | 职责 |
-| --- | --- |
-| Core 公开 API | Hosting、Documents、Elements、Controls、Events、Resources、Styles、Animation、Media、Rendering |
-| Core Internal | RenderHost、互操作、几何缓存、批次、图层与退役；不作为业务接口 |
-| URUIBridge / Native Engine | 带版本的 C ABI、HTML/CSS、布局、字形及绘制协议 |
-| URUI.Effect | 可选效果、预设、播放、粒子和纹理处理；只引用 URUI.Runtime |
-| 外部框架适配 | 页面路由、数据绑定、资源管理及具体管线接入；Core 不依赖 FUI |
+### 1. 共享 `Surface` 与多 `Document` 分层架构
+- 一个 `Surface`（`MonoBehaviour`）管理一个共享原生 UI 上下文、逻辑 CSS 像素视口（`Surface.Viewport`）、单调 UI 时钟（`Surface.UIClock`）、统一输入路由（`Surface.Input`）、GPU 资源池及提交通道。
+- 多个 `Document` 可安全共享同一个 `Surface`：顶部导航 Shell、业务页面、模态详情窗（Modal）、Toast 与性能监控 HUD 各自独立维护 DOM 与资源生命周期，并通过 `Document.SetPresentation(layer, order, visible, modal)` 声明式切换层序与模态阻断。
 
-## 所有权与扩展
+### 2. 原生协议版本契约
+当前七平台预编译二进制与托管层共同锁定（见 `PLUGINS.json`）：
+- **桥接 ABI**：`13`（172 个 `urui_` 前缀导出函数）
+- **渲染计划协议**：`9`（`render-plan9`）
+- **元素状态协议**：`4`（`element4`）
+- **借用纹理协议**：`v1`（零拷贝借用 Unity `Texture2D`，不触发 Read/Write 限制）
+- **统一动画序列**：`v2`（支持 CSS `@keyframes` 与扩展粒子轨道工厂）
 
-Document 拥有附着和脱离节点。Remove/Clear 保留身份，Destroy/结构替换/卸载使相应节点和订阅失效。组合控件通过 ContentContainer 接收业务内容，Hierarchy 表示真实 DOM。
+### 3. `render-plan9` 合批与显存提交链路
+1. 原生引擎按单调时钟推进动画并计算增量布局。
+2. `render-plan9` 基于空间重叠关系进行有序合批，内置 Shader 单批最多绑定 8 张纹理槽（混批图片与字形）；静态几何坐标首次生成后，位移/变色/UV 调整直接通过不可变 GPU 参数页纹理行更新。
+3. `RenderHost` 录制有序绘制命令与轻量参数上传，所有共享资源由真实 GPU fence 守卫退役（每宿主最多保留 8 帧在途队列）。
+4. `Surface.GetRenderingStatistics()` 允许开发者在 Editor 与正式 Player 中直接读取绘制数、原生指令数、几何字节与上传字节。
 
-效果在加载前注册，Prepare 消费不可变帧并准备资源，Record 只录制绘制。绘制窗口离开回调后永久失效，不在其中修改 DOM。自定义效果和资源租约见[渲染扩展](../Packages/com.fujisheng.urui/Documentation~/RENDERING_ZH.md)及[生命周期](../Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md)。
-
-当前协议 ABI8 / style4 / effect7 / filter3 / animation1，正式 C 导出 176 个。诊断由 URUI_DEBUG 显式开启且默认关闭，线程、生命周期与资源安全校验始终保留。平台验证范围见[支持矩阵](../Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)。
+延伸阅读：[代码组织](CODE_ORGANIZATION_ZH.md) · [性能优化与内存控制](PERFORMANCE_AND_MEMORY_ZH.md) · [URP 渲染管线接入](RENDER_PIPELINE_URP_ZH.md)。

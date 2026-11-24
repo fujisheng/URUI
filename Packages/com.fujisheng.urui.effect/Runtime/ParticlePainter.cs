@@ -347,17 +347,21 @@ namespace URUI.Effect
                 {
                     return;
                 }
-                SetManualSimulation(true, seed);
-                Seek(manual ? time : Mathf.Min(600, actualTime), seed);
-                if (!manual)
+                if (manual)
+                {
+                    SetManualSimulation(true, seed);
+                    Seek(time, seed);
+                }
+                else
                 {
                     state.Manual = false;
-                    foreach (var emitter in state.Emitters)
+                    RestoreSeeds(state);
+                    if (previousPlayback != ParticlePlaybackState.Stopped && actualTime > 0f)
                     {
-                        emitter.System.useAutoRandomSeed = emitter.OriginalAutoSeed;
-                        if (!emitter.OriginalAutoSeed)
+                        float targetTime = Mathf.Min(600f, actualTime);
+                        foreach (var emitter in state.Emitters)
                         {
-                            emitter.System.randomSeed = emitter.OriginalSeed;
+                            emitter.System.Simulate(targetTime, false, true, true);
                         }
                     }
                 }
@@ -550,14 +554,7 @@ namespace URUI.Effect
             }
             else
             {
-                foreach (var emitter in state.Emitters)
-                {
-                    emitter.System.useAutoRandomSeed = emitter.OriginalAutoSeed;
-                    if (!emitter.OriginalAutoSeed)
-                    {
-                        emitter.System.randomSeed = emitter.OriginalSeed;
-                    }
-                }
+                RestoreSeeds(state);
             }
             state.Apply(PlaybackState, !visible, options.PauseWhenHidden, true);
         }
@@ -569,6 +566,18 @@ namespace URUI.Effect
                 emitter.System.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
                 emitter.System.useAutoRandomSeed = false;
                 emitter.System.randomSeed = seed + index++;
+            }
+        }
+        static void RestoreSeeds(SourceState value)
+        {
+            foreach (var emitter in value.Emitters)
+            {
+                emitter.System.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+                emitter.System.useAutoRandomSeed = emitter.OriginalAutoSeed;
+                if (!emitter.OriginalAutoSeed)
+                {
+                    emitter.System.randomSeed = emitter.OriginalSeed;
+                }
             }
         }
         /// <summary>

@@ -1767,6 +1767,31 @@ public bool IsExecutingCallback { get; }
 public void RunAfterEvent(Action action);
 // 提交同一 Surface 的完整 UI，一次调用覆盖所有活动文档。
 public bool SubmitRendering(UnityEngine.Rendering.ScriptableRenderContext context, UnityEngine.Rendering.RenderTargetIdentifier target, Rect viewport);
+// 返回最近一次编译与提交的渲染统计快照，Editor 与 Release Player 均可用且零堆分配。
+public SurfaceRenderingStatistics GetRenderingStatistics();
+```
+
+### SurfaceRenderingStatistics
+
+源码：[SurfaceRenderingStatistics.cs](../Runtime/Hosting/SurfaceRenderingStatistics.cs)。
+
+```csharp
+public readonly struct SurfaceRenderingStatistics
+{
+    public bool Ready { get; }
+    public int LoadedDocuments { get; }
+    public int RecordedGeometryDraws { get; }
+    public int RecordedExternalGeometryDraws { get; }
+    public uint NativePlanCommandCount { get; }
+    public ulong NativePlanGeometryBytes { get; }
+    public ulong NativePlanFrameBytes { get; }
+    public ulong NativePlanAllocations { get; }
+    public ulong NativePlanFrees { get; }
+    public ulong NativePlanAllocatedBytes { get; }
+    public long GeometryUploadBytes { get; }
+    public long ParameterUploadBytes { get; }
+    public long ParameterCopyBytes { get; }
+}
 ```
 
 ### SurfaceInput

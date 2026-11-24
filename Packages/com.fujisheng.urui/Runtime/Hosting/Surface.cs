@@ -282,6 +282,32 @@ namespace URUI.Hosting
         internal bool HasLoadedDocuments => loadedDocuments.Count > 0 && host && host.Ready;
         internal int LoadedDocumentCount => host && host.Ready ? loadedDocuments.Count : 0;
 
+        /// <summary>
+        /// 返回当前 Surface 最近一次编译与绘制提交的渲染统计快照，适用于 Editor 与 Player。
+        /// </summary>
+        public SurfaceRenderingStatistics GetRenderingStatistics()
+        {
+            CheckThread();
+            if (!host || !host.Ready)
+            {
+                return default;
+            }
+            return new SurfaceRenderingStatistics(
+                ready: true,
+                loadedDocuments: loadedDocuments.Count,
+                recordedGeometryDraws: host.RecordedGeometryDraws,
+                recordedExternalGeometryDraws: host.RecordedExternalGeometryDraws,
+                nativePlanCommandCount: host.NativePlanCommandCount,
+                nativePlanGeometryBytes: host.NativePlanGeometryBytes,
+                nativePlanFrameBytes: host.NativePlanFrameBytes,
+                nativePlanAllocations: host.NativePlanAllocations,
+                nativePlanFrees: host.NativePlanFrees,
+                nativePlanAllocatedBytes: host.NativePlanAllocatedBytes,
+                geometryUploadBytes: host.GeometryUploadBytes,
+                parameterUploadBytes: host.ParameterUploadBytes,
+                parameterCopyBytes: host.ParameterCopyBytes);
+        }
+
         internal void MarkDocumentLoaded(Document document)
         {
             if (document)

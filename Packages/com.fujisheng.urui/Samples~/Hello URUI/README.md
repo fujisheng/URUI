@@ -1,7 +1,7 @@
 # Hello URUI
 
-导入样例，在空 GameObject 添加 HelloURUI 后进入 Play Mode。未配置 Source 时读取 `Resources/URUI/Samples/Hello.html`；也可以为同一对象的 Document.Source 指定可编辑 HTML TextAsset 和 SourceUrl。控制器为文档明确配置 Surface、共享 CSS 和原始字体资源。
+Import this sample via **Package Manager → URUI → Samples → Hello URUI → Import**, attach `HelloURUI` to an empty GameObject, and enter Play Mode. When `Document.Source` is unset, the controller loads `Resources/URUI/Samples/Hello.html`; or assign an editable HTML `TextAsset` and `SourceUrl` on the same `Document`. The controller configures `Surface`, shared CSS, and bundled font bytes explicitly.
 
-样例通过 Loaded 后的文档查询 label/action/panel；Text 显式写入文本，RegisterCallback<ClickEvent> 订阅点击，Style 写入 CSS。控制器等待 Document 启用后才主动加载，避免组件启用顺序造成异常。
+After `Loaded`, the sample queries `label`, `action`, and `panel`, updates text via `Element.Text`, subscribes clicks via `RegisterCallback<ClickEvent>`, and applies CSS inline via `Style`. It waits for `Document.isActiveAndEnabled` before loading so Unity component enable order never triggers issues.
 
-OnDisable 释放订阅并卸载文档，调用者提供的 TextAsset 不会被销毁。需要动态创建、重挂载和销毁示例时，导入 Element Playground。
+`OnDisable` disposes subscriptions and unloads the document without destroying caller-provided `TextAsset`s. For dynamic element creation, detaching, re-attaching, and `Destroy()`, import `Element Playground`—or explore the full showcase in [Solstice](../Solstice/README.md).

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="/urui/behaviors.css" />
+  <link rel="stylesheet" href="/solstice-core/Css/tokens.css" />
+  <link rel="stylesheet" href="/solstice-core/Css/base.css" />
+  <link rel="stylesheet" href="/solstice-core/Css/solstice.css" />
+</head>
+<body style="height: 56px; background-color: transparent;">
+  <div id="sol-root" class="sol-root overlay-pass theme-obsidian" style="height: 56px;">
+    <header class="top-hud-shell">
+      <div class="brand-crest">
+        <div class="brand-gem"></div>
+        <div>
+          <div class="brand-name">日冕旅团</div>
+          <div class="brand-sub">SOLSTICE · SANCTUARY</div>
+        </div>
+      </div>
+
+      <nav class="top-nav-group">
+        <button type="button" id="nav-lobby" class="nav-pill is-active">圣殿 <span class="nav-en">LOBBY</span></button>
+        <button type="button" id="nav-combat" class="nav-pill">出征 <span class="nav-en">COMBAT</span></button>
+        <button type="button" id="nav-heroes" class="nav-pill">英灵 <span class="nav-en">HEROES</span></button>
+        <button type="button" id="nav-summon" class="nav-pill">星盘 <span class="nav-en">SUMMON</span></button>
+        <button type="button" id="nav-armory" class="nav-pill">军械 <span class="nav-en">ARMORY</span></button>
+      </nav>
+
+      <div class="top-right-group">
+        <div class="res-pill">
+          <img class="res-icon" src="/solstice-core/Images/icon-stamina.png" />
+          <span id="hud-stamina" class="mono res-val">148/160</span>
+          <button type="button" id="btn-add-stamina" class="res-plus">+</button>
+        </div>
+        <div class="res-pill">
+          <img class="res-icon" src="/solstice-core/Images/icon-gold.png" />
+          <span id="hud-gold" class="mono res-val">486,200</span>
+        </div>
+        <div class="res-pill">
+          <img class="res-icon" src="/solstice-core/Images/icon-gem.png" />
+          <span id="hud-gems" class="mono res-val">3,240</span>
+        </div>
+        <button type="button" id="btn-sound-toggle" class="tool-mini-btn is-active">音效</button>
+        <button type="button" id="btn-settings-open" class="tool-mini-btn">设置</button>
+        <button type="button" id="btn-dev-toggle" class="tool-mini-btn">DEV</button>
+      </div>
+    </header>
+  </div>
+</body>
+</html>

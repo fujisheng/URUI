@@ -59,7 +59,7 @@ Editor 使用 `URUI.Editor.Compilation.CompiledDocumentCompiler.CompileAndSave(h
 
 用 `GetCompiledTemplate(uri)` 获取当前页面作用域的模板，再调用 `element.SetInnerHtml(template)`。模板不能跨不同父文档编译计划混用。`CreateCompiledQuerySnapshot(root)` 一次映射子树节点；`TryQuery(".class", out result)` / `TryQuery("#id", out result)` 返回有序结果。结构或对应名称变化时返回 false，调用普通 DOM 查询；卸载后不能继续枚举旧结果。
 
-页面内的 `<template id="RowTemplate">` 在实例化前保持惰性。通过 `document.Q<URUI.Controls.Template>("RowTemplate")` 查询模板，并调用 `CloneContentTo(destination)` 将其内容克隆到同一文档的空容器。每次克隆产生独立节点。原生桥接使用 ABI12。
+页面内的 `<template id="RowTemplate">` 在实例化前保持惰性。通过 `document.Q<URUI.Controls.Template>("RowTemplate")` 查询模板，并调用 `CloneContentTo(destination)` 将其内容克隆到同一文档的空容器。每次克隆产生独立节点。原生桥接使用 ABI13。
 
 批次中读取 HasLayout、布局、坐标或计算样式会刷新待处理几何；布局/绘制回调仍读取当前回调快照，避免递归布局。显式 SynchronizeGeometry / SynchronizeLayout 立即执行。业务读取可以形成必要的提前同步边界。
 

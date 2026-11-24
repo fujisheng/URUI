@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="/urui/behaviors.css" />
+  <link rel="stylesheet" href="/solstice/Css/tokens.css" />
+  <link rel="stylesheet" href="/solstice/Css/base.css" />
+  <link rel="stylesheet" href="/solstice/Css/solstice.css" />
+</head>
+<body style="background-color: transparent;">
+  <div id="sol-root" class="sol-root overlay-pass theme-obsidian">
+    <aside id="dev-drawer" class="hud-panel-strong dev-drawer" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 13px; font-weight: 700; color: var(--sol-gold);">URUI RENDER TELEMETRY</span>
+        <button type="button" id="btn-dev-close" class="tool-mini-btn">关闭</button>
+      </div>
+      <urui-foldout id="dev-foldout" expanded="true">
+        <button type="button" class="urui-foldout-header">
+          <span class="urui-foldout-label">Native Plan &amp; GPU Metrics</span>
+        </button>
+        <div class="urui-foldout-content">
+          <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+            <div style="display: flex; justify-content: space-between;"><span>Active Documents</span><span id="stat-docs" class="mono" style="color: var(--sol-cyan);">3</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>Geometry Draws</span><span id="stat-draws" class="mono" style="color: var(--sol-gold);">0</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>Native Commands</span><span id="stat-cmds" class="mono">0</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>Plan Bytes</span><span id="stat-plan" class="mono">0 B</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>Allocs / Frees</span><span id="stat-alloc" class="mono">0 / 0</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>Geometry Upload</span><span id="stat-geom" class="mono">0 B</span></div>
+          </div>
+        </div>
+      </urui-foldout>
+    </aside>
+  </div>
+</body>
+</html>

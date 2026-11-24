@@ -1,5 +1,5 @@
-# UI + Effect + 粒子统一动画
+# UI + Effect + Particle Unified Sequence Demo
 
-需要安装 Effect，并将本示例 Import 到 Assets。打开 Reward.html → 动画 → 播放：弹窗、效果参数和粒子共享主时间。粒子 Prefab/Material 使用 URUI 粒子材质契约，原始资源只在明确 Apply 后修改。
+Requires `com.fujisheng.urui.effect`. Import into `Assets/` via Package Manager, open `Reward.html` → **Animation** → Play: UI transforms, `--urui-fx-*` effect parameters, and `urui-particles` share one timeline clock. Particle Prefabs/Materials follow Effect's material contract and only persist to source assets on explicit **Apply**.
 
-正式运行时安装 EffectModule(document, resources)，让 resources 解析 confetti.prefab；页面需加载 /urui-effect/Effect.css，再创建 SequencePlayer。Core/Authoring 不自动依赖 Effect。
+At runtime, instantiate `new EffectModule(document, resources)` before loading so `resources` resolves `confetti.prefab`, link `/urui-effect/Effect.css` in HTML, and start `SequencePlayer` (Core and Authoring retain zero hard dependency on Effect).

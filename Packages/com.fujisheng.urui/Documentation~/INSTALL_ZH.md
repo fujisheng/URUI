@@ -34,14 +34,15 @@ URP 的项目适配已有运行记录；HDRP、其他图形后端及非 macOS �
 
 ## 原生插件与版本
 
-完整包包含 Runtime/Plugins 与相应源码。当前协议为 ABI12 / render-plan8 / style4 / effect7 / filter3 / animation1，正式 C 导出集合由头文件与二进制核对生成；URUI_DEBUG 默认关闭。构建和实际运行证据见 [PLUGINS.json](PLUGINS.json)。
+完整包包含 Runtime/Plugins 与相应源码。当前协议为 ABI13 / render-plan9 / element4 / style4 / effect7 / filter3 / animation1（172 个正式 C 导出，URUI_DEBUG 默认关闭）。构建与哈希清单见 [PLUGINS.json](PLUGINS.json)。
 
 更新已被 Editor/Player 加载的动态库时，先关闭相应进程，替换完整配套包后重新启动。不要只更新 C# 或只替换某个平台插件；协议、导出与包版本必须匹配。macOS ARM64/x64 为分开提供的单架构插件。
 
 ## 样例与可选包
 
-Package Manager → URUI → Samples → Game Flow → Import，再打开 Unity 实际导入目录的 GameFlow.unity。标准目录为 `Assets/Samples/URUI/<版本>/Game Flow`；安装时不自动导入。菜单 Tools → URUI → Open Game Flow Sample 可执行导入与打开。
+- **独立 URP 示范工程**：直接用 Unity `6000.3.22f1` 打开仓库下的 [SampleProject/](../../../SampleProject/)（含 URP 3D 舞台合成、Effect、Authoring 与 10k 军械库验证）。
+- **包内 Core 样例**：在 Unity Package Manager 中选择 **URUI** → **Samples** → **Solstice** → **Import**，打开导入后的 `Solstice.unity`（标准路径 `Assets/Samples/URUI/<版本>/Solstice`）。也可通过菜单 `Tools → URUI → Open Solstice Sample` 一键导入并打开。
 
-Hello URUI、Element Playground、Runtime Controls 为细分学习入口。Documentation~、Samples~、Tests~、Native~ 默认不参与普通 Unity 资产导入。样例和测试按需显式导入，项目不需要开发工作区或 artifacts。
+`Hello URUI`、`Element Playground`、`Runtime Controls` 为细分专题学习样例；`Documentation~`、`Samples~`、`Tests~`、`Native~` 默认不参与普通 Unity 资产导入，按需显式引入，接入项目无需任何外部工作区目录。
 
-可选 [Effect](../../com.fujisheng.urui.effect/README.md) 需要同时安装匹配版本的 Core，并引用 URUI.Effect；FUI 绑定和导航使用独立适配包。最小接入见[快速开始](QUICK_START_ZH.md)。
+可选包 [Effect](../../com.fujisheng.urui.effect/README_ZH.md) 与 [Authoring](../../com.fujisheng.urui.authoring/README_ZH.md) 需配合同版本 Core 使用；若在通用 UI 框架中集成导航与屏幕管理，可通过对应适配包接入。最小接入流程见[快速开始](QUICK_START_ZH.md)。

@@ -1,0 +1,155 @@
+@property --sol-surface {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0f172ae8;
+}
+@property --sol-surface-elevated {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #17233ef5;
+}
+@property --sol-surface-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1e2e52eb;
+}
+@property --sol-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f7f4eb;
+}
+@property --sol-muted {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #9db2d4;
+}
+@property --sol-border {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #d8b566;
+}
+@property --sol-border-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(216, 181, 102, 0.34);
+}
+@property --sol-gold {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f2cd73;
+}
+@property --sol-cyan {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #2fe0d0;
+}
+@property --sol-crimson {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #dc2e48;
+}
+@property --sol-crimson-dark {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #a51c33;
+}
+@property --sol-emerald {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #4cd98c;
+}
+@property --sol-row-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(11, 18, 34, 0.72);
+}
+@property --sol-input-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0b1120;
+}
+
+.sol-root {
+  --sol-surface: #0f172ae8;
+  --sol-surface-elevated: #17233ef5;
+  --sol-surface-soft: #1e2e52eb;
+  --sol-ink: #f7f4eb;
+  --sol-muted: #9db2d4;
+  --sol-border: #d8b566;
+  --sol-border-soft: rgba(216, 181, 102, 0.36);
+  --sol-gold: #f2cd73;
+  --sol-cyan: #2fe0d0;
+  --sol-crimson: #dc2e48;
+  --sol-crimson-dark: #a51c33;
+  --sol-emerald: #4cd98c;
+  --sol-row-bg: rgba(11, 18, 34, 0.72);
+  --sol-input-bg: #0b1120;
+  --sol-font-display: "SolsticeSC", "LatoLatin", "Liberation Sans";
+  --sol-font-mono: "RobotoMono", "SolsticeSC", "Liberation Mono";
+  font-family: var(--sol-font-display);
+  color: var(--sol-ink);
+}
+
+.sol-root.theme-obsidian {
+  --sol-surface: #0f172ae8;
+  --sol-surface-elevated: #17233ef5;
+  --sol-surface-soft: #1e2e52eb;
+  --sol-ink: #f7f4eb;
+  --sol-muted: #9db2d4;
+  --sol-border: #d8b566;
+  --sol-border-soft: rgba(216, 181, 102, 0.36);
+  --sol-gold: #f2cd73;
+  --sol-cyan: #2fe0d0;
+  --sol-crimson: #dc2e48;
+  --sol-crimson-dark: #a51c33;
+  --sol-row-bg: rgba(11, 18, 34, 0.72);
+  --sol-input-bg: #0b1120;
+}
+
+.sol-root.theme-crimson {
+  --sol-surface: #1b0e19eb;
+  --sol-surface-elevated: #281424f5;
+  --sol-surface-soft: #371b30eb;
+  --sol-ink: #fff4ec;
+  --sol-muted: #d6a4af;
+  --sol-border: #f0b65c;
+  --sol-border-soft: rgba(240, 182, 92, 0.38);
+  --sol-gold: #ffcf70;
+  --sol-cyan: #48ebd5;
+  --sol-crimson: #e83b4a;
+  --sol-crimson-dark: #9e1b2d;
+  --sol-row-bg: rgba(34, 12, 26, 0.74);
+  --sol-input-bg: #180b14;
+}
+
+.sol-root.theme-alabaster {
+  --sol-surface: #f4f1eaeb;
+  --sol-surface-elevated: #fbf9f4f5;
+  --sol-surface-soft: #e6e0d4f0;
+  --sol-ink: #172033;
+  --sol-muted: #4b5b75;
+  --sol-border: #2c436b;
+  --sol-border-soft: rgba(44, 67, 107, 0.28);
+  --sol-gold: #a86b0d;
+  --sol-cyan: #087a77;
+  --sol-crimson: #c7283f;
+  --sol-crimson-dark: #8e182b;
+  --sol-row-bg: rgba(224, 217, 203, 0.78);
+  --sol-input-bg: #ffffff;
+}
+
+@font-face {
+  font-family: "LatoLatin";
+  src: url("/solstice/Fonts/LatoLatin-Regular.ttf.bytes");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "RobotoMono";
+  src: url("/solstice/Fonts/RobotoMono-Regular.ttf.bytes");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "SolsticeSC";
+  src: url("/solstice/Fonts/Solstice-SC.ttf.bytes");
+  font-weight: 400;
+}

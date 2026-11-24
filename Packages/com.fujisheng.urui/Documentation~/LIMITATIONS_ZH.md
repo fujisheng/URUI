@@ -6,7 +6,7 @@
 - 一个活动 Surface/原生上下文可承载多个独立 Document；节点与输入操作限主线程，需要 MainCamera。
 - 内置输入使用 Input Manager (Old) / Both；其他输入来源可设置 UseUnityInput=false 并使用 Surface.Input。
 - 图片通过 ImageAsset 借用或 ImageResolver 同步按需取得颜色 Texture2D（无需可读），字体仍需提供可读取且包含所需字形的文件。
-- 原生 ABI13 / render-plan9，正式 C 导出集合由头文件与二进制核对生成；style4 / effect7 / filter3 / animation1 等协议独立版本。候选与已安装插件必须区分，实际哈希、构建和运行状态见 PLUGINS.json。
+- 原生 ABI13 / render-plan9 / element4（172 个正式 C 导出），style4 / effect7 / filter3 / animation1 等协议保持独立版本校验；构建清单、哈希与支持矩阵见 [PLUGINS.json](PLUGINS.json)。
 
 | 目标 | 已执行检查 | Unity 运行范围 |
 | --- | --- | --- |
@@ -15,7 +15,7 @@
 | Windows x64 | DLL 架构与全部正式导出，使用 Windows Universal CRT | 尚未运行 |
 | Android ARM64 / x86_64 | ELF 架构、全部正式导出、API23+、16 KiB 对齐、静态 C++ 运行库 | 尚未运行或设备测试 |
 | iOS 设备 ARM64 | iphoneos SDK 编译、静态归档架构、正式导出与内嵌依赖核对 | 尚未运行或设备测试 |
-| WebGL wasm32 | 当前插件 Wasm 对象、全部176正式导出；本轮为格式、导出与静态依赖验证，历史完整链接与多文档 Node 冒烟不作为本轮设备验收 | 当前插件尚未运行 Unity WebGL Player |
+| WebGL wasm32 | 当前插件 Wasm 对象、全部 172 个正式导出；本轮为格式、导出与静态依赖验证，历史完整链接与多文档 Node 冒烟不作为本轮设备验收 | 当前插件尚未运行 Unity WebGL Player |
 
 先前 SRP 图片提交生命周期的定向结果不代表完整 SRP 兼容，也不替代本轮控件验收。Linux、iOS 模拟器、HDRP、其他 Unity 版本及图形后端仍未验证；非 macOS ARM64 目标尚无本轮真实设备/Player 运行证据；每份候选编译/链接状态以清单为准。
 
@@ -46,8 +46,8 @@ macOS Player 选择 ARM64 或 x64 单架构；目前随包分开提供这两个�
 
 ## 调试与渲染
 
-URUI_DEBUG 默认关闭，包括 Editor 和 Development Build。诊断版原生插件与托管宏必须同时匹配；线程、身份、生命周期与 GPU 资源安全校验始终保留。实验渲染路径仍是内部实现，不构成一般性能优势承诺，历史研究仍暂停。
+URUI_DEBUG 默认关闭，包括 Editor 和 Development Build。诊断版原生插件与托管宏必须同时匹配；线程、身份、生命周期与 GPU 资源安全校验始终保留。实验渲染路径仍是内部实现，不构成一般性能优势承诺。
 
-本轮默认控件的相同输入性能对照中，macOS ARM64 / Metal / Gamma 的 Release IL2CPP Player 八项同步/提交 P95 门槛通过，图片对照一致、RT 数量相同。Editor PlayMode 的 1000 个图片按钮连续切换焦点场景仍有同步长尾回归：P95 7.3620→9.5225ms，未通过该项内部门槛；其余七项通过。两类结果分别保留在 `artifacts/urui-default-controls-20261110/performance/report.md`，没有将 Player 结果作为 Editor 无回归的证明，也没有零 GC 或可比 GPU 耗时结论。
+性能验收需在目标平台 Player（如 macOS ARM64 / Metal Release IL2CPP 或对应目标设备）与真实输入负载下通过 Profiler、`Surface.GetRenderingStatistics()` 与原生帧统计独立验证；请勿将单轮调试采样直接等同于全平台长期结论。
 
 图片借用的资源生命周期、颜色/采样约束及 active mipmap limit/纹理流送限制见 [生命周期与资源](LIFECYCLE_ZH.md)。借用省去图片的原生 RGBA 和额外 Unity 绘制纹理；仍存在必要的源 GPU、字体等生成纹理及驱动资源，不承诺固定减半或全链路零拷贝。

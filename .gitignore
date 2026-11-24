@@ -1,9 +1,16 @@
-# This repository distributes a UPM package, not a full sample project.
+# Unity generated build, cache, and IDE directories.
 /Library/
 /Temp/
 /Logs/
 /obj/
 /Builds/
+/SampleProject/Library/
+/SampleProject/Temp/
+/SampleProject/Logs/
+/SampleProject/UserSettings/
+/SampleProject/Obj/
+/SampleProject/*.csproj
+/SampleProject/*.sln
 .DS_Store
 **/__pycache__/
 **/Native~/build-macos/

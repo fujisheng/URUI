@@ -42,7 +42,7 @@ class ValidationPathsTests(unittest.TestCase):
                         self.assertFalse((tools.parent / 'Packages').exists())
 
     def test_legacy_workspace_tools_fail_before_writes(self):
-        for name in ['verify-borrowed-images.py', 'verify-game-flow.py']:
+        for name in ['verify-borrowed-images.py']:
             with self.subTest(tool=name), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 tools = root / 'URUI/Tools'

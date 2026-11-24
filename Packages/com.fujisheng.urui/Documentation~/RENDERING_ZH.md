@@ -17,7 +17,9 @@ bool Surface.SubmitRendering(ScriptableRenderContext context,
 
 Document.SubmitRendering 的重载提交同一共享 UI。RenderCommandBuffer 只在没有必须安全退役的资源时允许借用；可释放图片、图层和 Linear 标准合成应使用受控 SubmitRendering。外借的 buffer 每次仍会清空重录，不应自行长期保存旧命令。
 
-URP 的完整项目接入由独立 FUI 适配包的 RendererFeature 提供；Core 没有直接 URP 包依赖。该项目路径已运行验证，不等于任意 URP 配置或 HDRP 均受支持。
+URP 的完整项目接入可通过 `SampleProject` 中的 `UruiUrpRendererFeature`（或独立 FUI 适配包的 RendererFeature）完成；Core 没有直接 URP 包依赖。针对特定 URP Renderer 配置的接入需要结合目标项目配置独立验证。
+
+通过 `Surface.GetRenderingStatistics()` 可在 Editor 与 Release Player 中零分配读取当前渲染与原生计划统计快照 `SurfaceRenderingStatistics`（包含 `Ready`、`LoadedDocuments`、`RecordedGeometryDraws`、`RecordedExternalGeometryDraws`、`NativePlanCommandCount`、`NativePlanGeometryBytes`、`NativePlanFrameBytes`、`NativePlanAllocations`、`NativePlanFrees`、`NativePlanAllocatedBytes`、`GeometryUploadBytes`、`ParameterUploadBytes`、`ParameterCopyBytes`）。
 
 普通几何的排序、纹理分组、保守范围与批次缓存由原生统一计划生成。编译后的普通批次可以保存首次布局位置；后续布局、变换、统一乘色和 UV 变化通过不可变参数页更新，不逐帧重写顶点。只有原生证明整批顶点已包含全部绘制值时，宿主才使用无需参数读取的 Shader pass；这由输入事实自动决定，没有用户开关。保存前逐顶点验证布局原点可无损还原；普通参数路径先还原局部坐标，再应用原矩阵，以保留大坐标下的亚像素精度。自定义绘制仍提交节点局部几何，不依赖编译批次的内部坐标。
 

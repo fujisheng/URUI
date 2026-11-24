@@ -15,8 +15,7 @@ namespace URUI.Internal.Hosting
     internal sealed partial class RenderHost : IRenderPlanPreparationBindings
     {
         const int TextureBindingBudget = 8;
-#if UNITY_EDITOR
-        // 只保存最后一次成功编译的数值，供诊断读取；不持有原生视图或租约。
+        // 保存最后一次成功编译与输入帧的轻量数值统计，供诊断与 Surface.GetRenderingStatistics() 在 Editor 与 Player 中读取；不持有原生视图或租约。
         internal int NativePlanFrame
         {
             get;
@@ -52,7 +51,6 @@ namespace URUI.Internal.Hosting
             get;
             private set;
         }
-#endif
         internal long GeometryUploadBytes
         {
             get;
@@ -115,8 +113,8 @@ namespace URUI.Internal.Hosting
             nativeInputCommands = input.Commands;
             nativeInputMatrices = input.Matrices;
             nativeInputUniforms = input.Uniforms;
-#if UNITY_EDITOR
             NativePlanCommandCount = input.CommandCount;
+#if UNITY_EDITOR
             var commandCount = checked((int)input.CommandCount);
             if (commands.Length < commandCount)
             {
@@ -745,11 +743,9 @@ namespace URUI.Internal.Hosting
         {
             contextValidationBuffer?.Release();
             contextValidationBuffer = null;
-#if UNITY_EDITOR
             NativePlanFrame = 0;
             NativePlanCommandCount = 0;
             NativePlanGeometryBytes = NativePlanFrameBytes = NativePlanAllocations = NativePlanFrees = NativePlanAllocatedBytes = 0;
-#endif
             planResources?.Dispose();
             planResources = null;
             externalGeometryInputs?.Dispose();
@@ -959,14 +955,12 @@ namespace URUI.Internal.Hosting
         {
             using var profile = planCompilePhase.Auto();
             var lease = input.Compile(bindings, out packet);
-#if UNITY_EDITOR
             NativePlanFrame = Time.frameCount;
             NativePlanGeometryBytes = packet.GeometryBytes;
             NativePlanFrameBytes = packet.FrameBytes;
             NativePlanAllocations = packet.AllocationCount;
             NativePlanFrees = packet.FreeCount;
             NativePlanAllocatedBytes = packet.AllocatedBytes;
-#endif
             return lease;
         }
 

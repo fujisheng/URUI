@@ -1,5 +1,5 @@
-# 动画示例
+# Animation Demo
 
-通过 Package Manager Import 到 Assets。双击 Reward.html，切换“动画”，播放或拖动时间针。选中轨道后在 0..单轮时长内开启录制，用 Inspector 修改透明度/变换，再保存。示例只依赖 Core + Authoring。
+Import into `Assets/` via Package Manager (**URUI Authoring → Samples → Animation Demo → Import**). Double-click `Reward.html`, switch to the **Animation** workspace, scrub the timeline playhead or press Play. Select a track inside `0..duration`, enable **Record**, tweak opacity or transform in Inspector, and click **Save**. Requires only `com.fujisheng.urui` + `com.fujisheng.urui.authoring`.
 
-正式运行时由业务安装 Document 的文本/图像资源，在页面加载并完成布局后，解析 Reward.urui-sequence.json 并构造 SequencePlayer(document.Body, definition)。页面不自动启动序列。
+At runtime, configure your `Document` text/image resources, wait for layout after load, parse `Reward.urui-sequence.json` with `SequenceDefinition.Parse`, and drive it with `new SequencePlayer(document.Body, definition)` (sequences do not auto-start silently).

@@ -1,49 +1,81 @@
-# URUI
+# URUI — Text-First HTML/CSS UI Engine for Unity
 
-URUI 使用 HTML/CSS 描述 Unity 游戏界面的结构、布局、皮肤和动画，通过 C# 操作类型化节点、处理事件并连接游戏业务。当前提供三个 Unity Package：
+**English** | [中文](README_ZH.md)
 
-| 包 | 版本 | 文档 |
+URUI brings **standard HTML, CSS, and text-driven sequences** into **Unity 6 (`6000.3.22f1`)** on top of a native C++ bridge (`URUIBridge` ABI13 / render-plan9 / element4, 172 C exports), FreeType glyph rasterization, GPU-parameterized batching, and zero-per-element `MonoBehaviour` overhead.
+
+> **Interactive Showcase**: Open [`SampleProject/`](SampleProject) in Unity `6000.3.22f1` (URP + 3D Backdrop + Effects + Authoring) or import [`Samples~/Solstice`](Packages/com.fujisheng.urui/Samples~/Solstice/README.md) cleanly into Built-in RP or URP.
+
+![SOLSTICE Showcase](Packages/com.fujisheng.urui/Documentation~/Images/solstice.gif)
+
+---
+
+## Why URUI?
+
+- **Built for AI + Text Diffs**: Screens, components, design tokens, and multi-track keyframe timelines live in clean `.html`, `.css`, and `.urui-sequence.json` text files—friendly to Git diffs, browser layout checks, and agentic authoring.
+- **Native Performance Without Prefab Sprawl**: Native C++ compiles ordered render plans (`render-plan9`), 8-texture batching, parameter page uploads, and persistent native/GPU memory fences—keeping steady-state managed GC allocations near zero and without creating one `GameObject` per visual node.
+- **Standalone Multi-Module Architecture**:
+  - [**`com.fujisheng.urui`** (`0.8.0-preview.1`)](Packages/com.fujisheng.urui/README.md): Core runtime (`Surface`, `Document`, `Element`, typed controls, virtualized `ListView`, `CompiledDocumentAsset` AOT bytecode, `SequencePlayer`, `StaggeredReveal`, `BezierMotion`, `Surface.GetRenderingStatistics()`).
+  - [**`com.fujisheng.urui.effect`** (`0.5.0-preview.1`)](Packages/com.fujisheng.urui.effect/README.md): CSS `--urui-fx-*` visual filters, `EffectController` presets/tweens, `<urui-particles>`, `ArcTextLayout`, `WaveEffect`, and `TextureEffectSurface`.
+  - [**`com.fujisheng.urui.authoring`** (`0.1.0-preview.1`)](Packages/com.fujisheng.urui.authoring/README.md): Editor-only visual inspector, source hierarchy, timeline animation editor, and localhost Agent HTTP v1 protocol.
+
+---
+
+## Gallery — SOLSTICE (*Solstice · Sanctuary*)
+
+| Sanctuary Lobby & Effect Shaders | Tactical Boss Combat & Radial Cooldowns |
+| --- | --- |
+| ![Solstice Lobby](docs/images/solstice-lobby.png) | ![Solstice Combat](docs/images/solstice-combat.png) |
+
+1. **High-Contrast Pure-CSS Themes**: Switch instantaneously between *Obsidian Indigo*, *Ember Crimson*, and *Sunlit Alabaster* via `@property` color tokens over sunlit stone fantasy art.
+2. **Tactical RPG Choreography**: Live `Image.FillMode = Radial360` skill cooldown sweeps, `SequencePlayer` astrolabe summon reveals with `<urui-particles>`, `ui-wave` banners, and `ArcTextLayout`.
+3. **10,000-Item Virtualized Armory**: Fixed-row `ListView` compiled from AOT `Backpack.compiled.asset` with instant filter & search.
+4. **Live URP RenderGraph Compositing**: [`UruiUrpRendererFeature`](SampleProject/Assets/Solstice/Runtime/Rendering/UruiUrpRendererFeature.cs) overlays semi-translucent URUI HUD panels cleanly onto the 3D URP backdrop stage.
+
+---
+
+## Quick Start
+
+### Option A — Open the Standalone URP Showcase (`SampleProject/`)
+
+1. Open `/SampleProject` with **Unity `6000.3.22f1`**.
+2. Open `Assets/Solstice/Scenes/Solstice.unity` and press **Play**.
+3. Explore Sanctuary Lobby, Boss Combat Encounter, Heroes Roster + Shaders, Summon Astrolabe, 10k Armory, Settings Themes, and Dev Telemetry HUD.
+
+### Option B — Install via Unity Package Manager (Local Disk)
+
+Add `Packages/com.fujisheng.urui/package.json` via **Package Manager → Add package from disk...**, then optionally add `.effect` and `.authoring`, and launch **Tools → URUI → Open Solstice Sample**.
+
+See [Getting Started](docs/GETTING_STARTED.md) for a step-by-step setup guide.
+
+---
+
+## Documentation Index
+
+### Repository Guides ([EN](docs/GETTING_STARTED.md) / [中文](docs/GETTING_STARTED_ZH.md))
+
+| Topic | English | 中文 |
 | --- | --- | --- |
-| `com.fujisheng.urui` | `0.8.0-preview.1` | [Core 使用文档](Packages/com.fujisheng.urui/README.md) |
-| `com.fujisheng.urui.effect` | `0.5.0-preview.1` | [Effect 使用文档](Packages/com.fujisheng.urui.effect/README.md) |
-| `com.fujisheng.urui.authoring` | `0.1.0-preview.1` | [可视化编辑器与运行时 Inspector](Packages/com.fujisheng.urui.authoring/README.md) |
+| Getting Started & Installation | [GETTING_STARTED.md](docs/GETTING_STARTED.md) | [GETTING_STARTED_ZH.md](docs/GETTING_STARTED_ZH.md) |
+| Architecture & Native Protocol (`ABI13`) | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | [ARCHITECTURE_ZH.md](docs/ARCHITECTURE_ZH.md) |
+| URP & Built-in Render Pipeline Integration | [RENDER_PIPELINE_URP.md](docs/RENDER_PIPELINE_URP.md) | [RENDER_PIPELINE_URP_ZH.md](docs/RENDER_PIPELINE_URP_ZH.md) |
+| Performance, Batching & Memory Safety | [PERFORMANCE_AND_MEMORY.md](docs/PERFORMANCE_AND_MEMORY.md) | [PERFORMANCE_AND_MEMORY_ZH.md](docs/PERFORMANCE_AND_MEMORY_ZH.md) |
+| HTML & CSS Support Cheatsheet | [HTML_CSS_CHEATSHEET.md](docs/HTML_CSS_CHEATSHEET.md) | [HTML_CSS_CHEATSHEET_ZH.md](docs/HTML_CSS_CHEATSHEET_ZH.md) |
+| AI-Assisted UI Workflow & Live Authoring | [AI_WORKFLOW.md](docs/AI_WORKFLOW.md) | [AI_WORKFLOW_ZH.md](docs/AI_WORKFLOW_ZH.md) |
+| Native Build, Tests & Contribution Guide | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | [DEVELOPMENT_ZH.md](docs/DEVELOPMENT_ZH.md) |
+| Code Organization & Assembly Boundaries | [CODE_ORGANIZATION.md](docs/CODE_ORGANIZATION.md) | [CODE_ORGANIZATION_ZH.md](docs/CODE_ORGANIZATION_ZH.md) |
 
-## 安装
+### Package Manuals
 
-在 Unity Package Manager 中依次选择 Add package from git URL，先安装 Core，再按需安装 Effect 与 Authoring：
+- **Core (`com.fujisheng.urui`)**: [README](Packages/com.fujisheng.urui/README.md) · [中文 README](Packages/com.fujisheng.urui/README_ZH.md) · [Quick Start](Packages/com.fujisheng.urui/Documentation~/QUICK_START.md) · [API Reference](Packages/com.fujisheng.urui/Documentation~/REFERENCE.md)
+- **Effect (`com.fujisheng.urui.effect`)**: [README](Packages/com.fujisheng.urui.effect/README.md) · [中文 README](Packages/com.fujisheng.urui.effect/README_ZH.md) · [CSS Reference](Packages/com.fujisheng.urui.effect/Documentation~/CSS.md)
+- **Authoring (`com.fujisheng.urui.authoring`)**: [README](Packages/com.fujisheng.urui.authoring/README.md) · [中文 README](Packages/com.fujisheng.urui.authoring/README_ZH.md) · [Agent HTTP API](Packages/com.fujisheng.urui.authoring/Documentation~/agent-api.md)
 
-```text
-https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui#main
-https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui.effect#main
-https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui.authoring#main
-```
+---
 
-可用经过验证的提交 SHA 替换 main 固定版本。也可从磁盘选择各包 package.json。Effect 依赖 Core 与 Unity 内置粒子模块，不依赖 FUI。Core 的业务绑定/导航由独立适配包承担。
+## Supported Platforms & Toolchains
 
-安装 Authoring 后，从 **Window → URUI → Editor** 打开编辑器。启用 Effect 后，Authoring 会发现效果编辑扩展。
+Prebuilt native plugins under [`Packages/com.fujisheng.urui/Runtime/Plugins`](Packages/com.fujisheng.urui/Runtime/Plugins) target 7 architectures using ABI13 / render-plan9 / element4:
+`macOS ARM64`, `macOS x86_64`, `Windows x86_64`, `Android ARM64`, `Android x86_64`, `iOS ARM64 (static)`, and `WebGL wasm32 (static)`.
 
-正式部署可将 HTML、CSS 和模板在编辑阶段编译为 `CompiledDocumentAsset`，保留源码供编辑和浏览器预览。多个独立 Document 可共享同一个 Surface。
-
-## 快速开始
-
-Package Manager → URUI → Samples → Game Flow → Import，打开导入的 GameFlow.unity 并进入 Play Mode。样例展示加载、模拟登录、主页、背包、设置和排行榜，资源随包提供，登录和排行榜为本地 mock。
-
-![Game Flow：Unity Editor 实际运行录制](Packages/com.fujisheng.urui/Documentation~/Images/game-flow.gif)
-
-此动图为 Editor 录制，不能替代 Player 验收。一个活动 Surface 管理共享视口、时钟、输入与绘制，多个独立 Document 分别拥有 DOM 和资源。节点通过 Document.Create<T>/Q<T> 操作，原始输入入口为 document.Surface.Input。
-
-## 使用文档
-
-- [安装](Packages/com.fujisheng.urui/Documentation~/INSTALL_ZH.md) · [Core 快速开始](Packages/com.fujisheng.urui/Documentation~/QUICK_START_ZH.md) · [Effect 快速开始](Packages/com.fujisheng.urui.effect/Documentation~/QUICK_START_ZH.md)
-- [Document/Element](Packages/com.fujisheng.urui/Documentation~/API_ZH.md) · [控件](Packages/com.fujisheng.urui/Documentation~/CONTROLS_ZH.md) · [输入与事件](Packages/com.fujisheng.urui/Documentation~/EVENTS_ZH.md)
-- [样式与动画](Packages/com.fujisheng.urui/Documentation~/STYLES_ANIMATION_ZH.md) · [资源生命周期](Packages/com.fujisheng.urui/Documentation~/LIFECYCLE_ZH.md) · [渲染和视频](Packages/com.fujisheng.urui/Documentation~/RENDERING_ZH.md)
-- [Effect C# API](Packages/com.fujisheng.urui.effect/Documentation~/API_ZH.md) · [Effect CSS 参数](Packages/com.fujisheng.urui.effect/Documentation~/CSS_ZH.md) · [粒子与表面处理](Packages/com.fujisheng.urui.effect/Documentation~/RENDERING_ZH.md)
-- [Core 接口声明](Packages/com.fujisheng.urui/Documentation~/REFERENCE_ZH.md) · [Effect 接口声明](Packages/com.fujisheng.urui.effect/Documentation~/REFERENCE_ZH.md)
-- [可视化作者工具](Packages/com.fujisheng.urui.authoring/Documentation~/index.md) · [独立 Agent API](Packages/com.fujisheng.urui.authoring/Documentation~/agent-api.md)
-- [架构](docs/ARCHITECTURE_ZH.md) · [代码组织](docs/CODE_ORGANIZATION_ZH.md) · [开发与原生构建](docs/DEVELOPMENT_ZH.md)
-
-## 支持范围
-
-主要运行验证环境为 Unity 6000.3.22f1 / macOS ARM64 / Metal，包含 Built-in、项目 URP 接入和相应 IL2CPP 回归 Player。当前协议为 ABI11 / render-plan8 / element3 / style4 / effect7 / filter3 / animation1。其他平台的构建、静态审计和设备运行范围分别记录在[支持矩阵](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS_ZH.md)与[插件清单](Packages/com.fujisheng.urui/Documentation~/PLUGINS.json)。
-
-HTML/CSS 是明确的支持子集；没有完整浏览器或 JavaScript 环境。系统 IME、移动软键盘和无障碍边界以支持矩阵为准。项目与第三方许可见 [Core LICENSE](Packages/com.fujisheng.urui/LICENSE.md)、[Core 第三方许可](Packages/com.fujisheng.urui/Third%20Party%20Notices.md)和 [Effect 第三方许可](Packages/com.fujisheng.urui.effect/ThirdPartyNotices.md)。
+Verification baseline: Unity `6000.3.22f1`. See [`PLUGINS.json`](Packages/com.fujisheng.urui/Documentation~/PLUGINS.json) for build metadata and third-party notices in [`Third Party Notices.md`](Packages/com.fujisheng.urui/Third%20Party%20Notices.md).
