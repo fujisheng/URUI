@@ -275,6 +275,11 @@ namespace URUI.Authoring.Animation
             player = null;
             boundDocument = null;
             owned?.Dispose();
+            if (attachedPreview != null && !ReferenceEquals(attachedPreview, AuthoringEnvironment.Preview))
+            {
+                attachedPreview.BeforeReload -= BeforePreviewReload;
+                attachedPreview = null;
+            }
         }
         static void Tick()
         {
@@ -287,7 +292,7 @@ namespace URUI.Authoring.Animation
             }
             try
             {
-                var definition = Workspace.Definition;
+                var definition = Workspace.PeekDefinition();
                 if (definition == null)
                 {
                     Stop();

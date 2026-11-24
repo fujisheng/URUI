@@ -290,10 +290,12 @@ namespace URUI
                              source.c_str());
                 break;
             case FontFaceLoadResult::Duplicate:
+                FreeType::ReleaseFace(ft_face);
                 Log::Message(Log::LT_INFO, "Font face %s from '%s' already loaded, proceeding.",
                              font_face_description.c_str(), source.c_str());
                 break;
             case FontFaceLoadResult::Error:
+                FreeType::ReleaseFace(ft_face);
                 Log::Message(Log::LT_ERROR, "Failed to load font face %s from '%s'.", font_face_description.c_str(),
                              source.c_str());
                 return false;

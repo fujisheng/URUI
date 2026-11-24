@@ -172,6 +172,7 @@ namespace URUI::RenderPlan
         uint64_t keysHash = 0;
         uint32_t refCount = 0;
         bool compilingPin = false;
+        bool retired = false;
         Buffer<GeometryKey> keys;
         Buffer<uint8_t> uniformColors;
         Buffer<URUIPlanVertex> vertices;
@@ -393,6 +394,7 @@ namespace URUI::RenderPlan
         Buffer<uint32_t> batchKeyIndex;
         Buffer<uint32_t> batchIdIndex;
         Buffer<uint32_t> freeBatchSlots;
+        std::vector<uint64_t> pendingRetiredGeometries;
         uint32_t batchActiveCount = 0;
         uint32_t batchTombstoneCount = 0;
         uint64_t nextLastUse = 0;
@@ -514,7 +516,9 @@ namespace URUI::RenderPlan
         uint32_t FindBatchById(uint64_t id) const noexcept;
         uint32_t FindBatchByKeys(uint64_t batchEpoch, uint64_t keysHash) const noexcept;
         bool BatchInUse(uint32_t index) const noexcept;
+        void FlushRetiredGeometries() noexcept;
         void CollectRetiredEpochs();
+        void TrimIdleBatches() noexcept;
         size_t Reclaimable(size_t except = SIZE_MAX) const noexcept;
         void DropBatch(uint32_t index);
         void BuildResourceLookup(Frame& frame);
@@ -585,6 +589,7 @@ namespace URUI::RenderPlan
             height = h;
         }
         void Invalidate(uint64_t value);
+        void RetireGeometry(uint64_t geometry) noexcept;
 
         int Begin(uint64_t value, const URUICommand* commands, const std::array<float, 16>* matrices, uint32_t count,
                   const URUIPaintCommand* paints, uint32_t paint_count, const URUILayerCommand* layers,

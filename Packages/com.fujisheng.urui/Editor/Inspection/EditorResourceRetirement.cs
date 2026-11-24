@@ -9,6 +9,17 @@ namespace URUI.Editor.Inspection
         static EditorResourceRetirement()
         {
             EditorApplication.update += ImagePinRetirement.Collect;
+            EditorApplication.playModeStateChanged += state =>
+            {
+                if (state == PlayModeStateChange.ExitingPlayMode)
+                {
+                    ImagePinRetirement.OnExitingPlayMode();
+                }
+                else if (state == PlayModeStateChange.EnteredEditMode)
+                {
+                    ImagePinRetirement.OnEnteredEditMode();
+                }
+            };
         }
     }
 }

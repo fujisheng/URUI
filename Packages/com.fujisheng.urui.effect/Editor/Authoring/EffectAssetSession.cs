@@ -20,6 +20,7 @@ namespace URUI.Effect.Editor.Authoring
         string originalHash;
         string savedVersion;
         readonly Dictionary<Material, Material> materials = new Dictionary<Material, Material>();
+        readonly Dictionary<Material, Material> originalToCopy = new Dictionary<Material, Material>();
         bool prefabContents;
         bool disposed;
         public UnityEngine.Object Working
@@ -67,46 +68,54 @@ namespace URUI.Effect.Editor.Authoring
             this.source = source ? source : throw new ArgumentNullException(nameof(source));
             path = AssetDatabase.GetAssetPath(source);
             originalHash = File.Exists(path) ? Hash(path) : null;
-            if (source is EffectPreset preset)
+            try
             {
-                var copy = ScriptableObject.CreateInstance<EffectPreset>();
-                copy.SetParameters(preset.CreateParameters());
-                Working = copy;
-            }
-            else if (source is Material material)
-            {
-                Working = new Material(material);
-            }
-            else if (source is GameObject gameObject)
-            {
-                foreach (var component in gameObject.GetComponentsInChildren<Component>(true))
+                if (source is EffectPreset preset)
                 {
-                    if (!(component is Transform || component is ParticleSystem || component is ParticleSystemRenderer))
-                    {
-                        throw new InvalidOperationException("Only Transform, ParticleSystem and ParticleSystemRenderer are supported in particle Prefabs.");
-                    }
+                    var copy = ScriptableObject.CreateInstance<EffectPreset>();
+                    copy.SetParameters(preset.CreateParameters());
+                    Working = copy;
                 }
-                if (path.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+                else if (source is Material material)
                 {
-                    Working = PrefabUtility.LoadPrefabContents(path);
-                    prefabContents = true;
+                    Working = new Material(material);
+                }
+                else if (source is GameObject gameObject)
+                {
+                    foreach (var component in gameObject.GetComponentsInChildren<Component>(true))
+                    {
+                        if (!(component is Transform || component is ParticleSystem || component is ParticleSystemRenderer))
+                        {
+                            throw new InvalidOperationException("Only Transform, ParticleSystem and ParticleSystemRenderer are supported in particle Prefabs.");
+                        }
+                    }
+                    if (path.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Working = PrefabUtility.LoadPrefabContents(path);
+                        prefabContents = true;
+                    }
+                    else
+                    {
+                        Working = UnityEngine.Object.Instantiate(gameObject);
+                    }
+                    foreach (var system in ((GameObject)Working).GetComponentsInChildren<ParticleSystem>(true))
+                    {
+                        system.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    }
+                    EnsureMaterialIsolation();
                 }
                 else
                 {
-                    Working = UnityEngine.Object.Instantiate(gameObject);
+                    throw new InvalidOperationException("Supported asset types: EffectPreset, Material, particle Prefab.");
                 }
-                foreach (var system in ((GameObject)Working).GetComponentsInChildren<ParticleSystem>(true))
-                {
-                    system.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
-                }
-                EnsureMaterialIsolation();
+                Working.hideFlags = HideFlags.HideAndDontSave;
+                savedVersion = ContentVersion;
             }
-            else
+            catch
             {
-                throw new InvalidOperationException("Supported asset types: EffectPreset, Material, particle Prefab.");
+                Dispose();
+                throw;
             }
-            Working.hideFlags = HideFlags.HideAndDontSave;
-            savedVersion = ContentVersion;
         }
         public void EnsureMaterialIsolation()
         {
@@ -117,6 +126,7 @@ namespace URUI.Effect.Editor.Authoring
             foreach (var renderer in root.GetComponentsInChildren<ParticleSystemRenderer>(true))
             {
                 var values = renderer.sharedMaterials;
+                bool changed = false;
                 for (int i = 0; i < values.Length; i++)
                 {
                     var material = values[i];
@@ -124,11 +134,19 @@ namespace URUI.Effect.Editor.Authoring
                     {
                         continue;
                     }
-                    var copy = new Material(material) { hideFlags = HideFlags.HideAndDontSave };
-                    materials[copy] = material;
+                    if (!originalToCopy.TryGetValue(material, out var copy) || !copy)
+                    {
+                        copy = new Material(material) { hideFlags = HideFlags.HideAndDontSave };
+                        materials[copy] = material;
+                        originalToCopy[material] = copy;
+                    }
                     values[i] = copy;
+                    changed = true;
                 }
-                renderer.sharedMaterials = values;
+                if (changed)
+                {
+                    renderer.sharedMaterials = values;
+                }
             }
         }
         public void MarkChanged()
@@ -499,8 +517,19 @@ namespace URUI.Effect.Editor.Authoring
             {
                 var asset = UnityEngine.Object.Instantiate(Working);
                 asset.hideFlags = HideFlags.None;
-                AssetDatabase.CreateAsset(asset, destination);
-                AssetDatabase.SaveAssetIfDirty(asset);
+                try
+                {
+                    AssetDatabase.CreateAsset(asset, destination);
+                    AssetDatabase.SaveAssetIfDirty(asset);
+                }
+                catch
+                {
+                    if (asset && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset)))
+                    {
+                        UnityEngine.Object.DestroyImmediate(asset);
+                    }
+                    throw;
+                }
             }
             else
             {
@@ -565,6 +594,7 @@ namespace URUI.Effect.Editor.Authoring
                 GpuRetirement.Retire(() => GpuRetirement.DestroyOwnedObject(owned));
             }
             materials.Clear();
+            originalToCopy.Clear();
         }
     }
 }

@@ -13,6 +13,8 @@ namespace URUI.Effect.Editor
         bool playing;
         double lastUpdate;
         string parameterJson;
+        EffectPreset cachedPreset;
+        int cachedPresetDirtyCount = -1;
         [InitializeOnLoadMethod]
         static void RegisterLocalizedMenus()
         {
@@ -40,13 +42,18 @@ namespace URUI.Effect.Editor
             EditorApplication.update -= UpdatePreview;
             preview?.Dispose();
             preview = null;
+            cachedPreset = null;
+            cachedPresetDirtyCount = -1;
             if (target)
             {
                 var previous = target;
                 URUI.Resources.GpuRetirement.Retire(() =>
                 {
-                    previous.Release();
-                    DestroyImmediate(previous);
+                    if (previous)
+                    {
+                        previous.Release();
+                        DestroyImmediate(previous);
+                    }
                 });
                 target = null;
             }
@@ -74,17 +81,23 @@ namespace URUI.Effect.Editor
             }
             if (Event.current.type == EventType.Repaint)
             {
-                var parameters = preset ? preset.CreateParameters() : new EffectParameters();
-                var json = JsonUtility.ToJson(parameters);
-                if (preview == null)
+                int dirtyCount = preset ? EditorUtility.GetDirtyCount(preset) : -1;
+                if (preview == null || cachedPreset != preset || dirtyCount != cachedPresetDirtyCount)
                 {
-                    preview = new EffectPreview(parameters);
-                    parameterJson = json;
-                }
-                else if (json != parameterJson)
-                {
-                    preview.SetParameters(parameters);
-                    parameterJson = json;
+                    var parameters = preset ? preset.CreateParameters() : new EffectParameters();
+                    var json = JsonUtility.ToJson(parameters);
+                    if (preview == null)
+                    {
+                        preview = new EffectPreview(parameters);
+                        parameterJson = json;
+                    }
+                    else if (json != parameterJson)
+                    {
+                        preview.SetParameters(parameters);
+                        parameterJson = json;
+                    }
+                    cachedPreset = preset;
+                    cachedPresetDirtyCount = dirtyCount;
                 }
                 if (!target)
                 {

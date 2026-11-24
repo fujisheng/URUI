@@ -82,8 +82,8 @@ namespace URUI.Effect.Rendering
             }
             input.Prepare?.Invoke(frame);
             input.Surface.Prepare(frame.Size);
-            var changed = materialState.Capture(input.Material, input.UsesTime, frame.Time);
-            if (changed)
+            var materialChanged = materialState.Capture(input.Material, input.UsesTime, frame.Time);
+            if (material == null || materialChanged)
             {
                 var next = owner.Own(materials.Rent(input.Material, materialState.KeywordHandles, materialState.KeywordStates));
                 if (material != null)
@@ -98,6 +98,7 @@ namespace URUI.Effect.Rendering
                 return;
             }
             properties.Clear();
+            materialState.ApplyScalarProperties(properties);
             properties.SetFloat(effectTimeId, (float)frame.Time);
         }
         public void Record(EffectRenderContext context)

@@ -170,5 +170,37 @@ int main()
     Pointer(3, 110, 0);
     assert(cancelled[background] == cancelledBefore + 1 && cancelled[modal] == 0);
     urui_surface_destroy(g_test_surface);
+
+    // Full-viewport non-modal overlay without html/body pointer-events:none must still deliver clicks to lower buttons.
+    clicks.clear();
+    pressed.clear();
+    captureOnDown = checkCaptureLost = false;
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
+    assert(urui_set_event_callback(g_test_surface, Callback) == 1);
+    URUIDocumentHandle placement = 0;
+    URUIDocumentHandle tips = 0;
+    assert(urui_document_create(g_test_surface, &placement) == 1 &&
+           urui_document_create(g_test_surface, &tips) == 1);
+    assert(urui_document_set_presentation(g_test_surface, placement, 0, 1, 1, 0) == 1);
+    assert(urui_document_load_html(
+               g_test_surface, placement,
+               "<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%;}"
+               "button{position:absolute;left:20px;top:0;width:60px;height:40px;}</style></head>"
+               "<body><button id='confirm'></button></body></html>",
+               "ui/placement.html") == 1);
+    assert(urui_document_set_presentation(g_test_surface, tips, 16000, 2, 1, 0) == 1);
+    assert(urui_document_load_html(
+               g_test_surface, tips,
+               "<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%;}"
+               "main,main *{pointer-events:none;}</style></head>"
+               "<body><main><div></div></main></body></html>",
+               "ui/tips.html") == 1);
+    assert(urui_document_listen(g_test_surface, placement) == 1 &&
+           urui_document_listen(g_test_surface, tips) == 1);
+    urui_surface_update(g_test_surface);
+    Pointer(0, 40, 1);
+    Pointer(2, 40, 0);
+    assert(clicks[placement] == 1 && clicks[tips] == 0);
+    urui_surface_destroy(g_test_surface);
     std::cout << "Document-owned events, capture isolation and scoped close passed\n";
 }

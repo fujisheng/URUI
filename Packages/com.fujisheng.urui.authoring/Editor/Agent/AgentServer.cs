@@ -441,6 +441,8 @@ namespace URUI.Authoring.Agent
             context.Response.ContentLength64 = bytes.Length;
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
         }
+        static readonly long PumpBudgetTicks = Stopwatch.Frequency * 16 / 1000;
+
         static void Pump()
         {
             var state = Volatile.Read(ref activeState);
@@ -448,9 +450,9 @@ namespace URUI.Authoring.Agent
             {
                 return;
             }
-            var timer = Stopwatch.StartNew();
+            long start = Stopwatch.GetTimestamp();
             int count = 0;
-            while (count++ < 4 && timer.ElapsedMilliseconds < 16 && state.Jobs.RunNext(state.Epoch, request => AgentJson.Stringify(state.Dispatcher.Execute(request))))
+            while (count++ < 4 && (Stopwatch.GetTimestamp() - start) < PumpBudgetTicks && state.Jobs.RunNext(state.Epoch, request => AgentJson.Stringify(state.Dispatcher.Execute(request))))
             {
             }
         }

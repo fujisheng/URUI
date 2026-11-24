@@ -117,11 +117,24 @@ namespace URUI
         {
             return found->second;
         }
-        const auto index = TextureFileIndex(texture_list.size());
-        FileTextureEntry entry;
-        entry.source = source;
-        entry.resources = resources;
-        texture_list.push_back(std::move(entry));
+        TextureFileIndex index;
+        if (!free_slots.empty())
+        {
+            index = free_slots.back();
+            free_slots.pop_back();
+            auto& slot = texture_list[size_t(index)];
+            slot = FileTextureEntry{};
+            slot.source = source;
+            slot.resources = resources;
+        }
+        else
+        {
+            index = TextureFileIndex(texture_list.size());
+            FileTextureEntry entry;
+            entry.source = source;
+            entry.resources = resources;
+            texture_list.push_back(std::move(entry));
+        }
         texture_map.emplace(key, index);
         return index;
     }
@@ -195,20 +208,24 @@ namespace URUI
 
     void FileTextureDatabase::RetireContext(RenderInterface* render, uint64_t identity)
     {
-        for (auto& entry : texture_list)
+        for (size_t i = 0; i < texture_list.size(); ++i)
         {
+            auto& entry = texture_list[i];
             if (entry.resources && entry.resources->GetIdentity() == identity && !entry.retired)
             {
                 texture_map.erase(Key(entry.source, entry.resources));
                 const auto handle = entry.texture_handle;
                 entry.texture_handle = {};
                 entry.dimensions = {};
+                entry.load_texture_failed = false;
                 entry.retired = true;
                 entry.resources.reset();
+                String().swap(entry.source);
                 if (handle)
                 {
                     render->ReleaseTexture(handle);
                 }
+                free_slots.push_back(TextureFileIndex(i));
             }
         }
     }

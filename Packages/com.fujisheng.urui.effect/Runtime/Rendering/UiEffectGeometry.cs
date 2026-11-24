@@ -78,17 +78,21 @@ namespace URUI.Effect.Rendering
                 }
                 EffectObjectLifetime.Destroy(entry.Mesh);
                 Free(entry.Offset, entry.Length);
-                if (entries.Count == 0)
-                {
-                    EffectObjectLifetime.Destroy(texture);
-                    texture = null;
-                    data = null;
-                    dirtyRowScratch = null;
-                    free.Clear();
-                    dirty = false;
-                    dirtyRowMin = int.MaxValue;
-                    dirtyRowMax = -1;
-                }
+                ReleaseBackingIfEmpty();
+            }
+        }
+        static void ReleaseBackingIfEmpty()
+        {
+            if (entries.Count == 0)
+            {
+                EffectObjectLifetime.Destroy(texture);
+                texture = null;
+                data = null;
+                dirtyRowScratch = null;
+                free.Clear();
+                dirty = false;
+                dirtyRowMin = int.MaxValue;
+                dirtyRowMax = -1;
             }
         }
         const int TextureWidth = 256;
@@ -472,6 +476,7 @@ namespace URUI.Effect.Rendering
                     EffectObjectLifetime.Destroy(mesh);
                 }
                 Free(offset, length);
+                ReleaseBackingIfEmpty();
                 throw;
             }
         }

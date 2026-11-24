@@ -96,6 +96,7 @@ namespace URUI.Internal.Hosting
         static readonly int baseParameterId = Shader.PropertyToID("_UruiBaseParameter");
         static readonly int maskTextureId = Shader.PropertyToID("_UruiMaskTexture");
         static readonly int maskSourceId = Shader.PropertyToID("_UruiMaskSource");
+        static readonly Action<Action> noOpEffectSubmission = _ => { };
         internal long ParameterUploadBytes => parameterPages?.ParameterUploadBytes ?? 0;
         internal long ParameterCopyBytes => parameterPages?.ParameterCopyBytes ?? 0;
 
@@ -546,8 +547,11 @@ namespace URUI.Internal.Hosting
                         }
                         else
                         {
+                            // RenderGraph 直接录制会在 AppendExternal -> RecordExternalDirect 再次录制真实提交，
+                            // 探针阶段不重复登记 EffectSubmissionSink，避免提交回调每帧双倍入队。
+                            var submissionSink = directSubmissionBuffer != null ? noOpEffectSubmission : owner.EffectSubmissionSink;
                             original = !owner.RecordEffect(paint.element, context, SourceMesh(ReadGeometry(preparedSourceGeometry[index])),
-                                owner.EffectSubmissionSink, owner.EffectKindForName(PaintName(paint.shader)), imageEffectInputKeys[index]);
+                                submissionSink, owner.EffectKindForName(PaintName(paint.shader)), imageEffectInputKeys[index]);
                         }
                     }
                     finally

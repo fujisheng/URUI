@@ -105,6 +105,22 @@ namespace URUI.Authoring.Sessions
                 }
                 throw;
             }
+            for (int i = baseline.Count - 1; i >= 0; i--)
+            {
+                var old = baseline[i];
+                if (!old.Node.IsValid)
+                {
+                    if (old.Property == "image")
+                    {
+                        try
+                        {
+                            old.Node.ReleaseImageOverride();
+                        }
+                        catch { }
+                    }
+                    baseline.RemoveAt(i);
+                }
+            }
             foreach (var change in changes)
             {
                 bool exists = false;

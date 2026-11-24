@@ -23,9 +23,82 @@ static void InitialModalBlocksFocusBeforeFirstSurfaceUpdate()
     urui_surface_destroy(g_test_surface);
 }
 
+static void NonModalDocumentShellDoesNotShadowLowerAuthorHits()
+{
+    assert(urui_surface_create(400, 200, &g_test_surface) == 1);
+    URUIDocumentHandle lower = 0;
+    URUIDocumentHandle upperOverlay = 0;
+    assert(urui_document_create(g_test_surface, &lower) == 1 &&
+           urui_document_create(g_test_surface, &upperOverlay) == 1);
+    const char* lowerHtml =
+        "<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%;}"
+        "button{position:absolute;left:20px;top:20px;width:60px;height:40px;}</style></head>"
+        "<body><button id='confirm'></button></body></html>";
+    const char* tipsHtml =
+        "<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%;}"
+        "main,main *{pointer-events:none;}</style></head>"
+        "<body><main><div></div></main></body></html>";
+    assert(urui_document_set_presentation(g_test_surface, lower, 0, 1, 1, 0) == 1);
+    assert(urui_document_load_html(g_test_surface, lower, lowerHtml, "/lower.html") == 1);
+    assert(urui_document_set_presentation(g_test_surface, upperOverlay, 16000, 2, 1, 0) == 1);
+    assert(urui_document_load_html(g_test_surface, upperOverlay, tipsHtml, "/tips.html") == 1);
+    urui_surface_update(g_test_surface);
+
+    const auto confirmBtn = urui_element_find(g_test_surface, lower, urui_document_root(g_test_surface, lower), "confirm", nullptr);
+    const auto upperBody = urui_document_body(g_test_surface, upperOverlay);
+    assert(confirmBtn && upperBody);
+
+    URUIDocumentHandle owner = 0;
+    const auto buttonHit = urui_surface_pick(g_test_surface, 40, 35, &owner);
+    assert(owner == lower && buttonHit == confirmBtn);
+    assert(urui_element_pick(g_test_surface, lower, 40, 35) == confirmBtn);
+
+    const auto blankHit = urui_surface_pick(g_test_surface, 300, 150, &owner);
+    assert(owner == upperOverlay && blankHit == upperBody);
+
+    // Modal document between lower and non-modal overlay still blocks lower buttons, while its own controls work.
+    URUIDocumentHandle middleModal = 0;
+    assert(urui_document_create(g_test_surface, &middleModal) == 1);
+    const char* modalHtml =
+        "<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%;}"
+        "button{position:absolute;left:150px;top:20px;width:60px;height:40px;}</style></head>"
+        "<body><button id='dialog-btn'></button></body></html>";
+    assert(urui_document_set_presentation(g_test_surface, middleModal, 8000, 3, 1, 1) == 1);
+    assert(urui_document_load_html(g_test_surface, middleModal, modalHtml, "/middle-modal.html") == 1);
+    urui_surface_update(g_test_surface);
+
+    const auto dialogBtn = urui_element_find(g_test_surface, middleModal, urui_document_root(g_test_surface, middleModal), "dialog-btn", nullptr);
+    const auto modalBody = urui_document_body(g_test_surface, middleModal);
+    assert(dialogBtn && modalBody);
+
+    const auto modalBtnHit = urui_surface_pick(g_test_surface, 170, 35, &owner);
+    assert(owner == middleModal && modalBtnHit == dialogBtn);
+    const auto blockedLowerHit = urui_surface_pick(g_test_surface, 40, 35, &owner);
+    assert(owner == middleModal && blockedLowerHit == modalBody);
+    assert(urui_document_close(g_test_surface, middleModal) == 1);
+
+    // Explicit author hit surface on a non-modal upper document still blocks lower documents.
+    URUIDocumentHandle authorBlocker = 0;
+    assert(urui_document_create(g_test_surface, &authorBlocker) == 1);
+    const char* blockerHtml =
+        "<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%;}"
+        "#cover{position:absolute;left:0;top:0;width:100%;height:100%;}</style></head>"
+        "<body><div id='cover'></div></body></html>";
+    assert(urui_document_set_presentation(g_test_surface, authorBlocker, 10000, 4, 1, 0) == 1);
+    assert(urui_document_load_html(g_test_surface, authorBlocker, blockerHtml, "/blocker.html") == 1);
+    urui_surface_update(g_test_surface);
+    const auto cover = urui_element_find(g_test_surface, authorBlocker, urui_document_root(g_test_surface, authorBlocker), "cover", nullptr);
+    assert(cover);
+    const auto coverHit = urui_surface_pick(g_test_surface, 40, 35, &owner);
+    assert(owner == authorBlocker && coverHit == cover);
+
+    urui_surface_destroy(g_test_surface);
+}
+
 int main()
 {
     InitialModalBlocksFocusBeforeFirstSurfaceUpdate();
+    NonModalDocumentShellDoesNotShadowLowerAuthorHits();
     assert(urui_surface_create(400, 200, &g_test_surface) == 1);
     URUIDocumentHandle a = 0;
     URUIDocumentHandle b = 0;

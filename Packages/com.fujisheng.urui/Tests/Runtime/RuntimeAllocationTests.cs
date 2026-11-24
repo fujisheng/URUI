@@ -574,6 +574,113 @@ namespace URUI.Tests
             }
         }
 
+        struct EarlyUpdateClockProbe { }
+
+        sealed class FixedUpdateClockProbe : MonoBehaviour
+        {
+            internal Action OnFixed;
+            void FixedUpdate() => OnFixed?.Invoke();
+        }
+
+        [UnityEngine.TestTools.UnityTest]
+        public System.Collections.IEnumerator UnityUIClockStaysMonotonicAcrossEarlyUpdateFixedUpdateAndUpdate()
+        {
+            var previousScale = Time.timeScale;
+            var previousLoop = UnityEngine.LowLevel.PlayerLoop.GetCurrentPlayerLoop();
+            var probe = root.AddComponent<FixedUpdateClockProbe>();
+            Action onEarly = null;
+            try
+            {
+                // Mirror InputSystem / EarlyUpdate callbacks running before FixedUpdate on the same frame.
+                var loop = previousLoop;
+                var systems = loop.subSystemList;
+                for (var i = 0; i < systems.Length; ++i)
+                {
+                    if (systems[i].type == typeof(UnityEngine.PlayerLoop.EarlyUpdate))
+                    {
+                        var list = new System.Collections.Generic.List<UnityEngine.LowLevel.PlayerLoopSystem>(systems[i].subSystemList);
+                        list.Add(new UnityEngine.LowLevel.PlayerLoopSystem
+                        {
+                            type = typeof(EarlyUpdateClockProbe),
+                            updateDelegate = () => onEarly?.Invoke()
+                        });
+                        systems[i].subSystemList = list.ToArray();
+                        break;
+                    }
+                }
+                loop.subSystemList = systems;
+                UnityEngine.LowLevel.PlayerLoop.SetPlayerLoop(loop);
+
+                foreach (var clock in new[] { UnityUIClock.Unscaled, UnityUIClock.Scaled })
+                {
+                    document.Unload();
+                    document.Surface.UIClock = clock;
+                    Load();
+                    var observed = clock.Now;
+                    Exception loopFailure = null;
+                    var earlySamples = 0;
+                    var fixedSamples = 0;
+
+                    void Sample(string phase)
+                    {
+                        try
+                        {
+                            var now = clock.Now;
+                            if (now < observed)
+                            {
+                                throw new InvalidOperationException(
+                                    $"{phase} clock regressed: now={now:R} < observed={observed:R} (frame={Time.frameCount}, inFixed={Time.inFixedTimeStep})");
+                            }
+                            observed = now;
+                            document.SynchronizeGeometry();
+                        }
+                        catch (Exception ex)
+                        {
+                            loopFailure ??= ex;
+                        }
+                    }
+
+                    onEarly = () =>
+                    {
+                        earlySamples++;
+                        Sample("EarlyUpdate");
+                    };
+                    probe.OnFixed = () =>
+                    {
+                        fixedSamples++;
+                        Sample("FixedUpdate");
+                    };
+
+                    for (var step = 0; step < 6; ++step)
+                    {
+                        Time.timeScale = step % 2 == 0 ? 1f : 2f;
+                        System.Threading.Thread.Sleep(25);
+                        yield return null;
+                        if (loopFailure != null)
+                        {
+                            throw loopFailure;
+                        }
+                        Sample("Update");
+                        if (loopFailure != null)
+                        {
+                            throw loopFailure;
+                        }
+                    }
+                    onEarly = null;
+                    probe.OnFixed = null;
+                    Assert.That(earlySamples, Is.GreaterThan(0));
+                    Assert.That(fixedSamples, Is.GreaterThan(0));
+                }
+            }
+            finally
+            {
+                onEarly = null;
+                probe.OnFixed = null;
+                UnityEngine.LowLevel.PlayerLoop.SetPlayerLoop(previousLoop);
+                Time.timeScale = previousScale;
+            }
+        }
+
         [Test]
         public void UnchangedElementRefreshDoesNotAllocateMemberSnapshots()
         {

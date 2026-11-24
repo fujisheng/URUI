@@ -192,15 +192,25 @@ namespace URUI.Tests.Editor
         }
         static void FlushTestGpu()
         {
-            // Batchmode EditMode 没有持续相机帧；完成真实微小读回后再轮询 fence。
+            // Batchmode EditMode 没有持续相机帧；完成真实微小绘制与读回后再轮询 fence。
             var texture = new RenderTexture(1, 1, 0, RenderTextureFormat.ARGB32);
+            var previous = RenderTexture.active;
             try
             {
                 Assert.That(texture.Create(), Is.True);
-                WaitForGpu(texture);
+                Graphics.Blit(Texture2D.whiteTexture, texture);
+                if (SystemInfo.supportsAsyncGPUReadback)
+                {
+                    AsyncGPUReadback.Request(texture).WaitForCompletion();
+                }
+                else
+                {
+                    WaitForGpu(texture);
+                }
             }
             finally
             {
+                RenderTexture.active = previous;
                 texture.Release();
                 UnityEngine.Object.DestroyImmediate(texture);
             }

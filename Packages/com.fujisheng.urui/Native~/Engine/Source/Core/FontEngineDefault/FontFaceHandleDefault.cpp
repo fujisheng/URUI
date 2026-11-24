@@ -114,6 +114,24 @@ namespace URUI
         return Math::Max(width, 0.f);
     }
 
+    namespace
+    {
+        bool SameFontEffect(const FontEffect* a, const FontEffect* b) noexcept
+        {
+            if (a == b)
+            {
+                return true;
+            }
+            if (!a || !b)
+            {
+                return false;
+            }
+            const size_t fp = a->GetFingerprint();
+            return fp != 0 && fp == b->GetFingerprint() && a->GetLayer() == b->GetLayer() &&
+                   a->GetColour() == b->GetColour() && a->HasUniqueTexture() == b->HasUniqueTexture();
+        }
+    }
+
     int FontFaceHandleDefault::GenerateLayerConfiguration(const FontEffectList& font_effects)
     {
         if (font_effects.empty())
@@ -147,7 +165,7 @@ namespace URUI
 
                 // If the ith layer's effect doesn't match the equivalent effect, then this
                 // configuration can't match.
-                if (configuration[i]->GetFontEffect() != font_effects[effect_index].get())
+                if (!SameFontEffect(configuration[i]->GetFontEffect(), font_effects[effect_index].get()))
                 {
                     break;
                 }
@@ -486,7 +504,7 @@ namespace URUI
         const FontEffect* font_effect_ptr = font_effect.get();
         auto it = std::find_if(layers.begin(), layers.end(),
                                [font_effect_ptr](const EffectLayerPair& pair)
-                               { return pair.font_effect == font_effect_ptr; });
+                               { return SameFontEffect(pair.font_effect, font_effect_ptr); });
 
         if (it != layers.end())
         {

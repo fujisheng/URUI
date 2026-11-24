@@ -14,6 +14,13 @@ namespace URUI.Authoring.Animation
     public sealed class AnimationWorkspace
     {
         readonly AuthoringSession author;
+        SequenceDefinition cachedDefinition;
+        string cachedDefinitionPath;
+        long cachedDefinitionRevision = -1;
+        AnimationSourceSet cachedSourceSet;
+        string cachedSourceSetPath;
+        long cachedSourceSetRevision = -1;
+        readonly Dictionary<string, IReadOnlyList<CssKeyframes.Key>> cachedKeys = new Dictionary<string, IReadOnlyList<CssKeyframes.Key>>(StringComparer.Ordinal);
         public string Path
         {
             get;
@@ -21,6 +28,54 @@ namespace URUI.Authoring.Animation
         }
         public long Revision => author.Revision;
         public SequenceDefinition Definition => Path == null || author.Workspace.Open(Path).Text == null ? null : SequenceDefinition.Parse(author.Workspace.Open(Path).Text);
+        // 只读缓存视图，供 TimelineView/Tick 等高频绘制路径复用，避免每帧重复 JSON 解析；修改路径仍走 Definition。
+        internal SequenceDefinition PeekDefinition()
+        {
+            if (Path == null)
+            {
+                InvalidateReadCache();
+                return null;
+            }
+            var file = author.Workspace.Open(Path);
+            if (file.Text == null)
+            {
+                InvalidateReadCache();
+                return null;
+            }
+            if (cachedDefinition != null && cachedDefinitionPath == Path && cachedDefinitionRevision == file.Revision)
+            {
+                return cachedDefinition;
+            }
+            cachedDefinition = SequenceDefinition.Parse(file.Text);
+            cachedDefinitionPath = Path;
+            cachedDefinitionRevision = file.Revision;
+            cachedKeys.Clear();
+            return cachedDefinition;
+        }
+        void InvalidateReadCache()
+        {
+            cachedDefinition = null;
+            cachedDefinitionPath = null;
+            cachedDefinitionRevision = -1;
+            cachedSourceSet = null;
+            cachedSourceSetPath = null;
+            cachedSourceSetRevision = -1;
+            cachedKeys.Clear();
+        }
+        AnimationSourceSet CachedSourceSet()
+        {
+            var htmlPath = author.File?.Path;
+            var workspaceRevision = author.Workspace.Revision;
+            if (cachedSourceSet != null && cachedSourceSetPath == htmlPath && cachedSourceSetRevision == workspaceRevision)
+            {
+                return cachedSourceSet;
+            }
+            cachedSourceSet = new AnimationSourceSet(author);
+            cachedSourceSetPath = htmlPath;
+            cachedSourceSetRevision = workspaceRevision;
+            cachedKeys.Clear();
+            return cachedSourceSet;
+        }
         public void Close()
         {
             if (author.AnimationPath == Path)
@@ -28,6 +83,7 @@ namespace URUI.Authoring.Animation
                 author.AnimationPath = null;
             }
             Path = null;
+            InvalidateReadCache();
         }
         public AnimationWorkspace(AuthoringSession author)
         {
@@ -240,8 +296,22 @@ namespace URUI.Authoring.Animation
         }
         public IReadOnlyList<CssKeyframes.Key> Keys(string id)
         {
-            var track = Track(Required(), id);
-            return CssKeyframes.Read(KeyframeFile(track).Text, track.Keyframes);
+            var definition = PeekDefinition() ?? throw new InvalidOperationException("请先打开或创建动画序列。");
+            var track = Track(definition, id);
+            var sourceSet = CachedSourceSet();
+            if (cachedKeys.TryGetValue(track.Keyframes, out var cached))
+            {
+                return cached;
+            }
+            var sheet = sourceSet.Find(track.Keyframes);
+            if (sheet.Path == null)
+            {
+                throw new InvalidOperationException("当前动画定义位于只读或内联样式，请先移至独立 CSS 文件。");
+            }
+            var file = author.Workspace.Open(sheet.Path);
+            var parsed = CssKeyframes.Read(file.Text, track.Keyframes);
+            cachedKeys[track.Keyframes] = parsed;
+            return parsed;
         }
         public void SetKey(string id, double position, string property, string value, long revision)
             => EditKeys(id, revision, (text, name) => CssKeyframes.SetKey(text, name, position, property, value));
@@ -295,7 +365,7 @@ namespace URUI.Authoring.Animation
         }
         public SourceFile KeyframeFile(SequenceTrack track)
         {
-            var sheet = new AnimationSourceSet(author).Find(track.Keyframes);
+            var sheet = CachedSourceSet().Find(track.Keyframes);
             if (sheet.Path == null)
             {
                 throw new InvalidOperationException("该动画来自内联或只读样式；请移到当前页面链接的 CSS 后再编辑。");

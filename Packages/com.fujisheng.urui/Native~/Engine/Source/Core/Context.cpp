@@ -1847,6 +1847,24 @@ namespace URUI
         return result;
     }
 
+    static bool IsNonModalDocumentShell(const Element* stacking_child, const Element* hit)
+    {
+        if (!stacking_child || !hit)
+        {
+            return false;
+        }
+        const ElementDocument* document = stacking_child->GetOwnerDocument();
+        if (!document || document != stacking_child || document->IsModal())
+        {
+            return false;
+        }
+        if (hit == document)
+        {
+            return true;
+        }
+        return hit->GetParentNode() == document && hit->GetTagName() == "body";
+    }
+
     Element* Context::GetElementAtPointUncached(Vector2f point, const Element* ignore_element, Element* element) const
     {
         if (!element)
@@ -1859,7 +1877,9 @@ namespace URUI
             element = root.get();
         }
 
-        const int modal_index = element == root.get() ? GetTopModalIndex() : -1;
+        const bool is_surface_root = element == root.get();
+        const int modal_index = is_surface_root ? GetTopModalIndex() : -1;
+        Element* fallback_document_shell = nullptr;
 
         // Check any elements within our stacking context. We want to return the lowest-down element
         // that is under the cursor.
@@ -1905,9 +1925,23 @@ namespace URUI
                 Element* child_element = GetElementAtPointUncached(point, ignore_element, stacking_child);
                 if (child_element)
                 {
+                    // 非模态文档的空白根壳（html/body）不遮挡下层文档的作者节点，与 SurfaceInput.BlocksPointer 保持一致。
+                    if (is_surface_root && IsNonModalDocumentShell(stacking_child, child_element))
+                    {
+                        if (!fallback_document_shell)
+                        {
+                            fallback_document_shell = child_element;
+                        }
+                        continue;
+                    }
                     return child_element;
                 }
             }
+        }
+
+        if (fallback_document_shell)
+        {
+            return fallback_document_shell;
         }
 
         // A hidden element can still have visible descendants, which were visited above.

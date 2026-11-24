@@ -140,6 +140,11 @@ namespace URUI
             {
                 return it_cache->second;
             }
+            constexpr size_t MaxDecoratorCacheEntries = 512;
+            if (decorator_cache.size() >= MaxDecoratorCacheEntries)
+            {
+                decorator_cache.clear();
+            }
         }
         else
         {

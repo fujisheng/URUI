@@ -233,6 +233,21 @@ namespace URUI.Authoring.Windows
                 return;
             }
             nextRefresh = EditorApplication.timeSinceStartup + .25;
+            var hasLive = false;
+            var selected = AuthoringEnvironment.SelectedNodes;
+            for (var i = 0; i < selected.Count; i++)
+            {
+                var node = selected[i];
+                if (node && node.IsLive && node.IsTargetValid)
+                {
+                    hasLive = true;
+                    break;
+                }
+            }
+            if (!hasLive && !inspector)
+            {
+                return;
+            }
             liveView?.MarkDirtyRepaint();
             Repaint();
         }

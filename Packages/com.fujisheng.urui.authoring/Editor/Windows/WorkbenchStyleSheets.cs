@@ -146,6 +146,7 @@ namespace URUI.Authoring.Windows
             {
                 ClearSelection();
             }
+            expanded.IntersectWith(sheets.Keys);
         }
 
         void AddSheetRow(string key, Sheet sheet)

@@ -161,7 +161,6 @@ namespace URUI.Internal.Resources
             internal readonly List<IDisposable> resources = new();
             internal readonly List<ImageSubmissionFence> submissions = new();
             internal BorrowedTextureRegistry.SubmissionPins images;
-            internal CommandBuffer barrier;
             internal GraphicsFence fence;
             internal bool uncertain;
             internal bool releasing;
@@ -176,18 +175,51 @@ namespace URUI.Internal.Resources
         static readonly List<IDisposable> deferredFlushScratch = new();
         static bool quitting;
         static bool collecting;
+        static bool destroyingOwner;
+#if UNITY_EDITOR
+        static bool exitingPlayMode;
+#endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void InitializeStatics()
         {
             quitting = false;
             collecting = false;
-            owner = null;
+            destroyingOwner = false;
+#if UNITY_EDITOR
+            exitingPlayMode = false;
+#endif
+            if (owner)
+            {
+                var previousOwner = owner;
+                owner = null;
+                DestroyImmediate(previousOwner.gameObject);
+            }
 #if !UNITY_EDITOR
             Application.quitting -= BeginShutdown;
             Application.quitting += BeginShutdown;
 #endif
         }
+
+#if UNITY_EDITOR
+        internal static void OnExitingPlayMode()
+        {
+            exitingPlayMode = true;
+            FlushDeferred();
+        }
+
+        internal static void OnEnteredEditMode()
+        {
+            exitingPlayMode = false;
+            Collect();
+            if (owner && pending.Count == 0 && deferredBatch.Count == 0)
+            {
+                var previousOwner = owner;
+                owner = null;
+                DestroyImmediate(previousOwner.gameObject);
+            }
+        }
+#endif
 
 #if !UNITY_EDITOR
         void OnApplicationQuit() => BeginShutdown();
@@ -195,8 +227,6 @@ namespace URUI.Internal.Resources
 
         static void ReleaseBarrierCommands(Pending item)
         {
-            item.barrier?.Release();
-            item.barrier = null;
             foreach (var submission in item.submissions)
             {
                 submission.barrier?.Release();
@@ -225,10 +255,16 @@ namespace URUI.Internal.Resources
 
         static void EnsureOwner()
         {
-            if (owner || quitting)
+            if (owner || quitting || destroyingOwner)
             {
                 return;
             }
+#if UNITY_EDITOR
+            if (exitingPlayMode)
+            {
+                return;
+            }
+#endif
             var go = new GameObject("URUI resource retirement") { hideFlags = HideFlags.HideAndDontSave };
             if (Application.isPlaying)
             {
@@ -335,10 +371,8 @@ namespace URUI.Internal.Resources
                         throw new InvalidOperationException("SRP Submit outcome uncertain");
                     }
                 }
-                item.barrier ??= new CommandBuffer { name = "URUI retired resource fence" };
-                item.barrier.Clear();
-                item.fence = item.barrier.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.PixelProcessing);
-                Graphics.ExecuteCommandBuffer(item.barrier);
+                // Direct immediate fence avoids CommandBuffer allocation and Unity 6 Metal CommandBuffer reuse fence stalls.
+                item.fence = Graphics.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.PixelProcessing);
             }
             catch (Exception error)
             {
@@ -452,7 +486,7 @@ namespace URUI.Internal.Resources
                     var submitted = true;
                     foreach (var submission in item.submissions)
                     {
-                        submitted &= submission.fence.passed;
+                        submitted &= !submission.AwaitingCamera && submission.fence.passed;
                     }
                     if (!submitted)
                     {
@@ -492,6 +526,7 @@ namespace URUI.Internal.Resources
 
         static bool ReleaseResources(Pending item)
         {
+            IDisposable firstFailed = null;
             for (var i = 0; i < item.resources.Count; ++i)
             {
                 var resource = item.resources[i];
@@ -506,10 +541,8 @@ namespace URUI.Internal.Resources
                 }
                 catch (Exception error)
                 {
-                    item.failedResource = resource;
-                    item.uncertain = true;
+                    firstFailed ??= resource;
                     Debug.LogException(error);
-                    return false;
                 }
             }
             item.resources.Clear();
@@ -528,14 +561,15 @@ namespace URUI.Internal.Resources
                 submission.Release(completed: true);
             }
             item.submissions.Clear();
+            if (firstFailed != null)
+            {
+                item.failedResource = firstFailed;
+                item.uncertain = true;
+                return false;
+            }
             if (idle.Count < 32 && item.resources.Capacity <= 2048 && item.submissions.Capacity <= 16)
             {
                 idle.Push(item);
-            }
-            else
-            {
-                item.barrier?.Release();
-                item.barrier = null;
             }
             return true;
         }
@@ -546,14 +580,19 @@ namespace URUI.Internal.Resources
             {
                 return;
             }
-            FlushDeferred();
-            ReleaseBarrierCommands();
             owner = null;
-            while (idle.Count > 0)
+            destroyingOwner = true;
+            try
             {
-                idle.Pop().barrier?.Release();
+                FlushDeferred();
+                ReleaseBarrierCommands();
+                idle.Clear();
+                idlePins.Clear();
             }
-            idlePins.Clear();
+            finally
+            {
+                destroyingOwner = false;
+            }
         }
     }
 }

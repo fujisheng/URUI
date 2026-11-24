@@ -390,9 +390,12 @@ namespace URUI.Internal.Hosting
                     PinLayerWrites(submission);
                     planResources?.PinSubmission(submission.Geometry, submission.GeometrySet);
                     externalGeometryInputs?.Programs.PinSubmission(submission.Programs, submission.ProgramSet);
-                    submission.barrier ??= new CommandBuffer { name = "URUI SRP submitted image lease fence" };
-                    submission.barrier.Clear();
-                    submission.fence = submission.barrier.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.PixelProcessing);
+                    if (!immediate)
+                    {
+                        submission.barrier ??= new CommandBuffer { name = "URUI SRP submitted image lease fence" };
+                        submission.barrier.Clear();
+                        submission.fence = submission.barrier.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.PixelProcessing);
+                    }
                 }
                 if (immediate)
                 {
@@ -400,9 +403,9 @@ namespace URUI.Internal.Hosting
                     {
                         Graphics.ExecuteCommandBuffer(recordedBuffers[i]);
                     }
-                    if (submission != null)
+                    if (submission != null && SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null)
                     {
-                        Graphics.ExecuteCommandBuffer(submission.barrier);
+                        submission.fence = Graphics.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.PixelProcessing);
                     }
                 }
                 else
@@ -450,7 +453,7 @@ namespace URUI.Internal.Hosting
                 }
                 try
                 {
-                    if (!item.fence.passed)
+                    if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null && !item.fence.passed)
                     {
                         continue;
                     }

@@ -131,6 +131,25 @@ namespace URUI.Effect
                 entry.LastProgram = program;
                 return program;
             }
+            internal void RemoveUnusedProgram(Material material)
+            {
+                if (material == null)
+                {
+                    return;
+                }
+                for (int i = 0; i < Emitters.Count; i++)
+                {
+                    var materials = Emitters[i].Materials;
+                    for (int j = 0; j < materials.Length; j++)
+                    {
+                        if (materials[j] == material)
+                        {
+                            return;
+                        }
+                    }
+                }
+                programs.Remove(material);
+            }
             internal int Version;
             internal bool Manual;
             bool disposed;
@@ -696,7 +715,6 @@ namespace URUI.Effect
             {
                 throw new ArgumentNullException(!source ? nameof(source) : nameof(replacement));
             }
-            state.Program(replacement);
             var target = state;
             var slots = new List<(Emitter Emitter, int Index)>();
             foreach (var emitter in target.Emitters)
@@ -713,6 +731,7 @@ namespace URUI.Effect
             {
                 throw new InvalidOperationException("Material is not used by this particle node. Select its body or trail material.");
             }
+            target.Program(replacement);
             foreach (var slot in slots)
             {
                 slot.Emitter.Materials[slot.Index] = replacement;
@@ -731,6 +750,7 @@ namespace URUI.Effect
                         slot.Emitter.Materials[slot.Index] = source;
                     }
                 }
+                target.RemoveUnusedProgram(replacement);
                 target.Version++;
             });
         }

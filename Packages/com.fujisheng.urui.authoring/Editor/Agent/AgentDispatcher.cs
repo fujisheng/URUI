@@ -399,6 +399,24 @@ namespace URUI.Authoring.Agent
                 liveRenderedRevision = -1;
                 liveFrame = 0;
             }
+            else if (nodes.Count > 512)
+            {
+                List<string> stale = null;
+                foreach (var pair in nodes)
+                {
+                    if (!pair.Value.IsValid)
+                    {
+                        (stale ??= new List<string>()).Add(pair.Key);
+                    }
+                }
+                if (stale != null)
+                {
+                    for (int i = 0; i < stale.Count; i++)
+                    {
+                        nodes.Remove(stale[i]);
+                    }
+                }
+            }
         }
         static object SourceNode(SourceDocument.Node node) => Obj("id", node.Key, "tag", node.Tag, "name", node.Attribute("id"), "childCount", node.Children.Count, "sourceStart", node.Start, "sourceEnd", node.End);
         object ReadProperties(Dictionary<string, object> request, ElementSelectionProxy target)

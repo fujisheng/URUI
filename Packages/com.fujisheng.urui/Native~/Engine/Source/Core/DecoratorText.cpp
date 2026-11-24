@@ -35,6 +35,7 @@ namespace URUI
         {
             Log::Message(Log::LT_WARNING, "Could not construct text decorator with text %s on element %s", text.c_str(),
                          element->GetAddress().c_str());
+            delete data;
             return {};
         }
 

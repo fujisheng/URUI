@@ -320,8 +320,11 @@ Value = EditorGUIUtility.systemCopyBuffer
             int nextId = 1;
             int visited;
             long sourceStructure = -1;
+            string trackedSession;
+            Document trackedDocument;
             bool autoExpand;
             bool syncing;
+            readonly List<string> staleIdKeys = new List<string>();
             public NodeTree(TreeViewState state, bool runtimeWindow = false) : base(state)
             {
                 this.runtimeWindow = runtimeWindow;
@@ -385,6 +388,15 @@ Value = EditorGUIUtility.systemCopyBuffer
                 if (EditorApplication.isPlaying)
                 {
                     var doc = AuthoringEnvironment.LiveDocument;
+                    var sessionId = AuthoringEnvironment.Live?.Id;
+                    if (trackedSession != sessionId || trackedDocument != doc)
+                    {
+                        trackedSession = sessionId;
+                        trackedDocument = doc;
+                        ids.Clear();
+                        nextId = 1;
+                        state.expandedIDs.Clear();
+                    }
                     if (doc && doc.IsLoaded && AuthoringEnvironment.Live != null)
                     {
                         AddLive(root, RuntimeInspectionBridge.Root(doc), 0);
@@ -392,6 +404,15 @@ Value = EditorGUIUtility.systemCopyBuffer
                 }
                 else if (!runtimeWindow && AuthoringEnvironment.Author.Model != null)
                 {
+                    var authorKey = AuthoringEnvironment.Author.Id + ":" + AuthoringEnvironment.Author.File?.Path;
+                    if (trackedSession != authorKey || trackedDocument != null)
+                    {
+                        trackedSession = authorKey;
+                        trackedDocument = null;
+                        ids.Clear();
+                        nextId = 1;
+                        state.expandedIDs.Clear();
+                    }
                     autoExpand = sourceStructure != AuthoringEnvironment.Author.StructureRevision;
                     sourceStructure = AuthoringEnvironment.Author.StructureRevision;
                     foreach (var node in AuthoringEnvironment.Author.Model.Roots)
@@ -399,6 +420,24 @@ Value = EditorGUIUtility.systemCopyBuffer
                         AddSource(root, node, 0);
                     }
                     autoExpand = false;
+                }
+                if (ids.Count > 256)
+                {
+                    staleIdKeys.Clear();
+                    foreach (var pair in ids)
+                    {
+                        if (!liveNodes.ContainsKey(pair.Value) && !sourceKeys.ContainsKey(pair.Value))
+                        {
+                            staleIdKeys.Add(pair.Key);
+                        }
+                    }
+                    for (int i = 0; i < staleIdKeys.Count; i++)
+                    {
+                        int deadId = ids[staleIdKeys[i]];
+                        ids.Remove(staleIdKeys[i]);
+                        state.expandedIDs.Remove(deadId);
+                    }
+                    staleIdKeys.Clear();
                 }
                 return root;
             }

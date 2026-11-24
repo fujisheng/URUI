@@ -139,6 +139,11 @@ namespace URUI.Documents
             state.Elements.Clear();
             state.ElementSnapshot = null;
             state.EffectLayouts.Clear();
+#if UNITY_EDITOR
+            state.InspectionImageOverrides?.Clear();
+            state.InspectionBaseImageResolver = null;
+            state.InspectionWrapperImageResolver = null;
+#endif
             ReleaseEffects(state);
             ReleasePainters(state);
             if (!ReferenceEquals(surface, null))
@@ -180,6 +185,9 @@ namespace URUI.Documents
             try
             {
                 content = activeContent = null;
+#if UNITY_EDITOR
+                AuthoringRoot = null;
+#endif
                 surface.MarkDocumentUnloaded(this);
                 RetireContent(target, notify: true);
             }

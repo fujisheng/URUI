@@ -23,17 +23,25 @@ namespace URUI.Animation
             }
             this.className = className;
             target.Document.LayoutUpdated += Update;
+            target.Document.Unloaded += HandleUnloaded;
         }
+        void HandleUnloaded(Document document) => Dispose();
         void Update(Document document)
         {
-            if (disposed || !target.IsValid)
+            if (disposed)
             {
+                return;
+            }
+            if (!target.IsValid || !activation.IsValid)
+            {
+                Dispose();
                 return;
             }
             const ElementState RequiredVisible = ElementState.Valid | ElementState.Attached | ElementState.VisibleInHierarchy;
             var flags = activation.StateFlags;
             if ((flags & ElementState.Valid) == 0)
             {
+                Dispose();
                 return;
             }
             var visible = (flags & RequiredVisible) == RequiredVisible && activation.HasLayout;
@@ -51,7 +59,11 @@ namespace URUI.Animation
                 return;
             }
             disposed = true;
-            target.Document.LayoutUpdated -= Update;
+            if (target.Document)
+            {
+                target.Document.LayoutUpdated -= Update;
+                target.Document.Unloaded -= HandleUnloaded;
+            }
             if (target.IsValid)
             {
                 target.RemoveFromClassList(className);

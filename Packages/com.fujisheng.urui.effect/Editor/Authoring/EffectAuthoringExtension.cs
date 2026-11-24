@@ -49,7 +49,10 @@ namespace URUI.Effect.Editor.Authoring
                     return;
                 }
                 disposed = true;
-                Document.Loaded -= Loaded;
+                if (Document)
+                {
+                    Document.Loaded -= Loaded;
+                }
                 Module.Dispose();
                 Particles.Clear();
                 Released?.Invoke();
@@ -124,8 +127,10 @@ namespace URUI.Effect.Editor.Authoring
         }
         readonly Dictionary<Document, PreviewBinding> previews = new Dictionary<Document, PreviewBinding>();
         readonly Dictionary<string, Binding> bindings = new Dictionary<string, Binding>();
+        readonly List<string> staleBindingKeys = new List<string>();
         readonly List<AuthoringProperty> properties = new List<AuthoringProperty>();
         double lastTick;
+        double lastPrune;
         public IReadOnlyList<AuthoringAssetChange> PendingAssets()
         {
             var result = new List<AuthoringAssetChange>();
@@ -250,14 +255,62 @@ namespace URUI.Effect.Editor.Authoring
                 }
             }
         }
+        void PruneStaleBindings(string keepKey = null)
+        {
+            if (bindings.Count == 0)
+            {
+                return;
+            }
+            staleBindingKeys.Clear();
+            foreach (var pair in bindings)
+            {
+                if (pair.Key == keepKey)
+                {
+                    continue;
+                }
+                var binding = pair.Value;
+                if (binding.Asset?.Dirty == true)
+                {
+                    continue;
+                }
+                var ctx = binding.Context;
+                if (ctx == null || (ctx is UnityEngine.Object unityObj && !unityObj) || ctx.Node == null || !ctx.Node.IsValid)
+                {
+                    staleBindingKeys.Add(pair.Key);
+                }
+            }
+            for (int i = 0; i < staleBindingKeys.Count; i++)
+            {
+                string key = staleBindingKeys[i];
+                if (bindings.TryGetValue(key, out var stale))
+                {
+                    stale.Dispose();
+                    bindings.Remove(key);
+                }
+            }
+            staleBindingKeys.Clear();
+        }
         void UpdateBindings()
         {
             double now = EditorApplication.timeSinceStartup;
             float delta = (float)Math.Min(.1, Math.Max(0, now - lastTick));
             lastTick = now;
+            if (bindings.Count == 0)
+            {
+                return;
+            }
+            if (now - lastPrune >= 1.0)
+            {
+                lastPrune = now;
+                PruneStaleBindings();
+                if (bindings.Count == 0)
+                {
+                    return;
+                }
+            }
             foreach (var binding in bindings.Values)
             {
-                if (!binding.Playing || binding.Context == null || (!binding.Context.IsLive && !binding.Context.IsObserved) || binding.Context.Node == null || !binding.Context.Node.IsValid)
+                if (!binding.Playing || binding.Context == null || !binding.Context.IsObserved || binding.Context.Node == null || !binding.Context.Node.IsValid)
                 {
                     continue;
                 }
@@ -285,6 +338,10 @@ namespace URUI.Effect.Editor.Authoring
         Binding Get(IAuthoringContext context)
         {
             string key = context.SessionId + "/" + context.TargetId;
+            if (bindings.Count > 16)
+            {
+                PruneStaleBindings(key);
+            }
             if (!bindings.TryGetValue(key, out var binding))
             {
                 bindings.Add(key, binding = new Binding());

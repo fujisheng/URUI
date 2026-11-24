@@ -76,6 +76,7 @@ namespace URUI
         FileTextureEntry& EnsureLoaded(RenderInterface* render_interface, TextureFileIndex index);
 
         Vector<FileTextureEntry> texture_list;
+        Vector<TextureFileIndex> free_slots;
         // key: source, value: index into 'texture_list'
         UnorderedMap<String, TextureFileIndex> texture_map;
     };

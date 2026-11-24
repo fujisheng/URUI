@@ -36,9 +36,9 @@ namespace URUI.Authoring.Animation
         {
             AnimationEnvironment.EnsureWorkspace();
             var workspace = AnimationEnvironment.Workspace;
-            var definition = workspace.Definition;
+            var definition = workspace.PeekDefinition();
             DrawToolbar(definition);
-            definition = workspace.Definition;
+            definition = workspace.PeekDefinition();
             if (definition == null)
             {
                 EditorGUILayout.HelpBox(L.Tr("选中节点，点击“添加动画”，选择淡入或弹出等预设即可开始。关键帧保存在 CSS，序列文件保存时间与绑定。"), MessageType.Info);

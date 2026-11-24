@@ -511,6 +511,7 @@ namespace URUI::Bridge
     void CancelBlockedDocumentInput(SurfaceContext& surface) noexcept;
     void RetireDocumentInteraction(SurfaceContext& surface, URUIDocumentHandle owner,
                                    URUI::ElementDocument* document) noexcept;
+    void PruneDeadSubscriptions(SurfaceContext& surface) noexcept;
     void FlushCandidateEvents(SurfaceContext& surface);
     void CancelCompositionFor(SurfaceContext& surface, URUI::Element* element) noexcept;
     std::unique_ptr<CandidateEvents, CandidateEventsDeleter> CreateCandidateEvents(SurfaceContext& surface,

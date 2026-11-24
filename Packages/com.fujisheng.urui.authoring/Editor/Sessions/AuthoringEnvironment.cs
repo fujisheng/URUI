@@ -78,6 +78,7 @@ namespace URUI.Authoring.Sessions
         static bool changingSelection;
         static bool recoveryConflict;
         static bool recoveryPending = true;
+        static bool restoringRecovery;
         static bool previewRefreshPending;
         static string RecoveryPath => Path.Combine(ProjectRoot, "Library/URUI/Authoring/working-copy.json");
         static AuthoringEnvironment()
@@ -96,8 +97,12 @@ namespace URUI.Authoring.Sessions
                 if (!EditorApplication.isPlaying)
                 {
                     SetNodeSelection(selectedNodes, clearUnitySelection: false);
+                    ElementSelectionProxy.PruneStale();
                 }
-                RefreshPreview();
+                if (!restoringRecovery || observers > 0)
+                {
+                    RefreshPreview();
+                }
                 Changed?.Invoke();
             };
             foreach (var type in TypeCache.GetTypesDerivedFrom<IAuthoringExtension>())
@@ -140,6 +145,7 @@ namespace URUI.Authoring.Sessions
             try
             {
                 Status = "Recovered authoring working copies; source files unchanged.";
+                restoringRecovery = true;
                 SourceRecovery.Restore(Author, RecoveryPath);
             }
             catch (Exception error)
@@ -147,14 +153,38 @@ namespace URUI.Authoring.Sessions
                 recoveryConflict = true;
                 Report(error.Message);
             }
+            finally
+            {
+                restoringRecovery = false;
+            }
         }
         public static void Observe(bool add)
         {
+            int previous = observers;
+            observers = Math.Max(0, observers + (add ? 1 : -1));
             if (add)
             {
                 RuntimeInspectionBridge.EnableSourceMapping();
+                if (previous == 0 && Author.File != null && Preview == null && !EditorApplication.isPlayingOrWillChangePlaymode)
+                {
+                    RefreshPreview();
+                }
             }
-            observers = Math.Max(0, observers + (add ? 1 : -1));
+            else if (previous > 0 && observers == 0)
+            {
+                previewRefreshPending = false;
+                Animation.AnimationEnvironment.Stop();
+                if (Preview != null)
+                {
+                    Try(() =>
+                    {
+                        Preview.Dispose();
+                        Preview = null;
+                    });
+                }
+                ElementSelectionProxy.PruneStale();
+                RuntimeInspectionBridge.DisableSourceMapping();
+            }
         }
         internal static bool HasUnsavedSources => Author.Workspace.Files.Any(file => file.Dirty);
 
@@ -309,6 +339,7 @@ namespace URUI.Authoring.Sessions
             Animation.AnimationEnvironment.DocumentChanged(document);
             LiveDocument = document;
             SetNodeSelection(selectedNodes, clearUnitySelection: false);
+            ElementSelectionProxy.PruneStale();
             Changed?.Invoke();
         }
         static void FollowUnitySelection()
@@ -391,7 +422,10 @@ namespace URUI.Authoring.Sessions
             else if (state == PlayModeStateChange.EnteredEditMode)
             {
                 RecoverWorkingCopy();
-                RefreshPreview();
+                if (observers > 0)
+                {
+                    RefreshPreview();
+                }
             }
             Changed?.Invoke();
         }

@@ -59,9 +59,11 @@ namespace URUI.Animation
             {
                 active = true;
                 path.Document.LayoutUpdated += Layout;
+                path.Document.Unloaded += HandleUnloaded;
             }
             Apply();
         }
+        void HandleUnloaded(global::URUI.Documents.Document document) => Stop();
         void Apply()
         {
             var t = Mathf.Clamp01(Number(path, "--urui-motion-progress"));
@@ -71,7 +73,16 @@ namespace URUI.Animation
         }
         void Layout(global::URUI.Documents.Document document)
         {
-            if (active && path.IsValid && path.HasLayout)
+            if (!active)
+            {
+                return;
+            }
+            if (!path.IsValid || !rotation.IsValid)
+            {
+                Stop();
+                return;
+            }
+            if (path.HasLayout)
             {
                 Apply();
             }
@@ -84,7 +95,11 @@ namespace URUI.Animation
             if (active)
             {
                 active = false;
-                path.Document.LayoutUpdated -= Layout;
+                if (path.Document)
+                {
+                    path.Document.LayoutUpdated -= Layout;
+                    path.Document.Unloaded -= HandleUnloaded;
+                }
             }
             if (path.IsValid)
             {

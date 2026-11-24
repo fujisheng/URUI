@@ -29,20 +29,39 @@ namespace URUI.Documents
                 throw new InvalidOperationException("Select a valid img node.");
             }
             var selected = content;
-            var previous = selected.ImageResolver;
             string uri = "/__urui_inspection/" + Guid.NewGuid().ToString("N") + ".png";
             string original = element.GetAttribute("src");
-            bool active = true;
-            Func<string, URUI.Resources.ImageLease> resolver = source => active && source == uri ? new URUI.Resources.ImageLease(texture) : previous?.Invoke(source);
-            selected.ImageResolver = resolver;
+            selected.InspectionImageOverrides ??= new Dictionary<string, UnityEngine.Texture>(StringComparer.Ordinal);
+            if (!ReferenceEquals(selected.ImageResolver, selected.InspectionWrapperImageResolver))
+            {
+                selected.InspectionBaseImageResolver = selected.ImageResolver;
+                selected.InspectionWrapperImageResolver = source =>
+                    selected.InspectionImageOverrides.TryGetValue(source, out var overridden)
+                        ? new URUI.Resources.ImageLease(overridden)
+                        : selected.InspectionBaseImageResolver?.Invoke(source);
+                selected.ImageResolver = selected.InspectionWrapperImageResolver;
+            }
+            selected.InspectionImageOverrides[uri] = texture;
+            void RemoveOverride()
+            {
+                selected.InspectionImageOverrides?.Remove(uri);
+                if (selected.InspectionImageOverrides == null || selected.InspectionImageOverrides.Count == 0)
+                {
+                    if (ReferenceEquals(selected.ImageResolver, selected.InspectionWrapperImageResolver))
+                    {
+                        selected.ImageResolver = selected.InspectionBaseImageResolver;
+                    }
+                    selected.InspectionBaseImageResolver = null;
+                    selected.InspectionWrapperImageResolver = null;
+                }
+            }
             try
             {
                 element.SetAttribute("src", uri);
             }
             catch
             {
-                active = false;
-                selected.ImageResolver = previous;
+                RemoveOverride();
                 throw;
             }
             return new InspectionImageLease(() =>
@@ -63,11 +82,7 @@ namespace URUI.Documents
                 }
                 finally
                 {
-                    active = false;
-                    if (ReferenceEquals(selected.ImageResolver, resolver))
-                    {
-                        selected.ImageResolver = previous;
-                    }
+                    RemoveOverride();
                 }
             });
         }

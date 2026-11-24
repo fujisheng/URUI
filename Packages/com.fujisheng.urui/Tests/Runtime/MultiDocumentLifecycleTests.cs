@@ -2,6 +2,7 @@ using System;
 using NUnit.Framework;
 using UnityEngine;
 using URUI.Documents;
+using URUI.Events;
 using URUI.Hosting;
 
 namespace URUI.Tests
@@ -66,6 +67,44 @@ namespace URUI.Tests
             b.SetPresentation(1, 0, false, true);
             Assert.IsFalse(surface.Input.BlocksPointer(blank));
             Assert.IsTrue(surface.Input.BlocksPointer(control));
+        }
+
+        [Test]
+        public void NonModalUpperDocumentShellDoesNotBlockLowerControlsOrLeakSceneClicks()
+        {
+            surface.Viewport = new Vector2Int(128, 64);
+            var controlDoc = new Vector2(24, 20);
+            var controlScreen = new Vector2(controlDoc.x * Screen.width / 128f, (63f - controlDoc.y) * Screen.height / 64f);
+            var blankScreen = new Vector2(96f * Screen.width / 128f, (63f - 32f) * Screen.height / 64f);
+
+            a.SetPresentation(0, 0, visible: true, modal: false);
+            a.LoadHtml("<!doctype html><html><head><style>html,body{margin:0;width:128px;height:64px;}button{position:absolute;left:8px;top:8px;width:32px;height:24px;}</style></head><body><button id='action'>Action</button></body></html>", "ui/lower-hud.html");
+            b.SetPresentation(16000, 0, visible: true, modal: false);
+            b.LoadHtml("<!doctype html><html><head><style>html,body{margin:0;width:128px;height:64px;}.tips-canvas,.tips-canvas *{pointer-events:none;}</style></head><body><main class='tips-canvas'></main></body></html>", "ui/tips-overlay.html");
+            a.SynchronizeLayout();
+            b.SynchronizeLayout();
+
+            var clicks = 0;
+            var action = a.Q("action");
+            Assert.IsNotNull(action);
+            action.RegisterCallback<ClickEvent>(_ => clicks++);
+
+            Assert.AreSame(action, a.Pick(controlDoc));
+            Assert.IsTrue(surface.Input.BlocksPointer(controlScreen), "Non-modal upper document shell must not cause lower button clicks to fall through to scene.");
+            Assert.IsFalse(surface.Input.BlocksPointer(blankScreen), "Blank areas across non-modal documents must keep passing through to scene.");
+
+            surface.Input.SendPointer(PointerPhase.Move, controlDoc);
+            surface.Input.SendPointer(PointerPhase.Down, controlDoc, pressedButtons: 1);
+            surface.Input.SendPointer(PointerPhase.Up, controlDoc);
+            Assert.AreEqual(1, clicks);
+
+            // Turning the upper overlay modal must still block both blank and lower controls.
+            b.SetPresentation(16000, 0, visible: true, modal: true);
+            Assert.IsTrue(surface.Input.BlocksPointer(blankScreen));
+            surface.Input.SendPointer(PointerPhase.Move, controlDoc);
+            surface.Input.SendPointer(PointerPhase.Down, controlDoc, pressedButtons: 1);
+            surface.Input.SendPointer(PointerPhase.Up, controlDoc);
+            Assert.AreEqual(1, clicks);
         }
 
         [Test]

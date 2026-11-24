@@ -726,6 +726,25 @@ namespace URUI::Bridge
             it = surface.subscriptions.erase(it);
         }
     }
+
+    void PruneDeadSubscriptions(SurfaceContext& surface) noexcept
+    {
+        if (surface.callbackDepth != 0 || surface.subscriptions.empty())
+        {
+            return;
+        }
+        for (auto it = surface.subscriptions.begin(); it != surface.subscriptions.end();)
+        {
+            if (!it->second || !it->second->element || !it->second->enabled)
+            {
+                it = surface.subscriptions.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
 }
 
 using namespace URUI::Bridge;

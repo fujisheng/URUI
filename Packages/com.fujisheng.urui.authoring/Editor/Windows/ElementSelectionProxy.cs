@@ -39,6 +39,10 @@ namespace URUI.Authoring.Windows
             {
                 return existing;
             }
+            if (proxies.Count >= 32)
+            {
+                PruneStale();
+            }
             var proxy = CreateInstance<ElementSelectionProxy>();
             proxy.hideFlags = HideFlags.HideAndDontSave;
             proxy.liveNode = node;
@@ -55,6 +59,10 @@ namespace URUI.Authoring.Windows
             {
                 return existing;
             }
+            if (proxies.Count >= 32)
+            {
+                PruneStale();
+            }
             var proxy = CreateInstance<ElementSelectionProxy>();
             proxy.hideFlags = HideFlags.HideAndDontSave;
             proxy.sourceIdentity = author.NodeIdentity(key);
@@ -62,6 +70,34 @@ namespace URUI.Authoring.Windows
             proxy.name = author.Model.Find(key).Tag;
             proxies[id] = proxy;
             return proxy;
+        }
+        public static void PruneStale()
+        {
+            if (proxies.Count == 0)
+            {
+                return;
+            }
+            List<string> remove = null;
+            foreach (var pair in proxies)
+            {
+                if (!pair.Value || !pair.Value.IsTargetValid)
+                {
+                    (remove ??= new List<string>()).Add(pair.Key);
+                }
+            }
+            if (remove == null)
+            {
+                return;
+            }
+            for (int i = 0; i < remove.Count; i++)
+            {
+                string key = remove[i];
+                if (proxies[key])
+                {
+                    DestroyImmediate(proxies[key]);
+                }
+                proxies.Remove(key);
+            }
         }
         public string Read(string property)
         {

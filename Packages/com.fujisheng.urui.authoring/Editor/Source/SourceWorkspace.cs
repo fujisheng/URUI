@@ -289,6 +289,50 @@ namespace URUI.Authoring.Source
             HistoryPosition = 0;
         }
 
+        internal void PruneCleanUnused(string keepPath)
+        {
+            if (files.Count <= 32)
+            {
+                return;
+            }
+            var referenced = new HashSet<string>(StringComparer.Ordinal);
+            if (!string.IsNullOrEmpty(keepPath))
+            {
+                referenced.Add(keepPath);
+            }
+            for (int i = 0; i < undo.Count; i++)
+            {
+                var batch = undo[i];
+                for (int j = 0; j < batch.Count; j++)
+                {
+                    referenced.Add(batch[j].Path);
+                }
+            }
+            for (int i = 0; i < redo.Count; i++)
+            {
+                var batch = redo[i];
+                for (int j = 0; j < batch.Count; j++)
+                {
+                    referenced.Add(batch[j].Path);
+                }
+            }
+            List<string> stale = null;
+            foreach (var pair in files)
+            {
+                if (!pair.Value.Dirty && !referenced.Contains(pair.Key))
+                {
+                    (stale ??= new List<string>()).Add(pair.Key);
+                }
+            }
+            if (stale != null)
+            {
+                for (int i = 0; i < stale.Count; i++)
+                {
+                    files.Remove(stale[i]);
+                }
+            }
+        }
+
         void Read(SourceFile file)
         {
             byte[] bytes = File.ReadAllBytes(file.Path);

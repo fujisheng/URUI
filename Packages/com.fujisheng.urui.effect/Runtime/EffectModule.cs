@@ -157,6 +157,7 @@ namespace URUI.Effect
         }
         void Unloaded(Document owner)
         {
+            surfaces.Clear();
             if (controllers.Count == 0)
             {
                 return;

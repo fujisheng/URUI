@@ -177,6 +177,24 @@ namespace URUI.Authoring.Windows
                     AddNode(items, node, author.Model);
                 }
             }
+            if (rowIds.Count > visible.Count + 128)
+            {
+                List<string> stale = null;
+                foreach (var key in rowIds.Keys)
+                {
+                    if (!visible.ContainsKey(key) && author.ResolveIdentity(key) == null)
+                    {
+                        (stale ??= new List<string>()).Add(key);
+                    }
+                }
+                if (stale != null)
+                {
+                    for (int i = 0; i < stale.Count; i++)
+                    {
+                        rowIds.Remove(stale[i]);
+                    }
+                }
+            }
             rebuilding = true;
             try
             {

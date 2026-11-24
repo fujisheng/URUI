@@ -996,7 +996,7 @@ namespace URUI::RenderPlan
             if (idx != TombstoneSlot)
             {
                 const auto& b = batches[idx];
-                if (b.id && b.epoch == batchEpoch && b.keysHash == keysHash && b.keys == keys)
+                if (b.id && !b.retired && b.epoch == batchEpoch && b.keysHash == keysHash && b.keys == keys)
                 {
                     return idx;
                 }
@@ -1005,33 +1005,169 @@ namespace URUI::RenderPlan
         return EmptySlot;
     }
 
+    void Session::RetireGeometry(uint64_t geometry) noexcept
+    {
+        if (!geometry)
+        {
+            return;
+        }
+        try
+        {
+            pendingRetiredGeometries.push_back(geometry);
+        }
+        catch (...)
+        {
+            // Fallback: if scratch vector cannot grow under OOM, force an epoch retirement scan.
+            retiredEpochBatches = true;
+            reuseValid = false;
+        }
+    }
+
+    void Session::FlushRetiredGeometries() noexcept
+    {
+        if (pendingRetiredGeometries.empty())
+        {
+            return;
+        }
+        const size_t count = pendingRetiredGeometries.size();
+        const bool useBinarySearch = count > 8;
+        if (useBinarySearch)
+        {
+            std::sort(pendingRetiredGeometries.begin(), pendingRetiredGeometries.end());
+            pendingRetiredGeometries.erase(
+                std::unique(pendingRetiredGeometries.begin(), pendingRetiredGeometries.end()),
+                pendingRetiredGeometries.end());
+        }
+        auto isRetired = [&](uint64_t id) noexcept -> bool
+        {
+            if (useBinarySearch)
+            {
+                return std::binary_search(pendingRetiredGeometries.begin(), pendingRetiredGeometries.end(), id);
+            }
+            for (uint64_t v : pendingRetiredGeometries)
+            {
+                if (v == id)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+        for (uint32_t i = 0; i < batches.size(); ++i)
+        {
+            auto& batch = batches[i];
+            if (!batch.id || batch.retired)
+            {
+                continue;
+            }
+            for (const auto& key : batch.keys)
+            {
+                if (key.version == 0 && isRetired(key.geometry))
+                {
+                    batch.retired = true;
+                    retiredEpochBatches = true;
+                    reuseValid = false;
+                    break;
+                }
+            }
+        }
+        pendingRetiredGeometries.clear();
+    }
+
+    void Session::TrimIdleBatches() noexcept
+    {
+        constexpr size_t MaxIdleWarmSlots = 64;
+        constexpr size_t MaxIdleWarmBytes = 4u * 1024u * 1024u;
+        size_t warmSlots = 0;
+        size_t warmBytes = 0;
+        for (size_t k = freeBatchSlots.size(); k > 0; --k)
+        {
+            const uint32_t idx = freeBatchSlots[k - 1];
+            if (idx >= batches.size() || batches[idx].id != 0)
+            {
+                continue;
+            }
+            auto& batch = batches[idx];
+            const size_t bytes = batch.keys.capacity() * sizeof(GeometryKey) +
+                                 batch.uniformColors.capacity() * sizeof(uint8_t) +
+                                 batch.vertices.capacity() * sizeof(URUIPlanVertex) +
+                                 batch.indices.capacity() * sizeof(uint32_t);
+            if (bytes == 0)
+            {
+                continue;
+            }
+            if (warmSlots < MaxIdleWarmSlots && warmBytes + bytes <= MaxIdleWarmBytes)
+            {
+                ++warmSlots;
+                warmBytes += bytes;
+                continue;
+            }
+            Buffer<GeometryKey>(Allocator<GeometryKey>(&geometryBudget)).swap(batch.keys);
+            Buffer<uint8_t>(Allocator<uint8_t>(&geometryBudget)).swap(batch.uniformColors);
+            Buffer<URUIPlanVertex>(Allocator<URUIPlanVertex>(&geometryBudget)).swap(batch.vertices);
+            Buffer<uint32_t>(Allocator<uint32_t>(&geometryBudget)).swap(batch.indices);
+        }
+    }
+
     void Session::CollectRetiredEpochs()
     {
+        if (!pendingRetiredGeometries.empty())
+        {
+            FlushRetiredGeometries();
+        }
         if (!retiredEpochBatches)
         {
             return;
         }
         retiredEpochBatches = false;
-        bool changed = false;
+        bool needRebuild = false;
+        bool retiredAny = false;
         for (uint32_t i = 0; i < batches.size(); ++i)
         {
             auto& batch = batches[i];
-            if (batch.id && batch.epoch != epoch)
+            if (batch.id && (batch.epoch != epoch || batch.retired))
             {
                 if (BatchInUse(i))
                 {
                     retiredEpochBatches = true;
                     continue;
                 }
+                const uint64_t oldId = batch.id;
+                const uint64_t oldEpoch = batch.epoch;
+                const uint64_t oldKeysHash = batch.keysHash;
                 batch.id = 0;
                 batch.lastUse = 0;
                 batch.keysHash = 0;
-                changed = true;
+                batch.retired = false;
+                RemoveBatchIndex(i, oldId, oldEpoch, oldKeysHash);
+                retiredAny = true;
+                try
+                {
+                    freeBatchSlots.push_back(i);
+                }
+                catch (const std::bad_alloc&)
+                {
+                    Buffer<GeometryKey>(Allocator<GeometryKey>(&geometryBudget)).swap(batch.keys);
+                    Buffer<uint8_t>(Allocator<uint8_t>(&geometryBudget)).swap(batch.uniformColors);
+                    Buffer<URUIPlanVertex>(Allocator<URUIPlanVertex>(&geometryBudget)).swap(batch.vertices);
+                    Buffer<uint32_t>(Allocator<uint32_t>(&geometryBudget)).swap(batch.indices);
+                    needRebuild = true;
+                }
             }
         }
-        if (changed)
+        if (needRebuild)
         {
-            RebuildBatchIndices();
+            try
+            {
+                RebuildBatchIndices();
+            }
+            catch (const std::bad_alloc&)
+            {
+            }
+        }
+        if (retiredAny)
+        {
+            TrimIdleBatches();
         }
     }
 
@@ -1060,6 +1196,7 @@ namespace URUI::RenderPlan
         batch.keysHash = 0;
         batch.refCount = 0;
         batch.compilingPin = false;
+        batch.retired = false;
         Buffer<GeometryKey>(Allocator<GeometryKey>(&geometryBudget)).swap(batch.keys);
         Buffer<uint8_t>(Allocator<uint8_t>(&geometryBudget)).swap(batch.uniformColors);
         Buffer<URUIPlanVertex>(Allocator<URUIPlanVertex>(&geometryBudget)).swap(batch.vertices);
@@ -2880,22 +3017,13 @@ namespace URUI::RenderPlan
             ni += source.index_count;
         }
         size_t selected = SIZE_MAX;
-        while (!freeBatchSlots.empty())
-        {
-            const uint32_t candidate = freeBatchSlots.back();
-            freeBatchSlots.pop_back();
-            if (candidate < batches.size() && !batches[candidate].id)
-            {
-                selected = candidate;
-                break;
-            }
-        }
-        if (selected == SIZE_MAX && hasVersionedKey)
+        if (hasVersionedKey)
         {
             for (size_t n = 0; n < batches.size(); n++)
             {
                 const auto& candidate = batches[n];
-                if (candidate.epoch != e || candidate.keys.size() != keys.size() || BatchInUse(uint32_t(n)))
+                if (!candidate.id || candidate.epoch != e || candidate.keys.size() != keys.size() ||
+                    BatchInUse(uint32_t(n)))
                 {
                     continue;
                 }
@@ -2916,6 +3044,45 @@ namespace URUI::RenderPlan
                 {
                     selected = n;
                 }
+            }
+        }
+        if (selected == SIZE_MAX && !freeBatchSlots.empty())
+        {
+            size_t bestFitPos = SIZE_MAX;
+            size_t bestFitCap = SIZE_MAX;
+            size_t fallbackPos = SIZE_MAX;
+            for (size_t pos = freeBatchSlots.size(); pos > 0; --pos)
+            {
+                const size_t i = pos - 1;
+                const uint32_t candidate = freeBatchSlots[i];
+                if (candidate >= batches.size() || batches[candidate].id != 0)
+                {
+                    freeBatchSlots[i] = freeBatchSlots.back();
+                    freeBatchSlots.pop_back();
+                    continue;
+                }
+                if (fallbackPos == SIZE_MAX)
+                {
+                    fallbackPos = i;
+                }
+                const auto& b = batches[candidate];
+                if (b.keys.capacity() >= keys.size() && b.uniformColors.capacity() >= keys.size() &&
+                    b.vertices.capacity() >= nv && b.indices.capacity() >= ni)
+                {
+                    const size_t cap = b.vertices.capacity() + b.indices.capacity();
+                    if (cap < bestFitCap)
+                    {
+                        bestFitCap = cap;
+                        bestFitPos = i;
+                    }
+                }
+            }
+            const size_t pick = bestFitPos != SIZE_MAX ? bestFitPos : fallbackPos;
+            if (pick != SIZE_MAX)
+            {
+                selected = freeBatchSlots[pick];
+                freeBatchSlots[pick] = freeBatchSlots.back();
+                freeBatchSlots.pop_back();
             }
         }
         const size_t payload = keys.size() * (sizeof(GeometryKey) + sizeof(uint8_t)) + nv * sizeof(URUIPlanVertex) +
@@ -2950,6 +3117,7 @@ namespace URUI::RenderPlan
         }
         batch.id = 0;
         batch.keysHash = 0;
+        batch.retired = false;
         if (batch.keys.capacity() < keys.size())
         {
             Buffer<GeometryKey>(Allocator<GeometryKey>(&geometryBudget)).swap(batch.keys);
@@ -3377,6 +3545,7 @@ namespace URUI::RenderPlan
         }
         epoch = value;
         reuseValid = false;
+        pendingRetiredGeometries.clear();
         retiredEpochBatches = true;
         CollectRetiredEpochs();
     }
@@ -3401,6 +3570,7 @@ namespace URUI::RenderPlan
         {
             return URUI_ERR_REENTRANCY;
         }
+        CollectRetiredEpochs();
         struct UnpublishedInput
         {
             Frame* frame;
@@ -4379,6 +4549,7 @@ namespace URUI::RenderPlan
         {
             return URUI_ERR_REENTRANCY;
         }
+        CollectRetiredEpochs();
         geometryHintCursor = 0;
         compiling = target;
         struct BuildScope

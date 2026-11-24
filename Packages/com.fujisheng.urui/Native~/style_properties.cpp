@@ -55,6 +55,7 @@ namespace URUI::Bridge
             std::array<Snapshot, 2> banks;
             std::array<uint32_t, 2> pins{};
             uint32_t current = 0;
+            bool evicted = false;
         };
 
         struct FrozenSnapshot
@@ -100,6 +101,10 @@ namespace URUI::Bridge
                 if (pins > 0)
                 {
                     --pins;
+                }
+                if (found->second.evicted && found->second.pins[0] == 0 && found->second.pins[1] == 0)
+                {
+                    snapshots.erase(found);
                 }
             }
             const auto index = static_cast<uint32_t>(&frozen - frozenSnapshots.data());
@@ -669,9 +674,16 @@ namespace URUI::Bridge
             return;
         }
         const auto found = store->snapshots.find(token);
-        if (found != store->snapshots.end() && found->second.pins[0] == 0 && found->second.pins[1] == 0)
+        if (found != store->snapshots.end())
         {
-            store->snapshots.erase(found);
+            if (found->second.pins[0] == 0 && found->second.pins[1] == 0)
+            {
+                store->snapshots.erase(found);
+            }
+            else
+            {
+                found->second.evicted = true;
+            }
         }
     }
 
@@ -691,9 +703,17 @@ namespace URUI::Bridge
         {
             auto* doc = ResolveDocument(surface, it->second.owner);
             const bool alive = doc && surface.elementReferences.Resolve(it->first, doc) != nullptr;
-            if (!alive && it->second.pins[0] == 0 && it->second.pins[1] == 0)
+            if (!alive)
             {
-                it = store->snapshots.erase(it);
+                if (it->second.pins[0] == 0 && it->second.pins[1] == 0)
+                {
+                    it = store->snapshots.erase(it);
+                }
+                else
+                {
+                    it->second.evicted = true;
+                    ++it;
+                }
             }
             else
             {

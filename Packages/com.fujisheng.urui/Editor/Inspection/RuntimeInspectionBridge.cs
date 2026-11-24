@@ -260,6 +260,21 @@ namespace URUI.Editor.Inspection
         {
             Document.CaptureAuthoringSources = true;
         }
+        public static void DisableSourceMapping()
+        {
+            Document.CaptureAuthoringSources = false;
+        }
+        public static ulong InspectionStamp(Document document)
+        {
+            if (!document || !document.IsLoaded)
+            {
+                return 0;
+            }
+            unchecked
+            {
+                return (document.NativeLayoutVersion * 1099511628211UL) ^ (document.RefRevision * 2654435761UL) ^ document.LayoutVersion;
+            }
+        }
         public static SourceNodeSnapshot SourceTree(Document document) => CopySource(document.AuthoringRoot);
         static SourceNodeSnapshot CopySource(Document.AuthorNode source)
         {

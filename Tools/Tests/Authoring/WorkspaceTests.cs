@@ -73,6 +73,24 @@ static partial class Program
             File.WriteAllText(a, "broken external");
             Throws(() => validate.Reload(a, false));
             Equal("<body>external</body>", checkedFile.Text);
+            // Negative leak regression: opening many clean files must be prunable without dropping dirty or active files.
+            var pruneWork = new SourceWorkspace(root);
+            string dirtyPath = Path.Combine(root, "Assets/dirty.html");
+            File.WriteAllText(dirtyPath, "<div>dirty</div>");
+            var dirtyFile = pruneWork.Open(dirtyPath);
+            pruneWork.Edit(dirtyPath, "<div>edited</div>", dirtyFile.Revision);
+            string keepPath = null;
+            for (int i = 0; i < 40; i++)
+            {
+                string p = Path.Combine(root, $"Assets/clean_{i}.html");
+                File.WriteAllText(p, $"<div>{i}</div>");
+                pruneWork.Open(p);
+                keepPath = p;
+            }
+            pruneWork.PruneCleanUnused(keepPath);
+            int remaining = 0;
+            foreach (var _ in pruneWork.Files) remaining++;
+            Equal(2, remaining);
         }
         finally { Directory.Delete(root, true); }
     }

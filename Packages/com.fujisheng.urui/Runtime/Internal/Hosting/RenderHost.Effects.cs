@@ -86,9 +86,9 @@ namespace URUI.Internal.Hosting
             }
         }
 
-        void RecoverAbortedBuiltinCamera()
+        void RecoverAbortedBuiltinCamera(bool allowSameFrame = false)
         {
-            if (!builtinCameraRendering || builtinCameraFrame == Time.frameCount)
+            if (!builtinCameraRendering || (!allowSameFrame && builtinCameraFrame == Time.frameCount))
             {
                 return;
             }
@@ -110,7 +110,7 @@ namespace URUI.Internal.Hosting
             {
                 return;
             }
-            RecoverAbortedBuiltinCamera();
+            RecoverAbortedBuiltinCamera(allowSameFrame: true);
             if (!active || !isActiveAndEnabled)
             {
                 return;
@@ -159,9 +159,10 @@ namespace URUI.Internal.Hosting
                     PinLayerWrites(submission);
                     planResources?.PinSubmission(submission.Geometry, submission.GeometrySet);
                     externalGeometryInputs?.Programs.PinSubmission(submission.Programs, submission.ProgramSet);
-                    submission.barrier ??= new UnityEngine.Rendering.CommandBuffer { name = "URUI camera submission fence" };
-                    submission.barrier.Clear();
-                    submission.fence = submission.barrier.CreateGraphicsFence(UnityEngine.Rendering.GraphicsFenceType.CPUSynchronisation, UnityEngine.Rendering.SynchronisationStageFlags.PixelProcessing);
+                    if (!SystemInfo.supportsGraphicsFence && SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
+                    {
+                        throw new NotSupportedException("GPU fence unavailable");
+                    }
                 }
                 // 准入和保活先于 AfterEverything 绘制。相机窗口复用现有分发事务，
                 // 回调内重载/卸载仍排队到真实提交之后，不改写正在消费的缓冲。
@@ -220,7 +221,12 @@ namespace URUI.Internal.Hosting
             {
                 if (builtinSubmission != null)
                 {
-                    Graphics.ExecuteCommandBuffer(builtinSubmission.barrier);
+                    if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
+                    {
+                        builtinSubmission.fence = UnityEngine.Graphics.CreateGraphicsFence(
+                            UnityEngine.Rendering.GraphicsFenceType.CPUSynchronisation,
+                            UnityEngine.Rendering.SynchronisationStageFlags.PixelProcessing);
+                    }
                     builtinSubmission.AwaitingCamera = false;
                 }
                 NotifyEffectSubmission();

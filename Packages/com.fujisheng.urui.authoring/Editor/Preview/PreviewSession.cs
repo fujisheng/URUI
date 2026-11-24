@@ -159,6 +159,10 @@ namespace URUI.Authoring.Preview
                 return;
             }
             RuntimeInspectionBridge.EnableSourceMapping();
+            if (host != null && !host.Surface)
+            {
+                DisposeHost();
+            }
             if (host == null)
             {
                 host = RuntimeInspectionBridge.CreatePreview(Width, Height);
@@ -405,14 +409,18 @@ namespace URUI.Authoring.Preview
                 extensions.Clear();
             }
             var currentHost = host;
-            host = null;
-            try
+            if (currentHost != null)
             {
-                currentHost?.Dispose();
-            }
-            catch (Exception error)
-            {
-                firstError ??= error;
+                try
+                {
+                    currentHost.Dispose();
+                    host = null;
+                }
+                catch (Exception error)
+                {
+                    // 保留 host 引用，确保下一次重试或 Dispose 仍能回收 PreviewScene 与 RenderTexture。
+                    firstError ??= error;
+                }
             }
             if (compiledPreview)
             {

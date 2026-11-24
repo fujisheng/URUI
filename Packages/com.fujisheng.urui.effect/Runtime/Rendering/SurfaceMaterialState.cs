@@ -12,6 +12,7 @@ namespace URUI.Effect.Rendering
         struct Value : IEquatable<Value>
         {
             internal Vector4 vector;
+            internal int integer;
             internal Texture texture;
             internal uint update;
             internal int width;
@@ -23,19 +24,19 @@ namespace URUI.Effect.Rendering
             internal int wrapW;
             internal int aniso;
             internal float bias;
-            public bool Equals(Value value) => vector.Equals(value.vector) && ReferenceEquals(texture, value.texture) && update == value.update && width == value.width && height == value.height && format == value.format && filter == value.filter && wrapU == value.wrapU && wrapV == value.wrapV && wrapW == value.wrapW && aniso == value.aniso && bias.Equals(value.bias);
-            internal bool SameMaterial(Value value) => vector.Equals(value.vector) && ReferenceEquals(texture, value.texture);
+            public bool Equals(Value value) => vector.Equals(value.vector) && integer == value.integer && ReferenceEquals(texture, value.texture) && update == value.update && width == value.width && height == value.height && format == value.format && filter == value.filter && wrapU == value.wrapU && wrapV == value.wrapV && wrapW == value.wrapW && aniso == value.aniso && bias.Equals(value.bias);
+            internal bool SameTexture(Value value) => ReferenceEquals(texture, value.texture);
         }
         sealed class ShaderSchema
         {
-            internal readonly (int id, ShaderPropertyType type)[] Descriptors;
+            internal readonly (int id, ShaderPropertyType type, ShaderPropertyFlags flags)[] Descriptors;
             internal readonly LocalKeyword[] KeywordHandles;
             internal ShaderSchema(Shader shader)
             {
-                Descriptors = new (int, ShaderPropertyType)[shader.GetPropertyCount()];
+                Descriptors = new (int, ShaderPropertyType, ShaderPropertyFlags)[shader.GetPropertyCount()];
                 for (int i = 0; i < Descriptors.Length; i++)
                 {
-                    Descriptors[i] = (shader.GetPropertyNameId(i), shader.GetPropertyType(i));
+                    Descriptors[i] = (shader.GetPropertyNameId(i), shader.GetPropertyType(i), shader.GetPropertyFlags(i));
                 }
                 KeywordHandles = shader.keywordSpace.keywords ?? Array.Empty<LocalKeyword>();
             }
@@ -56,7 +57,7 @@ namespace URUI.Effect.Rendering
         }
 
         Shader shader;
-        (int id, ShaderPropertyType type)[] descriptors = Array.Empty<(int, ShaderPropertyType)>();
+        (int id, ShaderPropertyType type, ShaderPropertyFlags flags)[] descriptors = Array.Empty<(int, ShaderPropertyType, ShaderPropertyFlags)>();
         Value[] saved = Array.Empty<Value>();
         Value[] scratch = Array.Empty<Value>();
         LocalKeyword[] keywordHandles = Array.Empty<LocalKeyword>();
@@ -75,7 +76,9 @@ namespace URUI.Effect.Rendering
         internal bool[] KeywordStates => savedKeywords;
         internal bool Capture(Material material, bool usesTime, double now)
         {
-            var changed = !valid || shader != material.shader;
+            // 仅当 Shader、关键字、渲染队列、Instancing 或纹理槽变化时才需重建/退役 Material 快照；
+            // 纯标量/向量/颜色/整数动画通过 MaterialPropertyBlock 零分配传递，避免每帧触发 GPU fence 与重录。
+            var materialChanged = !valid || shader != material.shader;
             var inputsChanged = false;
             if (shader != material.shader)
             {
@@ -100,11 +103,11 @@ namespace URUI.Effect.Rendering
             }
             if (keywordsChanged)
             {
-                changed = true;
+                materialChanged = true;
             }
             if (queue != material.renderQueue || instancing != material.enableInstancing)
             {
-                changed = true;
+                materialChanged = true;
             }
             if (usesTime && time != now)
             {
@@ -123,7 +126,7 @@ namespace URUI.Effect.Rendering
                         value.vector = material.GetVector(parameter.id);
                         break;
                     case ShaderPropertyType.Int:
-                        value.vector.x = material.GetInteger(parameter.id);
+                        value.integer = material.GetInteger(parameter.id);
                         break;
                     case ShaderPropertyType.Texture:
                         value.texture = material.GetTexture(parameter.id);
@@ -159,16 +162,16 @@ namespace URUI.Effect.Rendering
                     }
                 }
                 scratch[i] = value;
-                if (!value.SameMaterial(saved[i]))
+                if (parameter.type == ShaderPropertyType.Texture && !value.SameTexture(saved[i]))
                 {
-                    changed = true;
+                    materialChanged = true;
                 }
                 if (!value.Equals(saved[i]))
                 {
                     inputsChanged = true;
                 }
             }
-            if (!changed && !inputsChanged)
+            if (!materialChanged && !inputsChanged)
             {
                 return false;
             }
@@ -182,7 +185,38 @@ namespace URUI.Effect.Rendering
             time = now;
             valid = true;
             Version++;
-            return changed;
+            return materialChanged;
+        }
+
+        internal void ApplyScalarProperties(MaterialPropertyBlock properties)
+        {
+            for (int i = 0; i < descriptors.Length; i++)
+            {
+                var parameter = descriptors[i];
+                switch (parameter.type)
+                {
+                    case ShaderPropertyType.Color:
+                        if ((parameter.flags & ShaderPropertyFlags.Gamma) != 0)
+                        {
+                            properties.SetVector(parameter.id, saved[i].vector);
+                        }
+                        else
+                        {
+                            properties.SetColor(parameter.id, (Color)saved[i].vector);
+                        }
+                        break;
+                    case ShaderPropertyType.Vector:
+                        properties.SetVector(parameter.id, saved[i].vector);
+                        break;
+                    case ShaderPropertyType.Int:
+                        properties.SetInteger(parameter.id, saved[i].integer);
+                        break;
+                    case ShaderPropertyType.Float:
+                    case ShaderPropertyType.Range:
+                        properties.SetFloat(parameter.id, saved[i].vector.x);
+                        break;
+                }
+            }
         }
     }
     /// <summary>

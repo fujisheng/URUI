@@ -100,6 +100,7 @@ namespace URUI.Rendering.Effects
                 mesh = new Mesh
                 {
                     name = "URUI Effect Preview Quad",
+                    hideFlags = HideFlags.HideAndDontSave,
                     vertices = vertices,
                     uv = uv,
                     colors32 = colors,
@@ -179,6 +180,7 @@ namespace URUI.Rendering.Effects
                 parameterTexture = new Texture2D(256, Mathf.Max(1, (9 + runtimeCount + layout.RowCount + 255) / 256), TextureFormat.RGBAFloat, false, true)
                 {
                     name = "URUI Preview Parameters",
+                    hideFlags = HideFlags.HideAndDontSave,
                     filterMode = FilterMode.Point,
                     wrapMode = TextureWrapMode.Clamp
                 };

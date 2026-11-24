@@ -46,7 +46,19 @@ namespace URUI
 
     Texture TextureSource::GetTexture(RenderManager& render_manager, const SharedPtr<ResourceContext>& resources) const
     {
-        Texture& texture = textures[&render_manager][resources ? resources->GetIdentity() : 0];
+        constexpr size_t MaxRenderManagers = 16;
+        constexpr size_t MaxResourceContextsPerManager = 64;
+        if (textures.size() >= MaxRenderManagers && textures.find(&render_manager) == textures.end())
+        {
+            textures.clear();
+        }
+        auto& by_context = textures[&render_manager];
+        const uint64_t identity = resources ? resources->GetIdentity() : 0;
+        if (by_context.size() >= MaxResourceContextsPerManager && by_context.find(identity) == by_context.end())
+        {
+            by_context.clear();
+        }
+        Texture& texture = by_context[identity];
         if (!texture)
         {
             texture = render_manager.LoadTexture(source, document_path, resources);

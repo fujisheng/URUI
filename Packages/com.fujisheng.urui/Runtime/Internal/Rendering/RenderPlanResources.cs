@@ -21,6 +21,9 @@ namespace URUI.Internal.Rendering
         };
         const long SoftBudget = 48L * 1024 * 1024;
         const long Budget = 64L * 1024 * 1024;
+        // 每个 Unity Mesh 除原始顶点/索引字节外还有 C++/GPU 包装开销；限制空闲 Mesh 数量以防小批次无限堆积。
+        const int MaxIdleEntries = 128;
+        const long EstimatedMeshOverheadBytes = 4096;
         readonly Dictionary<ulong, Entry> meshes = new();
         readonly HashSet<ulong> used = new();
         readonly Action<IDisposable> retire;
@@ -114,7 +117,8 @@ namespace URUI.Internal.Rendering
 
         void TrimToSoftBudget()
         {
-            while (allocatedBytes > SoftBudget)
+            while (allocatedBytes + (long)meshes.Count * EstimatedMeshOverheadBytes > SoftBudget ||
+                   meshes.Count - used.Count > MaxIdleEntries)
             {
                 ulong oldestIdle = 0;
                 Entry idleCandidate = null;

@@ -376,6 +376,11 @@ namespace URUI
         {
             return it->second;
         }
+        constexpr size_t MaxResolveCacheEntries = 512;
+        if (resolve_cache.size() >= MaxResolveCacheEntries)
+        {
+            resolve_cache.clear();
+        }
 
         auto* engine = GetFontEngineInterface();
         Vector<CssFontFamily> families;

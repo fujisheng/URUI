@@ -266,6 +266,8 @@ namespace URUI.Effect
             CheckThread();
             cancellation.Dispose();
             Cancel();
+            ProgressChanged = null;
+            Completed = null;
         }
     }
 }

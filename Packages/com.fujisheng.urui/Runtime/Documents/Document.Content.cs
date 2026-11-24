@@ -28,6 +28,11 @@ namespace URUI.Documents
             internal URUI.Resources.TextResource[] TextResources;
             internal URUI.Resources.ImageAsset[] Images;
             internal Func<string, URUI.Resources.ImageLease> ImageResolver;
+#if UNITY_EDITOR
+            internal Dictionary<string, UnityEngine.Texture> InspectionImageOverrides;
+            internal Func<string, URUI.Resources.ImageLease> InspectionBaseImageResolver;
+            internal Func<string, URUI.Resources.ImageLease> InspectionWrapperImageResolver;
+#endif
             internal readonly Dictionary<ulong, Element> Elements = new();
             // 仅在文档完成首次布局后动态插入子树（SetInnerHtml/Template/Clone）时记录尚未包装节点的创建布局版本；
             // 首次文档加载（LayoutVersion == 0）或下一轮布局推进后为空，零常驻开销。

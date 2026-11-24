@@ -922,8 +922,10 @@ namespace URUI::Bridge
 
     void SurfaceRenderer::ReleaseGeometry(URUI::CompiledGeometryHandle h)
     {
-        if (meshes.erase(static_cast<uint64_t>(h)))
+        const auto id = static_cast<uint64_t>(h);
+        if (meshes.erase(id))
         {
+            drawPlan.RetireGeometry(id);
             MarkResourceChanged();
         }
     }
@@ -1872,6 +1874,7 @@ extern "C"
         FlushCandidateEvents(*surface);
         surface->context->Update();
         PruneStyleStore(surface->styles.get(), *surface);
+        PruneDeadSubscriptions(*surface);
         return URUI_OK;
     }
     catch (...)

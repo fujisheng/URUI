@@ -144,8 +144,13 @@ namespace URUI.Authoring.Sessions
                 Workspace.DiscardChanges();
                 SessionUndoBridge.Clear(Id);
             }
+            var previousFile = File;
             File = file;
             Model = model;
+            if (previousFile != null && previousFile != file)
+            {
+                Workspace.PruneCleanUnused(file.Path);
+            }
             Workspace.InvalidateContext();
             identities = new NodeIdentities(model);
             identityHistory.Clear();

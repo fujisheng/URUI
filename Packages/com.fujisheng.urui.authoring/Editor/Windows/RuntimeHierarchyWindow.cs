@@ -26,6 +26,7 @@ namespace URUI.Authoring.Windows
         double nextRefresh;
         Document currentDocument;
         string currentRoot;
+        ulong currentStamp;
         WorkbenchHierarchy hierarchy;
         WorkbenchStyleSheets styles;
         VisualElement authorView;
@@ -164,16 +165,41 @@ namespace URUI.Authoring.Windows
             stylesTab.EnableInClassList("urui-active-tab", showStyles);
         }
 
+        static bool SameDocuments(Document[] a, Document[] b)
+        {
+            if (ReferenceEquals(a, b))
+            {
+                return true;
+            }
+            if (a == null || b == null || a.Length != b.Length)
+            {
+                return false;
+            }
+            for (int i = 0; i < a.Length; i++)
+            {
+                if (a[i] != b[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         void Tick()
         {
             if (!EditorApplication.isPlaying || AuthoringEnvironment.Live == null || EditorApplication.timeSinceStartup < nextRefresh)
             {
                 return;
             }
-            nextRefresh = EditorApplication.timeSinceStartup + .25;
-            documents = AuthoringEnvironment.Documents();
-            documentNames = Array.ConvertAll(documents, doc =>
-                new GUIContent(string.IsNullOrEmpty(doc.SourceUrl) ? doc.name : doc.name + " · " + doc.SourceUrl, doc.SourceUrl));
+            nextRefresh = EditorApplication.timeSinceStartup + .5;
+            var latest = AuthoringEnvironment.Documents();
+            bool docsChanged = !SameDocuments(documents, latest);
+            if (docsChanged)
+            {
+                documents = latest;
+                documentNames = Array.ConvertAll(documents, doc =>
+                    new GUIContent(string.IsNullOrEmpty(doc.SourceUrl) ? doc.name : doc.name + " · " + doc.SourceUrl, doc.SourceUrl));
+            }
             var active = AuthoringEnvironment.LiveDocument;
             if (Array.IndexOf(documents, active) < 0)
             {
@@ -181,24 +207,29 @@ namespace URUI.Authoring.Windows
             }
             active = AuthoringEnvironment.LiveDocument;
             string root = active && active.IsLoaded ? RuntimeInspectionBridge.Root(active)?.Id : null;
+            ulong stamp = RuntimeInspectionBridge.InspectionStamp(active);
             if (currentDocument != active || currentRoot != root)
             {
                 currentDocument = active;
                 currentRoot = root;
+                currentStamp = stamp;
                 tree.ResetRuntimeItems();
                 AuthoringEnvironment.SetNodeSelection(AuthoringEnvironment.SelectedNodes, clearUnitySelection: false);
                 FollowSelection();
+                liveView?.MarkDirtyRepaint();
+                Repaint();
             }
-            else
+            else if (docsChanged || stamp != currentStamp || AuthoringEnvironment.ActiveNode is { IsLive: true, IsTargetValid: false })
             {
+                currentStamp = stamp;
                 if (AuthoringEnvironment.ActiveNode is { IsLive: true, IsTargetValid: false })
                 {
                     AuthoringEnvironment.SetNodeSelection(AuthoringEnvironment.SelectedNodes, clearUnitySelection: false);
                 }
                 tree.Reload();
+                liveView?.MarkDirtyRepaint();
+                Repaint();
             }
-            liveView?.MarkDirtyRepaint();
-            Repaint();
         }
 
         void FollowSelection()
