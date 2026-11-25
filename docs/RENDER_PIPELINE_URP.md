@@ -38,6 +38,10 @@ public sealed class UruiUrpRendererFeature : ScriptableRendererFeature
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
+            if (!Application.isPlaying)
+            {
+                return;
+            }
             var cameraData = frameData.Get<UniversalCameraData>();
             var resourceData = frameData.Get<UniversalResourceData>();
             var camera = cameraData.baseCamera ? cameraData.baseCamera : cameraData.camera;
@@ -98,7 +102,7 @@ public sealed class UruiUrpRendererFeature : ScriptableRendererFeature
     public override void Create() => pass ??= new UruiPass();
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData data)
     {
-        if (pass != null && data.cameraData.cameraType == CameraType.Game && data.cameraData.camera.CompareTag("MainCamera"))
+        if (pass != null && Application.isPlaying && data.cameraData.cameraType == CameraType.Game && data.cameraData.camera.CompareTag("MainCamera"))
         {
             renderer.EnqueuePass(pass);
         }
@@ -110,7 +114,8 @@ public sealed class UruiUrpRendererFeature : ScriptableRendererFeature
 
 ## Critical URP Pitfalls to Avoid
 
-1. **Do NOT call `renderGraph.GetTextureDesc(colorTarget)` unconditionally** when `activeColorTexture` refers to the backbuffer—use `camera.pixelRect` + `RenderTargetInfo.FromScreen(...)`.
-2. **Submit ONCE per `Surface` per camera**, never once per `Document`: `Surface.SubmitRendering` already renders every active visible `Document` attached to that `Surface` in proper `layer / order` sequence.
-3. **Disambiguate `RenderTargetInfo`**: Both `UnityEngine.Rendering.RenderGraphModule` and `URUI.Rendering` define `RenderTargetInfo`. Use `global::URUI.Rendering.RenderTargetInfo`.
-4. **Always use full base-camera `pixelRect`**: Do not pass scaled intermediate render-scale dimensions as UI viewport if targeting final screen resolution.
+1. **Guard against Edit Mode `GameView` repaints**: Outside Play Mode (unless driving a dedicated preview camera via Editor preview APIs), Game View still invokes `CameraType.Game` before `Surface.Awake()` runs (`ownerThread == 0`). Guard `AddRenderPasses` / `RecordRenderGraph` with `Application.isPlaying` (or verify `host` / stage readiness) so Edit Mode repaints do not trigger thread-check exceptions.
+2. **Do NOT call `renderGraph.GetTextureDesc(colorTarget)` unconditionally** when `activeColorTexture` refers to the backbuffer—use `camera.pixelRect` + `RenderTargetInfo.FromScreen(...)`.
+3. **Submit ONCE per `Surface` per camera**, never once per `Document`: `Surface.SubmitRendering` already renders every active visible `Document` attached to that `Surface` in proper `layer / order` sequence.
+4. **Disambiguate `RenderTargetInfo`**: Both `UnityEngine.Rendering.RenderGraphModule` and `URUI.Rendering` define `RenderTargetInfo`. Use `global::URUI.Rendering.RenderTargetInfo`.
+5. **Always use full base-camera `pixelRect`**: Do not pass scaled intermediate render-scale dimensions as UI viewport if targeting final screen resolution.

@@ -40,6 +40,10 @@ namespace Solstice.Rendering
             static void CollectSurfaces(Camera camera, List<Surface> results)
             {
                 results.Clear();
+                if (!Application.isPlaying)
+                {
+                    return;
+                }
                 var found = Object.FindObjectsByType<Surface>(FindObjectsSortMode.None);
                 for (var i = 0; i < found.Length; i++)
                 {
@@ -53,6 +57,10 @@ namespace Solstice.Rendering
 
             public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
             {
+                if (!Application.isPlaying)
+                {
+                    return;
+                }
                 var resourceData = frameData.Get<UniversalResourceData>();
                 var cameraData = frameData.Get<UniversalCameraData>();
                 var camera = cameraData.baseCamera ? cameraData.baseCamera : cameraData.camera;
@@ -125,6 +133,10 @@ namespace Solstice.Rendering
 
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
+                if (!Application.isPlaying)
+                {
+                    return;
+                }
                 var camera = renderingData.cameraData.camera;
                 if (!camera || !camera.CompareTag("MainCamera") || compatViewport.width <= 0 || compatViewport.height <= 0)
                 {
@@ -150,7 +162,7 @@ namespace Solstice.Rendering
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            if (pass == null)
+            if (pass == null || !Application.isPlaying)
             {
                 return;
             }
