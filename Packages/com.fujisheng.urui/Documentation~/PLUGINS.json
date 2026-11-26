@@ -1,5 +1,5 @@
 {
-  "status": "installed in current checkout; unpublished",
+  "status": "bundled with the Core package",
   "required_abi_version": 13,
   "nativeLibrary": "URUIBridge",
   "cAbiPrefix": "urui_",

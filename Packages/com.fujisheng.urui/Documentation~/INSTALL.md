@@ -10,13 +10,13 @@ For local development in `Packages/manifest.json`, use `"com.fujisheng.urui": "f
 
 ## Install from Git
 
-When the remote repository contains a published commit with matching native binaries and package assets, add via **Package Manager → Add package from git URL**:
+In Unity Package Manager, choose **Install package from git URL** and paste the release URL.
 
 ```text
-https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui#<verified-commit-sha>
+https://github.com/fujisheng/URUI.git?path=/Packages/com.fujisheng.urui#v0.8.0-preview.1
 ```
 
-Replace the placeholder with an actual published commit SHA and ensure Git access credentials are configured if private. Local unpublished workspace edits should use disk installation.
+You can also download the Core `.tgz` and choose **Install package from tarball**. Install Core first, then add the Effect or Authoring tarball if needed. [Release downloads](https://github.com/fujisheng/URUI/releases/tag/v0.8.0-preview.1)
 
 ## Unity Environment Requirements
 
@@ -40,7 +40,7 @@ Before replacing a loaded native dynamic library in Editor or Player, close the 
 
 ## Samples & Optional Packages
 
-- **Standalone URP Showcase Project**: Open [SampleProject/](../../../SampleProject/) directly in Unity `6000.3.22f1` to explore 3D sanctuary compositing, radial skill cooldowns, summon astrolabe sequences, `URUI.Effect` shaders/particles, `URUI.Authoring`, and the 10,000-item armory.
+- **Standalone URP showcase.** Open [SampleProject](../../../SampleProject/) in Unity `6000.3.22f1` to explore Tideglass Beacon's refracting bridge panels, perspective crew cards, radial cooldowns and combat particles.
 - **Package Core Sample**: In Package Manager select **URUI → Samples → Tideglass Beacon → Import**, then open the imported `Tideglass.unity` scene (typically `Assets/Samples/URUI/<version>/Tideglass Beacon`). You can also invoke **Tools → URUI → Open Tideglass Beacon Sample**.
 
 `Hello URUI`, `Element Playground`, and `Runtime Controls` provide focused topic samples. `Documentation~`, `Samples~`, `Tests~`, and `Native~` are ignored by standard Unity asset import and imported explicitly only when requested.

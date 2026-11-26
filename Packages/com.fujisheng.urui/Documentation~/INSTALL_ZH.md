@@ -10,13 +10,13 @@ Package Manager → Add package from disk，选择完整包中的 `package.json`
 
 ## 从 Git 安装
 
-远端确实包含所需版本的完整包和插件时，可在 Package Manager → Add package from git URL 使用：
+在 Unity Package Manager 中选择 **Install package from git URL**，粘贴版本地址。
 
 ```text
-https://github.com/fujisheng/URUI.git?path=Packages/com.fujisheng.urui#<已验证提交SHA>
+https://github.com/fujisheng/URUI.git?path=/Packages/com.fujisheng.urui#v0.8.0-preview.1
 ```
 
-把占位符替换为实际提交；私有仓库需配置访问权限。当前工作区版本与远端已发布版本分别管理，不能由本地 package.json 推断远端已有该提交。本地尚未发布的修改使用磁盘安装。
+也可以下载 Core 的 `.tgz`，选择 **Install package from tarball**。先安装 Core，再按需安装 Effect 或 Authoring 的压缩包。[发布页下载](https://github.com/fujisheng/URUI/releases/tag/v0.8.0-preview.1)
 
 ## Unity 环境
 
@@ -40,7 +40,7 @@ URP 的项目适配已有运行记录；HDRP、其他图形后端及非 macOS �
 
 ## 样例与可选包
 
-- **独立 URP 示范工程**：直接用 Unity `6000.3.22f1` 打开仓库下的 [SampleProject/](../../../SampleProject/)（含 URP 3D 舞台合成、Effect、Authoring 与 10k 军械库验证）。
+- **独立 URP 示范工程**用 Unity `6000.3.22f1` 打开 [SampleProject](../../../SampleProject/)，即可体验《潮汐信标》的舰桥折射玻璃、透视舰员卡片、圆形技能冷却和战斗粒子。
 - **包内 Core 样例**：在 Unity Package Manager 中选择 **URUI** → **Samples** → **Tideglass Beacon** → **Import**，打开导入后的 `Tideglass.unity`（标准路径 `Assets/Samples/URUI/<版本>/Tideglass Beacon`）。也可通过菜单 `Tools → URUI → Open Tideglass Beacon Sample` 一键导入并打开。
 
 `Hello URUI`、`Element Playground`、`Runtime Controls` 为细分专题学习样例；`Documentation~`、`Samples~`、`Tests~`、`Native~` 默认不参与普通 Unity 资产导入，按需显式引入，接入项目无需任何外部工作区目录。

@@ -1,64 +1,59 @@
-# URUI — Text-First HTML/CSS UI Engine for Unity
+<div align="center">
 
-**English** | [中文](README_ZH.md)
+<a href="docs/images/urui-icon.png"><img src="docs/images/urui-icon-128.png" width="88" height="88" alt="URUI monogram"></a>
 
-URUI brings **standard HTML, CSS, and text-driven sequences** into **Unity 6 (`6000.3.22f1`)** on top of a native C++ bridge (`URUIBridge` ABI13 / render-plan9 / element4, 172 C exports), FreeType glyph rasterization, GPU-parameterized batching, and zero-per-element `MonoBehaviour` overhead.
+# URUI
 
----
+**Build native Unity game interfaces with HTML and CSS.**
+
+Keep layouts, styles and animation timelines in Git. The Unity workbench lets designers and AI agents inspect the same screen, edit its source and capture the result.
+
+[Install Core](#install-core) · [Play the sample](#tideglass-beacon) · [Developer guides](#developer-guides) · [中文](README_ZH.md)
+
+</div>
 
 ## Tideglass Beacon
 
-Tideglass Beacon was made entirely by AI, from interface design and code to original art, animation, and sound. This recording shows the sample running in Unity.
+![Tideglass Beacon running in Unity, from the station and tilting crew cards to equipment, skills and combat](docs/images/tideglass-beacon.gif)
 
-![Tideglass Beacon in Unity, from the orbital station and tilting crew portrait to module purchases, equipment, skill previews and combat](docs/images/tideglass-beacon.gif)
+Take command of an orbital station. Choose an escort, buy a module and take it into a beacon trial. Watch the crew cards tilt under the pointer and the bridge refract the scene behind its controls. Tideglass Beacon was made entirely by AI, including its design, code, original art, animation and sound. The recording above is from Unity Play Mode.
 
-Run a station watch. Appoint a combat escort, send a different officer on an offline survey, and wear earned titles on the bridge. Three beacon routes, loadouts, drills and flight reports share one local save. Each bank of switches sits on one refracting pane. All 14 controls have a pointer-responsive cap and a fixed hit area. The standalone project demonstrates live glass refraction, instrument transitions, URP submission and URUI Effect wave gauges and particles.
+**Play the sample.** Clone or download the repository and open [SampleProject](SampleProject) in Unity **6000.3.22f1**. Choose **Tools → URUI → Open Tideglass Beacon Sample**, then press **Play**. Use **F1** to see rendering statistics. [Sample guide and controls](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/README.md)
 
-Full-resolution stills of the [orbital station](docs/images/tideglass-lobby.png) and [pilot detail](docs/images/tideglass-hero.png).
+<details>
+<summary>View the station bridge and pilot dossier at full resolution</summary>
 
----
+<p align="center">
+  <a href="docs/images/tideglass-lobby.png"><img src="docs/images/tideglass-lobby.png" width="48%" alt="Station bridge with two banks of controls over refracting glass"></a>
+  <a href="docs/images/tideglass-hero.png"><img src="docs/images/tideglass-hero.png" width="48%" alt="Pilot dossier with the skill selection and preview controls"></a>
+</p>
 
-## Why URUI?
+</details>
 
-- **Built for AI + Text Diffs**: Screens, components, design tokens, and multi-track keyframe timelines live in clean `.html`, `.css`, and `.urui-sequence.json` text files—friendly to Git diffs, browser layout checks, and agentic authoring.
-- **Native Performance Without Prefab Sprawl**: Native C++ compiles ordered render plans (`render-plan9`), 8-texture batching, parameter page uploads, and persistent native/GPU memory fences—keeping steady-state managed GC allocations near zero and without creating one `GameObject` per visual node.
-- **Standalone Multi-Module Architecture**:
-  - [**`com.fujisheng.urui`** (`0.8.0-preview.1`)](Packages/com.fujisheng.urui/README.md): Core runtime (`Surface`, `Document`, `Element`, typed controls, virtualized `ListView`, `CompiledDocumentAsset` AOT bytecode, `SequencePlayer`, `StaggeredReveal`, `BezierMotion`, `Surface.GetRenderingStatistics()`).
-  - [**`com.fujisheng.urui.effect`** (`0.5.0-preview.1`)](Packages/com.fujisheng.urui.effect/README.md): CSS `--urui-fx-*` visual filters, `EffectController` presets/tweens, `<urui-particles>`, `ArcTextLayout`, `WaveEffect`, and `TextureEffectSurface`.
-  - [**`com.fujisheng.urui.authoring`** (`0.1.0-preview.1`)](Packages/com.fujisheng.urui.authoring/README.md): Editor-only visual inspector, source hierarchy, timeline animation editor, and localhost Agent HTTP v1 protocol.
+## Install Core
 
----
+In Unity Package Manager, choose **Install package from git URL** and paste this address to install the Core runtime at **0.8.0-preview.1**.
 
-## Quick Start
+```text
+https://github.com/fujisheng/URUI.git?path=/Packages/com.fujisheng.urui#v0.8.0-preview.1
+```
 
-Open [SampleProject](SampleProject) with Unity 6000.3.22f1. Select **Tools → URUI → Open Tideglass Beacon Sample** and enter Play Mode. For a Built-in project, import **Tideglass Beacon** under Core's Package Manager samples. See the [sample guide](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/README.md) for controls and sources.
+Core includes the controls, renderer and sample scenes. Add Effect for visual effects or Authoring for the editor workbench. The release includes a downloadable UPM package for each module. [Release and downloads](https://github.com/fujisheng/URUI/releases/tag/v0.8.0-preview.1) · [Installation guide](Packages/com.fujisheng.urui/Documentation~/INSTALL.md)
 
-## Documentation Index
+## What you can build
 
-### Repository Guides ([EN](docs/GETTING_STARTED.md) / [中文](docs/GETTING_STARTED_ZH.md))
+| Package | In your project |
+| --- | --- |
+| [**Core**](Packages/com.fujisheng.urui/README.md) | Lay out a HUD with HTML and CSS, wire typed controls to gameplay in C#, and reuse rows in long inventories. The native renderer draws a document through a Unity surface. [Core API](Packages/com.fujisheng.urui/Documentation~/REFERENCE.md) |
+| [**Effect**](Packages/com.fujisheng.urui.effect/README.md) | Drive a wave gauge, dissolve a panel or trigger hit particles in sync with a skill animation. Style effects in CSS and animate their parameters. [Effect CSS](Packages/com.fujisheng.urui.effect/Documentation~/CSS.md) |
+| [**Authoring**](Packages/com.fujisheng.urui.authoring/README.md) | Inspect the hierarchy and computed styles, scrub a timeline, or let an AI agent edit a document and capture a Unity preview through the local editor API. [Agent API](Packages/com.fujisheng.urui.authoring/Documentation~/agent-api.md) |
 
-| Topic | English | 中文 |
-| --- | --- | --- |
-| Getting Started & Installation | [GETTING_STARTED.md](docs/GETTING_STARTED.md) | [GETTING_STARTED_ZH.md](docs/GETTING_STARTED_ZH.md) |
-| Architecture & Native Protocol (`ABI13`) | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | [ARCHITECTURE_ZH.md](docs/ARCHITECTURE_ZH.md) |
-| URP & Built-in Render Pipeline Integration | [RENDER_PIPELINE_URP.md](docs/RENDER_PIPELINE_URP.md) | [RENDER_PIPELINE_URP_ZH.md](docs/RENDER_PIPELINE_URP_ZH.md) |
-| Performance, Batching & Memory Safety | [PERFORMANCE_AND_MEMORY.md](docs/PERFORMANCE_AND_MEMORY.md) | [PERFORMANCE_AND_MEMORY_ZH.md](docs/PERFORMANCE_AND_MEMORY_ZH.md) |
-| HTML & CSS Support Cheatsheet | [HTML_CSS_CHEATSHEET.md](docs/HTML_CSS_CHEATSHEET.md) | [HTML_CSS_CHEATSHEET_ZH.md](docs/HTML_CSS_CHEATSHEET_ZH.md) |
-| AI-Assisted UI Workflow & Live Authoring | [AI_WORKFLOW.md](docs/AI_WORKFLOW.md) | [AI_WORKFLOW_ZH.md](docs/AI_WORKFLOW_ZH.md) |
-| Native Build, Tests & Contribution Guide | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | [DEVELOPMENT_ZH.md](docs/DEVELOPMENT_ZH.md) |
-| Code Organization & Assembly Boundaries | [CODE_ORGANIZATION.md](docs/CODE_ORGANIZATION.md) | [CODE_ORGANIZATION_ZH.md](docs/CODE_ORGANIZATION_ZH.md) |
+## Developer guides
 
-### Package Manuals
+| Goal | Guides |
+| --- | --- |
+| Build your first screen | [Getting started](docs/GETTING_STARTED.md) · [Supported HTML and CSS](docs/HTML_CSS_CHEATSHEET.md) · [AI authoring workflow](docs/AI_WORKFLOW.md) |
+| Integrate the renderer | [Architecture](docs/ARCHITECTURE.md) · [URP and Built-in integration](docs/RENDER_PIPELINE_URP.md) · [Batching and memory](docs/PERFORMANCE_AND_MEMORY.md) |
+| Work on the engine | [Build and test](docs/DEVELOPMENT.md) · [Code and assemblies](docs/CODE_ORGANIZATION.md) · [Third-party notices](Packages/com.fujisheng.urui/Third%20Party%20Notices.md) |
 
-- **Core (`com.fujisheng.urui`)**: [README](Packages/com.fujisheng.urui/README.md) · [中文 README](Packages/com.fujisheng.urui/README_ZH.md) · [Quick Start](Packages/com.fujisheng.urui/Documentation~/QUICK_START.md) · [API Reference](Packages/com.fujisheng.urui/Documentation~/REFERENCE.md)
-- **Effect (`com.fujisheng.urui.effect`)**: [README](Packages/com.fujisheng.urui.effect/README.md) · [中文 README](Packages/com.fujisheng.urui.effect/README_ZH.md) · [CSS Reference](Packages/com.fujisheng.urui.effect/Documentation~/CSS.md)
-- **Authoring (`com.fujisheng.urui.authoring`)**: [README](Packages/com.fujisheng.urui.authoring/README.md) · [中文 README](Packages/com.fujisheng.urui.authoring/README_ZH.md) · [Agent HTTP API](Packages/com.fujisheng.urui.authoring/Documentation~/agent-api.md)
-
----
-
-## Supported Platforms & Toolchains
-
-Prebuilt native plugins under [`Packages/com.fujisheng.urui/Runtime/Plugins`](Packages/com.fujisheng.urui/Runtime/Plugins) target 7 architectures using ABI13 / render-plan9 / element4:
-`macOS ARM64`, `macOS x86_64`, `Windows x86_64`, `Android ARM64`, `Android x86_64`, `iOS ARM64 (static)`, and `WebGL wasm32 (static)`.
-
-Verification baseline: Unity `6000.3.22f1`. See [`PLUGINS.json`](Packages/com.fujisheng.urui/Documentation~/PLUGINS.json) for build metadata and third-party notices in [`Third Party Notices.md`](Packages/com.fujisheng.urui/Third%20Party%20Notices.md).
+Core ships native plugins for macOS (Apple Silicon and Intel), Windows x64, Android (ARM64 and x86_64), iOS ARM64 and WebGL wasm32. The sample targets Unity **6000.3.22f1** with URP. [Platform verification matrix](Packages/com.fujisheng.urui/Documentation~/LIMITATIONS.md) · [Binary checksums](Packages/com.fujisheng.urui/Documentation~/PLUGINS.json)

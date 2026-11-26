@@ -1,11 +1,11 @@
 # Changelog
 
-## 0.8.0-preview.1 — Native ABI13, Memory Safety, Telemetry & Solstice Showcase
+## 0.8.0-preview.1 — Native ABI13, rendering statistics and Tideglass Beacon
 
 - Upgraded native bridge to **ABI13 / render-plan9 / element4 / 172 production exports** across all 7 target platforms with unified memory safety fixes across native layout, GPU resource fences, `UnityUIClock`, and cached render layers.
 - Added public `Surface.GetRenderingStatistics()` returning `SurfaceRenderingStatistics` in both Unity Editor and release Players (`Ready`, `LoadedDocuments`, `RecordedGeometryDraws`, `NativePlanCommandCount`, `NativePlanGeometryBytes`, `NativePlanFrameBytes`, `GeometryUploadBytes`, `ParameterUploadBytes`, `ParameterCopyBytes`).
 - Added AOT `CompiledDocumentAsset` compilation (`CompiledDocumentCompiler.CompileAndSave`), template cloning (`<template>` + `CloneContentTo`), and compiled query snapshots.
-- Replaced the legacy sample with **Solstice** (`Samples~/Solstice`, `Tools > URUI > Open Solstice Sample`) and paired standalone URP showcase (`SampleProject/`), with full English and Chinese documentation across all packages.
+- Shipped **Tideglass Beacon** as the Core package sample and in the standalone URP project. Open it with **Tools → URUI → Open Tideglass Beacon Sample** to try crew selection, station management, equipment and combat. The bilingual project homepage includes a recording of the sample running in Unity.
 
 ## 0.7.1-preview.1 — Visual Fixes
 
