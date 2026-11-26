@@ -4,9 +4,9 @@
 
 # URUI
 
-**Build Unity game interfaces with HTML and CSS. Script them in C#.**
+**Build Unity game UI faster with the HTML and CSS your AI already knows.**
 
-URUI lays out each document in native C++. Unity draws the resulting UI geometry directly through its graphics API. Layouts, styles and motion timelines stay in text files that your team and AI tools can edit together.
+Write interactions in **C#** and review layouts, styles and motion timelines in Git. URUI lays out each screen in native C++, and Unity draws the controls, text and images directly through its graphics API.
 
 [Install Core](#install-core) · [URUI and WebView](#urui-and-webview) · [Play the sample](#tideglass-beacon) · [Developer guides](#developer-guides) · [中文](README_ZH.md)
 
