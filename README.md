@@ -8,9 +8,17 @@
 
 Write interactions in **C#** and review layouts, styles and motion timelines in Git. URUI lays out each screen in native C++, and Unity draws the controls, text and images directly through its graphics API.
 
-[Install Core](#install-core) · [URUI and WebView](#urui-and-webview) · [Play the sample](#tideglass-beacon) · [Developer guides](#developer-guides) · [中文](README_ZH.md)
+[Why URUI](#why-urui) · [Play the sample](#tideglass-beacon) · [Install Core](#install-core) · [URUI and WebView](#urui-and-webview) · [Developer guides](#developer-guides) · [中文](README_ZH.md)
 
 </div>
+
+## Why URUI
+
+**Break out of the drag-and-drop routine. Spend that time on how your game feels.**
+
+Widening a login button in uGUI can mean opening its prefab to see whether its own `RectTransform` or a parent layout group controls its width. A coding assistant needs that context as well as the C# click handler. Across a game's menus, tracking down those settings by hand takes time on every round of polish. [How uGUI auto layout works](https://docs.unity3d.com/Packages/com.unity.ugui@2.0/manual/UIAutoLayout.html)
+
+URUI puts that work in HTML and CSS, formats coding assistants already use to build web interfaces. An assistant can draft a screen from a brief or follow Tideglass Beacon's login button straight to the `.login .commit` width rule. You review the few lines it changed in Git, then try the button in Unity. [Login markup](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Resources/URUI/Tideglass/Pages/Login.html) · [Stylesheet](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Resources/URUI/Tideglass/Tideglass.css)
 
 ## Tideglass Beacon
 
@@ -19,6 +27,10 @@ Write interactions in **C#** and review layouts, styles and motion timelines in 
 Take command of an orbital station. Choose an escort, buy a module and take it into a beacon trial. Watch the crew cards tilt under the pointer and the bridge refract the scene behind its controls. Tideglass Beacon was made entirely by AI, including its design, code, original art, animation and sound. The recording above is from Unity Play Mode.
 
 **Play the sample.** Clone or download the repository and open [SampleProject](SampleProject) in Unity **6000.3.22f1**. Choose **Tools → URUI → Open Tideglass Beacon Sample**, then press **Play**. Use **F1** to see rendering statistics. [Sample guide and controls](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/README.md)
+
+**Try a change with your AI.** Point your coding assistant at the imported sample in `Assets/Samples` and give it this request. Re-enter Play Mode to try the result on the login screen.
+
+> Widen the login button from 255px to 300px and brighten its hover highlight. Scope the style change to the login screen and keep the existing C# click behavior.
 
 <details>
 <summary>View the station bridge and pilot dossier at full resolution</summary>

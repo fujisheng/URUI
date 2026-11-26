@@ -8,9 +8,17 @@
 
 用 **C#** 编写交互脚本，在 Git 中审阅布局、样式和动画时间线。URUI 的原生 C++ 引擎计算布局，Unity 通过自己的绘图接口直接绘制控件、文字和图片。
 
-[安装 Core](#安装-core) · [与 WebView 的区别](#urui-与-webview) · [运行样例](#潮汐信标) · [开发文档](#开发文档) · [English](README.md)
+[为什么用 URUI](#为什么用-urui) · [运行样例](#潮汐信标) · [安装 Core](#安装-core) · [与 WebView 的区别](#urui-与-webview) · [开发文档](#开发文档) · [English](README.md)
 
 </div>
+
+## 为什么用 URUI
+
+**打破手工搭 UI 的惯例，把时间留给打磨游戏手感。**
+
+只想加宽一个登录按钮，在 uGUI 里也可能要先打开 Prefab，确认宽度是由按钮的 `RectTransform` 决定，还是由父级布局组控制。AI 即使读懂了 C# 点击回调，也得弄清这些组件的关系。一套菜单反复改几轮，光是手工查层级、调参数就很费时间。[uGUI 自动布局原理](https://docs.unity3d.com/Packages/com.unity.ugui@2.0/manual/UIAutoLayout.html)
+
+URUI 把这项工作放进代码助手熟悉的 HTML 和 CSS。AI 可以按你的描述起草一个界面，也可以沿着《潮汐信标》登录按钮的样式类，找到 `.login .commit` 这条宽度规则。你在 Git 里看它改了哪几行，回到 Unity 点一下，就知道按钮是否好用。[登录页 HTML](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Resources/URUI/Tideglass/Pages/Login.html) · [界面样式](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Resources/URUI/Tideglass/Tideglass.css)
 
 ## 潮汐信标
 
@@ -19,6 +27,10 @@
 从引潮站挑选随航舰员，买下模组，再带着新配装挑战信标。移动指针时，舰员卡片跟着倾转，舰桥按钮背后的玻璃会折射场景。《潮汐信标》完全由 AI 制作，涵盖界面设计、代码、原创美术、动效和音效。上方动图录自 Unity Play Mode。
 
 **在 Unity 中体验。** 克隆或下载仓库，用 Unity **6000.3.22f1** 打开 [SampleProject](SampleProject)，选择 **Tools → URUI → Open Tideglass Beacon Sample**，然后按 **Play**。运行时按 **F1** 可以查看渲染统计。[样例玩法与操作说明](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/README_ZH.md)
+
+**让你的 AI 改一次登录页。** 把下面这句话交给代码助手，让它编辑 `Assets/Samples` 下已导入的样例。重新进入 Play Mode，就能在第一屏试到改动。
+
+> 把登录按钮从 255px 加宽到 300px，让鼠标悬停时的高光更亮一些。把样式改动限定在登录页，沿用现有的 C# 点击逻辑。
 
 <details>
 <summary>查看引潮站和英雄详情的高清画面</summary>
