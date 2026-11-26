@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Station.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+  <link rel="stylesheet" href="../Bridge.css" />
+</head>
+<body>
+  <div id="screen" class="screen bridge dispatch">
+    <img id="survey-sky" class="full scenery" src="../Images/sector-shoal.png" /><div class="full survey-shade"></div>
+    <div class="radar-mount"><img class="full" src="../Images/survey-radar.png" /><img id="survey-trace" class="full" src="../Images/survey-trace.png" /><div id="survey-sweep" class="survey-sweep"></div><div id="radar-ship" class="radar-ship"><img class="radar-dot" src="../Images/courier-sigil.png" /></div><span id="survey-read"></span></div>
+    <div class="route-selector" id="survey-selector"><button id="survey-0" class="bridge-key plane-key survey-pick" type="button"><span class="key-camera"><span class="key-face"><span class="route-code">01</span><span class="route-choice">浅湾测绘</span><span class="key-reflection"></span></span></span></button><button id="survey-1" class="bridge-key plane-key survey-pick" type="button"><span class="key-camera"><span class="key-face"><span class="route-code">02</span><span class="route-choice">残环打捞</span><span class="key-reflection"></span></span></span></button><button id="survey-2" class="bridge-key plane-key survey-pick" type="button"><span class="key-camera"><span class="key-face"><span class="route-code">03</span><span class="route-choice">暗侧听潮</span><span class="key-reflection"></span></span></span></button></div>
+    <div class="dispatch-console" id="dispatch-body"><h2 id="survey-name"></h2><div id="survey-brief"></div>
+      <div class="voyage-numbers"><img class="price-glyph" src="../Images/credit.png" /><span id="survey-pay"></span><span id="survey-length" class="digits"></span></div>
+      <div id="survey-special"></div>
+      <div class="roll"><button id="send-wing-1" class="bridge-key plane-key portrait-pick" type="button"><span class="key-camera"><span class="key-face"><img class="roster-thumb" src="../Images/face-1.png" /><span class="picker-copy"><span class="picker-name">汀岚</span><span id="send-state-1" class="picker-state"></span></span><span class="key-reflection"></span></span></span></button>
+        <button id="send-wing-2" class="bridge-key plane-key portrait-pick" type="button"><span class="key-camera"><span class="key-face"><img class="roster-thumb" src="../Images/face-2.png" /><span class="picker-copy"><span class="picker-name">赤衡</span><span id="send-state-2" class="picker-state"></span></span><span class="key-reflection"></span></span></span></button>
+        <button id="send-wing-3" class="bridge-key plane-key portrait-pick" type="button"><span class="key-camera"><span class="key-face"><img class="roster-thumb" src="../Images/face-3.png" /><span class="picker-copy"><span class="picker-name">弦昼</span><span id="send-state-3" class="picker-state"></span></span><span class="key-reflection"></span></span></span></button></div>
+      <div class="watch-actions"><button id="dispatch-main" class="bridge-key plane-key bridge-action " type="button"><span class="key-camera"><span class="key-face"><span class="control-inner">派遣</span><span class="key-reflection"></span></span></span></button><button id="dispatch-undo" class="bridge-key plane-key link-key" type="button"><span class="key-camera"><span class="key-face"><span class="control-inner">召回舰员</span><span class="key-reflection"></span></span></span></button><button id="dispatch-crew" class="bridge-key plane-key link-key" type="button"><span class="key-camera"><span class="key-face"><span class="control-inner">调整编队 ›</span><span class="key-reflection"></span></span></span></button></div>
+      <div id="last-receipt" class="last-receipt"></div>
+    </div>
+    <div id="post-receipt" class="dispatch-console post-receipt gone"><img class="receipt-seal" src="../Images/ribbon-1.png" /><h2 id="signed-route"></h2><div id="signed-wing"></div><div id="signed-pay"></div><button id="file-receipt" class="bridge-key plane-key bridge-action" type="button"><span class="key-camera"><span class="key-face"><span class="control-inner">收好回执</span><span class="key-reflection"></span></span></span></button></div>
+    <div class="header"><div class="header-left"><button id="back" class="bridge-key plane-key back utility-key" type="button" aria-label="返回"><span class="key-camera"><span class="key-face"><img class="back-icon" src="../Images/back-icon.png" /><span class="key-reflection"></span></span></span></button><h1 class="page-title">远航派遣</h1></div><div class="header-right"><div class="purse"><img class="credit" src="../Images/credit.png" /><span id="balance" class="digits">180</span></div><button id="motion" class="bridge-key plane-key motion utility-key" type="button" aria-label="切换动效"><span class="key-camera"><span class="key-face"><span id="motion-label">动效 · 开</span><span class="key-reflection"></span></span></span></button></div></div>
+  </div>
+</body>
+</html>

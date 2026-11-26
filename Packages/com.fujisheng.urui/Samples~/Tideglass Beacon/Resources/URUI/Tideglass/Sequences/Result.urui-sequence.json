@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "name": "Beacon ignition",
+  "duration": 1.02,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "result-dial",
+      "kind": "css",
+      "target": "result-dial",
+      "keyframes": "focus-lock",
+      "duration": 0.93,
+      "start": 0,
+      "easing": "ease-out"
+    },
+    {
+      "id": "result-orbit",
+      "kind": "css",
+      "target": "result-orbit",
+      "keyframes": "seal-halo",
+      "duration": 0.8,
+      "start": 0.08,
+      "easing": "ease-out"
+    },
+    {
+      "id": "result-crest",
+      "kind": "css",
+      "target": "result-crest",
+      "keyframes": "seal-crown",
+      "duration": 0.7,
+      "start": 0.1,
+      "easing": "ease-out"
+    },
+    {
+      "id": "result-copy",
+      "kind": "css",
+      "target": "result-copy",
+      "keyframes": "arrive-up",
+      "duration": 0.58,
+      "start": 0.28,
+      "easing": "ease-out"
+    },
+    {
+      "id": "result-reward",
+      "kind": "css",
+      "target": "result-reward",
+      "keyframes": "appear",
+      "duration": 0.39,
+      "start": 0.6,
+      "easing": "ease-out"
+    }
+  ]
+}

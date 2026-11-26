@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Portrait objective",
+  "duration": 0.54,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "focus-fan",
+      "kind": "css",
+      "target": "focus-fan",
+      "keyframes": "lens-sector",
+      "start": 0,
+      "duration": 0.54,
+      "easing": "linear"
+    },
+    {
+      "id": "focus-glass",
+      "kind": "css",
+      "target": "focus-glass",
+      "keyframes": "portrait-focus",
+      "start": 0,
+      "duration": 0.54,
+      "easing": "linear"
+    }
+  ]
+}

@@ -20,7 +20,7 @@ URUI Hierarchy 显示图层和样式表。URUI Editor 左侧的控件库抽屉�
 
 样式表面板按文档引用顺序显示 CSS。选中规则后在右侧编辑选择器及声明，已导入的包资源以只读显示。节点 Inspector 的局部样式可提取到可写的直接引用样式表，提取前会显示声明与目标文件。计算来源显示当前 URUI 能提供的来源类别。工具栏“源码”可查看工作副本中的 HTML 和 CSS。
 
-在支持 `/URUI/` 资源挂载点的工程中，作者画布直接通过 `/URUI/...` 解析项目内置资源；源码保存后，Unity 导入器会尝试增量更新对应的 `.compiled.asset` 编译资产（如在示例工程 `SampleProject/` 中使用 `/URUI/Solstice/...`）。
+在支持 `/URUI/` 资源挂载点的工程中，作者画布直接通过 `/URUI/...` 解析项目内置资源；源码保存后，Unity 导入器会尝试增量更新对应的 `.compiled.asset` 编译资产。
 
 作者预览支持 Built-in 与 SRP（包括 URP），无需在游戏 Renderer 中额外添加预览专用 Feature。`/urui/base.css`、`controls.css`、`behaviors.css` 和项目 `/URUI/...` Resources 引用保持原 URI；项目 HTML/CSS 依赖从工作副本读取，中文及空格资源名在 Unity 资产边界解析。`rel="urui-fragment"` 引用的现有模板片段可作为依赖加载，活动页面仍按完整 HTML 校验。页面或依赖加载失败时显示错误并停用该页画布，避免操作上一页的画面。
 

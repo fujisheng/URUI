@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Seat flight plan",
+  "duration": 0.55,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "plan-art",
+      "kind": "css",
+      "target": "plan-art",
+      "keyframes": "module-seat",
+      "start": 0,
+      "duration": 0.55,
+      "easing": "linear"
+    },
+    {
+      "id": "latch-ring",
+      "kind": "css",
+      "target": "latch-ring",
+      "keyframes": "contact-ring",
+      "start": 0,
+      "duration": 0.55,
+      "easing": "linear"
+    }
+  ]
+}

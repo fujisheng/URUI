@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Station.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+</head>
+<body>
+  <div id="screen" class="screen loadout">
+    <img class="full scenery bay-space" src="../Images/workbay.png" /><div class="full bay-shade"></div>
+    <div class="work-cradle">
+      <img class="work-orbit" src="../Images/orbit.png" /><img id="latch-ring" class="latch-ring" src="../Images/ready-rim.png" /><img id="plan-art" class="plan-art" src="../Images/module-0.png" />
+      <img id="plan-scan" class="plan-scan" src="../Images/pilot-scan.png" />
+    </div>
+    <div class="cradle-copy"><h2 id="plan-title"></h2><div id="plan-spec"></div></div>
+    <div class="work-sheet">
+      <div class="glass-optic"></div><div class="work-paper"></div>
+      <div class="work-content">
+        <div class="preset-tabs"><button id="preset-0" class="preset-tab" type="button"><span id="preset-label-0"></span></button>
+<button id="preset-1" class="preset-tab" type="button"><span id="preset-label-1"></span></button></div>
+        <div class="socket-bank"><button id="socket-0" class="socket" type="button"><img class="socket-art" src="../Images/module-0.png" /><span>潮纹</span></button>
+<button id="socket-1" class="socket" type="button"><img class="socket-art" src="../Images/module-1.png" /><span>烬羽</span></button>
+<button id="socket-2" class="socket" type="button"><img class="socket-art" src="../Images/module-2.png" /><span>风棱</span></button></div>
+        <div id="plan-values" class="plan-values"></div>
+        <div class="order-bank"><button id="order-0" class="order-option" type="button"><img class="order-small" src="../Images/order-0.png" /><span>潮能注入</span></button>
+<button id="order-1" class="order-option" type="button"><img class="order-small" src="../Images/order-1.png" /><span>冷却回拨</span></button></div>
+        <div class="order-explainer"><span class="order-capacity">每场一次</span><span id="plan-order-note"></span></div>
+        <div class="work-actions"><button id="apply-preset" class="commit plane-key plane-front" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><span class="control-inner">启用这套预案</span><span class="key-sheen"></span></span></span></button>
+          <button id="get-module" class="module-link" type="button">前往商城 ›</button></div>
+      </div>
+    </div>
+    <span id="notice" class="notice"></span>
+    <div class="header"><div class="header-left"><button id="back" class="back" type="button" aria-label="返回"><img class="back-icon" src="../Images/back-icon.png" /></button><h1 class="page-title">战术整备</h1></div>
+      <div class="header-right"><button id="motion" class="motion" type="button">动效 · 开</button></div></div>
+  </div>
+</body>
+</html>

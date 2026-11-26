@@ -4,9 +4,9 @@
 
 ## 默认包样例验收
 
-URUI 的主要推荐样例是包内 `Samples~/Solstice`（完整 URP + 3D 示范工程在仓库根目录 `SampleProject/`）。先将 `Fixtures/Editor/PackageImport.cs` 复制到独立工程 `Assets/URUIEditorChecks/Editor`，调用 `URUI.Tests.Editor.PackageImport.ImportSamples`。该入口使用真实 `Sample.FindByPackage` / `Sample.Import(OverridePreviousImports)` 重新导入全部声明样例，覆盖独立工程中的样例副本，逐文件核对源字节；将路径和文件数量写入 `Evidence/sample-import.json`。之后重新启动 Unity，确认样例脚本编译通过；导入成功不能代替功能验收。
+URUI 的主要推荐样例是包内 `Samples~/Tideglass Beacon`（独立 URP 示例工程在仓库根目录 `SampleProject/`）。先将 `Fixtures/Editor/PackageImport.cs` 复制到独立工程 `Assets/URUIEditorChecks/Editor`，调用 `URUI.Tests.Editor.PackageImport.ImportSamples`。该入口使用真实 `Sample.FindByPackage` / `Sample.Import(OverridePreviousImports)` 重新导入全部声明样例，覆盖独立工程中的样例副本，逐文件核对源字节；将路径和文件数量写入 `Evidence/sample-import.json`。之后重新启动 Unity，确认样例脚本编译通过；导入成功不能代替功能验收。
 
-可在独立工程或 `SampleProject` 中直接打开 `Solstice.unity` 运行真实交互功能，配合 `URUI.Tests.Editor`（EditMode / PlayMode 测试套件）校验 `Surface.GetRenderingStatistics()` 与运行时稳定性。
+可在独立工程或 `SampleProject` 中直接打开 `Tideglass.unity` 运行真实交互功能，配合 `URUI.Tests.Editor`（EditMode / PlayMode 测试套件）校验 `Surface.GetRenderingStatistics()` 与运行时稳定性。
 
 下列 Hello/API/控件检查是分项回归入口，不是包的默认示例。
 

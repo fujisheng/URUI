@@ -41,7 +41,7 @@ URP 的项目适配已有运行记录；HDRP、其他图形后端及非 macOS �
 ## 样例与可选包
 
 - **独立 URP 示范工程**：直接用 Unity `6000.3.22f1` 打开仓库下的 [SampleProject/](../../../SampleProject/)（含 URP 3D 舞台合成、Effect、Authoring 与 10k 军械库验证）。
-- **包内 Core 样例**：在 Unity Package Manager 中选择 **URUI** → **Samples** → **Solstice** → **Import**，打开导入后的 `Solstice.unity`（标准路径 `Assets/Samples/URUI/<版本>/Solstice`）。也可通过菜单 `Tools → URUI → Open Solstice Sample` 一键导入并打开。
+- **包内 Core 样例**：在 Unity Package Manager 中选择 **URUI** → **Samples** → **Tideglass Beacon** → **Import**，打开导入后的 `Tideglass.unity`（标准路径 `Assets/Samples/URUI/<版本>/Tideglass Beacon`）。也可通过菜单 `Tools → URUI → Open Tideglass Beacon Sample` 一键导入并打开。
 
 `Hello URUI`、`Element Playground`、`Runtime Controls` 为细分专题学习样例；`Documentation~`、`Samples~`、`Tests~`、`Native~` 默认不参与普通 Unity 资产导入，按需显式引入，接入项目无需任何外部工作区目录。
 

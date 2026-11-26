@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Release the rack",
+  "duration": 0.43,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "rack-top",
+      "kind": "css",
+      "target": "rack-top",
+      "keyframes": "rack-return-upper",
+      "start": 0,
+      "duration": 0.43,
+      "easing": "linear"
+    },
+    {
+      "id": "rack-bottom",
+      "kind": "css",
+      "target": "rack-bottom",
+      "keyframes": "rack-return-lower",
+      "start": 0,
+      "duration": 0.43,
+      "easing": "linear"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Module acquisition focus",
+  "duration": 0.64,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "seal-display",
+      "kind": "css",
+      "target": "seal-display",
+      "keyframes": "inspect-sigil",
+      "duration": 0.64,
+      "start": 0,
+      "easing": "ease-out"
+    },
+    {
+      "id": "bag-glow",
+      "kind": "css",
+      "target": "bag-glow",
+      "keyframes": "inspect-glow",
+      "duration": 0.62,
+      "start": 0,
+      "easing": "ease-out"
+    },
+    {
+      "id": "module-scan",
+      "kind": "css",
+      "target": "module-scan",
+      "keyframes": "inspect-scan",
+      "duration": 0.57,
+      "start": 0.05,
+      "easing": "ease-out"
+    }
+  ]
+}

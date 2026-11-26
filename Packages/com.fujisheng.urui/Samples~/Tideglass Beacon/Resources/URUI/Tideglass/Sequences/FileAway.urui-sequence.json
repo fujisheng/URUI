@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "Close flight recorder",
+  "duration": 0.42,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "record-leaf",
+      "kind": "css",
+      "target": "record-leaf",
+      "keyframes": "file-leaf",
+      "start": 0,
+      "duration": 0.42,
+      "easing": "linear"
+    }
+  ]
+}

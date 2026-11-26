@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+</head>
+<body>
+  <div id="screen" class="screen logbook">
+    <img class="full scenery archive-space" src="../Images/sector-umbra.png" />
+    <div class="full archive-night"></div>
+    <div class="archive-cover">
+      <img class="book-dial" src="../Images/aperture.png" />
+      <img class="book-seal" src="../Images/crest.png" />
+      <div class="cover-title">航行手记</div><div class="cover-rule"></div>
+      <span class="cover-count"><span id="book-index" class="digits"></span>　信标已点亮</span>
+    </div>
+    <div class="folio">
+      <div class="glass-optic"></div><div class="folio-paper"></div>
+      <div class="folio-content">
+        <div class="book-tabs"><button id="tab-contracts" class="book-tab" type="button">委托</button><button id="tab-records" class="book-tab" type="button">航迹</button></div>
+        <div id="folio-leaf" class="folio-leaf">
+          <div id="contracts">        <div id="contract-0" class="folio-entry"><span class="folio-number digits">01</span>
+          <div class="entry-copy"><span id="contract-name-0" class="entry-title"></span><span id="contract-progress-0" class="entry-sub"></span></div>
+          <div class="entry-reward"><img class="credit" src="../Images/credit.png" /><span id="bounty-0"></span></div>
+          <button id="claim-0" class="claim" type="button"></button>
+        </div>
+        <div id="contract-1" class="folio-entry"><span class="folio-number digits">02</span>
+          <div class="entry-copy"><span id="contract-name-1" class="entry-title"></span><span id="contract-progress-1" class="entry-sub"></span></div>
+          <div class="entry-reward"><img class="credit" src="../Images/credit.png" /><span id="bounty-1"></span></div>
+          <button id="claim-1" class="claim" type="button"></button>
+        </div>
+        <div id="contract-2" class="folio-entry"><span class="folio-number digits">03</span>
+          <div class="entry-copy"><span id="contract-name-2" class="entry-title"></span><span id="contract-progress-2" class="entry-sub"></span></div>
+          <div class="entry-reward"><img class="credit" src="../Images/credit.png" /><span id="bounty-2"></span></div>
+          <button id="claim-2" class="claim" type="button"></button>
+        </div></div>
+          <div id="records" class="gone"><div class="record-legend">最快点亮</div>        <div class="folio-entry"><span class="folio-number digits">01</span>
+          <div class="entry-copy"><span id="record-name-0" class="entry-title"></span><span id="record-log-0" class="entry-sub"></span></div>
+          <span id="record-best-0" class="record-best"></span></div>
+        <div class="folio-entry"><span class="folio-number digits">02</span>
+          <div class="entry-copy"><span id="record-name-1" class="entry-title"></span><span id="record-log-1" class="entry-sub"></span></div>
+          <span id="record-best-1" class="record-best"></span></div>
+        <div class="folio-entry"><span class="folio-number digits">03</span>
+          <div class="entry-copy"><span id="record-name-2" class="entry-title"></span><span id="record-log-2" class="entry-sub"></span></div>
+          <span id="record-best-2" class="record-best"></span></div></div>
+        </div>
+        <button id="book-chart" class="book-chart" type="button">展开航线图 ›</button>
+      </div>
+      <img id="signed-seal" class="signed-seal" src="../Images/crest.png" />
+    </div>
+    <span id="notice" class="notice"></span>
+    <div class="header">
+      <div class="header-left"><button id="back" class="back" type="button" aria-label="返回"><img class="back-icon" src="../Images/back-icon.png" /></button><h1 class="page-title">航行手记</h1></div>
+      <div class="header-right"><div class="purse"><img class="credit" src="../Images/credit.png" /><span id="balance" class="digits"></span></div><button id="motion" class="motion" type="button">动效 · 开</button></div>
+    </div>
+  </div>
+</body>
+</html>

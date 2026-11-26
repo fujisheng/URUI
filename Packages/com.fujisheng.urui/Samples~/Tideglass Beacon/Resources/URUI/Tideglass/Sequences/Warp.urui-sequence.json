@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "Beacon jump",
+  "duration": 0.73,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "nav-veil",
+      "kind": "css",
+      "target": "nav-veil",
+      "keyframes": "voyage-cover",
+      "start": 0,
+      "duration": 0.73,
+      "easing": "linear"
+    },
+    {
+      "id": "warp-fan",
+      "kind": "css",
+      "target": "warp-fan",
+      "keyframes": "flight-stretch",
+      "start": 0,
+      "duration": 0.73,
+      "easing": "linear"
+    },
+    {
+      "id": "warp-ring",
+      "kind": "css",
+      "target": "warp-ring",
+      "keyframes": "jump-front",
+      "start": 0,
+      "duration": 0.73,
+      "easing": "linear"
+    },
+    {
+      "id": "jump-light",
+      "kind": "css",
+      "target": "jump-light",
+      "keyframes": "jump-corona",
+      "start": 0.07,
+      "duration": 0.58,
+      "easing": "linear"
+    }
+  ]
+}

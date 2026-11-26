@@ -5,4 +5,4 @@ Topic sample showcasing typed `URUI.Controls`, authored composite skins, and fix
 - **Included files**: `RuntimeControls.unity`, `RuntimeControls.cs`, `URUI.Samples.Controls.asmdef`, and HTML/CSS/font assets under `Resources/`.
 - **Demonstrated features**: Typed fields (`Slider`, `Toggle`, `Dropdown`, `TextField`), custom authored popup (`DropdownVisual`), list item pooling/rebinding, and safe C# subscription cleanup on `OnDisable`.
 
-For the full multi-page showcase including themed CSS tokens and runtime statistics, see [Solstice](../Solstice/README.md).
+See [Tideglass Beacon](../Tideglass%20Beacon/README.md) for a complete multi-screen game sample.

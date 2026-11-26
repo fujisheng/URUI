@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "Bounty receipt",
+  "duration": 0.72,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "signed-seal",
+      "kind": "css",
+      "target": "signed-seal",
+      "keyframes": "wax-impress",
+      "start": 0,
+      "duration": 0.72,
+      "easing": "linear"
+    }
+  ]
+}

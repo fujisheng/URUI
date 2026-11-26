@@ -30,3 +30,7 @@ sysinfo.txt
 *.app
 .DS_Store
 Thumbs.db
+
+# Unity imports the canonical showcase from the local URUI package.
+/Assets/Samples/
+/Assets/Samples.meta

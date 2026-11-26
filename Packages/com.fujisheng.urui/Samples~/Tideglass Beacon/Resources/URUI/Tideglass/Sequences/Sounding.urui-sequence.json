@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "Sector sounding",
+  "duration": 0.45,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "route-scan",
+      "kind": "css",
+      "target": "route-scan",
+      "keyframes": "route-read",
+      "start": 0,
+      "duration": 0.45,
+      "easing": "linear"
+    }
+  ]
+}

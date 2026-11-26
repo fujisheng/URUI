@@ -165,4 +165,4 @@ public sealed class ManualUiClock : IUIClock
 | `BezierMotion(path,rotation,source,target)` | 作者声明路径参数和实际 source/target 节点；Begin 启动、Stop 停止、Dispose 释放 |
 | `VisibilityClass(target,activation,className)` | 按 activation 的实际可见性维护 target 的状态 class；Dispose 清理 |
 
-ScrollMotion 的边界为 elastic/clamped/unrestricted；灵敏度、拖动阈值、弹性和减速来自 CSS，不在每个业务 Update 重建控制器。StaggeredReveal 的 span/gap/delay 以秒的 number 声明。各构造参数、全部枚举和声明见接口参考；现成的作者结构可从 Solstice 或 Runtime Controls 样例复制。
+ScrollMotion 的边界为 elastic/clamped/unrestricted；灵敏度、拖动阈值、弹性和减速来自 CSS，不在每个业务 Update 重建控制器。StaggeredReveal 的 span/gap/delay 以秒的 number 声明。各构造参数、全部枚举和声明见接口参考；现成的作者结构可从 Runtime Controls 样例复制。

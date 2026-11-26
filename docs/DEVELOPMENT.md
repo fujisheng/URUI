@@ -9,7 +9,7 @@ Target Unity version: **`6000.3.22f1`**. Current native bridge contract: **`ABI1
 - `Packages/com.fujisheng.urui/` — Core runtime (`URUI.Runtime`), Editor tools (`URUI.Editor`), prebuilt native plugins (`Runtime/Plugins`), C++ source (`Native~`), and verification suites (`Tests/`, `Tests~/`).
 - `Packages/com.fujisheng.urui.effect/` — Visual filters, presets, `WaveEffect`, `TextureEffectSurface`, particles (`URUI.Effect`).
 - `Packages/com.fujisheng.urui.authoring/` — Editor-only visual inspector, timeline, and localhost Agent HTTP v1 (`URUI.Authoring.Editor`).
-- `SampleProject/` — Standalone open-and-play Unity `6000.3.22f1` URP showcase (**SOLSTICE**).
+- `SampleProject/` — Standalone open-and-play Unity `6000.3.22f1` URP showcase (**Tideglass Beacon**).
 - `Tools/` — Native platform builder, static doc/link validators, Authoring managed suite, and regression checks.
 
 ## 2. Rebuilding Native Binaries (`URUIBridge`)
@@ -39,7 +39,7 @@ python3 Tools/check-static-links.py
 python3 -m unittest discover -s Tools/Tests -p "test_*.py"
 ```
 
-### Unity EditMode & PlayMode Suites (`com.fujisheng.urui` & `Solstice`)
+### Unity EditMode & PlayMode Suites
 - Run `URUI.Editor.Tests`, `URUI.Runtime.Tests.PlayMode`, and `URUI.Effect.Tests` in a clean Built-in Render Pipeline Unity `6000.3.22f1` project (with `com.unity.test-framework` enabled and `Samples~/EffectGallery` staged as automated in `Tools/Effects/validate.py`).
-- Run `Solstice.Tests.SolsticeVisualCaptureTests` in `SampleProject/` (URP `17.3.0`) to verify 3D RenderGraph compositing, particles, sequences, and multi-screen layouts.
+- In `SampleProject`, play Tideglass Beacon through login, module inspection and equip, skill preview, and the trial result. Verify particle rendering and URP submission.
 - Ensure external `TMPDIR` is set when working on external SSD storage, and run GPU rendering validations on real GPU hardware (do **not** pass `-nographics` to GPU/ReadPixels tests).

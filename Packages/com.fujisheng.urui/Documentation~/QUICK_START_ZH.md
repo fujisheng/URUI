@@ -2,10 +2,9 @@
 
 对应 Core `0.8.0-preview.1`。先按[安装](INSTALL_ZH.md)准备 Unity 6000.3.22f1、Camera、配套原生插件与 Input Manager (Old/Both)。
 
-## 先运行 Solstice 示范样例
+## 运行潮汐信标
 
-- **完整游戏示范体验（推荐）**：直接用 Unity `6000.3.22f1` 打开仓库根目录下的 [SampleProject/](../../../SampleProject/)，进入 `Assets/Solstice/Scenes/Solstice.unity` 并点击 Play，可完整体验 3D 视差圣殿背景、首领战斗与环形冷却技能、Effect 灵装材质、星盘召唤序列动画、10,000 项虚拟化军械库及 Authoring 预览。
-- **包内独立 Core 样例**：在 Unity Package Manager 中打开 **URUI** → **Samples** → **Solstice** → **Import**，打开导入后的 `Solstice.unity` 并进入 Play Mode；或执行菜单 `Tools → URUI → Open Solstice Sample`。标准导入路径为 `Assets/Samples/URUI/<包版本>/Solstice`，包内 `Samples~` 为只读源码，`Assets` 下为项目可编辑副本。详情见 [Solstice README](../Samples~/Solstice/README_ZH.md)。
+用 Unity 6000.3.22f1 打开 [SampleProject](../../../SampleProject/)，选择 **Tools → URUI → Open Tideglass Beacon Sample**，然后进入 Play Mode。Built-in 工程也可以在 Package Manager 导入 **URUI → Samples → Tideglass Beacon**。查看[操作和源码](../Samples~/Tideglass%20Beacon/README_ZH.md)。
 
 ## 创建最小作者文件
 

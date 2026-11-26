@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Station.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+</head>
+<body>
+  <div id="screen" class="screen trial">
+<img id="trial-scenery" class="full scenery trial-space" src="../Images/sector-shoal.png" /><div class="full vignette"></div>
+    <div class="world-grid"></div>
+    <img class="trial-floor" src="../Images/floor.png" />
+    <div id="projection" class="projection trial-projection">
+      <img class="projection-lens" src="../Images/lens.png" />
+      <img class="projection-dial" src="../Images/aperture.png" />
+      <img class="projection-ring" src="../Images/orbit.png" />
+      <img class="projection-light" src="../Images/glow.png" />
+    </div>
+    <div class="arena-center">
+       <div id="core-motion" class="core-motion"><img class="core" src="../Images/reactor.png" /></div>
+       <div class="shield-mount"><img id="mirror-outer" class="full mirror outer gone" src="../Images/mirror-outer.png" />
+         <img id="mirror-inner" class="full mirror inner gone" src="../Images/mirror-inner.png" />
+         <img id="eclipse-vane" class="full eclipse-vane gone" src="../Images/eclipse-vane.png" /></div>
+       <div id="pulse" class="pulse"><img id="pulse-image" class="full" src="../Images/shock.png" /></div>
+       <img id="impact-echo" class="impact-echo full" src="../Images/shock-violet.png" />
+       <img id="impact-flare" class="impact-flare full" src="../Images/flare.png" />
+       <img id="impact-lock" class="impact-lock full" src="../Images/aperture.png" />
+       <span id="damage" class="damage digits"></span>
+    </div>
+    <div class="enemy">
+       <h1 id="enemy-name" class="enemy-name">偏振核心</h1>
+       <div class="enemy-track"><img id="health" class="full enemy-health" src="../Images/health.png" /></div>
+       <span id="enemy-health-value" class="digits enemy-value">480 / 480</span><span id="enemy-phase" class="enemy-phase"></span>
+    </div>
+    <div class="trial-energy">
+      <img id="charge" class="charge-ring" src="../Images/load-meter.png" />
+      <div class="charge-copy"><span id="charge-value" class="digits">0 / 100</span><span>潮能</span></div>
+      <div class="charge-note" id="resonance">距潮鸣还差 60 潮能</div>
+      <div class="reserve-track"><div id="reserve-fill" class="reserve-fill"><img id="reserve-wave" src="../Images/reserve-ink.png" /></div></div>
+    </div>
+    <button id="issue-order" class="tactical-key" type="button">
+      <img id="order-icon" class="order-icon" src="../Images/order-0.png" />
+      <span class="order-copy"><span id="order-title"></span><span id="order-state"></span></span><span class="order-shortcut digits">4</span>
+    </button>
+    <img id="relay-pulse" class="relay-pulse" src="../Images/ready-rim.png" />
+    <div class="abilities">
+      <div class="ability ability-0">
+         <button id="cast-0" class="skill-button" type="button" aria-label="引潮"><img class="full skill-art" src="../Images/skill-0.png" /><img id="cooldown-0" class="full cooldown" src="../Images/cooldown.png" /><img class="full ready-rim" src="../Images/ready-rim.png" /><span id="count-0" class="cooldown-count digits"></span></button>
+         <div class="skill-name"><span class="shortcut digits">1</span><span>引潮</span></div>
+      </div>
+      <div class="ability ability-1">
+         <button id="cast-1" class="skill-button" type="button" aria-label="裂光"><img class="full skill-art" src="../Images/skill-1.png" /><img id="cooldown-1" class="full cooldown" src="../Images/cooldown.png" /><img class="full ready-rim" src="../Images/ready-rim.png" /><span id="count-1" class="cooldown-count digits"></span></button>
+         <div class="skill-name"><span class="shortcut digits">2</span><span>裂光</span></div>
+      </div>
+      <div class="ability ability-2">
+         <button id="cast-2" class="skill-button" type="button" aria-label="潮鸣"><img class="full skill-art" src="../Images/skill-2.png" /><img id="cooldown-2" class="full cooldown" src="../Images/cooldown.png" /><img class="full ready-rim" src="../Images/ready-rim.png" /><span id="count-2" class="cooldown-count digits"></span></button>
+         <div class="skill-name"><span class="shortcut digits">3</span><span>潮鸣</span></div>
+      </div></div>
+    <div class="header"><div class="header-left"><button id="back" class="back" type="button" aria-label="返回"><img class="back-icon" src="../Images/back-icon.png" /></button><h1 id="exit-label" class="page-title">撤离</h1></div><div class="header-right"><button id="motion" class="motion" type="button">动效 · 开</button></div></div>
+  </div>
+</body>
+</html>

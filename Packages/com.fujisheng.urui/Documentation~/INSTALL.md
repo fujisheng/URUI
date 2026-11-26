@@ -41,7 +41,7 @@ Before replacing a loaded native dynamic library in Editor or Player, close the 
 ## Samples & Optional Packages
 
 - **Standalone URP Showcase Project**: Open [SampleProject/](../../../SampleProject/) directly in Unity `6000.3.22f1` to explore 3D sanctuary compositing, radial skill cooldowns, summon astrolabe sequences, `URUI.Effect` shaders/particles, `URUI.Authoring`, and the 10,000-item armory.
-- **Package Core Sample**: In Package Manager select **URUI → Samples → Solstice → Import**, then open the imported `Solstice.unity` scene (typically `Assets/Samples/URUI/<version>/Solstice`). You can also invoke **Tools → URUI → Open Solstice Sample**.
+- **Package Core Sample**: In Package Manager select **URUI → Samples → Tideglass Beacon → Import**, then open the imported `Tideglass.unity` scene (typically `Assets/Samples/URUI/<version>/Tideglass Beacon`). You can also invoke **Tools → URUI → Open Tideglass Beacon Sample**.
 
 `Hello URUI`, `Element Playground`, and `Runtime Controls` provide focused topic samples. `Documentation~`, `Samples~`, `Tests~`, and `Native~` are ignored by standard Unity asset import and imported explicitly only when requested.
 

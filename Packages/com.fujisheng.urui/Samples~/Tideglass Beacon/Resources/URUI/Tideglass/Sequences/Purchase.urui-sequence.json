@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Receive projected module",
+  "duration": 0.76,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "item-glint",
+      "kind": "css",
+      "target": "item-glint",
+      "keyframes": "item-polish",
+      "duration": 0.7,
+      "start": 0,
+      "easing": "ease-out"
+    },
+    {
+      "id": "module-scan",
+      "kind": "css",
+      "target": "module-scan",
+      "keyframes": "inspect-scan",
+      "duration": 0.57,
+      "start": 0.1,
+      "easing": "ease-out"
+    },
+    {
+      "id": "bag-glow",
+      "kind": "css",
+      "target": "bag-glow",
+      "keyframes": "inspect-glow",
+      "duration": 0.72,
+      "start": 0,
+      "easing": "ease-out"
+    }
+  ]
+}

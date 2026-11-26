@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Draw damage contribution",
+  "duration": 0.56,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "telemetry-0",
+      "kind": "css",
+      "target": "telemetry-0",
+      "keyframes": "bars-rise",
+      "start": 0,
+      "duration": 0.4,
+      "easing": "linear"
+    },
+    {
+      "id": "telemetry-1",
+      "kind": "css",
+      "target": "telemetry-1",
+      "keyframes": "bars-rise",
+      "start": 0,
+      "duration": 0.48,
+      "easing": "linear"
+    },
+    {
+      "id": "telemetry-2",
+      "kind": "css",
+      "target": "telemetry-2",
+      "keyframes": "bars-rise",
+      "start": 0,
+      "duration": 0.56,
+      "easing": "linear"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Station.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+</head>
+<body>
+  <div id="screen" class="screen range">
+    <img class="full scenery range-space" src="../Images/range.png" /><div class="full range-shade"></div>
+    <div class="range-target">
+      <img class="full range-lens" src="../Images/lens.png" /><img id="range-lock" class="full range-lock" src="../Images/aperture.png" /><img id="range-glyph" class="range-glyph" src="../Images/skill-2.png" />
+    </div>
+    <div class="range-brief">
+      <h2 id="drill-title"></h2><div id="drill-goal"></div><div id="drill-best"></div>
+      <button id="drill-start" class="commit plane-key plane-front" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><span class="control-inner">开始演练</span><span class="key-sheen"></span></span></span></button>
+    </div>
+    <div class="drill-selector"><button id="drill-0" class="drill-tab" type="button"><span class="digits drill-number">01</span><span>蓄能与终结</span></button>
+<button id="drill-1" class="drill-tab" type="button"><span class="digits drill-number">02</span><span>双层破壳</span></button>
+<button id="drill-2" class="drill-tab" type="button"><span class="digits drill-number">03</span><span>交替连携</span></button></div>
+    <div class="header"><div class="header-left"><button id="back" class="back" type="button" aria-label="返回"><img class="back-icon" src="../Images/back-icon.png" /></button><h1 class="page-title">演练舱</h1></div>
+      <div class="header-right"><button id="motion" class="motion" type="button">动效 · 开</button></div></div>
+  </div>
+</body>
+</html>

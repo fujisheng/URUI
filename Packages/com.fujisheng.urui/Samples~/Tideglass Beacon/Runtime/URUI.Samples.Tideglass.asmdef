@@ -1,0 +1,5 @@
+{
+  "name": "URUI.Samples.Tideglass",
+  "rootNamespace": "URUI.Samples.Tideglass",
+  "references": ["URUI.Runtime"]
+}

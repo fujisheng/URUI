@@ -6,18 +6,16 @@
 
 URUI Core 在 Unity 内嵌入高性能原生 HTML/CSS 排版与渲染核心（`URUIBridge`）：用 HTML 描述页面结构，CSS 管理样式、变量主题与动画关键帧，托管 C#（`Surface`、`Document`、`Element` 与强类型控件）驱动业务交互，全程无每节点 `MonoBehaviour`。
 
-![SOLSTICE 核心示例动图](Documentation~/Images/solstice.gif)
-
 ## 包内可导入样例
 
 | 样例 | 用途 | 管线兼容 |
 | --- | --- | --- |
-| **Solstice** *（主推默认样例）* | 幻想策略 RPG HUD：3 套高对比纯 CSS 主题、`Radial360` 技能冷却、`SequencePlayer` 召唤动画、万级虚拟军械库、`Surface.GetRenderingStatistics()` | Built-in & URP |
+| **潮汐信标** | 舰员随航、离线派遣、航籍授勋、三处信标、整备与战报。大厅展示立体键帽、实时折射和舱室转场 | Built-in 或独立 URP 工程 |
 | **Hello URUI** | 最小入门：托管 `Document` 加载、样式读写与点击事件订阅释放 | Built-in & URP |
 | **Element Playground** | 显式节点创建、局部查询、层级移动/重挂载、类名切换与销毁生命周期 | Built-in & URP |
 | **Runtime Controls** | 全套表单控件、方向键焦点导航与可复用虚拟列表 | Built-in & URP |
 
-快速运行：在 Unity Editor 菜单点击 **Tools → URUI → Open Solstice Sample**（自动导入并打开 `Solstice.unity`），或直接打开仓库根目录 [`../../SampleProject/`](../../SampleProject) 查看包含 URP 3D 融合与特效的完整工程。
+快速运行：在 Unity Editor 菜单点击 **Tools → URUI → Open Tideglass Beacon Sample**（自动导入并打开 `Tideglass.unity`），或直接打开仓库根目录 [`../../SampleProject/`](../../SampleProject) 查看包含 URP 合成与特效的完整工程。
 
 ## 专题文档导航（[English](Documentation~/QUICK_START.md) / 中文）
 

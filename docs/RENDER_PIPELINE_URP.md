@@ -110,7 +110,7 @@ public sealed class UruiUrpRendererFeature : ScriptableRendererFeature
 }
 ```
 
-> **Working Reference**: See [`SampleProject/Assets/Solstice/Runtime/Rendering/UruiUrpRendererFeature.cs`](../SampleProject/Assets/Solstice/Runtime/Rendering/UruiUrpRendererFeature.cs), including `#if URP_COMPATIBILITY_MODE` fallback and `UniversalRendererData` setup in [`SolsticeProjectSetup.cs`](../SampleProject/Assets/Solstice/Editor/SolsticeProjectSetup.cs).
+> **Working Reference**: See [`SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs`](../SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs) and `UniversalRendererData` setup in [`ShowcaseRenderer.asset`](../SampleProject/Assets/Rendering/ShowcaseRenderer.asset).
 
 ## Critical URP Pitfalls to Avoid
 

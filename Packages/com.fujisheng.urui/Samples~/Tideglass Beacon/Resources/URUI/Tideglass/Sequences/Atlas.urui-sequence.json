@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Chart registration",
+  "duration": 0.59,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "nav-veil",
+      "kind": "css",
+      "target": "nav-veil",
+      "keyframes": "voyage-cover",
+      "start": 0,
+      "duration": 0.59,
+      "easing": "linear"
+    },
+    {
+      "id": "atlas-trace",
+      "kind": "css",
+      "target": "atlas-trace",
+      "keyframes": "atlas-develop",
+      "start": 0,
+      "duration": 0.59,
+      "easing": "linear"
+    },
+    {
+      "id": "nav-reticle",
+      "kind": "css",
+      "target": "nav-reticle",
+      "keyframes": "reticle-register",
+      "start": 0,
+      "duration": 0.59,
+      "easing": "linear"
+    }
+  ]
+}

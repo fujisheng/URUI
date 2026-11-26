@@ -38,7 +38,7 @@ if (stats.Ready)
 
 ## 5. Authoring Best Practices for Smooth 60+ FPS
 
-1. **Use `CompiledDocumentAsset` in Production**: Pre-compile static UI screens with `CompiledDocumentCompiler.CompileAndSave` (`SOLSTICE` Armory demonstrates AOT bytecode instant load for 10,000 items via `Backpack.compiled.asset`).
+1. **Use `CompiledDocumentAsset` in Production**: Pre-compile static UI screens with `CompiledDocumentCompiler.CompileAndSave`.
 2. **Use Fixed-Height `ListView` for Large Catalogs**: Only visible + buffer rows are realized (`RealizedItemCount` stays ~14–18 even over 10,000 items).
 3. **Switch Themes via `@property` Color Tokens**: Toggle root classes (`theme-obsidian` / `theme-crimson` / `theme-alabaster`) cleanly instead of unloading/reloading entire HTML trees.
-4. **Subset Large CJK Fonts**: Bundle only required glyphs (for example, the `SOLSTICE` subset reduced `NotoSansSC-Bold` from ~10 MB down to ~200 KB) and disable texture mipmaps/streaming on UI textures.
+4. **Subset Large CJK Fonts**: Bundle only required glyphs and disable texture mipmaps/streaming on UI textures.

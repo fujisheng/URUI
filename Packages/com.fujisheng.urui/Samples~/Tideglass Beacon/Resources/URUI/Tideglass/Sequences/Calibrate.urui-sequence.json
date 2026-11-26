@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Read module pins",
+  "duration": 0.41,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "plan-art",
+      "kind": "css",
+      "target": "plan-art",
+      "keyframes": "module-seat",
+      "start": 0,
+      "duration": 0.41,
+      "easing": "linear"
+    },
+    {
+      "id": "plan-scan",
+      "kind": "css",
+      "target": "plan-scan",
+      "keyframes": "bay-read",
+      "start": 0,
+      "duration": 0.41,
+      "easing": "linear"
+    }
+  ]
+}

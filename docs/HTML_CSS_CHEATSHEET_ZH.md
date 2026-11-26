@@ -31,7 +31,7 @@
 ## 3. 单位、字体与视觉滤镜
 
 - **支持单位（14 种）**：`px`、`%`、`<number>`、`em`、`rem`、`vw`、`vh`、`deg`、`rad`、`cm`、`mm`、`in`、`pt`、`pc`。
-- **字体栈匹配**：字体原始文件以 `.ttf.bytes` / `.otf.bytes` 放入资源并在 `Document.TextResources` 注册。涉及中英文混排时，可在 `font-family` 中同时指定英文字体与子集化中文字体（例如 `"LatoLatin", "SolsticeSC", "URUI Sans", sans-serif`）。
+- **字体栈匹配**：字体原始文件以 `.ttf.bytes` / `.otf.bytes` 放入资源并在 `Document.TextResources` 注册。涉及中英文混排时，可在 `font-family` 中同时指定英文字体与子集化中文字体（例如 `"Tideglass Sans", "URUI Sans", sans-serif`）。
 - **标准滤镜（`filter` / `backdrop-filter`）**：`grayscale()`、`sepia()`、`brightness()`、`contrast()`、`saturate()`、`opacity()`、`blur()`、`drop-shadow()`。
 - **URUI.Effect 高级滤镜（`--urui-fx-*`）**：声明 `--urui-effect: ui;` 或 `--urui-image-effect: ui-wave | surface-output;` 启用全部 106 项着色器控制属性，详表见 [Effect CSS 参数参考](../Packages/com.fujisheng.urui.effect/Documentation~/CSS_ZH.md)。
 

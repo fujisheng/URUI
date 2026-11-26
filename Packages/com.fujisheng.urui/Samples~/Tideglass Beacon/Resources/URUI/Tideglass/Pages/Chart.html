@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+</head>
+<body>
+  <div id="screen" class="screen chart">
+    <img class="full scenery atlas-space" src="../Images/sector-belt.png" />
+    <div class="full atlas-night"></div>
+    <div class="chart-plot">
+      <img class="full meridians" src="../Images/star-chart.png" />
+      <div class="chart-caption"><span class="ink-rule"></span><span>信标航道</span></div>
+      <button id="node-0" class="chart-node node-0" type="button"><span class="node-halo"></span><span class="node-light"></span><span class="node-id digits">01</span><span id="node-name-0" class="node-name"></span></button>
+      <button id="node-1" class="chart-node node-1" type="button"><span class="node-halo"></span><span class="node-light"></span><span class="node-id digits">02</span><span id="node-name-1" class="node-name"></span></button>
+      <button id="node-2" class="chart-node node-2" type="button"><span class="node-halo"></span><span class="node-light"></span><span class="node-id digits">03</span><span id="node-name-2" class="node-name"></span></button>
+    </div>
+    <div class="route-sheet">
+      <div class="glass-optic"></div><div class="route-paper"></div>
+      <div class="route-photo">
+        <img id="route-art" class="full scenery" src="../Images/sector-shoal.png" />
+        <div class="full route-shade"></div><img id="route-scan" class="route-scan" src="../Images/pilot-scan.png" />
+        <span id="route-index" class="plate-index"></span>
+      </div>
+      <div class="route-type">
+        <h2 id="route-name"></h2><div id="route-target" class="sight-line"></div>
+        <div id="route-brief" class="route-brief"></div>
+        <div class="route-stats"><span id="route-record"></span><span id="route-pay"></span></div>
+        <button id="depart" class="commit plane-key plane-front" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><span class="control-inner">前往信标</span><span class="key-sheen"></span></span></span></button>
+      </div>
+    </div>
+    <button id="chart-log" class="index-link" type="button">查阅航迹 ›</button>
+    <div class="header">
+      <div class="header-left"><button id="back" class="back" type="button" aria-label="返回"><img class="back-icon" src="../Images/back-icon.png" /></button><h1 class="page-title">航线图</h1></div>
+      <div class="header-right"><div class="purse"><img class="credit" src="../Images/credit.png" /><span id="balance" class="digits"></span></div><button id="motion" class="motion" type="button">动效 · 开</button></div>
+    </div>
+  </div>
+</body>
+</html>

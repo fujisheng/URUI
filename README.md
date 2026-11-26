@@ -4,9 +4,17 @@
 
 URUI brings **standard HTML, CSS, and text-driven sequences** into **Unity 6 (`6000.3.22f1`)** on top of a native C++ bridge (`URUIBridge` ABI13 / render-plan9 / element4, 172 C exports), FreeType glyph rasterization, GPU-parameterized batching, and zero-per-element `MonoBehaviour` overhead.
 
-> **Interactive Showcase**: Open [`SampleProject/`](SampleProject) in Unity `6000.3.22f1` (URP + 3D Backdrop + Effects + Authoring) or import [`Samples~/Solstice`](Packages/com.fujisheng.urui/Samples~/Solstice/README.md) cleanly into Built-in RP or URP.
+---
 
-![SOLSTICE Showcase](Packages/com.fujisheng.urui/Documentation~/Images/solstice.gif)
+## Tideglass Beacon
+
+Tideglass Beacon was made entirely by AI, from interface design and code to original art, animation, and sound. This recording shows the sample running in Unity.
+
+![Tideglass Beacon in Unity, from the orbital station and tilting crew portrait to module purchases, equipment, skill previews and combat](docs/images/tideglass-beacon.gif)
+
+Run a station watch. Appoint a combat escort, send a different officer on an offline survey, and wear earned titles on the bridge. Three beacon routes, loadouts, drills and flight reports share one local save. Each bank of switches sits on one refracting pane. All 14 controls have a pointer-responsive cap and a fixed hit area. The standalone project demonstrates live glass refraction, instrument transitions, URP submission and URUI Effect wave gauges and particles.
+
+Full-resolution stills of the [orbital station](docs/images/tideglass-lobby.png) and [pilot detail](docs/images/tideglass-hero.png).
 
 ---
 
@@ -21,34 +29,9 @@ URUI brings **standard HTML, CSS, and text-driven sequences** into **Unity 6 (`6
 
 ---
 
-## Gallery — SOLSTICE (*Solstice · Sanctuary*)
-
-| Sanctuary Lobby & Effect Shaders | Tactical Boss Combat & Radial Cooldowns |
-| --- | --- |
-| ![Solstice Lobby](docs/images/solstice-lobby.png) | ![Solstice Combat](docs/images/solstice-combat.png) |
-
-1. **High-Contrast Pure-CSS Themes**: Switch instantaneously between *Obsidian Indigo*, *Ember Crimson*, and *Sunlit Alabaster* via `@property` color tokens over sunlit stone fantasy art.
-2. **Tactical RPG Choreography**: Live `Image.FillMode = Radial360` skill cooldown sweeps, `SequencePlayer` astrolabe summon reveals with `<urui-particles>`, `ui-wave` banners, and `ArcTextLayout`.
-3. **10,000-Item Virtualized Armory**: Fixed-row `ListView` compiled from AOT `Backpack.compiled.asset` with instant filter & search.
-4. **Live URP RenderGraph Compositing**: [`UruiUrpRendererFeature`](SampleProject/Assets/Solstice/Runtime/Rendering/UruiUrpRendererFeature.cs) overlays semi-translucent URUI HUD panels cleanly onto the 3D URP backdrop stage.
-
----
-
 ## Quick Start
 
-### Option A — Open the Standalone URP Showcase (`SampleProject/`)
-
-1. Open `/SampleProject` with **Unity `6000.3.22f1`**.
-2. Open `Assets/Solstice/Scenes/Solstice.unity` and press **Play**.
-3. Explore Sanctuary Lobby, Boss Combat Encounter, Heroes Roster + Shaders, Summon Astrolabe, 10k Armory, Settings Themes, and Dev Telemetry HUD.
-
-### Option B — Install via Unity Package Manager (Local Disk)
-
-Add `Packages/com.fujisheng.urui/package.json` via **Package Manager → Add package from disk...**, then optionally add `.effect` and `.authoring`, and launch **Tools → URUI → Open Solstice Sample**.
-
-See [Getting Started](docs/GETTING_STARTED.md) for a step-by-step setup guide.
-
----
+Open [SampleProject](SampleProject) with Unity 6000.3.22f1. Select **Tools → URUI → Open Tideglass Beacon Sample** and enter Play Mode. For a Built-in project, import **Tideglass Beacon** under Core's Package Manager samples. See the [sample guide](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/README.md) for controls and sources.
 
 ## Documentation Index
 

@@ -31,7 +31,7 @@ Derived from [`Packages/com.fujisheng.urui/Documentation~/HtmlCssSupport.json`](
 ## 3. Units, Typography & Visual Effects
 
 - **Units (`14`)**: `px`, `%`, `<number>`, `em`, `rem`, `vw`, `vh`, `deg`, `rad`, `cm`, `mm`, `in`, `pt`, `pc`.
-- **Fonts (`@font-face`)**: Register binary `.ttf.bytes` / `.otf.bytes` assets via `Document.TextResources` matching CSS `src: url(...)`. Always include fallback font families in `font-family` (`"LatoLatin", "SolsticeSC", "URUI Sans", sans-serif`) for mixed Latin + CJK copy.
+- **Fonts (`@font-face`)**: Register binary `.ttf.bytes` / `.otf.bytes` assets via `Document.TextResources` matching CSS `src: url(...)`. Always include fallback font families in `font-family` (`"Tideglass Sans", "URUI Sans", sans-serif`) for mixed Latin + CJK copy.
 - **Standard Filters (`filter`, `backdrop-filter`)**: `grayscale()`, `sepia()`, `brightness()`, `contrast()`, `saturate()`, `opacity()`, `blur()`, `drop-shadow()`.
 - **URUI.Effect Extensions (`--urui-fx-*`)**: Enable via `--urui-effect: ui;` or `--urui-image-effect: ui-wave | surface-output;` (`106` custom properties documented in [Effect CSS Reference](../Packages/com.fujisheng.urui.effect/Documentation~/CSS.md)).
 

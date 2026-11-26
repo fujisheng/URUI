@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Transmit survey bearings",
+  "duration": 0.52,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "survey-sweep",
+      "kind": "css",
+      "target": "survey-sweep",
+      "keyframes": "signal-pass",
+      "start": 0,
+      "duration": 0.52,
+      "easing": "ease-out"
+    },
+    {
+      "id": "survey-read",
+      "kind": "css",
+      "target": "survey-read",
+      "keyframes": "readback",
+      "start": 0,
+      "duration": 0.34,
+      "easing": "ease-out"
+    }
+  ]
+}

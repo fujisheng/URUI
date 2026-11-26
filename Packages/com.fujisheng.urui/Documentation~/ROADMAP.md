@@ -4,7 +4,7 @@ URUI aims to make Unity UI legible, inspectable, and fast to iterate for both en
 
 ## Current Foundation
 
-Core provides shared `Surface`, multi-document isolation, typed DOM controls, synchronous input propagation, CSS styling/animations/sequences, GPU-fenced resource leases, and runtime rendering statistics. Optional `URUI.Effect` adds modular GPU shaders/particles and offscreen processing, while `URUI.Authoring` adds Editor visual layout/timeline authoring and an AI Agent HTTP v1 protocol, demonstrated end-to-end in [Solstice](../../com.fujisheng.urui/Samples~/Solstice/README.md) and `SampleProject`.
+Core provides shared `Surface`, multi-document isolation, typed DOM controls, synchronous input propagation, CSS styling/animations/sequences, GPU-fenced resource leases, and runtime rendering statistics. Optional `URUI.Effect` adds modular GPU shaders/particles and offscreen processing, while `URUI.Authoring` adds Editor visual layout/timeline authoring and an AI Agent HTTP v1 protocol, demonstrated end-to-end in [Tideglass Beacon](../../com.fujisheng.urui/Samples~/Tideglass Beacon/README.md) and `SampleProject`.
 
 ## Planned Directions
 

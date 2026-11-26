@@ -6,18 +6,16 @@ Version: `0.8.0-preview.1` · Unity Baseline: `6000.3.22f1` · Native Protocol: 
 
 URUI Core embeds a native HTML/CSS layout and rendering engine (`URUIBridge`) inside Unity while keeping business C# completely text-first: HTML defines structure, CSS drives layout/theming/keyframes, and managed C# (`Document`, `Surface`, `Element`, controls) manages logic without per-element `MonoBehaviour` overhead.
 
-![SOLSTICE Core Showcase](Documentation~/Images/solstice.gif)
-
 ## Primary & Learning Samples
 
 | Sample | Purpose | Compatibility |
 | --- | --- | --- |
-| **Solstice** *(Primary)* | Modern fantasy tactical RPG HUD: 3 CSS themes, `Radial360` skills, `SequencePlayer` summon reveal, controls, 10k `ListView`, `Surface.GetRenderingStatistics()` | Built-in & URP |
+| **Tideglass Beacon** | Crew assignments, offline surveys, career ranks, three beacon routes, loadouts and combat reports. Projected keycaps, live refraction and contextual transitions | Built-in or standalone URP project |
 | **Hello URUI** | Minimal document loading, style writes, disposable `ClickEvent` subscriptions | Built-in & URP |
 | **Element Playground** | Explicit DOM node creation, reparenting, class toggles, detachment/destruction | Built-in & URP |
 | **Runtime Controls** | Typed form controls, focus navigation, virtualized `ListView` | Built-in & URP |
 
-Quick launch in Editor: **Tools → URUI → Open Solstice Sample** (imports and opens `Solstice.unity`), or open [`../../SampleProject/`](../../SampleProject) for the full URP 3D + Effects edition.
+Quick launch in Editor: **Tools → URUI → Open Tideglass Beacon Sample** (imports and opens `Tideglass.unity`), or open [`../../SampleProject/`](../../SampleProject) for the URP and Effect edition.
 
 ## Documentation ([EN](Documentation~/QUICK_START.md) / [中文](Documentation~/QUICK_START_ZH.md))
 

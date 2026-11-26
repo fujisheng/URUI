@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Crew change of watch",
+  "duration": 0.52,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "officer-portrait",
+      "kind": "css",
+      "target": "officer-portrait",
+      "keyframes": "relief-arrive",
+      "start": 0,
+      "duration": 0.36,
+      "easing": "ease-out"
+    },
+    {
+      "id": "portrait-glint",
+      "kind": "css",
+      "target": "portrait-glint",
+      "keyframes": "watch-glint",
+      "start": 0,
+      "duration": 0.48,
+      "easing": "ease-out"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Station.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+</head>
+<body>
+  <div id="screen" class="screen debrief">
+    <img id="brief-scenery" class="full scenery brief-space" src="../Images/orbital.png" /><div class="full brief-shadow"></div>
+    <div id="brief-data">
+      <div class="report-verdict"><img class="report-crest" src="../Images/crest.png" /><h2 id="brief-area"></h2><div id="brief-time"></div></div>
+      <div class="report-strip"><div class="report-equipment" id="brief-equipment"></div><div id="brief-wing" class="report-wing"></div>
+        <div class="report-skill">
+          <img class="report-skill-icon" src="../Images/skill-0.png" />
+          <div class="report-skill-body"><div class="report-stat"><span>引潮</span><span id="damage-read-0"></span></div>
+            <div class="damage-track"><div id="telemetry-0" class="damage-reveal"><img id="damage-bar-0" class="full" src="../Images/health.png" /></div></div>
+          </div>
+        </div>
+        <div class="report-skill">
+          <img class="report-skill-icon" src="../Images/skill-1.png" />
+          <div class="report-skill-body"><div class="report-stat"><span>裂光</span><span id="damage-read-1"></span></div>
+            <div class="damage-track"><div id="telemetry-1" class="damage-reveal"><img id="damage-bar-1" class="full" src="../Images/health.png" /></div></div>
+          </div>
+        </div>
+        <div class="report-skill">
+          <img class="report-skill-icon" src="../Images/skill-2.png" />
+          <div class="report-skill-body"><div class="report-stat"><span>潮鸣</span><span id="damage-read-2"></span></div>
+            <div class="damage-track"><div id="telemetry-2" class="damage-reveal"><img id="damage-bar-2" class="full" src="../Images/health.png" /></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="brief-empty" class="brief-empty"><img class="empty-mark" src="../Images/report-mark.png" /><h2>尚无实战战报</h2><span>下次点亮信标后，将记录各技能的实战贡献。</span></div>
+    <div class="report-action"><button id="brief-go" class="commit plane-key plane-front" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><span class="control-inner">打开航线图</span><span class="key-sheen"></span></span></span></button></div>
+    <div class="header"><div class="header-left"><button id="back" class="back" type="button" aria-label="返回"><img class="back-icon" src="../Images/back-icon.png" /></button><h1 class="page-title">最近战报</h1></div>
+      <div class="header-right"><button id="motion" class="motion" type="button">动效 · 开</button></div></div>
+  </div>
+</body>
+</html>

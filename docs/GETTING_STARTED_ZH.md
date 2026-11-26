@@ -4,13 +4,13 @@
 
 目标 Unity 版本：**`6000.3.22f1`**。
 
-## 1. 一分钟运行 SOLSTICE《日冕旅团》示范工程（`SampleProject/`）
+## 1. 一分钟运行《潮汐信标》示范工程（`SampleProject/`）
 
 仓库根目录自带独立、开箱即用的 URP 示范工程：
 
 1. 使用 **Unity `6000.3.22f1`** 打开 `SampleProject/` 目录。
-2. 打开场景 `Assets/Solstice/Scenes/Solstice.unity`。
-3. 点击 **Play**，体验 6 个 RPG 游戏模块（圣殿大厅、首领战与环形冷却技能、英灵灵装材质、星盘祈愿序列动画、万级虚拟军械库、主题设置与实时渲染监控 HUD）与 3 套纯 CSS 主题。
+2. 选择 **Tools → URUI → Open Tideglass Beacon Sample**。
+3. 点击 **Play** 体验游客登录、环轨模组、技能预演与试炼。按 `F1` 查看渲染统计。
 
 ## 2. 将 URUI 安装到你自己的 Unity 工程
 
@@ -21,7 +21,7 @@
 3. 可选 Editor 可视化与 Agent 接口包：`Packages/com.fujisheng.urui.authoring/package.json`（`0.1.0-preview.1`）
 
 引入后可直接运行包内主推示例：
-- 点击顶部菜单 **Tools → URUI → Open Solstice Sample**，Unity 将自动导入 `Samples~/Solstice` 并打开 `Solstice.unity`；也可在 Package Manager 中按需导入 `Hello URUI`、`Element Playground` 或 `Runtime Controls`。
+- 点击顶部菜单 **Tools → URUI → Open Tideglass Beacon Sample**，Unity 将自动导入 `Samples~/Tideglass Beacon` 并打开 `Tideglass.unity`；也可在 Package Manager 中按需导入 `Hello URUI`、`Element Playground` 或 `Runtime Controls`。
 
 ## 3. 30 秒构建最小界面
 

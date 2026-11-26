@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "Finisher particle detonation",
+  "duration": 0.98,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "burst",
+      "kind": "particles",
+      "target": "burst",
+      "duration": 0.8,
+      "start": 0.15,
+      "easing": "linear",
+      "source": "",
+      "seed": 173,
+      "speed": 1
+    }
+  ]
+}

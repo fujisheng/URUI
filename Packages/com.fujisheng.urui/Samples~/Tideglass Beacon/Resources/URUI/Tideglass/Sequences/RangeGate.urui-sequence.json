@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Acquire drill chamber",
+  "duration": 0.53,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "range-slit",
+      "kind": "css",
+      "target": "range-slit",
+      "keyframes": "ramp-scan",
+      "start": 0,
+      "duration": 0.53,
+      "easing": "linear"
+    },
+    {
+      "id": "range-sight",
+      "kind": "css",
+      "target": "range-sight",
+      "keyframes": "scope-center",
+      "start": 0,
+      "duration": 0.53,
+      "easing": "linear"
+    }
+  ]
+}

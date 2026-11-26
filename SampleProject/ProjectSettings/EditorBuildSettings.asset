@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Solstice/Scenes/Solstice.unity
-    guid: 030de8ed632f4474cb5f267242e5eeff
+    path: Assets/Samples/URUI/0.8.0-preview.1/Tideglass Beacon/Tideglass.unity
+    guid: b464ff107acbc484998206cd82531942
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

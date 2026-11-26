@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+</head>
+<body>
+  <div id="screen" class="screen bag">
+    <img class="full scenery interior-space" src="../Images/orbital.png" />
+    <div class="full vignette"></div>
+    <div class="world-grid"></div>
+    <div id="projection" class="projection bag-projection">
+      <img class="projection-lens" src="../Images/lens.png" />
+      <img class="projection-dial" src="../Images/aperture.png" />
+      <img class="projection-ring" src="../Images/orbit.png" />
+      <img class="projection-light" src="../Images/glow.png" />
+    </div>
+    <img class="bag-floor" src="../Images/floor.png" />
+    <div class="orbital-object bag-object orbit-camera">
+      <div id="orbit-object" class="orbit-subject">
+        <img id="bag-glow" class="bag-glow" src="../Images/glow.png" />
+        <div id="seal-display" class="seal-display"><img id="seal-preview" class="object-art" src="../Images/module-0.png" /></div>
+      </div>
+    </div>
+    <img id="module-scan" class="module-scan" src="../Images/pilot-scan.png" />
+    <div id="orbit-input" class="orbit-input bag-input"></div>
+    <div class="bag-readout readout">
+      <div class="glass-optic"></div><div class="readout-glass"></div>
+       <div class="edge-line"></div>
+       <h2 id="seal-name" class="readout-name">潮纹</h2>
+       <span id="seal-description" class="readout-detail">引潮额外积蓄 14 潮能</span>
+       <button id="equip" class="commit plane-key console-key console-left" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><span class="control-inner">已装配</span><span class="key-sheen"></span></span></span></button>
+    </div>
+    <div class="bag-slots"><div class="glass-optic"></div><img class="station-glass" src="../Images/data-glass.png" /><button id="item-0" class="orbit-slot slot-0 plane-key console-key console-left" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><img class="slot-icon" src="../Images/module-0.png" /><span>潮纹</span><span class="equipped-mark" id="own-0"></span></span></span></button><button id="item-1" class="orbit-slot slot-1 plane-key console-key console-left" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><img class="slot-icon" src="../Images/module-1.png" /><span>烬羽</span><span class="equipped-mark" id="own-1"></span></span></span></button><button id="item-2" class="orbit-slot slot-2 plane-key console-key console-left" type="button"><span class="key-camera"><span class="key-face"><span class="key-reflection"></span><img class="slot-icon" src="../Images/module-2.png" /><span>风棱</span><span class="equipped-mark" id="own-2"></span></span></span></button></div>
+    <div class="orbit-help bag-help">拖动模组轮换</div>
+    <span id="notice" class="notice"></span>
+    <div class="header"><div class="header-left"><button id="back" class="back" type="button" aria-label="返回"><img class="back-icon" src="../Images/back-icon.png" /></button><h1 class="page-title">背包</h1></div><div class="header-right"><div class="purse"><img class="credit" src="../Images/credit.png" /><span id="balance" class="digits">180</span></div><button id="motion" class="motion" type="button">动效 · 开</button></div></div>
+  </div>
+</body>
+</html>

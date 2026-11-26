@@ -23,7 +23,7 @@ URUI 的核心设计目标是在保持完整 HTML/CSS 表达力的同时，将�
 
 ## 4. 公开实时统计接口（`Surface.GetRenderingStatistics`）
 
-自 `0.8.0-preview.1` 起，无需开启 `URUI_DEBUG`，即可在 Editor 与正式发布的 Player 中直接读取真实渲染与原生内存统计（详见《日冕旅团 · SOLSTICE》右上角 DEV 遥测抽屉）：
+自 `0.8.0-preview.1` 起，无需开启 `URUI_DEBUG`，即可在 Editor 与正式发布的 Player 中直接读取真实渲染与原生内存统计（详见《潮汐信标》的 `F1` 渲染统计）：
 
 ```csharp
 var stats = surface.GetRenderingStatistics();
@@ -36,7 +36,7 @@ var stats = surface.GetRenderingStatistics();
 
 ## 5. 实战调优清单
 
-1. **长列表必用固定行高 `ListView`**：如《日冕旅团 · SOLSTICE》10,000 件军械库示例，实时实例化的行节点数（`RealizedItemCount`）也始终维持在 15 行左右。
+1. **长列表使用固定行高 `ListView`**，实际创建的行节点由可见区域和缓冲行决定。
 2. **正式页面使用 AOT `CompiledDocumentAsset`**：通过 `CompiledDocumentCompiler.CompileAndSave` 将 HTML + CSS 闭包预编译为二进制计划资产（如 `Backpack.compiled.asset`），彻底跳过启动时源码词法与 CSS 解析开销。
 3. **主题换肤优先使用 CSS 变量**：利用 `@property` 切换根容器类名（如 `theme-obsidian` / `theme-crimson` / `theme-alabaster`），避免重构 DOM 或卸载重建纹理。
-4. **字体按需子集化（Font Subsetting）与贴图禁用 Mipmap**：UI 贴图关闭 Streaming / Mipmap；中文字体推荐按实际文案子集化（例如 SOLSTICE 将 10 MB 完整中文字体子集化压缩至 ~200 KB，显著降低 FreeType 字形缓存内存占用）。
+4. **字体按需子集化（Font Subsetting）与贴图禁用 Mipmap**：UI 贴图关闭 Streaming / Mipmap；中文字体推荐按实际文案子集化。

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Brake into dock",
+  "duration": 0.62,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "nav-veil",
+      "kind": "css",
+      "target": "nav-veil",
+      "keyframes": "voyage-cover",
+      "start": 0,
+      "duration": 0.62,
+      "easing": "linear"
+    },
+    {
+      "id": "warp-fan",
+      "kind": "css",
+      "target": "warp-fan",
+      "keyframes": "brake-trails",
+      "start": 0,
+      "duration": 0.62,
+      "easing": "linear"
+    },
+    {
+      "id": "nav-reticle",
+      "kind": "css",
+      "target": "nav-reticle",
+      "keyframes": "reticle-register",
+      "start": 0,
+      "duration": 0.62,
+      "easing": "linear"
+    }
+  ]
+}

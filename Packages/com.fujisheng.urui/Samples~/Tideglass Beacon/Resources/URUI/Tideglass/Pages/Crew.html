@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Station.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+  <link rel="stylesheet" href="../Bridge.css" />
+</head>
+<body>
+  <div id="screen" class="screen bridge crew">
+    <img class="full scenery crew-back" src="../Images/operations.png" /><div class="full watch-shade"></div>
+    <div id="officer-card" class="crew-gallery">
+      <div class="portrait-face">
+        <div class="portrait-mount"></div>
+        <img id="officer-portrait" class="featured-portrait" src="../Images/officer-1.png" />
+        <div class="portrait-edge"></div>
+        <div class="portrait-finish">
+          <div class="portrait-sheen"></div>
+          <div id="portrait-glint" class="portrait-glint"></div>
+        </div>
+      </div>
+    </div>
+    <div class="crew-console">
+      <div class="officer-identity"><span id="officer-role"></span><h2 id="officer-name"></h2></div>
+      <div class="crew-perk"><img class="perk-sigil" src="../Images/crew-sigil.png" /><span id="officer-skill"></span></div>
+      <div id="officer-specialty"></div>
+      <div class="roll"><button id="officer-1" class="bridge-key plane-key portrait-pick" type="button"><span class="key-camera"><span class="key-face"><img class="roster-thumb" src="../Images/face-1.png" /><span class="picker-copy"><span class="picker-name">汀岚</span><span id="roll-1" class="picker-state"></span></span><span class="key-reflection"></span></span></span></button>
+        <button id="officer-2" class="bridge-key plane-key portrait-pick" type="button"><span class="key-camera"><span class="key-face"><img class="roster-thumb" src="../Images/face-2.png" /><span class="picker-copy"><span class="picker-name">赤衡</span><span id="roll-2" class="picker-state"></span></span><span class="key-reflection"></span></span></span></button>
+        <button id="officer-3" class="bridge-key plane-key portrait-pick" type="button"><span class="key-camera"><span class="key-face"><img class="roster-thumb" src="../Images/face-3.png" /><span class="picker-copy"><span class="picker-name">弦昼</span><span id="roll-3" class="picker-state"></span></span><span class="key-reflection"></span></span></span></button></div>
+      <div class="watch-actions"><button id="assign-wing" class="bridge-key plane-key bridge-action " type="button"><span class="key-camera"><span class="key-face"><span class="control-inner">任命随航</span><span class="key-reflection"></span></span></span></button><button id="crew-sorties" class="bridge-key plane-key link-key" type="button"><span class="key-camera"><span class="key-face"><span class="control-inner">远航派遣 ›</span><span class="key-reflection"></span></span></span></button></div>
+    </div>
+    <div class="header"><div class="header-left"><button id="back" class="bridge-key plane-key back utility-key" type="button" aria-label="返回"><span class="key-camera"><span class="key-face"><img class="back-icon" src="../Images/back-icon.png" /><span class="key-reflection"></span></span></span></button><h1 class="page-title">舰员编队</h1></div><div class="header-right"><button id="motion" class="bridge-key plane-key motion utility-key" type="button" aria-label="切换动效"><span class="key-camera"><span class="key-face"><span id="motion-label">动效 · 开</span><span class="key-reflection"></span></span></span></button></div></div>
+  </div>
+</body>
+</html>

@@ -10,7 +10,7 @@ URUI 核心包（`com.fujisheng.urui`）刻意保持**对 URP / HDRP 零直接�
 
 ## Universal Render Pipeline（Unity 6 URP / RenderGraph）
 
-URP 不会执行传统相机事件 `Camera.AddCommandBuffer(CameraEvent.AfterEverything, ...)`，因此需要在 URP 的 `UniversalRendererData` 上添加一个自定义 `ScriptableRendererFeature`，在相机后阶段调用 `Surface.SubmitRendering`（详见可运行源码 [`UruiUrpRendererFeature.cs`](../SampleProject/Assets/Solstice/Runtime/Rendering/UruiUrpRendererFeature.cs)）：
+URP 不会执行传统相机事件 `Camera.AddCommandBuffer(CameraEvent.AfterEverything, ...)`，因此需要在 URP 的 `UniversalRendererData` 上添加一个自定义 `ScriptableRendererFeature`，在相机后阶段调用 `Surface.SubmitRendering`（详见可运行源码 [`UruiUrpRendererFeature.cs`](../SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs)）：
 
 ```csharp
 // 核心 RenderGraph 注入片段（Edit Mode 未进入 Play 时跳过提交；完整含 Compatibility Mode 兜底见 SampleProject）

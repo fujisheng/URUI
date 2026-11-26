@@ -165,4 +165,4 @@ Link `/urui/behaviors.css` (see [behaviors.css](../Runtime/Resources/URUI/behavi
 | `BezierMotion(path, rotation, source, target)` | Binds curve bend/rotation/progress variables between live source and target rects (`--urui-motion-*` + `SetNumber("--urui-motion-progress", t)`); `Begin()`, `Stop()`, `Dispose()` |
 | `VisibilityClass(target, activation, className)` | Mirrors effective visibility of `activation` onto `className` on `target`; dispose cleans up |
 
-Keep behavior controllers across frames rather than recreating them inside `Update`. See `Solstice` and `Runtime Controls` samples for ready-to-copy HTML/CSS markup.
+Keep behavior controllers across frames rather than recreating them inside `Update`. See the `Runtime Controls` sample for ready-to-copy HTML/CSS markup.

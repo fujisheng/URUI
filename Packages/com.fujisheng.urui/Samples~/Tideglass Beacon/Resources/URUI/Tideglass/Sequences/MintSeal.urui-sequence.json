@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Strike the rank seal",
+  "duration": 0.52,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "rank-medal",
+      "kind": "css",
+      "target": "rank-medal",
+      "keyframes": "seal-strike",
+      "start": 0,
+      "duration": 0.42,
+      "easing": "ease-out"
+    },
+    {
+      "id": "medal-glint",
+      "kind": "css",
+      "target": "medal-glint",
+      "keyframes": "watch-glint",
+      "start": 0,
+      "duration": 0.48,
+      "easing": "ease-out"
+    }
+  ]
+}

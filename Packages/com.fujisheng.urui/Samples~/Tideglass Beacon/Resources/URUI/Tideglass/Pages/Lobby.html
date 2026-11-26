@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="/urui/base.css" />
+  <link rel="stylesheet" href="/urui/controls.css" />
+  <link rel="stylesheet" href="../Tideglass.css" />
+  <link rel="stylesheet" href="../Station.css" />
+  <link rel="stylesheet" href="../Motion.css" />
+  <link rel="stylesheet" href="../Bridge.css" />
+</head>
+<body>
+  <div id="screen" class="screen lobby bridge">
+    <img class="full scenery" src="../Images/operations.png" />
+    <div class="full vignette"></div>
+    <div class="world-grid"></div>
+    <div id="projection" class="projection lobby-projection">
+      <img class="projection-lens" src="../Images/lens.png" />
+      <img class="projection-dial" src="../Images/aperture.png" />
+      <img class="projection-ring" src="../Images/orbit.png" />
+      <img class="projection-light" src="../Images/glow.png" />
+    </div>
+    <div id="pilot-anchor" class="pilot-anchor">
+      <img id="pilot-platform" class="pilot-platform" src="../Images/pilot-platform.png" />
+      <img class="pilot-reflection" src="../Images/pilot-reflection.png" />
+      <img class="pilot-contact" src="../Images/pilot-contact.png" />
+      <div class="pilot-reveal">
+        <img id="pilot-art" class="pilot-art" src="../Images/pilot.png" />
+      </div>
+      <img class="pilot-scan" src="../Images/pilot-scan.png" />
+    </div>
+    <div class="lobby-wing station-rail">
+      <div class="console-chassis">
+        <div class="glass-optic"></div>
+        <img class="station-glass" src="../Images/dock-track.png" />
+        <button id="career" class="bridge-key plane-key console-key passport-key" type="button" aria-label="打开航籍"><span class="key-camera"><span class="key-face"><img id="passport-seal" class="passport-seal" src="../Images/insignia-0.png" /><span class="passport-copy"><span id="worn-title" class="passport-title"></span><span class="passport-rank"><span>航籍　</span><span id="rank-label"></span></span></span><span class="terminal-arrow">›</span><span class="key-reflection"></span></span></span></button>
+        <button id="shop" class="bridge-key plane-key station-port shop-port console-key console-left" type="button"><span class="key-camera"><span class="key-face"><img class="port-icon" src="../Images/shop-icon.png" /><span class="port-label">商城</span><span class="key-reflection"></span></span></span></button>
+        <button id="bag" class="bridge-key plane-key station-port bag-port console-key console-left" type="button"><span class="key-camera"><span class="key-face"><img class="port-icon" src="../Images/bag-icon.png" /><span class="port-label">背包</span><span class="key-reflection"></span></span></span></button>
+        <button id="hero" class="bridge-key plane-key station-port hero-port console-key console-left" type="button"><span class="key-camera"><span class="key-face"><img class="port-icon" src="../Images/hero-icon.png" /><span class="port-label">英雄</span><span class="key-reflection"></span></span></span></button>
+        <button id="range" class="bridge-key plane-key console-key aux-key" type="button"><span class="key-camera"><span class="key-face"><img class="service-icon" src="../Images/range-mark.png" /><span class="aux-label">演练舱</span><span id="drill-count" class="service-tail"></span><span class="key-reflection"></span></span></span></button>
+        <button id="logbook" class="bridge-key plane-key console-key aux-key" type="button"><span class="key-camera"><span class="key-face"><img class="service-icon" src="../Images/folio-mark.png" /><span class="aux-label">航行手记</span><span id="ledger-count" class="service-tail"></span><span class="key-reflection"></span></span></span></button>
+        <button id="crew" class="bridge-key plane-key console-key foot-key" type="button"><span class="key-camera"><span class="key-face"><img id="watch-portrait" class="wing-mark" src="../Images/crew-sigil.png" /><span class="foot-copy"><span class="foot-name">舰员编队</span><span id="escort-name" class="foot-state"></span></span><span class="terminal-arrow">›</span><span class="key-reflection"></span></span></span></button>
+      </div>
+    </div>
+    <div class="lobby-wing mission">
+      <div class="console-chassis">
+        <div class="glass-optic"></div>
+        <img class="station-glass" src="../Images/data-glass.png" />
+        <button id="chart" class="bridge-key plane-key console-key mission-route" type="button" aria-label="打开航线图"><span class="key-camera"><span class="key-face"><img id="mission-art" class="route-photo-in" src="../Images/sector-shoal.png" /><span class="route-shade full"></span><span id="mission-index" class="mission-index"></span><span id="mission-name" class="mission-name"></span><span class="route-link">航线图 ›</span><span class="key-reflection"></span></span></span></button>
+        <button id="loadout" class="bridge-key plane-key console-key mission-equipment" type="button" aria-label="打开战术整备"><span class="key-camera"><span class="key-face"><img id="loadout-icon" class="loadout-icon" src="../Images/module-0.png" /><span class="equipment-lines"><span id="equipped"></span><span id="current-order"></span></span><span class="equipment-link">整备 ›</span><span class="key-reflection"></span></span></span></button>
+        <button id="launch" class="bridge-key plane-key commit bridge-action console-key console-right" type="button"><span class="key-camera"><span class="key-face"><span class="control-inner">出击<img class="launch-arrow" src="../Images/back-icon.png" /></span><span class="key-sheen"></span><span class="key-reflection"></span></span></span></button>
+        <button id="debrief" class="bridge-key plane-key console-key aux-key" type="button"><span class="key-camera"><span class="key-face"><img class="service-icon" src="../Images/report-mark.png" /><span class="aux-label">最近战报</span><span id="brief-state" class="service-tail"></span><span class="key-reflection"></span></span></span></button>
+        <button id="dispatch" class="bridge-key plane-key console-key foot-key" type="button"><span class="key-camera"><span class="key-face"><img class="wing-mark" src="../Images/courier-sigil.png" /><span class="foot-copy"><span class="foot-name">远航派遣</span><span id="dispatch-state" class="foot-state"></span></span><span id="bridge-flight-track" class="bridge-flight-track gone"><img id="bridge-flight-fill" class="full" src="../Images/health.png" /></span><span class="terminal-arrow">›</span><span class="key-reflection"></span></span></span></button>
+      </div>
+    </div>
+    <div class="header"><div class="header-left"><button id="back" class="bridge-key plane-key back utility-key" type="button" aria-label="返回"><span class="key-camera"><span class="key-face"><img class="back-icon" src="../Images/back-icon.png" /><span class="key-reflection"></span></span></span></button><h1 class="page-title">引潮站</h1></div><div class="header-right"><div class="purse"><img class="credit" src="../Images/credit.png" /><span id="balance" class="digits">180</span></div><button id="motion" class="bridge-key plane-key motion utility-key" type="button" aria-label="切换动效"><span class="key-camera"><span class="key-face"><span id="motion-label">动效 · 开</span><span class="key-reflection"></span></span></span></button></div></div>
+  </div>
+</body>
+</html>

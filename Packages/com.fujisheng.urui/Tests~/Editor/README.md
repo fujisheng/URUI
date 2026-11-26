@@ -4,7 +4,7 @@ This directory is excluded from normal Unity asset import. Import explicitly int
 
 ## Package Sample Verification
 
-URUI's primary showcase is `Samples~/Solstice` (with the complete URP + 3D backdrop showcase in repository root `SampleProject/`). To validate Package Manager import into an isolated project, copy `Fixtures/Editor/PackageImport.cs` into `Assets/URUIEditorChecks/Editor` and invoke `URUI.Tests.Editor.PackageImport.ImportSamples`, which exercises `Sample.FindByPackage` / `Sample.Import(OverridePreviousImports)` and logs imported paths/bytes to `Evidence/sample-import.json`. Always verify functional behavior by opening `Solstice.unity` or running `URUI.Tests` EditMode/PlayMode suites (including `Surface.GetRenderingStatistics()` checks).
+URUI's primary showcase is `Samples~/Tideglass Beacon` (with the standalone URP showcase in repository root `SampleProject/`). To validate Package Manager import into an isolated project, copy `Fixtures/Editor/PackageImport.cs` into `Assets/URUIEditorChecks/Editor` and invoke `URUI.Tests.Editor.PackageImport.ImportSamples`, which exercises `Sample.FindByPackage` / `Sample.Import(OverridePreviousImports)` and logs imported paths/bytes to `Evidence/sample-import.json`. Always verify functional behavior by opening `Tideglass.unity` or running `URUI.Tests` EditMode/PlayMode suites (including `Surface.GetRenderingStatistics()` checks).
 
 Topic regression fixtures (`Hello URUI`, `Element Playground`, `Runtime Controls`) test isolated legacy/unit capabilities:
 

@@ -4,13 +4,13 @@
 
 Target Unity version: **`6000.3.22f1`**.
 
-## 1. Try SOLSTICE Immediately (`SampleProject/`)
+## 1. Try Tideglass Beacon Immediately (`SampleProject/`)
 
 The quickest way to inspect URUI across all modules is the standalone URP showcase project included in this repository:
 
 1. Launch **Unity Hub** and open `/SampleProject` using Unity **`6000.3.22f1`**.
-2. Open scene `Assets/Solstice/Scenes/Solstice.unity`.
-3. Press **Play** to explore Sanctuary Lobby, Boss Combat with Radial Cooldowns, Heroes & Effect Shaders, Summon Astrolabe, 10,000-row Armory, and live Render Stats HUD.
+2. Select **Tools → URUI → Open Tideglass Beacon Sample**.
+3. Press **Play** for guest login, orbital module browsing, skill preview, and the trial. Press `F1` for rendering statistics.
 
 ## 2. Install URUI Packages into Your Own Project
 
@@ -21,7 +21,7 @@ Add local packages via **Window → Package Manager → + → Add package from d
 3. Optional Editor Workbench & Agent HTTP v1: `Packages/com.fujisheng.urui.authoring/package.json` (`0.1.0-preview.1`)
 
 Then import the primary package sample:
-- Click **Tools → URUI → Open Solstice Sample** (automatically imports `Samples~/Solstice` and opens `Solstice.unity`), or import **Hello URUI** / **Element Playground** / **Runtime Controls** via Package Manager.
+- Click **Tools → URUI → Open Tideglass Beacon Sample** (automatically imports `Samples~/Tideglass Beacon` and opens `Tideglass.unity`), or import **Hello URUI** / **Element Playground** / **Runtime Controls** via Package Manager.
 
 ## 3. Minimal Hello World Scene in 30 Seconds
 

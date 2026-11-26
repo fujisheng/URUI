@@ -1,0 +1,13 @@
+{
+  "name": "URUI.Samples.Tideglass.Effects",
+  "rootNamespace": "URUI.Samples.Tideglass",
+  "references": ["URUI.Runtime", "URUI.Effect", "URUI.Samples.Tideglass"],
+  "defineConstraints": ["TIDEGLASS_HAS_EFFECT"],
+  "versionDefines": [
+    {
+      "name": "com.fujisheng.urui.effect",
+      "expression": "0.5.0-preview.1",
+      "define": "TIDEGLASS_HAS_EFFECT"
+    }
+  ]
+}

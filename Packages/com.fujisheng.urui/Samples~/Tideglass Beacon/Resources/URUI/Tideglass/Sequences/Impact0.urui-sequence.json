@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "name": "Orbital impact 1",
+  "duration": 0.92,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "pulse",
+      "kind": "css",
+      "target": "pulse",
+      "keyframes": "tidal-wave",
+      "duration": 0.65,
+      "start": 0,
+      "easing": "ease-out"
+    },
+    {
+      "id": "impact-echo",
+      "kind": "css",
+      "target": "impact-echo",
+      "keyframes": "echo-ring",
+      "duration": 0.56,
+      "start": 0.24,
+      "easing": "ease-out"
+    },
+    {
+      "id": "impact-flare",
+      "kind": "css",
+      "target": "impact-flare",
+      "keyframes": "impact-flash",
+      "duration": 0.44,
+      "start": 0.12,
+      "easing": "ease-out"
+    },
+    {
+      "id": "core-motion",
+      "kind": "css",
+      "target": "core-motion",
+      "keyframes": "impact-core",
+      "duration": 0.45,
+      "start": 0.12,
+      "easing": "ease-out"
+    },
+    {
+      "id": "damage",
+      "kind": "css",
+      "target": "damage",
+      "keyframes": "float-damage",
+      "duration": 0.67,
+      "start": 0.12,
+      "easing": "ease-out"
+    }
+  ]
+}

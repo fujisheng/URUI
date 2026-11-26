@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Hangar glass louvers",
+  "duration": 0.52,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "nav-veil",
+      "kind": "css",
+      "target": "nav-veil",
+      "keyframes": "voyage-cover",
+      "start": 0,
+      "duration": 0.52,
+      "easing": "linear"
+    },
+    {
+      "id": "prism-a",
+      "kind": "css",
+      "target": "prism-a",
+      "keyframes": "prism-port",
+      "start": 0,
+      "duration": 0.52,
+      "easing": "linear"
+    },
+    {
+      "id": "prism-b",
+      "kind": "css",
+      "target": "prism-b",
+      "keyframes": "prism-starboard",
+      "start": 0,
+      "duration": 0.52,
+      "easing": "linear"
+    }
+  ]
+}

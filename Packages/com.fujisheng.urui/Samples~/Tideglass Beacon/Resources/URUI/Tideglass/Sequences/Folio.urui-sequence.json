@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "Flight record turn",
+  "duration": 0.34,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "folio-leaf",
+      "kind": "css",
+      "target": "folio-leaf",
+      "keyframes": "folio-turn",
+      "start": 0,
+      "duration": 0.34,
+      "easing": "linear"
+    }
+  ]
+}

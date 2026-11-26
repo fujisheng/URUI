@@ -17,9 +17,9 @@
   },
   "samples": [
     {
-      "displayName": "Solstice",
-      "description": "Primary showcase sample: Modern fantasy tactical RPG HUD featuring full-bleed scene backdrop, multi-screen combat/squad/summon/backpack routing, radial skill cooldowns, bezier/sequence summons, 10k virtualized inventory, compiled documents and runtime render stats.",
-      "path": "Samples~/Solstice"
+      "displayName": "Tideglass Beacon",
+      "description": "Run an orbital station with combat escorts, offline surveys, earned titles, beacon routes, loadouts and flight reports. Every bridge control uses a raised pointer-responsive keycap. Live glass refraction, instrument transitions and optional URUI Effect gauges and particles run in game.",
+      "path": "Samples~/Tideglass Beacon"
     },
     {
       "displayName": "Hello URUI",

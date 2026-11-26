@@ -1,0 +1,184 @@
+/* The hit target stays on the console while the single beveled face responds to the pointer. */
+.bridge .bridge-key {
+  position: relative; height: 54px; background-color: transparent; background-image: none;
+  border: 0; padding: 0; overflow: visible; opacity: 1; color: #e7f1f8;
+}
+.bridge .bridge-key .key-face {
+  display: flex; justify-content: center; align-items: center; padding: 0 12px; gap: 8px;
+  border: 0; color: #e7f1f8; background-color: transparent;
+  background-image: url("Images/bridge-face.png"); background-size: 100% 100%; background-repeat: no-repeat;
+}
+.bridge .bridge-action .key-face { background-image: url("Images/bridge-ignite.png"); color: #f9f2ff; }
+.bridge .bridge-key .key-reflection { opacity: .08; }
+.bridge .bridge-key:hover .key-reflection, .bridge .bridge-key:focus .key-reflection { opacity: .44; }
+.bridge .bridge-key:active .key-reflection { opacity: .64; }
+.bridge .bridge-key.selected .key-face { background-image: url("Images/bridge-selected.png"); color: #edfff4; }
+.bridge .bridge-key:disabled { opacity: .51; }
+.bridge .bridge-key:disabled .key-reflection { opacity: 0; }
+.bridge .bridge-key:active .key-camera { top: 2px; }
+.bridge .utility-key { height: 45px; }
+.bridge .utility-key .key-camera { transform: scaleZ(.001) perspective(950px) rotateX(4deg); }
+.bridge .back { width: 64px; }
+.bridge .motion { font-size: 15px; width: 114px; }
+.bridge .back:active, .bridge .motion:active { opacity: 1; }
+.bridge .header { top: 18px; }
+/* URUI tints just the cap texture. Type, emblems and status bars draw at full strength. */
+.lobby .bridge-key .key-face { --urui-image-color: #ffffffc9; }
+.lobby .bridge-key:hover .key-face, .lobby .bridge-key:focus .key-face { --urui-image-color: #ffffffdb; }
+.lobby .bridge-action .key-face { --urui-image-color: #ffffffde; }
+.lobby .bridge-action:hover .key-face, .lobby .bridge-action:focus .key-face { --urui-image-color: #ffffffed; }
+/* The controls on each side share the horizon and the optical plane of their rail. */
+.lobby .lobby-wing { top: 50%; height: 570px; margin-top: -268px; transform-origin: 50% 43%; }
+.lobby .console-chassis {
+  position: absolute; left: 0; right: 0; bottom: 0; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: space-between;
+  padding: 18px 16px;
+}
+.lobby .station-rail .console-chassis { height: 548px; }
+.lobby .mission .console-chassis { height: 452px; }
+.lobby .console-chassis > .bridge-key {
+  position: relative; left: auto; right: auto; top: auto; bottom: auto;
+  width: 100%; flex: 0 0 auto; margin: 0;
+}
+.lobby .console-chassis .passport-key { height: 63px; margin-bottom: 8px; }
+.lobby .console-chassis .station-port { height: 53px; }
+.lobby .console-chassis .aux-key { height: 46px; font-size: 17px; }
+.lobby .console-chassis #range, .lobby .console-chassis #debrief { margin-top: 8px; }
+.lobby .console-chassis .foot-key { height: 66px; margin-top: 4px; }
+.lobby .console-chassis .mission-route { height: 113px; }
+.lobby .console-chassis .mission-equipment { height: 51px; }
+.lobby .console-chassis .commit { height: 62px; }
+.lobby .station-port .key-face, .lobby .aux-key .key-face, .lobby .mission-equipment .key-face { justify-content: flex-start; }
+.lobby .port-icon { width: 38px; height: 38px; }
+.lobby .port-label { font-size: 21px; }
+.lobby .aux-key .key-face { gap: 7px; padding: 0 15px; }
+.lobby .service-tail { margin-left: auto; font-size: 14px; color: #bdcfd6; }
+.lobby .service-icon { width: 29px; height: 29px; }
+.lobby .available .service-tail, .lobby .available .foot-state { color: #ffe0a4; }
+.lobby .foot-key .key-face, .lobby .passport-key .key-face { justify-content: flex-start; gap: 10px; padding: 0 14px; }
+.lobby .wing-mark { width: 52px; height: 52px; }
+.lobby .foot-copy, .lobby .passport-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.lobby .foot-name { font-size: 21px; }
+.lobby .foot-state, .lobby .passport-rank { font-size: 14px; color: #abd4d4; }
+.lobby .terminal-arrow { margin-left: auto; font-size: 24px; color: #9ed0cd; }
+.lobby .passport-seal { width: 46px; height: 46px; }
+.lobby .passport-title { font-size: 20px; }
+.lobby .passport-rank { display: flex; }
+.lobby .mission-route .key-face { padding: 0; }
+.lobby .route-photo-in, .lobby .mission-route .route-shade { position: absolute; left: 3%; top: 5%; width: 94%; height: 89%; object-fit: cover; }
+.lobby .mission-name { left: 14px; bottom: 8px; }
+.lobby .route-link { right: 12px; bottom: 12px; font-size: 13px; }
+.lobby .mission-equipment .key-face { padding: 0 10px; gap: 5px; }
+.lobby .mission-equipment .loadout-icon { width: 38px; height: 38px; }
+.lobby .mission .commit .control-inner { font-size: 25px; }
+
+.crew-back { opacity: .46; }
+.watch-shade { background-image: linear-gradient(92deg,#04091230,#0a142454 49%,#080f20d9 75%,#0c1220ec); }
+/* The outer plane takes the input. The frame, print and finish tilt together. */
+.crew-gallery {
+  position: absolute; top: 14.5%; bottom: 8%; left: 26.5%; width: 35%; max-width: 58vh;
+  transform: translateX(-50%) scaleZ(.001) perspective(900px); transform-origin: 50% 50%;
+}
+.portrait-face {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  transform-origin: 50% 50%; transform: translateZ(0px) rotateX(0deg) rotateY(0deg);
+}
+.portrait-face, .portrait-face * { pointer-events: none; }
+.crew:not(.reduced) .portrait-face { transition: transform .23s cubic-bezier(.18,.76,.24,1); }
+.crew:not(.reduced) .inspecting .portrait-face { transition: transform .14s cubic-bezier(.18,.76,.24,1); }
+.portrait-finish { position: absolute; left: 2%; top: 1.6%; width: 96%; height: 96.4%; overflow: hidden; }
+/* Keep the moving reflection inside the print even at the steepest corner. */
+.portrait-sheen {
+  position: absolute; left: 21%; top: 22%; width: 58%; height: 56%; opacity: 0;
+  background-image: radial-gradient(ellipse, #f5fff537 0%, #b1ecf51b 35%, #91c7e800 70%);
+  transform: translateX(0%) translateY(0%);
+}
+.crew:not(.reduced) .portrait-sheen { transition: transform .17s ease-out, opacity .18s ease-out; }
+.crew:not(.reduced) .inspecting .portrait-sheen { opacity: .82; }
+.portrait-mount { position: absolute; top: -5px; left: -6px; right: -6px; bottom: -7px; background-image: url("Images/portrait-mount.png"); background-size: 100% 100%; }
+.featured-portrait { position: absolute; top: 1.6%; left: 2%; width: 96%; height: 96.4%; object-fit: cover; }
+.portrait-edge { position: absolute; left: 2%; bottom: 2%; width: 96%; height: 19%; pointer-events: none; background-image: linear-gradient(0deg,#091321e8,#09132100); }
+.portrait-glint, .medal-glint { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; background-image: linear-gradient(115deg,#b9f6ff00 36%,#c4ffff72 48%,#bce2ff00 62%); }
+.portrait-finish .portrait-glint { left: 15%; width: 70%; }
+.crew-console, .dispatch-console { position: absolute; left: 51%; right: 6.8%; top: 25%; }
+.officer-identity { display: flex; flex-direction: column; align-items: flex-start; }
+#officer-role { color: #b9e5db; font-size: 19px; }
+.officer-identity h2, .dispatch-console h2, .honor-case h2 { margin: 3px 0 14px; font-size: 52px; font-weight: 400; color: #f2f5f9; }
+.crew-perk, .voyage-numbers { display: flex; align-items: center; gap: 11px; height: 55px; border-top: 1px solid #a4c9d686; }
+.perk-sigil { width: 40px; height: 40px; }
+#officer-skill { font-size: 23px; }
+#officer-specialty, #survey-special, #survey-brief, #title-rule { color: #c4d5de; font-size: 17px; }
+.roll { display: flex; flex-direction: row; gap: 6px; height: 77px; margin: 27px 0 24px; }
+.bridge .portrait-pick { position: relative; flex: 1; height: 76px; }
+.bridge .portrait-pick .key-face { flex-direction: row; justify-content: flex-start; padding: 0 7px; gap: 7px; }
+.roster-thumb { width: 51px; height: 54px; object-fit: cover; }
+.picker-copy { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.picker-name { font-size: 18px; }
+.picker-state, .badge-state { color: #b1d3d4; font-size: 14px; }
+.watch-actions { display: flex; align-items: center; gap: 10px; }
+.bridge .watch-actions .bridge-action, .bridge .titles-case .bridge-action { width: 56%; height: 62px; font-size: 20px; }
+.bridge .link-key { height: 51px; width: 41%; font-size: 16px; }
+.survey-shade { background-image: linear-gradient(90deg,#06101a3f,#07132180 42%,#07111fe6 56%,#0a1120ed); }
+.radar-mount { position: absolute; left: 8%; top: 20%; width: 410px; height: 410px; }
+.survey-sweep { position: absolute; left: 5%; top: 5%; width: 90%; height: 90%; opacity: 0; background-image: url("Images/radar-sweep.png"); background-size: 100% 100%; }
+.radar-ship { position: absolute; left: 10%; top: 10%; width: 80%; height: 80%; }
+.radar-dot { position: absolute; width: 47px; height: 47px; left: 50%; margin-left: -24px; top: -22px; }
+#survey-read { position: absolute; top: 47%; left: 20%; width: 60%; text-align: center; font-size: 26px; color: #d7fff5; }
+.route-selector { position: absolute; top: 82%; left: 5.5%; width: 39%; display: flex; gap: 6px; }
+.bridge .survey-pick { flex: 1; height: 54px; }
+.bridge .survey-pick .key-face { padding: 0 6px; gap: 5px; }
+.route-code { color: #91bfc4; font-size: 13px; }
+.route-choice { font-size: 17px; }
+.dispatch-console { top: 22%; }
+.dispatch-console h2 { font-size: 40px; }
+#survey-brief { margin-bottom: 20px; }
+.voyage-numbers { font-size: 24px; }
+.price-glyph { width: 33px; height: 33px; }
+#survey-pay { color: #ceffee; }
+#survey-length { margin-left: auto; color: #d4e3ee; }
+#survey-special { color: #e0cda6; }
+.last-receipt { margin-top: 18px; color: #bcddcf; font-size: 16px; }
+.returned #survey-read { color: #ffdda4; }
+.career-sky { opacity: .70; }
+.career-shadow { background-image: linear-gradient(90deg,#070d2596,#0b12215a 43%,#0c1427eb 70%,#0c1427dd); }
+.honor-case { position: absolute; left: 5%; width: 44%; top: 18%; height: 490px; display: flex; flex-direction: column; align-items: center; }
+.medal-ring { position: absolute; top: -6px; left: 50%; width: 310px; height: 310px; margin-left: -155px; background-image: url("Images/orbit.png"); background-size: 100% 100%; opacity: .38; }
+.rank-medal { width: 265px; height: 265px; }
+.medal-glint { top: 15px; left: 22%; width: 56%; height: 220px; }
+.honor-case h2 { margin: 2px 0 6px; font-size: 39px; }
+#career-merit { color: #e2cfa9; font-size: 17px; }
+.rank-track { position: relative; width: 224px; height: 8px; background-color: #293443; margin: 10px 0 14px; }
+#career-stats { font-size: 16px; color: #c0d9de; }
+.titles-case { position: absolute; top: 23%; left: 53%; right: 8%; }
+.bridge .badge-key { width: 100%; height: 63px; margin-bottom: 7px; }
+.bridge .badge-key .key-face { padding: 0 18px; justify-content: flex-start; }
+.ribbon-icon { width: 57px; height: 39px; }
+.badge-name { font-size: 21px; }
+.badge-state { margin-left: auto; }
+#title-rule { margin: 11px 0 13px; }
+@keyframes relief-arrive { 0% { opacity: .38; transform: translateX(-9px); } 100% { opacity: 1; transform: translateX(0px); } }
+@keyframes watch-glint { 0% { opacity: 0; transform: translateX(-15%); } 36% { opacity: .7; } 100% { opacity: 0; transform: translateX(18%); } }
+@keyframes signal-pass { 0% { opacity: 0; transform: rotate(-70deg); } 25% { opacity: .74; } 100% { opacity: 0; transform: rotate(170deg); } }
+@keyframes readback { 0% { opacity: .42; } 100% { opacity: 1; } }
+@keyframes seal-strike { 0% { transform: scale(.94); } 52% { transform: scale(1.035); } 100% { transform: scale(1); } }
+@media (max-width: 1080px) {
+  .crew-console, .dispatch-console { left: 49%; right: 4%; }
+  .crew-gallery { left: 24%; width: 38%; }
+  .radar-mount { left: 3.5%; width: 355px; height: 355px; top: 25%; }
+  .route-selector { left: 3%; width: 42%; }
+  .bridge .portrait-pick .key-face { padding: 0 4px; gap: 4px; }
+  .roster-thumb { width: 41px; height: 49px; }
+  .titles-case { left: 49%; right: 5%; }
+  .lobby .mission-name { font-size: 18px; }
+  .lobby .passport-title { font-size: 18px; }
+  .lobby .aux-key .key-face { padding: 0 10px; gap: 4px; }
+}
+.post-receipt { border-top: 2px solid #b6a77d; padding: 24px 18px 0; background-image: linear-gradient(130deg,#1e3943ba,#0e18285c); }
+.receipt-seal { width: 97px; height: 60px; }
+#signed-wing { color: #d6dcde; font-size: 19px; }
+#signed-pay { color: #dcf9d7; font-size: 34px; margin: 22px 0; }
+.bridge #file-receipt { width: 210px; height: 56px; font-size: 19px; }
+
+.lobby.motion-resumed:not(.reduced) .pilot-reveal, .lobby.motion-resumed:not(.reduced) .pilot-scan { animation: none; }
+.lobby .wing-mark.on-watch { width: 46px; height: 46px; object-fit: cover; border: 1px solid #96c5c0; }
+.bridge-flight-track { position: absolute; left: 32%; right: 12%; height: 3px; bottom: 6px; background-color: #263444; }

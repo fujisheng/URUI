@@ -4,9 +4,17 @@
 
 URUI 将 **标准 HTML、CSS 与文本驱动的时间线动画** 引入 **Unity 6（`6000.3.22f1`）**，底层采用 C++ 原生桥接库（`URUIBridge` ABI13 / render-plan9 / element4，172 个正式导出函数）、FreeType 字形光栅化、GPU 参数页合批渲染，彻底避免为每个 UI 节点创建 `GameObject / MonoBehaviour` 的传统开销。
 
-> **交互式体验工程**：使用 Unity `6000.3.22f1` 直接打开 [`SampleProject/`](SampleProject)（完整展示 URP 3D 舞台融合 + Effect 特效 + Authoring），或在任意工程导入核心样例 [`Samples~/Solstice`](Packages/com.fujisheng.urui/Samples~/Solstice/README_ZH.md)。
+---
 
-![SOLSTICE 演示动画](Packages/com.fujisheng.urui/Documentation~/Images/solstice.gif)
+## 潮汐信标
+
+《潮汐信标》完全由 AI 制作，涵盖界面设计、代码、原创美术、动效和音效。下方动图录自 Unity 实际运行画面。
+
+![潮汐信标实机演示，展示引潮站、随鼠标倾转的舰员立绘、模组购买与装备、技能预演和战斗](docs/images/tideglass-beacon.gif)
+
+在引潮站任命随航舰员、派出远航小队、签收回执并佩戴航籍称号。配装、三处信标、演练与战报共用本地存档。大厅两侧的操作键沿各自的折射玻璃排列，14 个按钮的键帽随指针起伏，命中面固定。独立工程展示实时玻璃折射、舱室转场、URP 合成和 URUI Effect 潮能波形与命中粒子。
+
+高清截图可查看[引潮站](docs/images/tideglass-lobby.png)和[英雄详情](docs/images/tideglass-hero.png)。
 
 ---
 
@@ -21,34 +29,9 @@ URUI 将 **标准 HTML、CSS 与文本驱动的时间线动画** 引入 **Unity 
 
 ---
 
-## SOLSTICE《日冕旅团》演示工程亮点
-
-| 圣殿大厅与离屏 Shader 横幅 | 首领战与 Radial360 环形技能冷却 |
-| --- | --- |
-| ![Solstice Lobby](docs/images/solstice-lobby.png) | ![Solstice Combat](docs/images/solstice-combat.png) |
-
-1. **高对比游戏感纯 CSS 主题**：通过 `@property` 可继承颜色变量一键切换 *夜曜靛蓝*、*烬火绯红* 与 *晨曦玉石*，冷色锐利 HUD 与暖金幻想原画清晰分离。
-2. **战术 RPG 战斗与动效联动**：`Image.FillMode = Radial360` 技能冷却扇面、`SequencePlayer` 多轨召唤星盘动画与粒子星雨、`ui-wave` 波浪与 `ArcTextLayout` 弧形字带。
-3. **10,000 件军械虚拟列表**：基于 `CompiledDocumentAsset` AOT 预编译资产秒开加载并实时筛选检索。
-4. **URP RenderGraph 3D 透明合成**：[`UruiUrpRendererFeature`](SampleProject/Assets/Solstice/Runtime/Rendering/UruiUrpRendererFeature.cs) 将游戏 HUD 直接合成在 3D 视差景深背景之上。
-
----
-
 ## 快速上手
 
-### 方式一：直接打开独立 URP Showcase 工程（`SampleProject/`）
-
-1. 使用 **Unity `6000.3.22f1`** 打开仓库根目录的 `SampleProject/`。
-2. 打开场景 `Assets/Solstice/Scenes/Solstice.unity` 并点击 **Play**。
-3. 体验圣殿大厅、首领战、英灵 Shader 特效展示、星盘抽卡、万级军械库、主题设置与实时性能监控 HUD。
-
-### 方式二：通过 UPM 本地接入任意项目
-
-在 **Package Manager → Add package from disk...** 中选中 `Packages/com.fujisheng.urui/package.json`（按需安装 `effect` 与 `authoring`），通过顶部菜单 **Tools → URUI → Open Solstice Sample** 即可一键导入并运行基础样例。
-
-详细配置流程见 [新手入门指南](docs/GETTING_STARTED_ZH.md)。
-
----
+用 Unity 6000.3.22f1 打开 [SampleProject](SampleProject)，选择 **Tools → URUI → Open Tideglass Beacon Sample**，然后进入 Play Mode。Built-in 工程可在 Package Manager 导入 Core 的 **Tideglass Beacon**。操作与源码位置见[样例说明](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/README_ZH.md)。
 
 ## 文档导航
 

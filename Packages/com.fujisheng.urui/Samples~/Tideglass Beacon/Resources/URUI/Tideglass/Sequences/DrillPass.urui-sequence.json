@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Training qualification",
+  "duration": 0.63,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "result-crest",
+      "kind": "css",
+      "target": "result-crest",
+      "keyframes": "module-seat",
+      "start": 0,
+      "duration": 0.63,
+      "easing": "linear"
+    },
+    {
+      "id": "result-dial",
+      "kind": "css",
+      "target": "result-dial",
+      "keyframes": "contact-ring",
+      "start": 0,
+      "duration": 0.63,
+      "easing": "linear"
+    },
+    {
+      "id": "result-copy",
+      "kind": "css",
+      "target": "result-copy",
+      "keyframes": "folio-turn",
+      "start": 0,
+      "duration": 0.63,
+      "easing": "linear"
+    }
+  ]
+}

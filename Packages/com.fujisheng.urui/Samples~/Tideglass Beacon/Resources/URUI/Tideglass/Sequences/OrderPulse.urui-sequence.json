@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "Command transmission",
+  "duration": 0.48,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "relay-pulse",
+      "kind": "css",
+      "target": "relay-pulse",
+      "keyframes": "contact-ring",
+      "start": 0,
+      "duration": 0.48,
+      "easing": "linear"
+    }
+  ]
+}

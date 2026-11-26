@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Open flight recorder",
+  "duration": 0.49,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "record-leaf",
+      "kind": "css",
+      "target": "record-leaf",
+      "keyframes": "turn-leaf",
+      "start": 0,
+      "duration": 0.49,
+      "easing": "linear"
+    },
+    {
+      "id": "record-edge",
+      "kind": "css",
+      "target": "record-edge",
+      "keyframes": "folio-glint",
+      "start": 0,
+      "duration": 0.49,
+      "easing": "linear"
+    }
+  ]
+}

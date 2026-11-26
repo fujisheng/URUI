@@ -4,4 +4,4 @@ Import this sample via **Package Manager → URUI → Samples → Hello URUI →
 
 After `Loaded`, the sample queries `label`, `action`, and `panel`, updates text via `Element.Text`, subscribes clicks via `RegisterCallback<ClickEvent>`, and applies CSS inline via `Style`. It waits for `Document.isActiveAndEnabled` before loading so Unity component enable order never triggers issues.
 
-`OnDisable` disposes subscriptions and unloads the document without destroying caller-provided `TextAsset`s. For dynamic element creation, detaching, re-attaching, and `Destroy()`, import `Element Playground`—or explore the full showcase in [Solstice](../Solstice/README.md).
+`OnDisable` disposes subscriptions and unloads the document without destroying caller-provided `TextAsset`s. For dynamic element creation, detaching, re-attaching, and `Destroy()`, import `Element Playground`—or explore the full showcase in [Tideglass Beacon](../Tideglass%20Beacon/README.md).

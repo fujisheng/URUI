@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Magnetic rack engagement",
+  "duration": 0.49,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "rack-top",
+      "kind": "css",
+      "target": "rack-top",
+      "keyframes": "rack-upper",
+      "start": 0,
+      "duration": 0.49,
+      "easing": "linear"
+    },
+    {
+      "id": "rack-bottom",
+      "kind": "css",
+      "target": "rack-bottom",
+      "keyframes": "rack-lower",
+      "start": 0,
+      "duration": 0.49,
+      "easing": "linear"
+    }
+  ]
+}

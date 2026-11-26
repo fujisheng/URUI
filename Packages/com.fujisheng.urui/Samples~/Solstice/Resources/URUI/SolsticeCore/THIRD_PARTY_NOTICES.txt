@@ -1,9 +1,0 @@
-SOLSTICE Sample Assets - Third-Party Notices
-
-1. Fonts
-   - LatoLatin-Regular.ttf (Lato) — SIL Open Font License 1.1
-   - RobotoMono-Regular.ttf (Roboto Mono) — Apache License 2.0
-   - Solstice-SC.ttf (subset of Noto Sans SC Bold) — SIL Open Font License 1.1
-
-2. Game Art, Shaders, Effect Textures & Synthesized Audio
-   - Generated and prepared specifically for the URUI Solstice tactical RPG showcase sample.

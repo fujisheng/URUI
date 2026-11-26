@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Acquire practice target",
+  "duration": 0.39,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "range-lock",
+      "kind": "css",
+      "target": "range-lock",
+      "keyframes": "practice-lock",
+      "start": 0,
+      "duration": 0.39,
+      "easing": "linear"
+    },
+    {
+      "id": "range-glyph",
+      "kind": "css",
+      "target": "range-glyph",
+      "keyframes": "module-seat",
+      "start": 0,
+      "duration": 0.39,
+      "easing": "linear"
+    }
+  ]
+}

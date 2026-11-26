@@ -5,4 +5,4 @@
 - **包含内容**：`RuntimeControls.unity`、`RuntimeControls.cs`、`URUI.Samples.Controls.asmdef` 及 `Resources/` 下的样例页面与样式。
 - **核心特性**：强类型表单控件（`Slider`、`Toggle`、`Dropdown`、`TextField`）、作者自定义弹层（`DropdownVisual`）、列表项池化重绑与 `OnDisable` 安全解绑。
 
-若需体验包含纯 CSS 多主题、动画与 3D 舞台合成的完整 RPG 样例工程，请参阅 [Solstice](../Solstice/README_ZH.md)。
+参阅[潮汐信标](../Tideglass%20Beacon/README_ZH.md)以体验完整的多页面游戏样例。

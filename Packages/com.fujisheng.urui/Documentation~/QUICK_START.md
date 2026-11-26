@@ -2,10 +2,9 @@
 
 Matches Core `0.8.0-preview.1`. Complete the environment prerequisites in [Installation](INSTALL.md) (Unity `6000.3.22f1`, Camera, matching native plugin, and `Input Manager (Old / Both)`).
 
-## Run Solstice First
+## Run Tideglass Beacon
 
-- **Full URP Showcase (Recommended)**: Open [SampleProject/](../../../SampleProject/) directly in Unity `6000.3.22f1`, load `Assets/Solstice/Scenes/Solstice.unity`, and press Play to experience the 3D parallax sanctuary backdrop, Boss encounter with radial skill cooldowns, Effect shaders/particles, astrolabe summon sequences, 10,000-item virtualized Armory, and Authoring preview.
-- **Standalone Core Package Sample**: In Package Manager open **URUI → Samples → Solstice → Import**, open the imported `Solstice.unity`, and enter Play Mode—or run **Tools → URUI → Open Solstice Sample**. Imported assets copy into `Assets/Samples/URUI/<version>/Solstice`; package `Samples~` stays read-only. See [Solstice README](../Samples~/Solstice/README.md).
+Open [SampleProject](../../../SampleProject/) in Unity 6000.3.22f1, select **Tools → URUI → Open Tideglass Beacon Sample**, and enter Play Mode. In a Built-in project, import **URUI → Samples → Tideglass Beacon**. See the [sample guide](../Samples~/Tideglass%20Beacon/README.md) for controls and sources.
 
 ## Create a Minimal Authored Document
 

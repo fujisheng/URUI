@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "Iris shutter",
+  "duration": 0.46,
+  "loop": false,
+  "tracks": [
+    {
+      "id": "shutter-top",
+      "kind": "css",
+      "target": "shutter-top",
+      "keyframes": "iris-shutter",
+      "duration": 0.46,
+      "start": 0,
+      "easing": "linear"
+    },
+    {
+      "id": "shutter-bottom",
+      "kind": "css",
+      "target": "shutter-bottom",
+      "keyframes": "iris-shutter",
+      "duration": 0.46,
+      "start": 0,
+      "easing": "linear"
+    },
+    {
+      "id": "shutter-flare",
+      "kind": "css",
+      "target": "shutter-flare",
+      "keyframes": "shutter-light",
+      "duration": 0.42,
+      "start": 0.02,
+      "easing": "ease-out"
+    },
+    {
+      "id": "shutter-dial",
+      "kind": "css",
+      "target": "shutter-dial",
+      "keyframes": "shutter-engage",
+      "duration": 0.3,
+      "start": 0.05,
+      "easing": "linear"
+    }
+  ]
+}
