@@ -4,11 +4,11 @@
 
 # URUI
 
-**Build native Unity game interfaces with HTML and CSS.**
+**Build Unity game interfaces with HTML and CSS. Script them in C#.**
 
-Keep layouts, styles and animation timelines in Git. The Unity workbench lets designers and AI agents inspect the same screen, edit its source and capture the result.
+URUI lays out each document in native C++. Unity draws the resulting UI geometry directly through its graphics API. Layouts, styles and motion timelines stay in text files that your team and AI tools can edit together.
 
-[Install Core](#install-core) · [Play the sample](#tideglass-beacon) · [Developer guides](#developer-guides) · [中文](README_ZH.md)
+[Install Core](#install-core) · [URUI and WebView](#urui-and-webview) · [Play the sample](#tideglass-beacon) · [Developer guides](#developer-guides) · [中文](README_ZH.md)
 
 </div>
 
@@ -29,6 +29,25 @@ Take command of an orbital station. Choose an escort, buy a module and take it i
 </p>
 
 </details>
+
+## URUI and WebView
+
+| | URUI | A typical Unity WebView integration |
+| --- | --- | --- |
+| Who draws the interface? | URUI builds geometry for elements, text and images. Unity draws those meshes with its materials through `CommandBuffer.DrawMesh`. | A browser engine paints the page. The integration displays a native web view over the game or presents the browser's rendered texture in the scene. [WebView rendering modes](https://support.vuplex.com/articles/native-2d-mode/) |
+| Where do interactions run? | In Unity C#. Typed controls raise events that can call your inventory, combat or navigation code directly. | Page scripts run in JavaScript. Calling host code typically goes through a script bridge. [WebView script interfaces](https://developer.android.com/develop/ui/views/layout/webapps/webview#BindingJavaScript) |
+
+In the Built-in pipeline, URUI attaches a command buffer to the camera. In the sample URP renderer feature, a RenderGraph pass calls `Surface.SubmitRendering` with the active camera color target. A single Unity `Surface` can draw multiple UI documents, and their elements live in URUI's native tree. [Core draw calls](Packages/com.fujisheng.urui/Runtime/Internal/Hosting/RenderHost.NativePlan.cs) · [URP render pass](SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs)
+
+**C# in a game screen.** On Tideglass Beacon's results screen, the controller fills a label from the flight destination and wires two HTML buttons to game navigation.
+
+```csharp
+result.Q("result-sector").Text = destination.Name;
+result.Q<Button>("result-chart").Clicked += () => Request(Page.Chart);
+result.Q<Button>("finish").Clicked += () => Request(Page.Lobby);
+```
+
+[Screen HTML](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Resources/URUI/Tideglass/Pages/Result.html) · [C# gameplay controller](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Runtime/TideglassDemo.cs)
 
 ## Install Core
 

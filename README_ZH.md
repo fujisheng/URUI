@@ -4,11 +4,11 @@
 
 # URUI
 
-**用 HTML 和 CSS 编写原生渲染的 Unity 游戏界面。**
+**用 HTML 和 CSS 搭建 Unity 游戏界面，用 C# 编写交互脚本。**
 
-布局、样式和动画时间线都可以在 Git 中审阅。设计师和 AI 都能通过 Unity 工作台检查同一块界面、修改源文件，再查看渲染结果。
+URUI 的原生 C++ 引擎计算布局，Unity 通过自己的绘图接口直接绘制界面几何。布局、样式和动画时间线都保存在文本文件中，团队与 AI 可以共同修改，并在 Git 中审阅。
 
-[安装 Core](#安装-core) · [运行样例](#潮汐信标) · [开发文档](#开发文档) · [English](README.md)
+[安装 Core](#安装-core) · [与 WebView 的区别](#urui-与-webview) · [运行样例](#潮汐信标) · [开发文档](#开发文档) · [English](README.md)
 
 </div>
 
@@ -29,6 +29,25 @@
 </p>
 
 </details>
+
+## URUI 与 WebView
+
+| | URUI | 常见的 Unity WebView 接入方式 |
+| --- | --- | --- |
+| 谁绘制界面？ | URUI 为控件、文字和图片生成几何数据。Unity 使用自己的材质，通过 `CommandBuffer.DrawMesh` 直接绘制这些网格。 | 浏览器引擎先绘制网页。接入层将原生网页视图叠放在游戏画面上，或把浏览器渲染好的网页纹理显示在场景里。[WebView 的两种显示方式](https://support.vuplex.com/articles/native-2d-mode/) |
+| 交互脚本在哪里运行？ | 运行在 Unity 的 C# 环境中。控件事件可直接调用背包、战斗或界面导航代码。 | 页面交互脚本运行在 JavaScript 环境中，调用宿主逻辑通常要经过脚本桥接。[WebView 脚本接口](https://developer.android.com/develop/ui/views/layout/webapps/webview#BindingJavaScript) |
+
+在 Built-in 管线中，URUI 把命令缓冲区挂到相机上。在样例的 URP 管线中，RenderGraph 渲染通道把相机当前的颜色目标传给 `Surface.SubmitRendering`，界面就绘制到这个目标上。一个 Unity `Surface` 可以承载多份界面文档，控件节点由 URUI 的原生树管理。[Core 绘制实现](Packages/com.fujisheng.urui/Runtime/Internal/Hosting/RenderHost.NativePlan.cs) · [URP 渲染通道](SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs)
+
+**样例里的 C#。** 《潮汐信标》的结算页直接从航行目标读取名称，再把 HTML 中的两个按钮绑定到星图和大厅。
+
+```csharp
+result.Q("result-sector").Text = destination.Name;
+result.Q<Button>("result-chart").Clicked += () => Request(Page.Chart);
+result.Q<Button>("finish").Clicked += () => Request(Page.Lobby);
+```
+
+[结算页 HTML](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Resources/URUI/Tideglass/Pages/Result.html) · [C# 玩法控制器](Packages/com.fujisheng.urui/Samples~/Tideglass%20Beacon/Runtime/TideglassDemo.cs)
 
 ## 安装 Core
 
