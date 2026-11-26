@@ -32,14 +32,13 @@ Take command of an orbital station. Choose an escort, buy a module and take it i
 
 ## URUI and WebView
 
-| | URUI | A typical Unity WebView integration |
-| --- | --- | --- |
-| Who draws the interface? | URUI builds geometry for elements, text and images. Unity draws those meshes with its materials through `CommandBuffer.DrawMesh`. | A browser engine paints the page. The integration displays a native web view over the game or presents the browser's rendered texture in the scene. [WebView rendering modes](https://support.vuplex.com/articles/native-2d-mode/) |
-| Where do interactions run? | In Unity C#. Typed controls raise events that can call your inventory, combat or navigation code directly. | Page scripts run in JavaScript. Calling host code typically goes through a script bridge. [WebView script interfaces](https://developer.android.com/develop/ui/views/layout/webapps/webview#BindingJavaScript) |
+**Who draws the interface?** URUI builds geometry for controls, text and images. Unity draws those meshes with its materials through `CommandBuffer.DrawMesh`. Built-in attaches the command buffer to the camera. The sample URP RenderGraph pass calls `Surface.SubmitRendering` with the active camera color target. [Core draw calls](Packages/com.fujisheng.urui/Runtime/Internal/Hosting/RenderHost.NativePlan.cs) · [URP render pass](SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs)
 
-In the Built-in pipeline, URUI attaches a command buffer to the camera. In the sample URP renderer feature, a RenderGraph pass calls `Surface.SubmitRendering` with the active camera color target. A single Unity `Surface` can draw multiple UI documents, and their elements live in URUI's native tree. [Core draw calls](Packages/com.fujisheng.urui/Runtime/Internal/Hosting/RenderHost.NativePlan.cs) · [URP render pass](SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs)
+In a WebView integration, a browser engine paints the page first. The host places that native view above the game or displays the browser's rendered texture in the scene. [WebView rendering modes](https://support.vuplex.com/articles/native-2d-mode/)
 
-**C# in a game screen.** On Tideglass Beacon's results screen, the controller fills a label from the flight destination and wires two HTML buttons to game navigation.
+**Where do scripts run?** URUI delivers typed control events directly to C# in Unity. The handler can read inventory, call combat logic or change screens. WebView page scripts run in JavaScript and typically reach host code through a script bridge. [WebView script interfaces](https://developer.android.com/develop/ui/views/layout/webapps/webview#BindingJavaScript)
+
+On Tideglass Beacon's results screen, the C# controller fills a label from the flight destination and wires two HTML buttons to game navigation.
 
 ```csharp
 result.Q("result-sector").Text = destination.Name;

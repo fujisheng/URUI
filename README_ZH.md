@@ -32,14 +32,13 @@ URUI 的原生 C++ 引擎计算布局，Unity 通过自己的绘图接口直接�
 
 ## URUI 与 WebView
 
-| | URUI | 常见的 Unity WebView 接入方式 |
-| --- | --- | --- |
-| 谁绘制界面？ | URUI 为控件、文字和图片生成几何数据。Unity 使用自己的材质，通过 `CommandBuffer.DrawMesh` 直接绘制这些网格。 | 浏览器引擎先绘制网页。接入层将原生网页视图叠放在游戏画面上，或把浏览器渲染好的网页纹理显示在场景里。[WebView 的两种显示方式](https://support.vuplex.com/articles/native-2d-mode/) |
-| 交互脚本在哪里运行？ | 运行在 Unity 的 C# 环境中。控件事件可直接调用背包、战斗或界面导航代码。 | 页面交互脚本运行在 JavaScript 环境中，调用宿主逻辑通常要经过脚本桥接。[WebView 脚本接口](https://developer.android.com/develop/ui/views/layout/webapps/webview#BindingJavaScript) |
+**谁绘制界面？** URUI 为控件、文字和图片生成几何数据，Unity 使用自己的材质，通过 `CommandBuffer.DrawMesh` 直接绘制这些网格。Built-in 把命令缓冲区挂到相机上。样例的 URP RenderGraph 通道则将相机当前的颜色目标传给 `Surface.SubmitRendering`，界面直接绘制到该目标。[Core 绘制实现](Packages/com.fujisheng.urui/Runtime/Internal/Hosting/RenderHost.NativePlan.cs) · [URP 渲染通道](SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs)
 
-在 Built-in 管线中，URUI 把命令缓冲区挂到相机上。在样例的 URP 管线中，RenderGraph 渲染通道把相机当前的颜色目标传给 `Surface.SubmitRendering`，界面就绘制到这个目标上。一个 Unity `Surface` 可以承载多份界面文档，控件节点由 URUI 的原生树管理。[Core 绘制实现](Packages/com.fujisheng.urui/Runtime/Internal/Hosting/RenderHost.NativePlan.cs) · [URP 渲染通道](SampleProject/Assets/Rendering/UruiUrpRendererFeature.cs)
+WebView 方案先由浏览器引擎绘制网页，宿主再将原生网页视图叠放在游戏画面上，或把浏览器渲染好的网页纹理显示在场景中。[WebView 的两种显示方式](https://support.vuplex.com/articles/native-2d-mode/)
 
-**样例里的 C#。** 《潮汐信标》的结算页直接从航行目标读取名称，再把 HTML 中的两个按钮绑定到星图和大厅。
+**交互脚本在哪里运行？** URUI 的控件直接在 Unity 中触发 C# 事件，处理函数可以读取背包、调用战斗逻辑或切换界面。WebView 的页面脚本运行在 JavaScript 环境中，调用宿主逻辑通常经过脚本桥接。[WebView 脚本接口](https://developer.android.com/develop/ui/views/layout/webapps/webview#BindingJavaScript)
+
+在《潮汐信标》的结算页，C# 控制器从航行目标读取名称，再把 HTML 中的两个按钮绑定到星图和大厅。
 
 ```csharp
 result.Q("result-sector").Text = destination.Name;
